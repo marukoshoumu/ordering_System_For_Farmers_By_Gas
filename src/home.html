@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+</head>
+
+<body>
+  <div class="container">
+    <h2 class="text-center m-4">会社名</h2>
+    <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <div class="text-center">
+        <button type="submit" class="btn main_btn" name="shipping" value="true">受注</button>
+        <button type="submit" class="btn main_btn" name="createShippingSlips" value="true">送り状<br>作成</button>
+        <button type="submit" class="btn main_btn" name="createBill" value="true">請求書<br>作成</button>
+        <br>
+        <button type="submit" class="btn main_btn" name="csvImport" value="true">受注CSV<br>取込</button>
+        <button type="submit" class="btn main_btn" name="quotation" value="true">見積書<br>作成</button>
+        <br>
+        <button type="button" class="btn second_btn" name="openQuotaion" value="true" onclick="openUrlQuotaion()">見積書<br>参照</button>
+        <button type="button" class="btn second_btn" name="openProduct" value="true" onclick="openUrlProduct()">商品情報<br>参照</button>
+        <button type="button" class="btn second_btn" name="openCustomer" value="true" onclick="openUrlCustomer()">顧客情報<br>参照</button>
+        <br>
+        <button type="button" class="btn second_btn" name="openBill" value="true" onclick="openUrlBill()">請求書<br>参照</button>
+        <button type="button" class="btn second_btn" name="openDelivered" value="true" onclick="openUrlDelivered()">納品書<br>参照</button>
+        <button type="button" class="btn second_btn" name="openYamato" value="true" onclick="openUrlYamato()">送り状<br>ヤマト参照</button>
+        <br>
+        <button type="button" class="btn second_btn" name="openSagawa" value="true" onclick="openUrlSagawa()">送り状<br>佐川参照</button>
+        <button type="button" class="btn second_btn" name="openShipp" value="true" onclick="openUrlShipp()">受注<br>一覧</button>
+      </div>
+      <br>
+      <div class="text-center" id="cntRes">
+      </div>
+      <div class="text-center" id="invoiceYesterdayRes">
+      </div>
+      <div class="text-center" id="yesterdayRes">
+      </div>
+      <div class="text-center" id="invoiceTodayRes">
+      </div>
+      <div class="text-center" id="todayRes">
+      </div>
+      <div class="text-center" id="invoiceTommorrowRes">
+      </div>
+      <div class="text-center" id="tommorrowRes">
+      </div>
+      <div class="text-center" id="invoiceDayAfter2Res">
+      </div>
+      <div class="text-center" id="dayAfter2Res">
+      </div>
+      <div class="text-center" id="invoiceDayAfter3Res">
+      </div>
+      <div class="text-center" id="dayAfter3Res">
+      </div>
+      <div id="overlay"></div>
+      <div id="detailDialog">
+        <p><strong>顧客名:</strong> <span id="dialogCustName"></span></p>
+        <p><strong>発送先名:</strong> <span id="dialogShippingTo"></span></p>
+        <p><strong>商品名:</strong> <span id="dialogProduct"></span></p>
+        <p><strong>個数:</strong> <span id="dialogCount"></span></p>
+        <p><strong>メモ:</strong> <span id="dialogMemo"></span></p>
+        <button type="button" class="btn" id="closeDialogButton">閉じる</button>
+      </div>
+    </form>
+  </div>
+  <script>
+    function openUrlQuotaion() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('見積書'); 
+    }
+    function openUrlProduct() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('商品'); 
+    }
+    function openUrlCustomer() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('顧客情報'); 
+    }
+    function openUrlBill() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
+    }
+    function openUrlDelivered() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('納品書'); 
+    }
+    function openUrlYamato() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
+    }
+    function openUrlSagawa() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
+    }
+    function openUrlShipp() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注'); 
+    }
+    function sendFail() {
+      alert("処理に失敗しました。");  
+    }
+    function sendSucces(url) {
+      window.open(url);
+    }
+    function setRes() {
+      $("#cntRes").html('読み込み中...');
+      google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate(); 
+    }
+    function setTable(datas) {
+      var res = JSON.parse(datas);
+      var cntHtml = `<p class="info_table">発送件数</p>`;
+      cntHtml += `<table class="table table-bordered">
+      <thead>
+        <tr class="table-primary">
+      `;
+      cntHtml += `<th scope="col">${res[0]['昨日']}</th>`;
+      cntHtml += `<th style="background-color: #B0E3A4;" scope="col">${res[0]['今日']}</th>`;
+      cntHtml += `<th scope="col">${res[0]['明日']}</th>`;
+      cntHtml += `<th scope="col">${res[0]['明後日']}</th>`;
+      cntHtml += `<th scope="col">${res[0]['明々後日']}</th>`;
+      cntHtml += `</tr>
+      </thead>`;
+      cntHtml += `<tbody class="table-group-divider">
+            <tr>`;
+      cntHtml += `<td scope="col">${res[1]['昨日']}件</td>`;
+      cntHtml += `<td scope="col">${res[1]['今日']}件</td>`;
+      cntHtml += `<td scope="col">${res[1]['明日']}件</td>`;
+      cntHtml += `<td scope="col">${res[1]['明後日']}件</td>`;
+      cntHtml += `<td scope="col">${res[1]['明々後日']}件</td>`;
+      cntHtml += `</tr>
+      </tbody>
+      </table>
+      `;
+      $("#cntRes").html(cntHtml);
+      if (res[2]) {
+        createInvoiceHtml(res[2], res[0]['昨日'], "#invoiceYesterdayRes");
+      }
+      else {
+        $("#invoiceYesterdayRes").html('');
+      }
+      if (res[3]) {
+        createProductHtml(res[3], res[0]['昨日'], "#yesterdayRes");
+      }
+      else {
+        $("#yesterdayRes").html('');
+      }
+      if (res[4]) {
+        createInvoiceHtml(res[4], res[0]['今日'], "#invoiceTodayRes", true);
+      }
+      else {
+        $("#invoiceTodayRes").html('');
+      }
+      if (res[5]) {
+        createProductHtml(res[5], res[0]['今日'], "#todayRes", true);
+      }
+      else {
+        $("#todayRes").html('');
+      }
+      if (res[6]) {
+        createInvoiceHtml(res[6], res[0]['明日'], "#invoiceTommorrowRes");
+      }
+      else {
+        $("#invoiceTommorrowRes").html('');
+      }
+      if (res[7]) {
+        createProductHtml(res[7], res[0]['明日'], "#tommorrowRes");
+      }
+      else {
+        $("#tommorrowRes").html('');
+      }
+      if (res[8]) {
+        createInvoiceHtml(res[8], res[0]['明後日'], "#invoiceDayAfter2Res");
+      }
+      else {
+        $("#invoiceDayAfter2Res").html('');
+      }
+      if (res[9]) {
+        createProductHtml(res[9], res[0]['明後日'], "#dayAfter2Res");
+      }
+      else {
+        $("#dayAfter2Res").html('');
+      }
+      if (res[10]) {
+        createInvoiceHtml(res[10], res[0]['明々後日'], "#invoiceDayAfter3Res");
+      }
+      else {
+        $("#invoiceDayAfter3Res").html('');
+      }
+      if (res[11]) {
+        createProductHtml(res[11], res[0]['明々後日'], "#dayAfter3Res");
+      }
+      else {
+        $("#dayAfter3Res").html('');
+      }
+    }
+    function setTableFail() {
+      alert("受注データ集計処理に失敗しました。");  
+    }
+    // 詳細ダイアログを表示する関数
+    function showDetailDialog(details) {
+        document.getElementById('dialogCustName').textContent = details.custName;
+        document.getElementById('dialogShippingTo').textContent = details.shippingTo;
+        document.getElementById('dialogProduct').textContent = details.product;
+        document.getElementById('dialogCount').textContent = details.count;
+        document.getElementById('dialogMemo').textContent = details.memo;
+
+        document.getElementById('overlay').style.display = 'block'; // オーバーレイを表示
+        document.getElementById('detailDialog').style.display = 'block'; // ダイアログを表示
+    }
+
+    // 詳細ダイアログを閉じるボタンのクリックイベント
+    document.getElementById('closeDialogButton').addEventListener('click', function() {
+        document.getElementById('detailDialog').style.display = 'none'; // ダイアログを非表示
+        document.getElementById('overlay').style.display = 'none'; // オーバーレイを非表示
+    });
+    window.onload = function(){
+      setRes();
+    };
+    function createInvoiceHtml(res, dateVal, idName, colorFlg) {
+      var html = '';
+      if (colorFlg) {
+        html += `<p class="info_table today_color">${dateVal} 納品</p>`;
+        html += `<table class="table table-bordered">
+        <thead>
+          <tr class="table-primary">
+        `;
+        for (let i = 0; i < res.length; i++) {
+          html += `<th class="today_color" scope="col">`;
+          html += res[i]['納品方法'];
+          html += `</th>`;
+        }
+        html += `</tr>
+        </thead>`;
+        html += `<tbody class="table-group-divider">
+              <tr>`;
+        for (let i = 0; i < res.length; i++) {
+          html += `<td scope="col">`;
+          html += res[i]['件数'] +"件";
+          html += `</td>`;
+        }
+      }
+      else {
+        html += `<p class="info_table">${dateVal} 納品</p>`;
+        html += `<table class="table table-bordered">
+        <thead>
+          <tr class="table-primary">
+        `;
+        for (let i = 0; i < res.length; i++) {
+          html += `<th scope="col">`;
+          html += res[i]['納品方法'];
+          html += `</th>`;
+        }
+        html += `</tr>
+        </thead>`;
+        html += `<tbody class="table-group-divider">
+              <tr>`;
+        for (let i = 0; i < res.length; i++) {
+          html += `<td scope="col">`;
+          html += res[i]['件数'] +"件";
+          html += `</td>`;
+        }
+      }
+      html += `</tr>
+      </tbody>
+      </table>
+      `;
+      $(idName).html(html);
+    }
+    function createProductHtml(res, dateVal, idName, colorFlg) {
+      var html = '';
+      if (colorFlg) {
+        html += `<p class="info_table today_color">${dateVal} 商品</p>`;
+        html += `<table class="table table-bordered">
+        <thead>
+          <tr class="today_color">`;
+        html += `<th class="today_color" scope="col" rowspan="2">`;
+        html += "顧客名";
+        html += `</th>`;
+        html += `<th class="today_color" scope="col">`;
+        html += '商品名';
+        html += `</th>`;
+        html += `<th class="today_color" scope="col">`;
+        html += '個数';
+        html += `</th>`;
+        html += `</tr>`;
+        html += `<tr class="today_color">`;
+        html += `<th class="today_color" scope="col" colspan="2">`;
+        html += "メモ";
+        html += `</th>`;
+      }
+      else {
+        html += `<p class="info_table">${dateVal} 商品</p>`;
+        html += `<table class="table table-bordered">
+        <thead>
+          <tr class="table-primary">`;
+        html += `<th scope="col" rowspan="2">`;
+        html += "顧客名";
+        html += `</th>`;
+        html += `<th scope="col">`;
+        html += '商品名';
+        html += `</th>`;
+        html += `<th scope="col">`;
+        html += '個数';
+        html += `</th>`;
+        html += `</tr>`;
+        html += `<tr class="table-primary">`;
+        html += `<th scope="col" colspan="2">`;
+        html += "メモ";
+        html += `</th>`;
+      }
+      html += `</tr>`;
+      html += `</thead>`;
+      html += `<tbody class="table-group-divider">
+            <tr>`;
+      for (let i = 0; i < res.length; i++) {
+        html += `<td scope="col" rowspan=`+ res[i]['商品'].length * 2 +`>`;
+        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['顧客名'] + `>`;
+        html += `</td>`;
+        html += `<td scope="col">`;
+        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['商品名'] + `>`;
+        html += `</td>`;
+        html += `<td scope="col">`;
+        html += `<input type="text" style="width: 40px;" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['受注数'] + "個" +`>`;
+        html += `</td>`;
+        html += `</tr>`;
+        html += `<td scope="col" colspan="2">`;
+        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['メモ'] +`>`;
+        html += `</td>`;
+        for (let j = 1; j < res[i]['商品'].length; j++) {
+          html += `</tr>`;
+          html += `<td scope="col">`;
+          html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['商品名'] + `>`;
+          html += `</td>`;
+          html += `<td scope="col">`;
+          html += `<input type="text" style="width: 40px;" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['受注数'] + "個" +`>`;
+          html += `</td>`;
+        html += `</tr>`;
+        html += `<td scope="col" colspan="2">`;
+        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['メモ'] +`>`;
+        html += `</td>`;
+        }
+        html += `</tr>`;
+      }
+      html += `</tbody>
+      </table>
+      `;
+      $(idName).html(html);
+    }
+  </script>
+</body>
+
+</html>

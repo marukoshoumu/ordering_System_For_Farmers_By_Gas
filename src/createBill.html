@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+</head>
+
+<body>
+  <div class="container">
+    <h2 class="text-center m-4">請求書作成</h2>
+    <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <div class="customerSearch_dg">
+        <div>
+          <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
+          <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg" >
+            <option value="1">会社名</option>
+            <option value="2">氏名</option>
+            <option value="3">表示名</option>
+            <option value="4">フリガナ</option>
+          </select>
+        </div>
+        <div>
+          <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
+          <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg" >
+            <option value=""></option>
+            <option value="1">一次卸し・大口</option>
+            <option value="2">小売店</option>
+            <option value="3">飲食店・ホテル</option>
+            <option value="4">地元飲食店</option>
+            <option value="5">通信販売</option>
+            <option value="6">一般販売</option>
+            <option value="7">その他</option>
+            <option value="8">職域</option>
+          </select>
+        </div>
+        <div>
+          <label for="customerSearchKeyDg" class="text-left form-label">キーワード</label>
+          <input type="text" class="form-control" id="customerSearchKeyDg" name="customerSearchKeyDg">
+        </div>
+        <div id="resCustArea" class="mt-2 resTable">
+        </div>
+      </div>
+      <div class="row mb-3 align-items-center justify-content-center">
+        <div class="col-auto">
+          <label for="customerName" class="text-center form-label">顧客名</label>
+        </div>
+        <div class="col-auto">
+          <input type="text" class="form-control" id="customerName" name="customerName">
+        </div>
+        <div class="col-auto">
+          <button type='button' class="customerSearchBtn_open">顧客検索</button>
+        </div>
+      </div>
+      <div class="row mb-3 align-items-center justify-content-center">
+        <div class="col-auto">
+          <label for="targetDateFrom" class="text-center form-label">対象日</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control" id="targetDateFrom" name="targetDateFrom">
+        </div>
+        <div class="col-auto">
+          <label for="targetDateTo" class="text-center form-label">～</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control" id="targetDateTo" name="targetDateTo">
+        </div>
+        <div class="col-auto">
+          <button type='button' id="createBill" class="btn btn-primary me-3" onclick="createBills()">作成</button>
+        </div>
+      </div>
+      <div class="row mb-3 align-items-center justify-content-center">
+        <div class="col-auto">
+          <label for="billDate" class="text-center form-label">請求日</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control" id="billDate" name="billDate">
+        </div>
+      </div>
+  </div>
+  <p id="res" style="text-align: center;"></p>
+  <div class="text-center">
+    <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+  </div>
+  <br>
+  <div class="text-center">
+    <button type="button" class="btn btn-outline-secondary" name="openBill" value="true" onclick="openUrlBill()">請求書参照</button>
+  </div>
+  </form>
+  </div>
+  <script>
+    function openUrlBill() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
+    }
+    function sendFail() {
+      alert("処理に失敗しました。");  
+    }
+    function sendSucces(url) {
+      window.open(url);
+    }
+    function setToday() {
+      var today = new Date();
+      var yyyy = today.getFullYear();
+      var mm = ("0"+(today.getMonth()+1)).slice(-2);
+      var dd = ("0"+today.getDate()).slice(-2);
+      document.getElementById("billDate").value=yyyy+'-'+mm+'-'+dd;
+    }
+    setToday();
+    function setFirstDate () {
+      const nowDate = new Date();
+      var firstDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+      var yyyy = firstDate.getFullYear();
+      var mm = ("0"+(firstDate.getMonth()+1)).slice(-2);
+      var dd = ("0"+firstDate.getDate()).slice(-2);
+      document.getElementById("targetDateFrom").value=yyyy+'-'+mm+'-'+dd;
+    }
+    setFirstDate();
+    function setLastDate() {
+      const nowDate = new Date();
+      var lastDate = new Date(nowDate.getFullYear(), nowDate.getMonth(), 0);
+      var yyyy = lastDate.getFullYear();
+      var mm = ("0"+(lastDate.getMonth()+1)).slice(-2);
+      var dd = ("0"+lastDate.getDate()).slice(-2);
+      document.getElementById("targetDateTo").value=yyyy+'-'+mm+'-'+dd;
+    }
+    setLastDate();
+    function createBills() {
+      const checkAddFlg = window.confirm('請求書を作成してもよろしいですか？');
+      if(checkAddFlg) {
+        $("button[id='createBill']").text('作成中...');
+        var customerName = $('input[id="customerName"]').val();
+        var targetDateFrom = $('input[id="targetDateFrom"]').val();
+        var targetDateTo = $('input[id="targetDateTo"]').val();
+        var billDate = $('input[id="billDate"]').val();
+        var record = {};
+        record['customerName'] = customerName;
+        record['targetDateFrom'] = targetDateFrom;
+        record['targetDateTo'] = targetDateTo;
+        record['billDate'] = billDate;
+        google.script.run.withSuccessHandler(createList).withFailureHandler(createFail).createBill(JSON.stringify(record));
+      }
+    }
+    function createFail() {
+      alert("エラーが発生しました。");  
+      $("button[id='createBill']").text('作成');
+    }
+    function createList(data) {
+      if (data) {
+        var res = JSON.parse(data);
+        alert("請求書を作成しました。");
+        $("button[id='createBill']").text('作成');
+        var html = "◆作成ファイル◆<br>";
+        for (var ele of res) {
+          html += ele + ".pdf" + "<br>";
+        }
+        $("p[id='res']").html(html);
+      }
+      else {
+        alert("該当データがありませんでした。");  
+        $("button[id='createBill']").text('作成');
+      }
+    }
+    $(function(){
+      $(".customerSearchBtn_open").on("click",function(){
+          $(".customerSearch_dg").dialog({
+              title:"顧客検索",
+              width:"400",
+              height:"500",
+              modal:true,
+              buttons:{
+                  "キャンセル":function(){
+                    $(this).dialog("close");
+                  },
+                  "検索":function(){
+                    customerSearch();
+                  },
+             },
+          });
+      });
+    });
+    function customerSearch() {
+      if (!$('input[id="customerSearchKeyDg"]').val()) {
+        alert('キーワードが入力されていません。');
+        return false;
+      }
+      $("#resCustArea").html('検索中...');
+      var record = {};
+      record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
+      record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
+      record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
+      google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+    }
+    function dataSearchSuccess(datas) {
+      var res = JSON.parse(datas);
+      if (res && res.length > 0) {
+        var html = "<table>";
+        html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+        for (let i = 0; i < res.length; i++) {
+          var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|"+ res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+          html += "<tr>";
+          html += "<td><button type='button' id='nameCust"+i+"' data-val='"+ datVal + "' onclick='applyName("+i+")'>選択</button></td>";
+          html += "<td><input style='width:120px;' type='text' id='cust"+i+"' value='" + res[i]["会社名"] + "'readonly ></td>";
+          html += "<td><input style='width:120px;' type='text' id='ident"+i+"'value='" + res[i]["氏名"] + "' readonly></td>";
+          html += "</tr>";
+        }
+        html += "</table>";
+        $("#resCustArea").html(html);
+      }
+      else {
+        alert('該当データがありませんでした。');
+        $("#resCustArea").html('');
+      }
+    }
+    function applyName(num) {
+      var nameVal = 'nameCust' + num;
+      var dataVal = $('button[id="'+ nameVal+ '"]').data('val');
+      var dataSp = dataVal.split('|');
+      $(".customerSearch_dg").dialog("close");
+      if (dataSp[0]) {
+        $('input[id="customerName"]').val(dataSp[0] + "　" + dataSp[1]);
+      }
+      else {
+        $('input[id="customerName"]').val(dataSp[1]);
+      }
+    }
+    function dataAddFail() {
+      alert("エラーが発生しました。");  
+    }
+  </script>
+</body>
+
+</html>
