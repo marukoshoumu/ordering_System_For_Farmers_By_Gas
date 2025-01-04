@@ -138,7 +138,7 @@
 ---
 
 ### サンプル画面
-- [サンプル画面リンク]([https://script.google.com/macros/s/AKfycbyru-CLcwLDLf2DhXa1XjvgBPzjrIGw1sDaj7dCDS3V/dev](https://script.google.com/macros/s/AKfycbz0iqzBlnOSffijkMLhDuJz7d6B80R0Fa-mwxs4RqRB_JMSkWEhKur2fAdfjSVVQQvYuA/exec))
+- [サンプル画面リンク]([https://script.google.com/macros/s/AKfycbyru-CLcwLDLf2DhXa1XjvgBPzjrIGw1sDaj7dCDS3V/dev](https://script.google.com/macros/s/AKfycbz0iqzBlnOSffijkMLhDuJz7d6B80R0Fa-mwxs4RqRB_JMSkWEhKur2fAdfjSVVQQvYuA/exec)
   - Google App Scriptによる画面例。実際の操作感を体験できます。
 
 ### テンプレート
