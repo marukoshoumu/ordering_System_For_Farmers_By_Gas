@@ -1,0 +1,1564 @@
+<!-- 
+  受注一覧 - GAS統合版（完全版）
+  
+  修正内容:
+  1. 今週/来週の日付計算を修正（今日起点で7日間）
+  2. 受注ID単位でグループ化表示
+  3. 品名（productName）を表示
+  4. 引継ボタン追加（発送日・納品日・個数を除外して引継ぎ）
+  5. 行クリックで詳細モーダル表示
+  
+  機能:
+  - シート「受注」の情報を一覧表示
+  - 検索条件: 期間（今週/来週/今月/来月/期間指定）、発送先、顧客
+  - 表示項目: 受注日、発送先名、顧客名、発送日、納品日、品名
+  - 行クリックで全項目を詳細モーダルで表示
+-->
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>受注一覧</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #1e3a5f;
+      --header-bg: #1e3a5f;
+    }
+
+    body {
+      background-color: #f0f2f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card-header {
+      background: var(--header-bg);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 16px 20px;
+    }
+
+    .card-header h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    /* フィルターセクション */
+    .filter-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .filter-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: #666;
+      white-space: nowrap;
+      min-width: 70px;
+    }
+
+    /* 期間指定の日付入力 */
+    .custom-date-inputs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .custom-date-inputs input[type="date"] {
+      width: 150px;
+    }
+
+    .date-separator {
+      color: #666;
+    }
+
+    /* テーブル */
+    .table-section {
+      padding: 16px 20px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    /* PCテーブル */
+    .order-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .order-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .order-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .order-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .order-table tbody td {
+      padding: 10px 8px;
+      vertical-align: top;
+    }
+
+    .order-table .col-date {
+      white-space: nowrap;
+      width: 70px;
+    }
+
+    .order-table .col-name,
+    .order-table .col-product {
+      max-width: 180px;
+      min-width: 120px;
+    }
+
+    .order-table .col-quantity {
+      text-align: right;
+      width: 50px;
+      white-space: nowrap;
+    }
+
+    .order-table .col-action {
+      width: 100px;
+      text-align: center;
+    }
+
+    .edit-btn {
+      padding: 4px 8px;
+    }
+
+    .inherit-btn {
+      padding: 4px 8px;
+    }
+
+    /* 2行折り返し + ツールチップ */
+    .cell-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+      max-height: 2.8em;
+      cursor: default;
+    }
+
+    /* カスタムツールチップ */
+    .cell-text[data-tooltip] {
+      position: relative;
+    }
+
+    .cell-text[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 4px;
+      padding: 8px 12px;
+      background: #333;
+      color: white;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      white-space: normal;
+      max-width: 300px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      line-height: 1.4;
+    }
+
+    /* スマホ用カード */
+    .order-cards {
+      display: none;
+    }
+
+    .order-card {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .order-card:hover {
+      background: #f8f9fa;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .order-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .edit-btn-sp {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
+    .inherit-btn-sp {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
+    .order-card-dates {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .order-card-dates .date-label {
+      color: #999;
+      margin-right: 2px;
+    }
+
+    .order-card-dates .date-value {
+      color: #333;
+      font-weight: 500;
+    }
+
+    .order-card-dates .date-separator {
+      margin: 0 6px;
+      color: #ccc;
+    }
+
+    .order-card-quantity {
+      background: var(--primary-color);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .order-card-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 6px;
+      font-size: 0.875rem;
+    }
+
+    .order-card-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .order-card-icon {
+      width: 24px;
+      color: #666;
+      flex-shrink: 0;
+    }
+
+    .order-card-value {
+      flex: 1;
+      color: #333;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .order-card-label {
+      font-size: 0.7rem;
+      color: #999;
+      margin-bottom: 2px;
+    }
+
+    /* スマホ用カードのボタン行 */
+    .order-card-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .order-card-buttons button {
+      flex: 1;
+    }
+
+    /* 件数表示 */
+    .result-count {
+      padding: 8px 0;
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .result-count strong {
+      color: var(--primary-color);
+      font-size: 1.1rem;
+    }
+
+    /* 検索モーダル */
+    .search-modal .modal-body {
+      padding: 0;
+    }
+
+    .search-modal .search-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e9ecef;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+    }
+
+    .search-modal .search-results {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .search-modal .search-result-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .search-modal .search-result-item:hover {
+      background: #f8f9fa;
+    }
+
+    .search-modal .result-main {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .search-modal .result-sub {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .search-modal .no-results {
+      padding: 24px 16px;
+      text-align: center;
+      color: #666;
+    }
+
+    /* モーダルヘッダー */
+    .modal-header {
+      background: var(--header-bg);
+      color: white;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+    }
+
+    .btn-close {
+      filter: invert(1);
+    }
+
+    /* ローディング */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      min-height: 200px;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    /* ページング */
+    .pagination-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-top: 1px solid #e9ecef;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 空状態 */
+    .empty-state {
+      padding: 48px 20px;
+      text-align: center;
+      color: #666;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: #ccc;
+      margin-bottom: 16px;
+    }
+
+    /* 詳細モーダル */
+    .detail-modal .modal-dialog {
+      max-width: 700px;
+    }
+
+    .detail-modal .modal-body {
+      padding: 0;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .detail-section {
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .detail-section:last-child {
+      border-bottom: none;
+    }
+
+    .detail-section-header {
+      background: #f8f9fa;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-section-header i {
+      color: var(--primary-color);
+    }
+
+    .detail-section-body {
+      padding: 12px 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      padding: 6px 0;
+      font-size: 0.875rem;
+      border-bottom: 1px dashed #f0f0f0;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      width: 120px;
+      flex-shrink: 0;
+      color: #666;
+      font-size: 0.8rem;
+    }
+
+    .detail-value {
+      flex: 1;
+      color: #333;
+      word-break: break-word;
+    }
+
+    .detail-value.empty {
+      color: #999;
+      font-style: italic;
+    }
+
+    /* 商品テーブル */
+    .product-detail-table {
+      width: 100%;
+      font-size: 0.85rem;
+      border-collapse: collapse;
+    }
+
+    .product-detail-table th {
+      background: #f8f9fa;
+      padding: 8px;
+      text-align: left;
+      font-weight: 500;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .product-detail-table td {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .product-detail-table .text-end {
+      text-align: right;
+    }
+
+    .product-detail-table tfoot td {
+      font-weight: 600;
+      background: #f8f9fa;
+    }
+
+    /* チェックリストバッジ */
+    .checklist-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .checklist-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+    }
+
+    .checklist-badge.active {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .checklist-badge.inactive {
+      background: #e9ecef;
+      color: #6c757d;
+      text-decoration: line-through;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 8px;
+      }
+
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-label {
+        min-width: 60px;
+      }
+
+      /* スマホでは期間指定を縦並び */
+      .custom-date-inputs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        width: 100%;
+      }
+
+      .custom-date-inputs input[type="date"] {
+        width: 100%;
+      }
+
+      .date-separator {
+        text-align: center;
+        padding: 2px 0;
+      }
+
+      /* スマホではテーブル非表示、カード表示 */
+      .pc-table {
+        display: none;
+      }
+
+      .order-cards {
+        display: block;
+      }
+
+      .table-section {
+        padding: 12px;
+      }
+
+      /* 詳細モーダル */
+      .detail-label {
+        width: 100px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      /* PCではテーブル表示、カード非表示 */
+      .pc-table {
+        display: block;
+      }
+
+      .order-cards {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+  <div class="card">
+    <!-- ヘッダー -->
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h1><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
+      <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+        <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
+          <i class="bi bi-house"></i> ホーム
+        </button>
+      </form>
+    </div>
+
+    <!-- フィルター -->
+    <div class="filter-section">
+      <!-- 1行目：期間 -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">期間：</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
+            <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
+            <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
+            <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
+            <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
+            <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
+            <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
+            <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
+            <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
+            <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 期間指定の日付範囲（別行で表示） -->
+      <div id="customDateRangeRow" style="display: none;">
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label"></span>
+            <div class="custom-date-inputs">
+              <input type="date" class="form-control form-control-sm" id="dateFrom">
+              <span class="date-separator">〜</span>
+              <input type="date" class="form-control form-control-sm" id="dateTo">
+            </div>
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label"></span>
+            <span class="text-muted" style="font-size: 0.8rem;">※最大1ヶ月まで指定可能です</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2行目：発送先・顧客・検索ボタン -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">発送先：</span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="destinationBtn" data-bs-toggle="modal" data-bs-target="#destinationSearchModal">
+            <i class="bi bi-search me-1"></i>指定なし
+          </button>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">顧客：</span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="customerBtn" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
+            <i class="bi bi-search me-1"></i>指定なし
+          </button>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
+          <i class="bi bi-search me-1"></i>検索
+        </button>
+      </div>
+    </div>
+
+    <!-- テーブル -->
+    <div class="table-section position-relative">
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+
+      <div class="result-count" id="resultCount">
+        検索結果: <strong>0</strong> 件
+      </div>
+
+      <div id="tableContainer">
+        <!-- PC用テーブル -->
+        <div class="pc-table">
+          <table class="order-table">
+            <thead>
+              <tr>
+                <th class="col-date">受注日</th>
+                <th class="col-date">発送日</th>
+                <th class="col-date">納品日</th>
+                <th class="col-name">顧客名</th>
+                <th class="col-name">発送先名</th>
+                <th class="col-product">品名</th>
+                <th class="col-quantity">商品数</th>
+                <th class="col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody id="orderTableBody">
+              <!-- 動的に生成 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- スマホ用カード -->
+        <div class="order-cards" id="orderCardsContainer">
+          <!-- 動的に生成 -->
+        </div>
+      </div>
+
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <i class="bi bi-inbox"></i>
+        <p>該当するデータがありません</p>
+      </div>
+    </div>
+
+    <!-- ページング -->
+    <div class="pagination-section" id="paginationSection" style="display: none;">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn" onclick="goToPage('prev')">
+        <i class="bi bi-chevron-left"></i> 前へ
+      </button>
+      <span id="pageInfo">1 / 1</span>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn" onclick="goToPage('next')">
+        次へ <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 発送先検索モーダル -->
+<div class="modal fade search-modal" id="destinationSearchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>発送先検索</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="search-header">
+          <input type="text" class="form-control" id="destinationSearchInput" placeholder="会社名、住所、電話番号で検索...">
+        </div>
+        <div class="search-results" id="destinationSearchResults">
+          <div class="no-results">キーワードを入力して検索してください</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDestination()">クリア</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 顧客検索モーダル -->
+<div class="modal fade search-modal" id="customerSearchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person me-2"></i>顧客検索</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="search-header">
+          <input type="text" class="form-control" id="customerSearchInput" placeholder="会社名、担当者名、電話番号で検索...">
+        </div>
+        <div class="search-results" id="customerSearchResults">
+          <div class="no-results">キーワードを入力して検索してください</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearCustomer()">クリア</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal fade detail-modal" id="orderDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>受注詳細</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="orderDetailBody">
+        <!-- 動的に生成 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
+        <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
+          <i class="bi bi-copy me-1"></i>引継
+        </button>
+        <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
+          <i class="bi bi-pencil me-1"></i>修正
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 操作用の隠しフォーム -->
+<form id="actionForm" method="POST" action="<?= deployURL ?>" style="display: none;">
+  <input type="hidden" name="shipping" value="true">
+  <input type="hidden" name="editOrderId" id="actionOrderIdInput" value="">
+  <input type="hidden" name="editMode" id="actionEditModeInput" value="">
+  <input type="hidden" name="actionMode" id="actionModeInput" value="">
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // グローバル変数
+  let selectedDestination = null;
+  let selectedCustomer = null;
+  let orderData = [];
+  let currentPage = 1;
+  const pageSize = 50;
+  let currentDetailOrderId = null;
+  
+  // 初期化
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeDateInputs();
+    setupEventListeners();
+    executeSearch();
+  });
+  
+  // 日付入力の初期化
+  function initializeDateInputs() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    document.getElementById('dateFrom').value = formatDate(firstDay);
+    document.getElementById('dateTo').value = formatDate(lastDay);
+  }
+  
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
+  
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  
+  function formatFullDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  
+  // イベントリスナー設定
+  function setupEventListeners() {
+    // 期間ラジオボタン
+    document.querySelectorAll('input[name="period"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        const customRow = document.getElementById('customDateRangeRow');
+        customRow.style.display = this.value === 'custom' ? 'block' : 'none';
+      });
+    });
+    
+    // 発送先検索
+    const destInput = document.getElementById('destinationSearchInput');
+    let destTimeout;
+    destInput.addEventListener('input', function() {
+      clearTimeout(destTimeout);
+      destTimeout = setTimeout(() => searchDestinations(this.value), 300);
+    });
+    
+    // 顧客検索
+    const custInput = document.getElementById('customerSearchInput');
+    let custTimeout;
+    custInput.addEventListener('input', function() {
+      clearTimeout(custTimeout);
+      custTimeout = setTimeout(() => searchCustomers(this.value), 300);
+    });
+    
+    // モーダルが開いたときにフォーカス
+    document.getElementById('destinationSearchModal').addEventListener('shown.bs.modal', function() {
+      document.getElementById('destinationSearchInput').focus();
+    });
+    document.getElementById('customerSearchModal').addEventListener('shown.bs.modal', function() {
+      document.getElementById('customerSearchInput').focus();
+    });
+  }
+  
+  // 発送先検索
+  function searchDestinations(keyword) {
+    const container = document.getElementById('destinationSearchResults');
+    if (!keyword || keyword.length < 2) {
+      container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+      return;
+    }
+    
+    container.innerHTML = '<div class="no-results">検索中...</div>';
+    
+    google.script.run
+      .withSuccessHandler(function(results) {
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="no-results">該当する発送先がありません</div>';
+          return;
+        }
+        container.innerHTML = results.map(r => `
+          <div class="search-result-item" onclick="selectDestination('${escapeHtml(r.name)}')">
+            <div class="result-main">${escapeHtml(r.name)}</div>
+            <div class="result-sub">${escapeHtml(r.address || '')} ${escapeHtml(r.tel || '')}</div>
+          </div>
+        `).join('');
+      })
+      .withFailureHandler(function(error) {
+        container.innerHTML = '<div class="no-results">検索エラー</div>';
+      })
+      .searchShippingTo(keyword);
+  }
+  
+  // 顧客検索
+  function searchCustomers(keyword) {
+    const container = document.getElementById('customerSearchResults');
+    if (!keyword || keyword.length < 2) {
+      container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+      return;
+    }
+    
+    container.innerHTML = '<div class="no-results">検索中...</div>';
+    
+    google.script.run
+      .withSuccessHandler(function(results) {
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="no-results">該当する顧客がありません</div>';
+          return;
+        }
+        container.innerHTML = results.map(r => `
+          <div class="search-result-item" onclick="selectCustomer('${escapeHtml(r.name)}')">
+            <div class="result-main">${escapeHtml(r.name)}</div>
+            <div class="result-sub">${escapeHtml(r.address || '')} ${escapeHtml(r.tel || '')}</div>
+          </div>
+        `).join('');
+      })
+      .withFailureHandler(function(error) {
+        container.innerHTML = '<div class="no-results">検索エラー</div>';
+      })
+      .searchCustomer(keyword);
+  }
+  
+  function selectDestination(name) {
+    selectedDestination = name;
+    document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-geo-alt me-1"></i>' + name;
+    document.getElementById('destinationBtn').classList.remove('btn-outline-secondary');
+    document.getElementById('destinationBtn').classList.add('btn-primary');
+    bootstrap.Modal.getInstance(document.getElementById('destinationSearchModal')).hide();
+  }
+  
+  function selectCustomer(name) {
+    selectedCustomer = name;
+    document.getElementById('customerBtn').innerHTML = '<i class="bi bi-person me-1"></i>' + name;
+    document.getElementById('customerBtn').classList.remove('btn-outline-secondary');
+    document.getElementById('customerBtn').classList.add('btn-primary');
+    bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
+  }
+  
+  function clearDestination() {
+    selectedDestination = null;
+    document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
+    document.getElementById('destinationBtn').classList.remove('btn-primary');
+    document.getElementById('destinationBtn').classList.add('btn-outline-secondary');
+    document.getElementById('destinationSearchInput').value = '';
+    document.getElementById('destinationSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
+  }
+  
+  function clearCustomer() {
+    selectedCustomer = null;
+    document.getElementById('customerBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
+    document.getElementById('customerBtn').classList.remove('btn-primary');
+    document.getElementById('customerBtn').classList.add('btn-outline-secondary');
+    document.getElementById('customerSearchInput').value = '';
+    document.getElementById('customerSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
+  }
+  
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+  }
+  
+  // 日付範囲取得（修正版：今日起点）
+  function getDateRange() {
+    const period = document.querySelector('input[name="period"]:checked').value;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let dateFrom, dateTo;
+    
+    switch (period) {
+      case 'thisWeek':
+        // 今週：今日から7日間（今日〜6日後）
+        dateFrom = formatDate(today);
+        const thisWeekEnd = new Date(today);
+        thisWeekEnd.setDate(today.getDate() + 6);
+        dateTo = formatDate(thisWeekEnd);
+        break;
+        
+      case 'nextWeek':
+        // 来週：7日後から7日間（7日後〜13日後）
+        const nextWeekStart = new Date(today);
+        nextWeekStart.setDate(today.getDate() + 7);
+        dateFrom = formatDate(nextWeekStart);
+        const nextWeekEnd = new Date(nextWeekStart);
+        nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+        dateTo = formatDate(nextWeekEnd);
+        break;
+        
+      case 'thisMonth':
+        // 今月：月初〜月末
+        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        break;
+        
+      case 'nextMonth':
+        // 来月：来月1日〜来月末
+        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 2, 0));
+        break;
+        
+      case 'custom':
+        // 期間指定
+        dateFrom = document.getElementById('dateFrom').value;
+        dateTo = document.getElementById('dateTo').value;
+        break;
+    }
+    
+    return { dateFrom, dateTo };
+  }
+  
+  // 検索実行
+  function executeSearch() {
+    const { dateFrom, dateTo } = getDateRange();
+    
+    const params = {
+      dateFrom: dateFrom,
+      dateTo: dateTo,
+      destination: selectedDestination || '',
+      customer: selectedCustomer || ''
+    };
+    
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    document.getElementById('emptyState').style.display = 'none';
+    
+    google.script.run
+      .withSuccessHandler(function(result) {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        const data = JSON.parse(result);
+        orderData = data.orders || [];
+        currentPage = 1;
+        renderTable();
+      })
+      .withFailureHandler(function(error) {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        alert('データ取得エラー: ' + error.message);
+      })
+      .getOrderListData(params);
+  }
+  
+  // テーブル描画
+  function renderTable() {
+    const tbody = document.getElementById('orderTableBody');
+    const cardsContainer = document.getElementById('orderCardsContainer');
+    const totalCount = orderData.length;
+    
+    document.getElementById('resultCount').innerHTML = '検索結果: <strong>' + totalCount + '</strong> 件';
+    
+    if (totalCount === 0) {
+      tbody.innerHTML = '';
+      cardsContainer.innerHTML = '';
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('paginationSection').style.display = 'none';
+      return;
+    }
+    
+    document.getElementById('emptyState').style.display = 'none';
+    
+    // ページング計算
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const pageData = orderData.slice(startIndex, endIndex);
+    
+    // PC用テーブル描画（行クリックで詳細表示）
+    tbody.innerHTML = pageData.map(order => `
+      <tr onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
+        <td class="col-date">${formatDisplayDate(order.orderDate)}</td>
+        <td class="col-date">${formatDisplayDate(order.shippingDate)}</td>
+        <td class="col-date">${formatDisplayDate(order.deliveryDate)}</td>
+        <td class="col-name">
+          <div class="cell-text" data-tooltip="${escapeHtml(order.customerName)}">${escapeHtml(order.customerName)}</div>
+        </td>
+        <td class="col-name">
+          <div class="cell-text" data-tooltip="${escapeHtml(order.destinationName)}">${escapeHtml(order.destinationName)}</div>
+        </td>
+        <td class="col-product">
+          <div class="cell-text" data-tooltip="${escapeHtml(order.productName)}">${escapeHtml(order.productName)}</div>
+        </td>
+        <td class="col-quantity">${order.quantity}点</td>
+        <td class="col-action" onclick="event.stopPropagation();">
+          <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="引継">
+            <i class="bi bi-copy"></i>引継
+          </button>
+        </td>
+      </tr>
+    `).join('');
+    
+    // スマホ用カード描画（カードクリックで詳細表示）
+    cardsContainer.innerHTML = pageData.map(order => `
+      <div class="order-card" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
+        <div class="order-card-header">
+          <div class="order-card-dates">
+            <span class="date-label">発送</span>
+            <span class="date-value">${formatDisplayDate(order.shippingDate)}</span>
+            <span class="date-separator">→</span>
+            <span class="date-label">納品</span>
+            <span class="date-value">${formatDisplayDate(order.deliveryDate)}</span>
+          </div>
+          <span class="order-card-quantity">${order.quantity}点</span>
+        </div>
+        <div class="order-card-row">
+          <span class="order-card-icon"><i class="bi bi-person"></i></span>
+          <div class="order-card-value">
+            <div class="order-card-label">顧客</div>
+            ${escapeHtml(order.customerName)}
+          </div>
+        </div>
+        <div class="order-card-row">
+          <span class="order-card-icon"><i class="bi bi-geo-alt"></i></span>
+          <div class="order-card-value">
+            <div class="order-card-label">発送先</div>
+            ${escapeHtml(order.destinationName)}
+          </div>
+        </div>
+        <div class="order-card-row">
+          <span class="order-card-icon"><i class="bi bi-box-seam"></i></span>
+          <div class="order-card-value">
+            <div class="order-card-label">品名</div>
+            ${escapeHtml(order.productName)}
+          </div>
+        </div>
+        <div class="order-card-buttons" onclick="event.stopPropagation();">
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')">
+            <i class="bi bi-pencil me-1"></i>修正
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="inheritOrder('${escapeHtml(order.orderId)}')">
+            <i class="bi bi-copy me-1"></i>引継
+          </button>
+        </div>
+      </div>
+    `).join('');
+    
+    // ページング表示
+    if (totalPages > 1) {
+      document.getElementById('paginationSection').style.display = 'flex';
+      document.getElementById('pageInfo').textContent = currentPage + ' / ' + totalPages;
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    } else {
+      document.getElementById('paginationSection').style.display = 'none';
+    }
+  }
+  
+  // ページ遷移
+  function goToPage(direction) {
+    const totalPages = Math.ceil(orderData.length / pageSize);
+    
+    if (direction === 'prev' && currentPage > 1) {
+      currentPage--;
+    } else if (direction === 'next' && currentPage < totalPages) {
+      currentPage++;
+    }
+    
+    renderTable();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  
+  // 詳細モーダル表示
+  function showOrderDetail(orderId) {
+    currentDetailOrderId = orderId;
+    const body = document.getElementById('orderDetailBody');
+    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">読み込み中...</p></div>';
+    
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+    modal.show();
+    
+    // GASから詳細データを取得
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (!result) {
+          body.innerHTML = '<div class="text-center py-4 text-danger">データが見つかりませんでした</div>';
+          return;
+        }
+        renderOrderDetail(result);
+      })
+      .withFailureHandler(function(error) {
+        body.innerHTML = '<div class="text-center py-4 text-danger">エラー: ' + error.message + '</div>';
+      })
+      .getOrderByOrderId(orderId);
+  }
+  
+  // 詳細モーダルの内容を描画
+  function renderOrderDetail(data) {
+    const body = document.getElementById('orderDetailBody');
+    
+    // チェックリストのバッジ生成
+    const checklistItems = ['納品書', '請求書', '領収書', 'パンフ', 'レシピ'];
+    const checklistHtml = checklistItems.map(item => {
+      const isActive = data.checklist && data.checklist[
+        item === '納品書' ? 'deliverySlip' :
+        item === '請求書' ? 'bill' :
+        item === '領収書' ? 'receipt' :
+        item === 'パンフ' ? 'pamphlet' : 'recipe'
+      ];
+      return `<span class="checklist-badge ${isActive ? 'active' : 'inactive'}">${item}</span>`;
+    }).join('');
+    
+    // 商品テーブル生成
+    let productsHtml = '';
+    let totalAmount = 0;
+    if (data.items && data.items.length > 0) {
+      productsHtml = `
+        <table class="product-detail-table">
+          <thead>
+            <tr>
+              <th>分類</th>
+              <th>商品名</th>
+              <th class="text-end">単価</th>
+              <th class="text-end">数量</th>
+              <th class="text-end">金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.items.map(item => {
+              const subtotal = (item.price || 0) * (item.quantity || 0);
+              totalAmount += subtotal;
+              return `
+                <tr>
+                  <td>${escapeHtml(item.bunrui)}</td>
+                  <td>${escapeHtml(item.product)}</td>
+                  <td class="text-end">¥${(item.price || 0).toLocaleString()}</td>
+                  <td class="text-end">${item.quantity || 0}</td>
+                  <td class="text-end">¥${subtotal.toLocaleString()}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="text-end">合計</td>
+              <td class="text-end">¥${totalAmount.toLocaleString()}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+    } else {
+      productsHtml = '<p class="text-muted">商品情報がありません</p>';
+    }
+    
+    body.innerHTML = `
+      <!-- 基本情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-info-circle"></i>基本情報
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">受注ID</span>
+            <span class="detail-value">${escapeHtml(data.orderId)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">受注日</span>
+            <span class="detail-value">${formatFullDate(data.orderDate)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">発送日</span>
+            <span class="detail-value">${formatFullDate(data.shippingDate)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">納品日</span>
+            <span class="detail-value">${formatFullDate(data.deliveryDate)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">受付方法</span>
+            <span class="detail-value">${escapeHtml(data.receiptWay) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">受付者</span>
+            <span class="detail-value">${escapeHtml(data.recipient) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">納品方法</span>
+            <span class="detail-value">${escapeHtml(data.deliveryMethod) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">配達時間帯</span>
+            <span class="detail-value">${escapeHtml(data.deliveryTime ? data.deliveryTime.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 発送先情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-geo-alt"></i>発送先情報
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">発送先名</span>
+            <span class="detail-value">${escapeHtml(data.shippingToName) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">郵便番号</span>
+            <span class="detail-value">${escapeHtml(data.shippingToZipcode) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">住所</span>
+            <span class="detail-value">${escapeHtml(data.shippingToAddress) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">電話番号</span>
+            <span class="detail-value">${escapeHtml(data.shippingToTel) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 顧客情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-person"></i>顧客情報
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">顧客名</span>
+            <span class="detail-value">${escapeHtml(data.customerName) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">郵便番号</span>
+            <span class="detail-value">${escapeHtml(data.customerZipcode) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">住所</span>
+            <span class="detail-value">${escapeHtml(data.customerAddress) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">電話番号</span>
+            <span class="detail-value">${escapeHtml(data.customerTel) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 発送元情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-building"></i>発送元情報
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">発送元名</span>
+            <span class="detail-value">${escapeHtml(data.shippingFromName) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">郵便番号</span>
+            <span class="detail-value">${escapeHtml(data.shippingFromZipcode) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">住所</span>
+            <span class="detail-value">${escapeHtml(data.shippingFromAddress) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">電話番号</span>
+            <span class="detail-value">${escapeHtml(data.shippingFromTel) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 商品情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-box-seam"></i>商品情報
+        </div>
+        <div class="detail-section-body">
+          ${productsHtml}
+        </div>
+      </div>
+      
+      <!-- 発送情報 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-truck"></i>発送情報
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">品名</span>
+            <span class="detail-value">${escapeHtml(data.sendProduct) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">送り状種別</span>
+            <span class="detail-value">${escapeHtml(data.invoiceType ? data.invoiceType.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">クール区分</span>
+            <span class="detail-value">${escapeHtml(data.coolCls ? data.coolCls.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">荷扱い１</span>
+            <span class="detail-value">${escapeHtml(data.cargo1 ? data.cargo1.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">荷扱い２</span>
+            <span class="detail-value">${escapeHtml(data.cargo2 ? data.cargo2.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">代引総額</span>
+            <span class="detail-value">${data.cashOnDelivery ? '¥' + Number(data.cashOnDelivery).toLocaleString() : '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">代引内税</span>
+            <span class="detail-value">${data.cashOnDeliTax ? '¥' + Number(data.cashOnDeliTax).toLocaleString() : '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">発行枚数</span>
+            <span class="detail-value">${escapeHtml(data.copiePrint) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- チェックリスト・添付 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-check2-square"></i>チェックリスト・添付
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">チェック項目</span>
+            <div class="detail-value">
+              <div class="checklist-badges">${checklistHtml}</div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">その他添付</span>
+            <span class="detail-value">${escapeHtml(data.otherAttach) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 備考 -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="bi bi-chat-left-text"></i>備考
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <span class="detail-label">送り状備考欄</span>
+            <span class="detail-value">${escapeHtml(data.csvmemo) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">納品書備考欄</span>
+            <span class="detail-value">${escapeHtml(data.deliveryMemo) || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">メモ</span>
+            <span class="detail-value">${escapeHtml(data.memo) || '<span class="empty">-</span>'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // 詳細モーダルから修正
+  function editFromDetail() {
+    if (currentDetailOrderId) {
+      bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
+      editOrder(currentDetailOrderId);
+    }
+  }
+  
+  // 詳細モーダルから引継
+  function inheritFromDetail() {
+    if (currentDetailOrderId) {
+      bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
+      inheritOrder(currentDetailOrderId);
+    }
+  }
+
+  // 修正画面へ遷移
+  function editOrder(orderId) {
+    if (!orderId) {
+      alert('受注IDが取得できませんでした');
+      return;
+    }
+    document.getElementById('actionOrderIdInput').value = orderId;
+    document.getElementById('actionEditModeInput').value = 'true';
+    document.getElementById('actionModeInput').value = 'edit';
+    document.getElementById('actionForm').submit();
+  }
+  
+  // 引継画面へ遷移
+  function inheritOrder(orderId) {
+    if (!orderId) {
+      alert('受注IDが取得できませんでした');
+      return;
+    }
+    document.getElementById('actionOrderIdInput').value = orderId;
+    document.getElementById('actionEditModeInput').value = 'false';
+    document.getElementById('actionModeInput').value = 'inherit';
+    document.getElementById('actionForm').submit();
+  }
+</script>
+
+</body>
+</html>

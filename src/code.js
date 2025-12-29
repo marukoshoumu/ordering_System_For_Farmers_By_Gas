@@ -1,0 +1,401 @@
+function doGet(e) {
+  const template = HtmlService.createTemplateFromFile('index');
+  template.deployURL = ScriptApp.getService().getUrl();
+  
+  // tempOrderIdがあれば保持してログイン画面に渡す
+  template.tempOrderId = e.parameter.tempOrderId || '';
+  
+  const htmlOutput = template.evaluate();
+  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  htmlOutput.setTitle('ログイン画面');
+  return htmlOutput;
+}
+
+function getLoginHTML(alert = '') {
+  let html = ``;
+  html += `<p class="text-danger">${alert}</p>`
+  return html;
+}
+
+function doPost(e) {
+  Logger.log(e);
+  if (e.parameter.login) {
+    const items = getAllRecords('pass');
+    if (items[0]['id'] != e.parameter.loginId || items[0]['pass'] != e.parameter.loginPass) {
+      const template = HtmlService.createTemplateFromFile('login');
+      template.deployURL = ScriptApp.getService().getUrl();
+      const alert = 'IDまたはパスワードが間違っています。';
+      template.loginHTML = getLoginHTML(alert);
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('ログイン画面');
+      return htmlOutput;
+    }
+    // ログイン成功
+    const tempOrderId = e.parameter.tempOrderId || '';
+    
+    // tempOrderIdがあれば受注画面へ直接遷移
+    if (tempOrderId) {
+      const template = HtmlService.createTemplateFromFile('shipping');
+      template.deployURL = ScriptApp.getService().getUrl();
+      template.isEditMode = false;
+      template.editOrderId = '';
+      template.tempOrderId = tempOrderId;
+      template.shippingHTML = getshippingHTMLForTempOrder(tempOrderId);
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('受注画面（AI入力）');
+      return htmlOutput;
+    }
+    const template = HtmlService.createTemplateFromFile('home');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('ホーム画面');
+    return htmlOutput;
+  }
+  else if (e.parameter.main || e.parameter.mainTop) {
+    const template = HtmlService.createTemplateFromFile('home');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('ホーム画面');
+    return htmlOutput;
+  }
+  // 「受注」ボタンが押されたらshipping.htmlを返す
+  else if (e.parameter.shipping) {
+    const template = HtmlService.createTemplateFromFile('shipping');
+    template.deployURL = ScriptApp.getService().getUrl();
+
+    // 編集モードの設定
+    const editOrderId = e.parameter.editOrderId || '';
+    const editMode = e.parameter.editMode === 'true';
+    template.isEditMode = editMode;
+    template.editOrderId = editOrderId;
+
+    // AI取込一覧からの遷移チェック
+    const tempOrderId = e.parameter.tempOrderId || '';
+    template.tempOrderId = tempOrderId;
+
+    if (tempOrderId) {
+      // AI取込一覧から遷移した場合
+      const tempOrderData = getTempOrderData(tempOrderId);
+      if (tempOrderData) {
+        // 解析結果をテンプレートに渡す
+        template.aiAnalysisResult = JSON.stringify(tempOrderData.analysisResult);
+        template.autoOpenAI = true;
+      }
+      template.shippingHTML = getshippingHTML(e);
+    } else {
+      // 通常の受注画面
+      template.autoOpenAI = false;
+      template.aiAnalysisResult = '';
+      template.shippingHTML = getshippingHTML(e);
+    }
+
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面（AI入力）');
+    return htmlOutput;
+  }
+  // 「受注確認」ボタンが押されたらconfirm.htmlを返す
+  else if (e.parameter.shippingComfirm) {
+    if (isZero(e)) {
+      const template = HtmlService.createTemplateFromFile('shipping');
+      const alert = '少なくとも1個以上注文してください。';
+      template.deployURL = ScriptApp.getService().getUrl();
+      template.shippingHTML = getshippingHTML(e, alert);
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('受注画面');
+      return htmlOutput;
+    }
+
+    const template = HtmlService.createTemplateFromFile('shippingComfirm');
+    template.deployURL = ScriptApp.getService().getUrl();
+    // 編集モードの設定を追加
+    const editOrderId = e.parameter.editOrderId || '';
+    const editMode = e.parameter.editMode === 'true';
+    template.isEditMode = editMode;
+    template.editOrderId = editOrderId;
+    // 仮受注IDを引き継ぎ
+    template.tempOrderId = e.parameter.tempOrderId || '';
+    template.confirmHTML = getShippingComfirmHTML(e);
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('確認画面');
+    return htmlOutput;
+  }
+  // 確認画面で「修正する」ボタンが押されたらform.htmlを返す
+  else if (e.parameter.shippingModify) {
+    const template = HtmlService.createTemplateFromFile('shipping');
+    template.deployURL = ScriptApp.getService().getUrl();
+    
+    // 編集モードの設定を追加
+    const editOrderId = e.parameter.editOrderId || '';
+    const editMode = e.parameter.editMode === 'true';
+    template.isEditMode = editMode;
+    template.editOrderId = editOrderId;
+    // 仮受注IDを引き継ぎ
+    template.tempOrderId = e.parameter.tempOrderId || '';
+    
+    // fromConfirmフラグを設定（再検索防止）
+    e.parameter.fromConfirm = 'true';
+    
+    template.shippingHTML = getshippingHTML(e);
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面');
+    return htmlOutput;
+  }
+  // 確認画面で「受注する」ボタンが押されたらcomplete画面へ
+  else if (e.parameter.shippingSubmit) {
+    createOrder(e);
+    //updateZaiko(e);
+    const template = HtmlService.createTemplateFromFile('shippingComplete');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('受注完了');
+    return htmlOutput;
+  }
+  else if (e.parameter.createShippingSlips) {
+    const template = HtmlService.createTemplateFromFile('createShippingSlips');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('発注伝票作成');
+    return htmlOutput;
+  }
+  else if (e.parameter.createBill) {
+    const template = HtmlService.createTemplateFromFile('createBill');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('請求書作成');
+    return htmlOutput;
+  }
+  else if (e.parameter.csvImport) {
+    const template = HtmlService.createTemplateFromFile('csvImport');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('受注CSV取込');
+    return htmlOutput;
+  }
+  else if (e.parameter.quotation) {
+    const template = HtmlService.createTemplateFromFile('quotation');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('見積書作成');
+    return htmlOutput;
+  }
+  else if (e.parameter.orderList) {
+    const template = HtmlService.createTemplateFromFile('HeatmapOrderList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    return template.evaluate()
+      .setTitle('発注一覧')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  else if (e.parameter.orderListPage) {
+    const template = HtmlService.createTemplateFromFile('orderList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    return template.evaluate()
+      .setTitle('受注一覧')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  // AI取込一覧画面
+  else if (e.parameter.aiImportList) {
+    const template = HtmlService.createTemplateFromFile('aiImportList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    return template.evaluate()
+      .setTitle('AI取込一覧')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  else {
+    const template = HtmlService.createTemplateFromFile('error');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('エラー画面');
+    return htmlOutput;
+  }
+}
+
+/**
+ * 仮受注IDからshippingHTMLを生成
+ */
+function getshippingHTMLForTempOrder(tempOrderId) {
+  // LINE Bot側のスプレッドシートから仮受注データを取得
+  const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
+  const sheet = ss.getSheetByName('仮受注');
+  
+  if (!sheet) {
+    return getshippingHTML({ parameter: {} }, '仮受注データが見つかりません');
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  // 仮受注IDで検索
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === tempOrderId) {
+      const analysisResult = JSON.parse(data[i][7]); // 解析結果JSON
+      
+      // eパラメータを模擬して既存関数を利用
+      const mockParam = buildMockParameterFromAnalysis(analysisResult);
+      return getshippingHTML({
+        parameter: mockParam,
+        parameters: {}  // 配列パラメータ用（チェックボックスなど）
+      });
+    }
+  }
+  
+  return getshippingHTML({
+    parameter: {},
+    parameters: {}
+  }, '該当する仮受注が見つかりません');
+}
+
+/**
+ * AI解析結果からフォームパラメータを生成
+ */
+function buildMockParameterFromAnalysis(analysis) {
+  const param = {
+    fromTempOrder: 'true'
+  };
+  
+  // 顧客情報
+  if (analysis.customer) {
+    param.customerName = analysis.customer.masterData?.displayName || 
+                         analysis.customer.rawCompanyName || '';
+    param.customerZipcode = analysis.customer.masterData?.zipcode || '';
+    param.customerAddress = analysis.customer.masterData?.address || '';
+    param.customerTel = analysis.customer.masterData?.tel || '';
+  }
+  
+  // 発送先情報
+  if (analysis.shippingTo) {
+    param.shippingToName = analysis.shippingTo.masterData?.companyName ||
+                           analysis.shippingTo.rawCompanyName || '';
+    param.shippingToZipcode = analysis.shippingTo.masterData?.zipcode || 
+                              analysis.shippingTo.rawZipcode || '';
+    param.shippingToAddress = analysis.shippingTo.masterData?.address ||
+                              analysis.shippingTo.rawAddress || '';
+    param.shippingToTel = analysis.shippingTo.masterData?.tel ||
+                          analysis.shippingTo.rawTel || '';
+  }
+  
+  // 日付
+  param.shippingDate = analysis.shippingDate || '';
+  param.deliveryDate = analysis.deliveryDate || '';
+  
+  // 商品情報（最大10件）
+  if (analysis.items && analysis.items.length > 0) {
+    analysis.items.slice(0, 10).forEach((item, i) => {
+      const num = i + 1;
+      param['bunrui' + num] = item.category || '';
+      param['product' + num] = item.productName || '';
+      param['quantity' + num] = item.quantity || '';
+      param['price' + num] = item.price || '';
+    });
+  }
+  
+  return param;
+}
+
+/**
+ * 仮受注IDから仮受注データを取得（AI解析結果を含む）
+ */
+function getTempOrderData(tempOrderId) {
+  try {
+    const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
+    const sheet = ss.getSheetByName('仮受注');
+
+    if (!sheet) {
+      Logger.log('仮受注シートが見つかりません');
+      return null;
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    // 仮受注IDで検索
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === tempOrderId) {
+        const analysisResultJson = data[i][7]; // 解析結果JSON（列H）
+
+        if (!analysisResultJson) {
+          Logger.log('解析結果が空です: ' + tempOrderId);
+          return null;
+        }
+
+        const analysisResult = JSON.parse(analysisResultJson);
+
+        return {
+          tempOrderId: tempOrderId,
+          registeredAt: data[i][1],
+          status: data[i][2],
+          customerName: data[i][3],
+          shippingToName: data[i][4],
+          itemsJson: data[i][5],
+          fileName: data[i][6],
+          analysisResult: analysisResult,
+          fileUrl: data[i][8]
+        };
+      }
+    }
+
+    Logger.log('該当する仮受注が見つかりません: ' + tempOrderId);
+    return null;
+
+  } catch (error) {
+    Logger.log('getTempOrderData エラー: ' + error.toString());
+    return null;
+  }
+}
+
+// スプレッドシートのシート名からヘッダの文字列の連想配列を返却
+function getAllRecords(sheetName) {
+  return getAllRecords(sheetName, false);
+}
+
+function getAllRecords(sheetName, flg) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const labels = values.shift();
+
+  const records = [];
+  for (const value of values) {
+    const record = {};
+    labels.forEach((label, index) => {
+      record[label] = value[index];
+    });
+    records.push(record);
+  }
+  if (flg) {
+    return JSON.stringify(records);
+  } else {
+    return records;
+  }
+}
+
+// 商品のゼロ入力チェック
+function isZero(e) {
+  let total = 0;
+  var rowNum = 0;
+  for (let i = 0; i < 8; i++) {
+    rowNum++;
+    var quantity = "quantity" + rowNum;
+    const count = Number(e.parameter[quantity]);
+    if (count) {
+      total += count;
+    }
+  }
+  if (total == 0) {
+    return true;
+  }
+  return false;
+}

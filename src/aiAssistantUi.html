@@ -1,0 +1,1049 @@
+<!-- 
+  AI入力アシスタント（v7 - 完全版）
+  - v6の全機能を維持（発送先/顧客マスタ照合、商品マッピング学習、修正機能）
+  - sessionStorageでデータ保持
+  - ローカルチェック機能（受注確認前）
+  - 価格対応（顧客指定 or マスタ価格）
+-->
+
+<style>
+  .ai-assistant-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  }
+  .ai-assistant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    color: white;
+    cursor: pointer;
+  }
+  .ai-assistant-header h3 { margin: 0; font-size: 1rem; }
+  .ai-assistant-toggle {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .ai-assistant-body {
+    background: white;
+    border-radius: 0 0 12px 12px;
+    padding: 16px;
+    display: none;
+  }
+  .ai-assistant-body.open { display: block; }
+  
+  .ai-analyzed-indicator {
+    background: #d4edda;
+    border: 1px solid #28a745;
+    color: #155724;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    display: none;
+    font-size: 0.875rem;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-analyzed-indicator.show { display: flex; }
+  .ai-analyzed-indicator .time { color: #666; font-size: 0.75rem; margin-left: auto; }
+  
+  .ai-input-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .ai-tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+  }
+  .ai-tab-btn:hover { border-color: #667eea; }
+  .ai-tab-btn.active { border-color: #667eea; background: #f0f4ff; font-weight: 600; }
+  .ai-tab-content { display: none; }
+  .ai-tab-content.active { display: block; }
+  
+  .ai-input-area textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .ai-input-area textarea:focus { outline: none; border-color: #667eea; }
+  
+  .file-upload-area {
+    border: 2px dashed #e0e0e0;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .file-upload-area:hover { border-color: #667eea; background: #f8f9ff; }
+  .file-upload-area.dragover { border-color: #667eea; background: #f0f4ff; }
+  .file-upload-area input[type="file"] { display: none; }
+  .file-upload-area .icon { font-size: 2rem; margin-bottom: 8px; }
+  .file-upload-area .text { font-size: 0.875rem; color: #666; }
+  .file-upload-area .hint { font-size: 0.75rem; color: #999; margin-top: 8px; }
+  
+  .file-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 12px;
+  }
+  .file-preview .file-icon { font-size: 1.5rem; }
+  .file-preview .file-info { flex: 1; }
+  .file-preview .file-name { font-weight: 500; }
+  .file-preview .file-size { font-size: 0.75rem; color: #666; }
+  .file-preview .remove-btn { background: none; border: none; color: #999; cursor: pointer; font-size: 1.2rem; }
+  .file-preview .remove-btn:hover { color: #dc3545; }
+  
+  .ai-analyze-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .ai-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+  .ai-analyze-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+  .ai-analyze-btn .spinner { display: none; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+  .ai-analyze-btn.loading .spinner { display: block; }
+  .ai-analyze-btn.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  .ai-result-area { display: none; margin-top: 20px; border: 2px solid #e0e0e0; border-radius: 8px; }
+  .ai-result-area.show { display: block; }
+  .ai-result-header { background: #f8f9fa; padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 8px; }
+  .ai-result-body { padding: 16px; }
+  
+  .ai-alerts { margin-bottom: 16px; }
+  .ai-alert-item { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; font-size: 0.875rem; }
+  .ai-alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+  .ai-alert-info { background: #d1ecf1; border: 1px solid #17a2b8; color: #0c5460; }
+  .ai-alert-success { background: #d4edda; border: 1px solid #28a745; color: #155724; }
+  
+  .ai-result-section { margin-bottom: 16px; border: 1px solid #e0e0e0; border-radius: 8px; }
+  .ai-result-section-header { background: #f8f9fa; padding: 10px 14px; font-weight: 600; font-size: 0.875rem; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 8px; }
+  .ai-result-section-body { padding: 12px 14px; }
+  
+  .confidence-badge, .master-match-badge, .new-badge, .mapping-badge, .modified-badge, .price-badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;
+  }
+  .confidence-high, .master-match-exact { background: #d4edda; color: #155724; }
+  .confidence-medium, .master-match-partial { background: #fff3cd; color: #856404; }
+  .confidence-low, .master-match-none { background: #f8d7da; color: #721c24; }
+  .new-badge { background: #dc3545; color: white; }
+  .mapping-badge { background: #17a2b8; color: white; }
+  .modified-badge { background: #fd7e14; color: white; }
+  .price-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 4px; }
+  .price-badge.ai { background: #e7f3ff; color: #0056b3; }
+  .price-badge.master { background: #e9ecef; color: #495057; }
+  
+  .raw-data-info { background: #f8f9fa; border-radius: 6px; padding: 10px 12px; font-size: 0.8rem; }
+  .raw-data-info .row { display: flex; margin-bottom: 4px; }
+  .raw-data-info .row:last-child { margin-bottom: 0; }
+  .raw-data-info .label { color: #666; min-width: 80px; }
+  .master-data-info { background: #e7f3ff; border: 1px solid #b3d7ff; border-radius: 6px; padding: 10px 12px; margin-top: 10px; font-size: 0.8rem; }
+  .source-select-group { display: flex; gap: 8px; margin-top: 10px; }
+  .source-select-btn { flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+  .source-select-btn:hover { border-color: #667eea; }
+  .source-select-btn.selected { border-color: #667eea; background: #f0f4ff; font-weight: 600; }
+  
+  .item-card { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .item-card.modified { border-color: #fd7e14; background: #fff8f0; }
+  .item-card.learned { border-color: #17a2b8; background: #f0f9fa; }
+  .item-card-header { background: #f8f9fa; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; gap: 8px; }
+  .item-card.modified .item-card-header { background: #fff3e0; }
+  .item-card.learned .item-card-header { background: #e0f7fa; }
+  .item-original-text { font-size: 0.85rem; color: #333; flex: 1; }
+  .item-card-body { padding: 14px; }
+  .item-edit-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+  .item-edit-row label { min-width: 45px; font-size: 0.8rem; color: #666; }
+  .item-edit-row select, .item-edit-row input { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.8rem; }
+  .item-edit-row select:focus, .item-edit-row input:focus { outline: none; border-color: #667eea; }
+  .quantity-group { display: flex; gap: 8px; align-items: center; }
+  .quantity-group input { width: 70px; }
+  .quantity-group select { width: 80px; }
+  .price-group { display: flex; gap: 4px; align-items: center; }
+  .price-group input { width: 90px; }
+  .price-group .unit { font-size: 0.8rem; color: #666; }
+  
+  .item-learn-row { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px dashed #e0e0e0; margin-top: 10px; }
+  .item-learn-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+  .item-learn-row label { font-size: 0.8rem; color: #666; cursor: pointer; }
+  .item-learn-row.will-learn label { color: #28a745; font-weight: 500; }
+  .learn-preview { font-size: 0.75rem; color: #17a2b8; margin-left: auto; background: #e0f7fa; padding: 2px 8px; border-radius: 4px; }
+  
+  .learn-summary { background: linear-gradient(135deg, #e7f3ff 0%, #f0f9ff 100%); border: 1px solid #b3d7ff; border-radius: 8px; padding: 14px; margin-top: 16px; }
+  .learn-summary-title { font-weight: 600; margin-bottom: 10px; color: #0056b3; display: flex; align-items: center; gap: 8px; }
+  .learn-summary-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: white; border-radius: 6px; margin-bottom: 6px; font-size: 0.8rem; flex-wrap: wrap; }
+  .learn-summary-item .original { color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .learn-summary-item .arrow { color: #17a2b8; font-weight: bold; }
+  .learn-summary-item .product { color: #333; font-weight: 500; }
+  
+  .ai-action-buttons { display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+  .ai-action-buttons button { flex: 1; padding: 12px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; }
+  .ai-cancel-btn { background: white; border: 2px solid #e0e0e0; color: #666; }
+  .ai-cancel-btn:hover { border-color: #999; }
+  .ai-apply-btn { background: #28a745; border: none; color: white; font-weight: 600; }
+  .ai-apply-btn:hover { background: #218838; }
+  .ai-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px; margin-top: 12px; }
+  
+  .ai-warning-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+  }
+  .ai-warning-modal-overlay.show { display: flex; }
+  .ai-warning-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .ai-warning-modal-header {
+    background: #fff3cd;
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #ffc107;
+  }
+  .ai-warning-modal-body {
+    padding: 18px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+  .ai-warning-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 0.875rem;
+  }
+  .ai-warning-item:last-child { margin-bottom: 0; }
+  .ai-warning-item.critical { background: #f8d7da; }
+  .ai-warning-item.warning { background: #fff3cd; }
+  .ai-warning-item.info { background: #d1ecf1; }
+  .ai-warning-item .icon { font-size: 1.2rem; }
+  .ai-warning-item .content { flex: 1; }
+  .ai-warning-item .title { font-weight: 600; margin-bottom: 2px; }
+  .ai-warning-item .detail { font-size: 0.8rem; color: #666; }
+  .ai-warning-modal-footer {
+    padding: 14px 18px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #e0e0e0;
+  }
+  .ai-warning-modal-footer button { flex: 1; padding: 10px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; }
+  .ai-warning-modify-btn { background: white; border: 2px solid #6c757d; color: #6c757d; }
+  .ai-warning-modify-btn:hover { border-color: #495057; color: #495057; }
+  .ai-warning-proceed-btn { background: #dc3545; border: none; color: white; font-weight: 600; }
+  .ai-warning-proceed-btn:hover { background: #c82333; }
+</style>
+
+<div class="ai-analyzed-indicator" id="aiAnalyzedIndicator">
+  <span>🤖 AI解析済み</span>
+  <span class="time" id="aiAnalyzedTime"></span>
+</div>
+
+<div class="ai-assistant-container">
+  <div class="ai-assistant-header" onclick="toggleAIAssistant()">
+    <h3>🤖 AI入力アシスタント（確認・修正して学習）</h3>
+    <button type="button" class="ai-assistant-toggle" id="aiToggleBtn">開く</button>
+  </div>
+  
+  <div class="ai-assistant-body" id="aiAssistantBody">
+    <div class="ai-input-tabs">
+      <button type="button" class="ai-tab-btn active" onclick="switchTab('text')">📝 テキスト</button>
+      <button type="button" class="ai-tab-btn" onclick="switchTab('file')">📎 ファイル</button>
+    </div>
+    
+    <div class="ai-tab-content active" id="textTab">
+      <div class="ai-input-area">
+        <textarea id="aiInputText" placeholder="メール、チャット、FAXの内容をそのまま貼り付けてください"></textarea>
+      </div>
+    </div>
+    
+    <div class="ai-tab-content" id="fileTab">
+      <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('orderFile').click()">
+        <input type="file" id="orderFile" accept=".pdf,image/*" onchange="handleFileSelect(event)">
+        <div class="icon">📄</div>
+        <div class="text">クリックまたはドラッグ＆ドロップ</div>
+        <div class="hint">PDF、画像ファイル</div>
+      </div>
+      <div id="filePreview"></div>
+    </div>
+    
+    <button type="button" class="ai-analyze-btn" id="aiAnalyzeBtn" onclick="analyzeWithAI()">
+      <span class="spinner"></span>
+      <span class="btn-text">🔍 AIで解析する</span>
+    </button>
+    
+    <div class="ai-result-area" id="aiResultArea">
+      <div class="ai-result-header">
+        📋 解析結果
+        <span class="confidence-badge" id="overallConfidence"></span>
+      </div>
+      
+      <div class="ai-result-body">
+        <div class="ai-alerts" id="aiAlerts"></div>
+        
+        <div class="ai-result-section">
+          <div class="ai-result-section-header">📅 日程</div>
+          <div class="ai-result-section-body">
+            <div class="raw-data-info">
+              <div class="row"><span class="label">発送日：</span><span id="aiResultShippingDate">-</span></div>
+              <div class="row"><span class="label">納品日：</span><span id="aiResultDeliveryDate">-</span></div>
+              <div class="row"><span class="label">時間指定：</span><span id="aiResultDeliveryTime">-</span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="ai-result-section">
+          <div class="ai-result-section-header">📦 発送先 <span id="shippingToMatchBadge"></span></div>
+          <div class="ai-result-section-body">
+            <div class="raw-data-info" id="aiResultShippingToRaw"></div>
+            <div class="master-data-info" id="aiResultShippingToMaster" style="display:none;"></div>
+            <div class="source-select-group" id="shippingToSourceSelect" style="display:none;"></div>
+          </div>
+        </div>
+        
+        <div class="ai-result-section">
+          <div class="ai-result-section-header">👤 顧客 <span id="customerMatchBadge"></span></div>
+          <div class="ai-result-section-body">
+            <div class="raw-data-info" id="aiResultCustomerRaw"></div>
+            <div class="master-data-info" id="aiResultCustomerMaster" style="display:none;"></div>
+            <div class="source-select-group" id="customerSourceSelect" style="display:none;"></div>
+          </div>
+        </div>
+        
+        <div class="ai-result-section">
+          <div class="ai-result-section-header">🛒 商品</div>
+          <div class="ai-result-section-body" id="aiResultItems"></div>
+        </div>
+        
+        <div class="learn-summary" id="learnSummary" style="display:none;">
+          <div class="learn-summary-title">📚 学習予定のマッピング</div>
+          <div id="learnSummaryItems"></div>
+        </div>
+        
+        <div class="ai-result-section" id="memoSection" style="display:none;">
+          <div class="ai-result-section-header">📝 備考</div>
+          <div class="ai-result-section-body" id="aiResultMemo"></div>
+        </div>
+        
+        <div class="ai-error" id="aiError" style="display:none;"></div>
+        
+        <div class="ai-action-buttons">
+          <button type="button" class="ai-cancel-btn" onclick="clearAIResult()">キャンセル</button>
+          <button type="button" class="ai-apply-btn" onclick="applyAIResult()">✅ フォームに反映＆学習</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ai-warning-modal-overlay" id="aiWarningModal">
+  <div class="ai-warning-modal">
+    <div class="ai-warning-modal-header">⚠️ 入力内容を確認してください</div>
+    <div class="ai-warning-modal-body" id="aiWarningBody"></div>
+    <div class="ai-warning-modal-footer">
+      <button type="button" class="ai-warning-modify-btn" onclick="closeWarningModal()">修正する</button>
+      <button type="button" class="ai-warning-proceed-btn" onclick="proceedWithWarnings()">このまま進む</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let aiAnalysisResult = null;
+  let useShippingToMaster = false;
+  let useCustomerMaster = false;
+  let selectedFile = null;
+  let selectedFileBase64 = null;
+  let currentTab = 'text';
+  let productMaster = {};
+  let categoryList = [];
+  let productPrices = {};
+  let itemEdits = {};
+  
+  const AI_SESSION_KEY = 'aiSessionData';
+  const AI_EXCLUDE_CATEGORIES = ['送料', '手数料', '追加料金'];
+  const AI_EXCLUDE_PRODUCTS = ['送料', 'クール便追加', '代引手数料', '梱包料'];
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    loadAISessionData();
+    setupFileDragDrop();
+  });
+  
+  function toggleAIAssistant() {
+    const body = document.getElementById('aiAssistantBody');
+    const btn = document.getElementById('aiToggleBtn');
+    body.classList.toggle('open');
+    btn.textContent = body.classList.contains('open') ? '閉じる' : '開く';
+    if (body.classList.contains('open') && categoryList.length === 0) {
+      loadProductMaster();
+    }
+  }
+  
+  function loadProductMaster() {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        productMaster = data.productsByCategory || {};
+        productPrices = data.productPrices || {};
+        categoryList = Object.keys(productMaster);
+      })
+      .withFailureHandler(function(error) {
+        console.error('商品マスタ取得エラー:', error);
+      })
+      .getProductMasterForUI();
+  }
+  
+  function loadAISessionData() {
+    const saved = sessionStorage.getItem(AI_SESSION_KEY);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      const diffMinutes = (new Date() - new Date(data.analyzedAt)) / 1000 / 60;
+      if (diffMinutes > 30) {
+        sessionStorage.removeItem(AI_SESSION_KEY);
+        return;
+      }
+      showAIAnalyzedIndicator(data.analyzedAt);
+    } catch (e) {
+      sessionStorage.removeItem(AI_SESSION_KEY);
+    }
+  }
+  
+  function saveAISessionData() {
+    if (!aiAnalysisResult) return;
+    const sessionData = {
+      analyzedAt: new Date().toISOString(),
+      analysisResult: aiAnalysisResult,
+      items: [],
+      totalAmount: 0
+    };
+    Object.keys(itemEdits).forEach(index => {
+      const edit = itemEdits[index];
+      if (edit.productName) {
+        const amount = (edit.price || 0) * (edit.quantity || 0);
+        if (!AI_EXCLUDE_CATEGORIES.includes(edit.category) && !AI_EXCLUDE_PRODUCTS.includes(edit.productName)) {
+          sessionData.totalAmount += amount;
+        }
+        sessionData.items.push({
+          originalText: edit.originalText,
+          productName: edit.productName,
+          category: edit.category,
+          price: edit.price,
+          quantity: edit.quantity
+        });
+      }
+    });
+    sessionStorage.setItem(AI_SESSION_KEY, JSON.stringify(sessionData));
+  }
+  
+  function showAIAnalyzedIndicator(analyzedAt) {
+    const indicator = document.getElementById('aiAnalyzedIndicator');
+    const timeEl = document.getElementById('aiAnalyzedTime');
+    if (indicator && analyzedAt) {
+      const time = new Date(analyzedAt);
+      timeEl.textContent = '（' + time.getHours() + ':' + String(time.getMinutes()).padStart(2,'0') + ' 解析）';
+      indicator.classList.add('show');
+    }
+  }
+  
+  function clearAISession() {
+    sessionStorage.removeItem(AI_SESSION_KEY);
+  }
+  
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.ai-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.ai-tab-content').forEach(content => content.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tab + 'Tab').classList.add('active');
+  }
+  
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      selectedFileBase64 = e.target.result.split(',')[1];
+      showFilePreview(file);
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  function showFilePreview(file) {
+    const preview = document.getElementById('filePreview');
+    const icon = file.type.includes('pdf') ? '📄' : '🖼️';
+    const size = (file.size / 1024).toFixed(1) + ' KB';
+    preview.innerHTML = '<div class="file-preview"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + file.name + '</div><div class="file-size">' + size + '</div></div><button type="button" class="remove-btn" onclick="removeFile()">×</button></div>';
+  }
+  
+  function removeFile() {
+    selectedFile = null;
+    selectedFileBase64 = null;
+    document.getElementById('orderFile').value = '';
+    document.getElementById('filePreview').innerHTML = '';
+  }
+  
+  function setupFileDragDrop() {
+    const uploadArea = document.getElementById('fileUploadArea');
+    if (!uploadArea) return;
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        document.getElementById('orderFile').files = e.dataTransfer.files;
+        handleFileSelect({ target: { files: [file] } });
+      }
+    });
+  }
+  
+  function analyzeWithAI() {
+    const btn = document.getElementById('aiAnalyzeBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    if (currentTab === 'text') {
+      const text = document.getElementById('aiInputText').value.trim();
+      if (!text) { alert('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+      google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderText(text);
+    } else {
+      if (!selectedFile || !selectedFileBase64) { alert('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+      google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
+    }
+  }
+  
+  function handleAnalysisSuccess(result) {
+    const btn = document.getElementById('aiAnalyzeBtn');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    try {
+      aiAnalysisResult = JSON.parse(result);
+      if (!aiAnalysisResult.success) { showError(aiAnalysisResult.error || '解析に失敗しました'); return; }
+      displayAnalysisResult(aiAnalysisResult);
+    } catch (e) {
+      showError('解析結果の処理に失敗: ' + e.message);
+    }
+  }
+  
+  function handleAnalysisError(error) {
+    const btn = document.getElementById('aiAnalyzeBtn');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    showError('解析エラー: ' + error.message);
+  }
+  
+  function displayAnalysisResult(result) {
+    document.getElementById('aiResultArea').classList.add('show');
+    itemEdits = {};
+    setConfidenceBadge('overallConfidence', result.overallConfidence);
+    displayAlerts(result.alerts || []);
+    document.getElementById('aiResultShippingDate').textContent = result.shippingDate || '指定なし';
+    document.getElementById('aiResultDeliveryDate').textContent = result.deliveryDate || '指定なし';
+    document.getElementById('aiResultDeliveryTime').textContent = result.deliveryTime || '指定なし';
+    displayShippingTo(result.shippingTo);
+    displayCustomer(result.customer);
+    displayItemsEditable(result.items, result.unknownItems);
+    if (result.memo) {
+      document.getElementById('memoSection').style.display = 'block';
+      document.getElementById('aiResultMemo').textContent = result.memo;
+    } else {
+      document.getElementById('memoSection').style.display = 'none';
+    }
+    document.getElementById('aiError').style.display = 'none';
+    updateLearnSummary();
+  }
+  
+  function displayAlerts(alerts) {
+    const container = document.getElementById('aiAlerts');
+    container.innerHTML = alerts.map(a => '<div class="ai-alert-item ' + (a.includes('新規') || a.includes('見つかりません') ? 'ai-alert-warning' : 'ai-alert-info') + '">' + a + '</div>').join('');
+  }
+  
+  function displayShippingTo(st) {
+    if (!st) return;
+    const badge = document.getElementById('shippingToMatchBadge');
+    if (st.isNewShippingTo) {
+      badge.innerHTML = '<span class="new-badge">新規</span>';
+    } else if (st.masterMatch === 'exact') {
+      badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+    } else if (st.masterMatch === 'partial') {
+      badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+    } else {
+      badge.innerHTML = '';
+    }
+    document.getElementById('aiResultShippingToRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (st.rawCompanyName || '-') + '</div><div class="row"><span class="label">宛名：</span>' + (st.rawPersonName || '-') + '</div><div class="row"><span class="label">〒：</span>' + (st.rawZipcode || '-') + '</div><div class="row"><span class="label">住所：</span>' + (st.rawAddress || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (st.rawTel || '-') + '</div>';
+    const masterDiv = document.getElementById('aiResultShippingToMaster');
+    const selectDiv = document.getElementById('shippingToSourceSelect');
+    if (st.masterData) {
+      masterDiv.style.display = 'block';
+      masterDiv.innerHTML = '<strong>📁 マスタ（' + st.matchedBy + '）</strong><br>' + (st.masterData.companyName || '') + ' ' + (st.masterData.personName || '') + '<br>〒' + (st.masterData.zipcode || '') + ' ' + (st.masterData.address || '') + '<br>TEL: ' + (st.masterData.tel || '-');
+      selectDiv.style.display = 'flex';
+      selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button><button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'master\')">📁 マスタ</button>';
+      useShippingToMaster = true;
+    } else {
+      masterDiv.style.display = 'none';
+      selectDiv.style.display = 'none';
+      useShippingToMaster = false;
+    }
+  }
+  
+  function displayCustomer(cust) {
+    if (!cust) return;
+    const badge = document.getElementById('customerMatchBadge');
+    if (cust.isNewCustomer) {
+      badge.innerHTML = '<span class="new-badge">新規</span>';
+    } else if (cust.masterMatch === 'exact') {
+      badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+    } else if (cust.masterMatch === 'partial') {
+      badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+    } else {
+      badge.innerHTML = '';
+    }
+    document.getElementById('aiResultCustomerRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (cust.rawCompanyName || '-') + '</div><div class="row"><span class="label">担当：</span>' + (cust.rawPersonName || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (cust.rawTel || '-') + '</div>';
+    const masterDiv = document.getElementById('aiResultCustomerMaster');
+    const selectDiv = document.getElementById('customerSourceSelect');
+    if (cust.masterData) {
+      masterDiv.style.display = 'block';
+      masterDiv.innerHTML = '<strong>📁 マスタ（' + cust.matchedBy + '）</strong><br>' + (cust.masterData.displayName || cust.masterData.companyName || '') + '<br>TEL: ' + (cust.masterData.tel || '-');
+      selectDiv.style.display = 'flex';
+      selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button><button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'master\')">📁 マスタ</button>';
+      useCustomerMaster = true;
+    } else {
+      masterDiv.style.display = 'none';
+      selectDiv.style.display = 'none';
+      useCustomerMaster = false;
+    }
+  }
+  
+  function displayItemsEditable(items, unknownItems) {
+    const container = document.getElementById('aiResultItems');
+    container.innerHTML = '';
+    if (!items || items.length === 0) {
+      container.innerHTML = '<p style="color:#999;">商品が見つかりませんでした</p>';
+      return;
+    }
+    items.forEach((item, index) => {
+      const mappingMatch = item.mappingMatch || {};
+      const isLearned = mappingMatch.found && mappingMatch.matchType === 'exact';
+      const canLearn = !isLearned && item.originalText;
+      
+      let price = 0;
+      let priceSource = 'none';
+      if (item.price && item.price > 0) {
+        price = item.price;
+        priceSource = item.priceSource || 'ai';
+      } else if (item.productName && productPrices[item.productName]) {
+        price = productPrices[item.productName];
+        priceSource = 'master';
+      }
+      
+      itemEdits[index] = {
+        category: item.category || '',
+        productName: item.productName || '',
+        spec: item.spec || '',
+        quantity: item.quantity || '',
+        unit: item.unit || 'ケース',
+        price: price,
+        priceSource: priceSource,
+        learn: canLearn && item.confidence !== 'low',
+        originalText: item.originalText || '',
+        originalProductName: item.productName || ''
+      };
+      
+      const cardClass = isLearned ? 'learned' : '';
+      let categoryOptions = '<option value="">選択...</option>';
+      categoryList.forEach(cat => {
+        categoryOptions += '<option value="' + cat + '" ' + (cat === item.category ? 'selected' : '') + '>' + cat + '</option>';
+      });
+      let productOptions = buildProductOptions(item.category, item.productName);
+      
+      let badgeHtml = '';
+      if (isLearned) {
+        badgeHtml = '<span class="mapping-badge">📚 学習済み（' + mappingMatch.usageCount + '回使用）</span>';
+      } else {
+        badgeHtml = '<span class="confidence-badge confidence-' + item.confidence + '">' + getConfidenceLabel(item.confidence) + '</span>';
+      }
+      
+      let priceBadgeHtml = '';
+      if (priceSource === 'ai') {
+        priceBadgeHtml = '<span class="price-badge ai">顧客指定</span>';
+      } else if (priceSource === 'master') {
+        priceBadgeHtml = '<span class="price-badge master">マスタ</span>';
+      }
+      
+      let learnHtml = '';
+      if (canLearn) {
+        const checked = itemEdits[index].learn ? 'checked' : '';
+        learnHtml = '<div class="item-learn-row ' + (itemEdits[index].learn ? 'will-learn' : '') + '" id="learnRow_' + index + '"><input type="checkbox" id="learn_' + index + '" ' + checked + ' onchange="toggleLearn(' + index + ')"><label for="learn_' + index + '">この対応を記憶する</label><span class="learn-preview" id="learnPreview_' + index + '" style="' + (itemEdits[index].learn ? '' : 'display:none') + '">→ ' + (item.productName || '未選択') + '</span></div>';
+      }
+      
+      container.innerHTML += '<div class="item-card ' + cardClass + '" id="itemCard_' + index + '"><div class="item-card-header"><span class="item-original-text">📝 ' + (item.originalText || '(原文なし)') + '</span>' + badgeHtml + '</div><div class="item-card-body"><div class="item-edit-row"><label>分類:</label><select id="category_' + index + '" onchange="onCategoryChange(' + index + ')">' + categoryOptions + '</select></div><div class="item-edit-row"><label>商品:</label><select id="product_' + index + '" onchange="onProductChange(' + index + ')">' + productOptions + '</select></div><div class="item-edit-row"><label>規格:</label><input type="text" id="spec_' + index + '" value="' + (item.spec || '') + '" onchange="onSpecChange(' + index + ')"></div><div class="item-edit-row"><label>価格:</label><div class="price-group"><input type="number" id="price_' + index + '" value="' + price + '" onchange="onPriceChange(' + index + ')"><span class="unit">円</span>' + priceBadgeHtml + '</div></div><div class="item-edit-row"><label>数量:</label><div class="quantity-group"><input type="number" id="quantity_' + index + '" value="' + (item.quantity || '') + '" step="0.1" onchange="onQuantityChange(' + index + ')"><select id="unit_' + index + '" onchange="onUnitChange(' + index + ')"><option value="ケース" ' + (item.unit === 'ケース' ? 'selected' : '') + '>ケース</option><option value="本" ' + (item.unit === '本' ? 'selected' : '') + '>本</option><option value="袋" ' + (item.unit === '袋' ? 'selected' : '') + '>袋</option><option value="kg" ' + (item.unit === 'kg' ? 'selected' : '') + '>kg</option><option value="個" ' + (item.unit === '個' ? 'selected' : '') + '>個</option></select></div></div>' + learnHtml + '</div></div>';
+    });
+  }
+  
+  function buildProductOptions(category, selectedProduct) {
+    let options = '<option value="">選択...</option>';
+    if (category && productMaster[category]) {
+      productMaster[category].forEach(prod => {
+        options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+      });
+    }
+    categoryList.forEach(cat => {
+      if (cat !== category && productMaster[cat]) {
+        options += '<optgroup label="── ' + cat + ' ──">';
+        productMaster[cat].forEach(prod => {
+          options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+        });
+        options += '</optgroup>';
+      }
+    });
+    return options;
+  }
+  
+  function onCategoryChange(index) {
+    const category = document.getElementById('category_' + index).value;
+    itemEdits[index].category = category;
+    const productSelect = document.getElementById('product_' + index);
+    productSelect.innerHTML = buildProductOptions(category, '');
+    itemEdits[index].productName = '';
+    itemEdits[index].price = 0;
+    document.getElementById('price_' + index).value = 0;
+    checkModified(index);
+    updateLearnSummary();
+  }
+  
+  function onProductChange(index) {
+    const productName = document.getElementById('product_' + index).value;
+    itemEdits[index].productName = productName;
+    if (productName && productPrices[productName] && itemEdits[index].priceSource !== 'ai') {
+      itemEdits[index].price = productPrices[productName];
+      itemEdits[index].priceSource = 'master';
+      document.getElementById('price_' + index).value = productPrices[productName];
+    }
+    const preview = document.getElementById('learnPreview_' + index);
+    if (preview) preview.textContent = '→ ' + (productName || '未選択');
+    checkModified(index);
+    updateLearnSummary();
+  }
+  
+  function onSpecChange(index) {
+    itemEdits[index].spec = document.getElementById('spec_' + index).value;
+    checkModified(index);
+  }
+  
+  function onPriceChange(index) {
+    itemEdits[index].price = Number(document.getElementById('price_' + index).value) || 0;
+    itemEdits[index].priceSource = 'manual';
+    checkModified(index);
+  }
+  
+  function onQuantityChange(index) {
+    itemEdits[index].quantity = document.getElementById('quantity_' + index).value;
+    checkModified(index);
+  }
+  
+  function onUnitChange(index) {
+    itemEdits[index].unit = document.getElementById('unit_' + index).value;
+    checkModified(index);
+  }
+  
+  function toggleLearn(index) {
+    const checked = document.getElementById('learn_' + index).checked;
+    itemEdits[index].learn = checked;
+    const row = document.getElementById('learnRow_' + index);
+    const preview = document.getElementById('learnPreview_' + index);
+    if (checked) { row.classList.add('will-learn'); preview.style.display = ''; }
+    else { row.classList.remove('will-learn'); preview.style.display = 'none'; }
+    updateLearnSummary();
+  }
+  
+  function checkModified(index) {
+    const card = document.getElementById('itemCard_' + index);
+    const edit = itemEdits[index];
+    if (edit.productName !== edit.originalProductName) { card.classList.add('modified'); }
+    else { card.classList.remove('modified'); }
+  }
+  
+  function updateLearnSummary() {
+    const summaryDiv = document.getElementById('learnSummary');
+    const itemsDiv = document.getElementById('learnSummaryItems');
+    const learnList = [];
+    Object.keys(itemEdits).forEach(index => {
+      const edit = itemEdits[index];
+      if (edit.learn && edit.originalText && edit.productName) {
+        learnList.push({ originalText: edit.originalText, productName: edit.productName, isModified: edit.productName !== edit.originalProductName });
+      }
+    });
+    if (learnList.length === 0) { summaryDiv.style.display = 'none'; return; }
+    summaryDiv.style.display = 'block';
+    itemsDiv.innerHTML = learnList.map(l => '<div class="learn-summary-item"><span class="original">「' + l.originalText + '」</span><span class="arrow">→</span><span class="product">' + l.productName + '</span>' + (l.isModified ? '<span class="modified-badge">修正済</span>' : '') + '</div>').join('');
+  }
+  
+  function selectSource(type, source) {
+    if (type === 'shippingTo') { useShippingToMaster = (source === 'master'); }
+    else { useCustomerMaster = (source === 'master'); }
+    const btns = document.querySelectorAll('#' + type + 'SourceSelect .source-select-btn');
+    btns[0].classList.toggle('selected', source === 'raw');
+    btns[1].classList.toggle('selected', source === 'master');
+  }
+  
+  function setConfidenceBadge(id, conf) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'confidence-badge confidence-' + (conf || 'low');
+    el.textContent = getConfidenceLabel(conf);
+  }
+  
+  function getConfidenceLabel(conf) {
+    return { high: '✅ 高', medium: '⚠️ 中', low: '❓ 低' }[conf] || '❓';
+  }
+  
+  function showError(msg) {
+    document.getElementById('aiResultArea').classList.add('show');
+    document.getElementById('aiError').style.display = 'block';
+    document.getElementById('aiError').textContent = msg;
+  }
+  
+  function clearAIResult() {
+    aiAnalysisResult = null;
+    useShippingToMaster = useCustomerMaster = false;
+    itemEdits = {};
+    document.getElementById('aiResultArea').classList.remove('show');
+    document.getElementById('aiInputText').value = '';
+    removeFile();
+  }
+  
+  function applyAIResult() {
+    if (!aiAnalysisResult) { alert('解析結果がありません'); return; }
+    
+    const mappingsToLearn = [];
+    const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
+    Object.keys(itemEdits).forEach(index => {
+      const edit = itemEdits[index];
+      if (edit.learn && edit.originalText && edit.productName) {
+        mappingsToLearn.push({ originalText: edit.originalText, productName: edit.productName, customerName: customerName, spec: edit.spec || '' });
+      }
+    });
+    
+    if (mappingsToLearn.length > 0) {
+      google.script.run.withSuccessHandler(function(results) { console.log('マッピング学習結果:', results); }).withFailureHandler(function(error) { console.error('マッピング学習エラー:', error); }).registerProductMappingBulk(mappingsToLearn);
+    }
+    
+    if (aiAnalysisResult.shippingDate) { setFormValue('shippingDate', aiAnalysisResult.shippingDate); }
+    if (aiAnalysisResult.deliveryDate) { setFormValue('deliveryDate', aiAnalysisResult.deliveryDate); }
+    
+    const st = aiAnalysisResult.shippingTo;
+    if (st) {
+      const data = useShippingToMaster && st.masterData ? st.masterData : st;
+      setFormValue('shippingToName', useShippingToMaster ? [data.companyName, data.personName].filter(Boolean).join('　') : [st.rawCompanyName, st.rawPersonName].filter(Boolean).join('　'));
+      setFormValue('shippingToZipcode', (useShippingToMaster ? data.zipcode : st.rawZipcode) || '');
+      setFormValue('shippingToAddress', (useShippingToMaster ? data.address : st.rawAddress) || '');
+      setFormValue('shippingToTel', (useShippingToMaster ? data.tel : st.rawTel) || '');
+    }
+    
+    const cust = aiAnalysisResult.customer;
+    if (cust) {
+      const data = useCustomerMaster && cust.masterData ? cust.masterData : cust;
+      setFormValue('customerName', useCustomerMaster ? (data.displayName || [data.companyName, data.personName].filter(Boolean).join('　')) : [cust.rawCompanyName, cust.rawPersonName].filter(Boolean).join('　'));
+      setFormValue('customerZipcode', (useCustomerMaster ? data.zipcode : cust.rawZipcode) || '');
+      setFormValue('customerAddress', (useCustomerMaster ? data.address : cust.rawAddress) || '');
+      setFormValue('customerTel', (useCustomerMaster ? data.tel : cust.rawTel) || '');
+    }
+    
+    Object.keys(itemEdits).forEach((index, i) => {
+      const row = i + 1;
+      if (row > 10) return;
+      const edit = itemEdits[index];
+      if (edit.category) {
+        const bunrui = document.getElementById('bunrui' + row);
+        if (bunrui) { bunrui.value = edit.category; if (typeof bunruiChange === 'function') bunruiChange(row); }
+      }
+      if (edit.productName) {
+        setTimeout(() => {
+          const prod = document.getElementById('product' + row);
+          if (prod) {
+            for (let j = 0; j < prod.options.length; j++) {
+              if (prod.options[j].value === edit.productName) {
+                prod.selectedIndex = j;
+                if (typeof productChange === 'function') productChange(row);
+                break;
+              }
+            }
+          }
+        }, 100 * i);
+      }
+      if (edit.price) {
+        setTimeout(() => {
+          const priceEl = document.getElementById('price' + row);
+          if (priceEl) priceEl.value = edit.price;
+        }, 100 * i + 30);
+      }
+      if (edit.quantity) {
+        setTimeout(() => {
+          const qty = document.getElementById('quantity' + row);
+          if (qty) qty.value = edit.quantity;
+        }, 100 * i + 50);
+      }
+    });
+    
+    saveAISessionData();
+    showAIAnalyzedIndicator(new Date().toISOString());
+    
+    let message = 'フォームに反映しました。';
+    if (mappingsToLearn.length > 0) { message += '\n\n📚 ' + mappingsToLearn.length + '件のマッピングを学習しました。'; }
+    if (aiAnalysisResult.alerts?.length) { message += '\n\n⚠️ ' + aiAnalysisResult.alerts.join('\n'); }
+    alert(message);
+    toggleAIAssistant();
+  }
+  
+  function setFormValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  }
+  
+  function validateBeforeSubmit() {
+    const warnings = performLocalCheck();
+    if (warnings.length === 0) { return true; }
+    showWarningModal(warnings);
+    return false;
+  }
+  
+  function performLocalCheck() {
+    const warnings = [];
+    const savedData = sessionStorage.getItem(AI_SESSION_KEY);
+    if (!savedData) {
+      warnings.push(...checkBasicValidation());
+      return warnings;
+    }
+    const aiData = JSON.parse(savedData);
+    const inputTotal = calculateInputTotal();
+    if (aiData.totalAmount && Math.abs(aiData.totalAmount - inputTotal) > 1) {
+      const diff = inputTotal - aiData.totalAmount;
+      warnings.push({ type: 'critical', icon: '🔴', title: '合計金額が異なります', detail: 'AI解析: ¥' + aiData.totalAmount.toLocaleString() + ' → 入力: ¥' + inputTotal.toLocaleString() + '（差額: ' + (diff >= 0 ? '+' : '') + '¥' + diff.toLocaleString() + '）' });
+    }
+    if (aiData.items) {
+      aiData.items.forEach(aiItem => {
+        if (AI_EXCLUDE_CATEGORIES.includes(aiItem.category) || AI_EXCLUDE_PRODUCTS.includes(aiItem.productName)) return;
+        const inputItem = findInputItem(aiItem.productName);
+        if (!inputItem) {
+          warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' が入力されていません', detail: 'AI解析: ' + aiItem.quantity + '個' });
+        } else {
+          if (inputItem.quantity != aiItem.quantity) {
+            warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の数量が変更されています', detail: 'AI解析: ' + aiItem.quantity + '個 → 入力: ' + inputItem.quantity + '個' });
+          }
+          if (inputItem.price != aiItem.price) {
+            warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の価格が変更されています', detail: 'AI解析: ¥' + (aiItem.price || 0).toLocaleString() + ' → 入力: ¥' + (inputItem.price || 0).toLocaleString() });
+          }
+        }
+      });
+    }
+    warnings.push(...checkBasicValidation());
+    return warnings;
+  }
+  
+  function calculateInputTotal() {
+    let total = 0;
+    for (let i = 1; i <= 10; i++) {
+      const product = document.getElementById('product' + i)?.value || '';
+      const category = document.getElementById('bunrui' + i)?.value || '';
+      const price = Number(document.getElementById('price' + i)?.value) || 0;
+      const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+      if (AI_EXCLUDE_CATEGORIES.includes(category) || AI_EXCLUDE_PRODUCTS.includes(product)) continue;
+      total += price * quantity;
+    }
+    return total;
+  }
+  
+  function findInputItem(productName) {
+    for (let i = 1; i <= 10; i++) {
+      const product = document.getElementById('product' + i)?.value || '';
+      if (product === productName) {
+        return { productName: product, price: Number(document.getElementById('price' + i)?.value) || 0, quantity: Number(document.getElementById('quantity' + i)?.value) || 0 };
+      }
+    }
+    return null;
+  }
+  
+  function checkBasicValidation() {
+    const warnings = [];
+    const products = [];
+    for (let i = 1; i <= 10; i++) {
+      const product = document.getElementById('product' + i)?.value || '';
+      if (product && products.includes(product)) {
+        warnings.push({ type: 'warning', icon: '🟡', title: product + ' が重複しています', detail: '同じ商品が複数行あります' });
+      }
+      if (product) products.push(product);
+    }
+    for (let i = 1; i <= 10; i++) {
+      const product = document.getElementById('product' + i)?.value || '';
+      const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+      if (product && quantity >= 100) {
+        warnings.push({ type: 'info', icon: '💡', title: product + ' の数量が多いです', detail: quantity + '個 - 入力ミスではないか確認してください' });
+      }
+    }
+    return warnings;
+  }
+  
+  function showWarningModal(warnings) {
+    const body = document.getElementById('aiWarningBody');
+    body.innerHTML = warnings.map(w => '<div class="ai-warning-item ' + w.type + '"><span class="icon">' + w.icon + '</span><div class="content"><div class="title">' + w.title + '</div><div class="detail">' + w.detail + '</div></div></div>').join('');
+    document.getElementById('aiWarningModal').classList.add('show');
+  }
+  
+  function closeWarningModal() {
+    document.getElementById('aiWarningModal').classList.remove('show');
+  }
+  
+  function proceedWithWarnings() {
+    closeWarningModal();
+    const form = document.querySelector('form');
+    if (form) {
+      const btn = document.querySelector('[name="shippingComfirm"]');
+      if (btn) {
+        btn.removeAttribute('onclick');
+        btn.click();
+      }
+    }
+  }
+</script>

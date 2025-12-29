@@ -38,15 +38,24 @@
     </form>
   </div>
   <script>
-    function setYesterday() {
-      var yesterday = new Date();
-      yesterday.setDate(yesterday.getDate()-1); 
-      var yyyy = yesterday.getFullYear();
-      var mm = ("0"+(yesterday.getMonth()+1)).slice(-2);
-      var dd = ("0"+yesterday.getDate()).slice(-2);
+    // function setYesterday() {
+    //   var yesterday = new Date();
+    //   yesterday.setDate(yesterday.getDate()-1); 
+    //   var yyyy = yesterday.getFullYear();
+    //   var mm = ("0"+(yesterday.getMonth()+1)).slice(-2);
+    //   var dd = ("0"+yesterday.getDate()).slice(-2);
+    //   document.getElementById("shippingDate").value=yyyy+'-'+mm+'-'+dd;
+    // }
+    // setYesterday();
+    function setToday() {
+      var today = new Date();
+      today.setDate(today.getDate()-1); 
+      var yyyy = today.getFullYear();
+      var mm = ("0"+(today.getMonth()+1)).slice(-2);
+      var dd = ("0"+today.getDate()).slice(-2);
       document.getElementById("shippingDate").value=yyyy+'-'+mm+'-'+dd;
     }
-    setYesterday();
+    setToday();
     function createShip() {
       if (!$('input[id="shippingDate"]').val()) {
         alert('発送日が入力されていません。');

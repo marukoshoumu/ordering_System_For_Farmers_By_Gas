@@ -1,172 +1,455 @@
-// 納品書のテンプレートファイル
-const DELIVERED_TEMPLATE = DriveApp.getFileById("####ドライブIDを指定####");
-// 納品書PDF出力先
-const DELIVERED_PDF_OUTDIR = DriveApp.getFolderById("####ドライブIDを指定####");
-// 領収書のテンプレートファイル
-const RECEIPT_TEMPLATE = DriveApp.getFileById("####ドライブIDを指定####");
-// 領収書PDF出力先
-const RECEIPT_PDF_OUTDIR = DriveApp.getFolderById("####ドライブIDを指定####");
-
+// キャッシュ用関数を追加
+function getMasterDataCached() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'masterData_v1';
+  
+  let cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  
+  // キャッシュがなければ取得
+  const masterData = {
+    // items: getAllRecords('商品'),
+    recipients: getAllRecords('担当者'),
+    deliveryMethods: getAllRecords('納品方法'),
+    receipts: getAllRecords('受付方法'),
+    deliveryTimes: getAllRecords('配送時間帯'),
+    invoiceTypes: getAllRecords('送り状種別'),
+    coolClss: getAllRecords('クール区分'),
+    cargos: getAllRecords('荷扱い'),
+    // categorys: getAllRecords('商品分類')
+  };
+  
+  // 6時間キャッシュ（21600秒）
+  cache.put(cacheKey, JSON.stringify(masterData), 7200);
+  return masterData;
+}
 // 受注管理画面
-function getshippingHTML(e, alert = "") {
-  const items = getAllRecords("商品");
-  const recipients = getAllRecords("担当者");
-  const deliveryMethods = getAllRecords("納品方法");
-  const receipts = getAllRecords("受付方法");
-  const deliveryTimes = getAllRecords("配送時間帯");
-  const invoiceTypes = getAllRecords("送り状種別");
-  const coolClss = getAllRecords("クール区分");
-  const cargos = getAllRecords("荷扱い");
-  const customers = getAllRecords("顧客情報");
+function getshippingHTML(e, alert = '') {
+
+  // 編集モードの判定
+  const editOrderId = e.parameter.editOrderId || '';
+  const actionMode = e.parameter.actionMode || '';
+  const isInheritMode = actionMode === 'inherit';
+  let editData = null;
+  
+  if (editOrderId && !e.parameter.fromConfirm) {
+    editData = getOrderByOrderId(editOrderId);
+  }
+  
+  if (editData) {
+    e.parameter.shippingToName = editData.shippingToName;
+    e.parameter.shippingToZipcode = editData.shippingToZipcode;
+    e.parameter.shippingToAddress = editData.shippingToAddress;
+    e.parameter.shippingToTel = editData.shippingToTel;
+    e.parameter.customerName = editData.customerName;
+    e.parameter.customerZipcode = editData.customerZipcode;
+    e.parameter.customerAddress = editData.customerAddress;
+    e.parameter.customerTel = editData.customerTel;
+    e.parameter.shippingFromName = editData.shippingFromName;
+    e.parameter.shippingFromZipcode = editData.shippingFromZipcode;
+    e.parameter.shippingFromAddress = editData.shippingFromAddress;
+    e.parameter.shippingFromTel = editData.shippingFromTel;
+    
+    if (isInheritMode) {
+      e.parameter.shippingDate1 = '';
+      e.parameter.deliveryDate1 = '';
+    } else {
+      e.parameter.shippingDate1 = editData.shippingDate;
+      e.parameter.deliveryDate1 = editData.deliveryDate;
+    }
+    
+    e.parameter.receiptWay = editData.receiptWay;
+    e.parameter.recipient = editData.recipient;
+    e.parameter.deliveryMethod = editData.deliveryMethod;
+    e.parameter.deliveryTime = editData.deliveryTime;
+    
+    e.parameters = e.parameters || {};
+    e.parameters.checklist = [];
+    if (editData.checklist.deliverySlip) e.parameters.checklist.push('納品書');
+    if (editData.checklist.bill) e.parameters.checklist.push('請求書');
+    if (editData.checklist.receipt) e.parameters.checklist.push('領収書');
+    if (editData.checklist.pamphlet) e.parameters.checklist.push('パンフ');
+    if (editData.checklist.recipe) e.parameters.checklist.push('レシピ');
+    
+    e.parameter.otherAttach = editData.otherAttach;
+    
+    editData.items.forEach((item, index) => {
+      const rowNum = index + 1;
+      e.parameter['bunrui' + rowNum] = item.bunrui;
+      e.parameter['product' + rowNum] = item.product;
+      e.parameter['price' + rowNum] = item.price;
+      if (isInheritMode) {
+        e.parameter['quantity' + rowNum] = '';
+      } else {
+        e.parameter['quantity' + rowNum] = item.quantity;
+      }
+    });
+    
+    e.parameter.sendProduct = editData.sendProduct;
+    e.parameter.invoiceType = editData.invoiceType;
+    e.parameter.coolCls = editData.coolCls;
+    e.parameter.cargo1 = editData.cargo1;
+    e.parameter.cargo2 = editData.cargo2;
+    e.parameter.cashOnDelivery = editData.cashOnDelivery;
+    e.parameter.cashOnDeliTax = editData.cashOnDeliTax;
+    e.parameter.copiePrint = editData.copiePrint;
+    e.parameter.csvmemo = editData.csvmemo;
+    e.parameter.deliveryMemo = editData.deliveryMemo;
+    e.parameter.memo = editData.memo;
+  }
+  
+  const master = getMasterDataCached();
+  const items = getAllRecords('商品');
+  const recipients = master.recipients;
+  const deliveryMethods = master.deliveryMethods;
+  const receipts = master.receipts;
+  const deliveryTimes = master.deliveryTimes;
+  const invoiceTypes = master.invoiceTypes;
+  const coolClss = master.coolClss;
+  const cargos = master.cargos;
+  
   var nDate = new Date();
-  var strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
+  var strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
   const orderDate = e.parameter.orderDate ? e.parameter.orderDate : strDate;
   var n = 2;
   nDate.setDate(nDate.getDate() + n);
-  strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
-  const shippingDate = e.parameter.shippingDate
-    ? e.parameter.shippingDate
-    : strDate;
+  strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
+  const shippingDate = e.parameter.shippingDate ? e.parameter.shippingDate : strDate;
   nDate.setDate(nDate.getDate() + 1);
-  strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
-  const deliveryDate = e.parameter.deliveryDate
-    ? e.parameter.deliveryDate
-    : strDate;
+  strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
+  const deliveryDate = e.parameter.deliveryDate ? e.parameter.deliveryDate : strDate;
 
-  let html = ``;
+  // ============================================
+  // CSS スタイル
+  // ============================================
+  let html = `
+<style>
+/* セクションヘッダー共通スタイル */
+.section-header {
+  color: white;
+  padding: 8px 12px;
+  margin-top: 16px;
+  border-radius: 6px 6px 0 0;
+}
+.section-header:first-of-type {
+  margin-top: 0;
+}
+.section-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.section-header-row:last-child {
+  margin-bottom: 0;
+}
+.section-header-label {
+  font-weight: bold;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+.section-header button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.section-header button:hover {
+  background: rgba(255,255,255,0.3);
+}
+.section-header button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.section-header select {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+  max-width: 280px;
+  color: #333;
+}
+
+/* セクション本体 */
+.section-body {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+/* 各セクションのカラー */
+.section-shipping-to {
+  background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+}
+.section-customer {
+  background: linear-gradient(135deg, #c71585 0%, #db7093 100%);
+}
+.section-shipping-from {
+  background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+}
+.section-order-basic {
+  background: linear-gradient(135deg, #008b8b 0%, #20b2aa 100%);
+}
+.section-products {
+  background: linear-gradient(135deg, #228b22 0%, #32cd32 100%);
+}
+.section-shipping-info {
+  background: linear-gradient(135deg, #1e3a5f 0%, #4169e1 100%);
+}
+
+/* サブ行（履歴など） */
+.section-sub-row {
+  border-top: 1px solid rgba(255,255,255,0.2);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+.section-sub-label {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.85);
+  margin-right: 6px;
+}
+
+/* チェックボックスグループ */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0;
+}
+.checkbox-group .form-check {
+  margin: 0;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  .section-header {
+    padding: 6px 8px;
+  }
+  .section-header-row {
+    gap: 4px;
+  }
+  .section-header button {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+  .section-header select {
+    padding: 4px 6px;
+    font-size: 0.8rem;
+    max-width: 180px;
+  }
+  .section-header-label {
+    font-size: 0.9rem;
+  }
+  .section-body {
+    padding: 10px;
+  }
+}
+</style>
+`;
+
   html += `<p class="text-danger">${alert}</p>`;
-  html += `<div style="background-color: magenta; color: white;">【顧客情報】　`;
-  html += `      <button type='button' class="customerInsertBtn_open">新規登録</button>`;
-  html += `      <button type='button' class="customerSearchBtn_open">顧客検索</button>`;
-  html += `      <button type='button' class="customerSameBtn" onclick="customerSame()">発送先同上</button>`;
-  html += `      <button type='button' id="productSearch" onclick="setProductSearch()">前回商品反映</button>`;
-  html += `      <button type='button' id="quotationSearch" onclick="setQuotationSearch()">見積書反映</button>`;
-  html += `</div>`;
+
+  // ============================================
+  // 発送先情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-shipping-to">
+  <div class="section-header-row">
+    <span class="section-header-label">📦 発送先情報</span>
+    <button type='button' class="shippingToInsertBtn_open" title="新規登録">➕ 新規</button>
+    <button type='button' class="shippingToSearchBtn_open" title="発送先検索">🔍 検索</button>
+    <button type='button' id="productSearch" onclick="setProductSearch()" title="前回商品反映">📋 前回</button>
+  </div>
+  <div class="section-header-row section-sub-row">
+    <span class="section-sub-label">📂 履歴:</span>
+    <button type='button' id="getOrderHistoryBtn" onclick="getOrderHistory()" title="過去の受注から取得">取得</button>
+    <select id="orderHistorySelect" style="display:none;" onchange="onOrderHistorySelect()">
+      <option value="">発送日を選択...</option>
+    </select>
+    <button type='button' id="applyOrderHistoryBtn" style="display:none;" onclick="applyOrderHistory()">反映</button>
+  </div>
+</div>
+<div class="section-body">
+`;
   html += `<div>
-                <label for="customerName" class="text-left form-label">顧客名</label>`;
-  html += `<input type="text" class="form-control" id="customerName" name="customerName" required value="${
-    e.parameter.customerName ? e.parameter.customerName : ""
-  }" >`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="customerZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="customerZipcode" name="customerZipcode" required value="${
-    e.parameter.customerZipcode ? e.parameter.customerZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">`;
-  html += `    </div>`;
-  html += `</div>`;
+    <label for="shippingToName" class="text-left form-label">発送先名</label>
+    <input type="text" class="form-control" id="shippingToName" name="shippingToName" required value="${e.parameter.shippingToName ? e.parameter.shippingToName : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="shippingToZipcode" class="col-form-label">郵便番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="shippingToZipcode" name="shippingToZipcode" required value="${e.parameter.shippingToZipcode ? e.parameter.shippingToZipcode : ""}" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">
+    </div>
+  </div>`;
   html += `<div>
-                <label for="customerAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="customerAddress" name="customerAddress" required value="${
-    e.parameter.customerAddress ? e.parameter.customerAddress : ""
-  }" >`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="customerTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="customerTel" name="customerTel" required value="${
-    e.parameter.customerTel ? e.parameter.customerTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div style="background-color: darkgoldenrod; color: white;">【発送先情報】　`;
-  html += `      <button type='button' class="shippingToInsertBtn_open">新規登録</button>`;
-  html += `      <button type='button' class="shippingToSearchBtn_open">発送先検索</button>`;
-  html += `</div>`;
+    <label for="shippingToAddress" class="text-left form-label">住所</label>
+    <input type="text" class="form-control" id="shippingToAddress" name="shippingToAddress" required value="${e.parameter.shippingToAddress ? e.parameter.shippingToAddress : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="shippingToTel" class="col-form-label">電話番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="shippingToTel" name="shippingToTel" required value="${e.parameter.shippingToTel ? e.parameter.shippingToTel : ""}" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">
+    </div>
+  </div>`;
+  html += `</div>`; // section-body閉じ
+
+  // ============================================
+  // 顧客情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-customer">
+  <div class="section-header-row">
+    <span class="section-header-label">👤 顧客情報</span>
+    <button type='button' class="customerInsertBtn_open" title="新規登録">➕ 新規</button>
+    <button type='button' class="customerSearchBtn_open" title="顧客検索">🔍 検索</button>
+    <button type='button' class="customerSameBtn" onclick="customerSame()" title="発送先と同じ">📋 同上</button>
+    <button type='button' id="quotationSearch" onclick="setQuotationSearch()" title="見積書から反映">📄 見積書</button>
+  </div>
+</div>
+<div class="section-body">
+`;
   html += `<div>
-                <label for="shippingToName" class="text-left form-label">発送先名</label>`;
-  html += `<input type="text" class="form-control" id="shippingToName" name="shippingToName" required value="${
-    e.parameter.shippingToName ? e.parameter.shippingToName : ""
-  }" >`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingToZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingToZipcode" name="shippingToZipcode" required value="${
-    e.parameter.shippingToZipcode ? e.parameter.shippingToZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">`;
-  html += `    </div>`;
-  html += `</div>`;
+    <label for="customerName" class="text-left form-label">顧客名</label>
+    <input type="text" class="form-control" id="customerName" name="customerName" required value="${e.parameter.customerName ? e.parameter.customerName : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="customerZipcode" class="col-form-label">郵便番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="customerZipcode" name="customerZipcode" required value="${e.parameter.customerZipcode ? e.parameter.customerZipcode : ""}" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">
+    </div>
+  </div>`;
   html += `<div>
-                <label for="shippingToAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="shippingToAddress" name="shippingToAddress" required value="${
-    e.parameter.shippingToAddress ? e.parameter.shippingToAddress : ""
-  }" >`;
+    <label for="customerAddress" class="text-left form-label">住所</label>
+    <input type="text" class="form-control" id="customerAddress" name="customerAddress" required value="${e.parameter.customerAddress ? e.parameter.customerAddress : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="customerTel" class="col-form-label">電話番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="customerTel" name="customerTel" required value="${e.parameter.customerTel ? e.parameter.customerTel : ""}" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">
+    </div>
+  </div>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingToTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingToTel" name="shippingToTel" required value="${
-    e.parameter.shippingToTel ? e.parameter.shippingToTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div style="background-color: brown; color: white;">【発送元情報】　`;
-  html += ` <button type="button" class="" id="farmBtn" name="farmBtn" value="true" onclick="farmChange()">会社名</button>`;
-  html += ` <button type="button" class="" id="custCopyBtn" name="custCopyBtn" value="true" onclick="custCopy()">顧客コピー</button>`;
-  html += ` <button type="button" class="" id="sendCopyBtn" name="sendCopyBtn" value="true" onclick="sendCopy()">発送先コピー</button>`;
-  html += `</div>`;
+
+  // ============================================
+  // 発送元情報セクション
+  // ============================================
+  const companyDisplayName = getCompanyDisplayName();
+  html += `
+<div class="section-header section-shipping-from">
+  <div class="section-header-row">
+    <span class="section-header-label">🏭 発送元情報</span>
+    <button type="button" id="babaBtn" onclick="babaChange()" title="${companyDisplayName}の情報を入力">🌿 ${companyDisplayName}</button>
+    <button type="button" id="custCopyBtn" onclick="custCopy()" title="顧客情報をコピー">📋 顧客</button>
+    <button type="button" id="sendCopyBtn" onclick="sendCopy()" title="発送先情報をコピー">📋 発送先</button>
+  </div>
+</div>
+<div class="section-body">
+`;
   html += `<div>
-                <label for="shippingFromName" class="text-left form-label">発送元名</label>`;
-  html += `<input type="text" class="form-control" id="shippingFromName" name="shippingFromName" required value="${
-    e.parameter.shippingFromName ? e.parameter.shippingFromName : ""
-  }" >`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingFromZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingFromZipcode" name="shippingFromZipcode" required value="${
-    e.parameter.shippingFromZipcode ? e.parameter.shippingFromZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">`;
-  html += `    </div>`;
-  html += `</div>`;
+    <label for="shippingFromName" class="text-left form-label">発送元名</label>
+    <input type="text" class="form-control" id="shippingFromName" name="shippingFromName" required value="${e.parameter.shippingFromName ? e.parameter.shippingFromName : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="shippingFromZipcode" class="col-form-label">郵便番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="shippingFromZipcode" name="shippingFromZipcode" required value="${e.parameter.shippingFromZipcode ? e.parameter.shippingFromZipcode : ""}" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。">
+    </div>
+  </div>`;
   html += `<div>
-                <label for="shippingFromAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="shippingFromAddress" name="shippingFromAddress" required value="${
-    e.parameter.shippingFromAddress ? e.parameter.shippingFromAddress : ""
-  }" >`;
+    <label for="shippingFromAddress" class="text-left form-label">住所</label>
+    <input type="text" class="form-control" id="shippingFromAddress" name="shippingFromAddress" required value="${e.parameter.shippingFromAddress ? e.parameter.shippingFromAddress : ""}" >
+  </div>`;
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="shippingFromTel" class="col-form-label">電話番号</label>
+    </div>
+    <div class="col-auto">
+      <input type="text" class="form-control" id="shippingFromTel" name="shippingFromTel" required value="${e.parameter.shippingFromTel ? e.parameter.shippingFromTel : ""}" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">
+    </div>
+  </div>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingFromTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingFromTel" name="shippingFromTel" required value="${
-    e.parameter.shippingFromTel ? e.parameter.shippingFromTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。">`;
-  html += `    </div>`;
+
+  // ============================================
+  // 受注基本情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-order-basic">
+  <div class="section-header-row">
+    <span class="section-header-label">📝 受注基本情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
+  // 複数日程登録UI
+  let existingDateCount = 0;
+  for (let i = 1; i <= 10; i++) {
+    if (e.parameter['shippingDate' + i]) {
+      existingDateCount = i;
+    } else {
+      break;
+    }
+  }
+  if (existingDateCount === 0) {
+    existingDateCount = 1;
+  }
+  
+  html += `<div class="mb-3">`;
+  html += `  <div class="d-flex align-items-center mb-2">`;
+  html += `    <span class="fw-bold">📅 発送日程</span>`;
+  html += `    <button type="button" class="btn btn-sm btn-outline-primary ms-3" onclick="addShippingDate()">＋ 日程追加</button>`;
+  html += `  </div>`;
+  html += `  <div id="shippingDateContainer">`;
+  
+  for (let i = 1; i <= existingDateCount; i++) {
+    const sd = e.parameter['shippingDate' + i] || (i === 1 ? shippingDate : '');
+    const dd = e.parameter['deliveryDate' + i] || (i === 1 ? deliveryDate : '');
+    const disabledAttr = (existingDateCount === 1) ? 'disabled' : '';
+    
+    html += `    <div class="shipping-date-row d-flex align-items-center gap-2 mb-2" data-row="${i}">`;
+    html += `      <span class="badge bg-secondary">#${i}</span>`;
+    html += `      <label class="col-form-label">発送日</label>`;
+    html += `      <input type="date" class="form-control" style="width:160px;" name="shippingDate${i}" required value="${sd}">`;
+    html += `      <label class="col-form-label">納品日</label>`;
+    html += `      <input type="date" class="form-control" style="width:160px;" name="deliveryDate${i}" required value="${dd}">`;
+    html += `      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)" ${disabledAttr}>✕</button>`;
+    html += `    </div>`;
+  }
+  
+  html += `  </div>`;
   html += `</div>`;
-  html += `<div style="background-color: darkcyan; color: white;">【受注基本情報】</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingDate" class="col-form-label">発送日</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="date" class="form-control" id="shippingDate" name="shippingDate" required value="${shippingDate}" >`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryDate" class="col-form-label">納品日</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="date" class="form-control" id="deliveryDate" name="deliveryDate" required value="${deliveryDate}" >`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div>`;
+
+  // 受付方法
+  html += `<div class="mb-2">`;
   html += `<label for="receiptWay" class="text-left form-label">受付方法</label>`;
   html += `<select class="form-select" id="receiptWay" name="receiptWay" required>`;
   for (const receipt of receipts) {
-    const receiptWay = receipt["受付方法"];
+    const receiptWay = receipt['受付方法'];
     if (receiptWay == e.parameter.receiptWay) {
       html += `<option value="${receiptWay}" selected>${receiptWay}</option>`;
     } else {
@@ -175,11 +458,13 @@ function getshippingHTML(e, alert = "") {
   }
   html += `</select>`;
   html += `</div>`;
-  html += `<div>`;
+
+  // 受付者
+  html += `<div class="mb-2">`;
   html += `<label for="recipient" class="text-left form-label">受付者</label>`;
   html += `<select class="form-select" id="recipient" name="recipient" required>`;
   for (const recipient of recipients) {
-    const recip = recipient["名前"];
+    const recip = recipient['名前'];
     if (recip == e.parameter.recipient) {
       html += `<option value="${recip}" selected>${recip}</option>`;
     } else {
@@ -188,15 +473,17 @@ function getshippingHTML(e, alert = "") {
   }
   html += `</select>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryMethod" class="col-form-label">納品方法</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <select class="form-select" id="deliveryMethod" name="deliveryMethod" required onchange=deliveryMethodChange() >`;
-  html += `         <option value=""></option>`;
+
+  // 納品方法・配達時間帯
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="deliveryMethod" class="col-form-label">納品方法</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <select class="form-select" id="deliveryMethod" name="deliveryMethod" required onchange=deliveryMethodChange() >`;
+  html += `      <option value=""></option>`;
   for (const deliveryMethod of deliveryMethods) {
-    const deliMethod = deliveryMethod["納品方法"];
+    const deliMethod = deliveryMethod['納品方法'];
     if (deliMethod == e.parameter.deliveryMethod) {
       html += `<option value="${deliMethod}" selected>${deliMethod}</option>`;
     } else {
@@ -204,17 +491,17 @@ function getshippingHTML(e, alert = "") {
     }
   }
   html += `    </select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryTime" class="col-form-label">配達時間帯</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <select class="form-select" id="deliveryTime" name="deliveryTime" >`;
-  html += `         <option value=""></option>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="deliveryTime" class="col-form-label">配達時間帯</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <select class="form-select" id="deliveryTime" name="deliveryTime" >`;
+  html += `      <option value=""></option>`;
   for (const deliveryTime of deliveryTimes) {
-    const deliTime = deliveryTime["時間指定"];
-    const deliTimeVal = deliveryTime["時間指定値"];
-    const deliveryMethod = deliveryTime["納品方法"];
+    const deliTime = deliveryTime['時間指定'];
+    const deliTimeVal = deliveryTime['時間指定値'];
+    const deliveryMethod = deliveryTime['納品方法'];
     if (deliTimeVal == e.parameter.deliveryTime) {
       html += `<option value="${deliTimeVal}" data-val="${deliveryMethod}" selected>${deliTime}</option>`;
     } else {
@@ -222,63 +509,46 @@ function getshippingHTML(e, alert = "") {
     }
   }
   html += `    </select>`;
-  html += `    </div>`;
+  html += `  </div>`;
   html += `</div>`;
-  html += `<div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("納品書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="納品書" id="deliveryChk" name="checklist" checked>納品書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="納品書" id="deliveryChk" name="checklist" >納品書`;
+
+  // チェックリスト
+  html += `<div class="checkbox-group">`;
+  const checklistItems = [
+    { id: 'deliveryChk', value: '納品書', label: '納品書' },
+    { id: 'billChk', value: '請求書', label: '請求書' },
+    { id: 'receiptChk', value: '領収書', label: '領収書' },
+    { id: 'pamphletChk', value: 'パンフ', label: 'パンフ' },
+    { id: 'recipeChk', value: 'レシピ', label: 'レシピ' }
+  ];
+  for (const item of checklistItems) {
+    const checked = e.parameters.checklist && e.parameters.checklist.includes(item.value) ? 'checked' : '';
+    html += `<div class="form-check">`;
+    html += `  <input class="form-check-input" type="checkbox" value="${item.value}" id="${item.id}" name="checklist" ${checked}>`;
+    html += `  <label class="form-check-label" for="${item.id}">${item.label}</label>`;
+    html += `</div>`;
   }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("請求書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="請求書" id="billChk" name="checklist" checked>請求書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="請求書" id="billChk" name="checklist" >請求書`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("領収書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="領収書" id="receiptChk"  name="checklist" checked>領収書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="領収書" id="receiptChk" name="checklist" >領収書`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("パンフ")) {
-    html += `       <input class="form-check-input" type="checkbox" value="パンフ" id="pamphletChk" name="checklist" checked>パンフ`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="パンフ" id="pamphletChk" name="checklist" >パンフ`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("レシピ")) {
-    html += `       <input class="form-check-input" type="checkbox" value="レシピ" id="recipeChk" name="checklist" checked>レシピ`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="レシピ" id="recipeChk" name="checklist" >レシピ`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
   html += `</div>`;
-  html += `<div>`;
-  html += `   <label for="otherAttach" class="col-form-label">その他添付</label>`;
-  html += `   <input type="text" class="form-control" id="otherAttach" name="otherAttach" value="${
-    e.parameter.otherAttach ? e.parameter.otherAttach : ""
-  }" >`;
+
+  // その他添付
+  html += `<div class="mb-2">`;
+  html += `  <label for="otherAttach" class="col-form-label">その他添付</label>`;
+  html += `  <input type="text" class="form-control" id="otherAttach" name="otherAttach" value="${e.parameter.otherAttach ? e.parameter.otherAttach : ""}" >`;
   html += `</div>`;
-  html += `<div style="background-color: forestgreen; color: white;" class="mt-3">【商品情報】</div>`;
+  html += `</div>`; // section-body閉じ
+
+  // ============================================
+  // 商品情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-products">
+  <div class="section-header-row">
+    <span class="section-header-label">🛒 商品情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
   html += `
     <table class="table text-center">
       <thead>
@@ -292,7 +562,7 @@ function getshippingHTML(e, alert = "") {
       <tbody>
   `;
 
-  const categorys = getAllRecords("商品分類");
+  const categorys = getAllRecords('商品分類');
   var rowNum = 0;
   for (let i = 0; i < 10; i++) {
     rowNum++;
@@ -302,10 +572,10 @@ function getshippingHTML(e, alert = "") {
     html += `<select class="form-select" id="${bunrui}" name="${bunrui}" onchange=bunruiChange(${rowNum}) >`;
     html += `<option value=""></option>`;
     for (const category of categorys) {
-      if (e.parameter[bunrui] == category["商品分類"]) {
-        html += `<option value="${category["商品分類"]}" selected>${category["商品分類"]}</option>`;
+      if (e.parameter[bunrui] == category['商品分類']) {
+        html += `<option value="${category['商品分類']}" selected>${category['商品分類']}</option>`;
       } else {
-        html += `<option value="${category["商品分類"]}" >${category["商品分類"]}</option>`;
+        html += `<option value="${category['商品分類']}" >${category['商品分類']}</option>`;
       }
     }
     html += `</select>`;
@@ -315,13 +585,13 @@ function getshippingHTML(e, alert = "") {
     html += `<select class="form-select" id="${product}" name="${product}" onchange=productChange(${rowNum}) >`;
     html += `<option value="" data-val="" data-zaiko=""></option>`;
     for (const item of items) {
-      if (item["在庫数"] > 0) {
-        if (e.parameter[product] == item["商品名"]) {
-          html += `<option value="${item["商品名"]}" data-val="${item["商品分類"]}" data-name="${item["商品名"]}" data-zaiko="${item["在庫数"]}" 
-          data-price="${item["価格（P)"]}" selected>${item["商品名"]}</option>`;
+      if (item['在庫数'] > 0) {
+        if (e.parameter[product] == item['商品名']) {
+          html += `<option value="${item['商品名']}" data-val="${item['商品分類']}" data-name="${item['商品名']}" data-abbreviation="${item['送り状品名']}" data-zaiko="${item['在庫数']}" 
+          data-price="${item['価格（P)']}" selected>${item['商品名']}</option>`;
         } else {
-          html += `<option value="${item["商品名"]}" data-val="${item["商品分類"]}" data-name="${item["商品名"]}" data-zaiko="${item["在庫数"]}"
-          data-price="${item["価格（P)"]}" >${item["商品名"]}</option>`;
+          html += `<option value="${item['商品名']}" data-val="${item['商品分類']}" data-name="${item['商品名']}" data-abbreviation="${item['送り状品名']}" data-zaiko="${item['在庫数']}"
+          data-price="${item['価格（P)']}" >${item['商品名']}</option>`;
         }
       }
     }
@@ -329,585 +599,885 @@ function getshippingHTML(e, alert = "") {
     html += `</td>`;
     var price = "price" + rowNum;
     html += `<td>`;
-    html += `<input type="number" class="form-control no-spin" id="${price}" name="${price}" min='0'  value="${
-      e.parameter[price] ? e.parameter[price] : ""
-    }" >`;
+    html += `<input type="number" class="form-control no-spin" id="${price}" name="${price}" min='0'  value="${e.parameter[price] ? e.parameter[price] : ""}" >`;
     html += `</td>`;
     var quantity = "quantity" + rowNum;
     html += `<td>`;
-    html += `<input type="number" class="form-control no-spin" id="${quantity}" name="${quantity}" min='0' max='999' step="0.1" title="整数部3桁小数部1桁の数字のみを入力してください。" value="${
-      e.parameter[quantity] ? e.parameter[quantity] : ""
-    }" >`;
-    // html += `<select class="form-select" id="${quantity}" name="${quantity}" style="min-width: 65px;">`;
-    // for (let i = 0; i <= 100; i++) {
-    //   if (i == Number(e.parameter[quantity])) {
-    //     html += `<option value="${i}" selected>${i}</option>`;
-    //   } else {
-    //     html += `<option value="${i}">${i}</option>`;
-    //   }
-    // }
-    // html += `</select>`;
+    html += `<input type="number" class="form-control no-spin" id="${quantity}" name="${quantity}" min='0' max='999' step="0.1" title="整数部3桁小数部1桁の数字のみを入力してください。" value="${e.parameter[quantity] ? e.parameter[quantity] : ""}" >`;
     html += `</td>`;
     html += `</tr>`;
   }
   html += `</tbody>`;
   html += `</table>`;
-  html += `<div style="background-color: blue; color: white;">【発送情報】</div>`;
-  html += `<div>
-                <label for="sendProduct" class="text-left form-label">品名</label>`;
-  html += `       <input type="text" class="form-control" id="sendProduct" name="sendProduct" value="${
-    e.parameter.sendProduct ? e.parameter.sendProduct : ""
-  }">`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="invoiceType" class="col-form-label">送り状種別</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
+  html += `</div>`; // section-body閉じ
+
+  // ============================================
+  // 発送情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-shipping-info">
+  <div class="section-header-row">
+    <span class="section-header-label">🚚 発送情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
+  html += `<div class="mb-2">
+    <label for="sendProduct" class="text-left form-label">品名</label>
+    <input type="text" class="form-control" id="sendProduct" name="sendProduct" value="${e.parameter.sendProduct ? e.parameter.sendProduct : ""}">
+  </div>`;
+
+  // 送り状種別・クール区分
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="invoiceType" class="col-form-label">送り状種別</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
   html += `<select class="form-select" id="invoiceType" name="invoiceType" >`;
   html += `<option value=""></option>`;
   for (const invoiceType of invoiceTypes) {
-    if (e.parameter.invoiceType == invoiceType["種別値"]) {
-      html += `<option value="${invoiceType["種別値"]}" data-val="${invoiceType["納品方法"]}" selected>${invoiceType["種別"]}</option>`;
+    if (e.parameter.invoiceType == invoiceType['種別値']) {
+      html += `<option value="${invoiceType['種別値']}" data-val="${invoiceType['納品方法']}" selected>${invoiceType['種別']}</option>`;
     } else {
-      html += `<option value="${invoiceType["種別値"]}" data-val="${invoiceType["納品方法"]}" >${invoiceType["種別"]}</option>`;
+      html += `<option value="${invoiceType['種別値']}" data-val="${invoiceType['納品方法']}" >${invoiceType['種別']}</option>`;
     }
   }
   html += `</select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="coolCls" class="col-form-label">クール区分</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="coolCls" class="col-form-label">クール区分</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
   html += `<select class="form-select" id="coolCls" name="coolCls" >`;
   html += `<option value=""></option>`;
   for (const coolCls of coolClss) {
-    if (e.parameter.coolCls == coolCls["種別値"]) {
-      html += `<option value="${coolCls["種別値"]}" data-val="${coolCls["納品方法"]}" selected>${coolCls["種別"]}</option>`;
+    if (e.parameter.coolCls == coolCls['種別値']) {
+      html += `<option value="${coolCls['種別値']}" data-val="${coolCls['納品方法']}" selected>${coolCls['種別']}</option>`;
     } else {
-      html += `<option value="${coolCls["種別値"]}" data-val="${coolCls["納品方法"]}" >${coolCls["種別"]}</option>`;
+      html += `<option value="${coolCls['種別値']}" data-val="${coolCls['納品方法']}" >${coolCls['種別']}</option>`;
     }
   }
   html += `</select>`;
-  html += `    </div>`;
+  html += `  </div>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cargo1" class="col-form-label">荷扱い１</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
+
+  // 荷扱い１・２
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="cargo1" class="col-form-label">荷扱い１</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
   html += `<select class="form-select" id="cargo1" name="cargo1" >`;
   html += `<option value=""></option>`;
   for (const cargo of cargos) {
-    if (e.parameter.cargo1 == cargo["種別値"]) {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" selected>${cargo["種別"]}</option>`;
+    if (e.parameter.cargo1 == cargo['種別値']) {
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" selected>${cargo['種別']}</option>`;
     } else {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" >${cargo["種別"]}</option>`;
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" >${cargo['種別']}</option>`;
     }
   }
   html += `</select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cargo2" class="col-form-label">荷扱い２</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="cargo2" class="col-form-label">荷扱い２</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
   html += `<select class="form-select" id="cargo2" name="cargo2" >`;
   html += `<option value=""></option>`;
   for (const cargo of cargos) {
-    if (e.parameter.cargo2 == cargo["種別値"]) {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" selected>${cargo["種別"]}</option>`;
+    if (e.parameter.cargo2 == cargo['種別値']) {
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" selected>${cargo['種別']}</option>`;
     } else {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" >${cargo["種別"]}</option>`;
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" >${cargo['種別']}</option>`;
     }
   }
   html += `</select>`;
-  html += `    </div>`;
+  html += `  </div>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cashOnDelivery" class="col-form-label">代引総額</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="cashOnDelivery" name="cashOnDelivery" min='0'  value="${
-    e.parameter.cashOnDelivery ? e.parameter.cashOnDelivery : ""
-  }">`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cashOnDeliTax" class="col-form-label">代引内税</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="cashOnDeliTax" name="cashOnDeliTax" min='0'  value="${
-    e.parameter.cashOnDeliTax ? e.parameter.cashOnDeliTax : ""
-  }">`;
-  html += `    </div>`;
+
+  // 代引総額・代引内税
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="cashOnDelivery" class="col-form-label">代引総額</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <input type="number" class="form-control" id="cashOnDelivery" name="cashOnDelivery" min='0'  value="${e.parameter.cashOnDelivery ? e.parameter.cashOnDelivery : ""}">`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="cashOnDeliTax" class="col-form-label">代引内税</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <input type="number" class="form-control" id="cashOnDeliTax" name="cashOnDeliTax" min='0'  value="${e.parameter.cashOnDeliTax ? e.parameter.cashOnDeliTax : ""}">`;
+  html += `  </div>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="copiePrint" class="col-form-label">発行枚数</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="copiePrint" name="copiePrint" min='0'  value="${
-    e.parameter.copiePrint ? e.parameter.copiePrint : ""
-  }">`;
-  html += `    </div>`;
+
+  // 発行枚数
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="copiePrint" class="col-form-label">発行枚数</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <input type="number" class="form-control" id="copiePrint" name="copiePrint" min='0'  value="${e.parameter.copiePrint ? e.parameter.copiePrint : ""}">`;
+  html += `  </div>`;
   html += `</div>`;
+
+  // 備考欄
   html += `<div class="mb-3">`;
   html += `<label for="csvmemo" class="text-left form-label">送り状　備考欄</label>`;
-  html += `<textarea class="form-control" id="csvmemo" name="csvmemo" rows="2" cols="30" maxlength="22">${
-    e.parameter.csvmemo ? e.parameter.csvmemo : ""
-  }</textarea>`;
+  html += `<textarea class="form-control" id="csvmemo" name="csvmemo" rows="2" cols="30" maxlength="22">${e.parameter.csvmemo ? e.parameter.csvmemo : ""}</textarea>`;
   html += `</div>`;
   html += `<div class="mb-3">`;
   html += `<label for="deliveryMemo" class="text-left form-label">納品書　備考欄</label>`;
-  html += `<textarea class="form-control" id="deliveryMemo" name="deliveryMemo" rows="3" cols="30" maxlength="90">${
-    e.parameter.deliveryMemo ? e.parameter.deliveryMemo : ""
-  }</textarea>`;
+  html += `<textarea class="form-control" id="deliveryMemo" name="deliveryMemo" rows="3" cols="30" maxlength="90">${e.parameter.deliveryMemo ? e.parameter.deliveryMemo : ""}</textarea>`;
+  html += `</div>`;
   html += `<div class="mb-3">`;
   html += `<label for="memo" class="text-left form-label">メモ</label>`;
-  html += `<textarea class="form-control" id="memo" name="memo" rows="3" cols="30">${
-    e.parameter.memo ? e.parameter.memo : ""
-  }</textarea>`;
+  html += `<textarea class="form-control" id="memo" name="memo" rows="3" cols="30">${e.parameter.memo ? e.parameter.memo : ""}</textarea>`;
   html += `</div>`;
-  html += `</div>`;
+  html += `</div>`; // section-body閉じ
+
+  // 編集モードの場合のみhiddenフィールドを追加
+  if (editOrderId && !isInheritMode) {
+    html += `<input type="hidden" name="editOrderId" value="${editOrderId}">`;
+    html += `<input type="hidden" name="editMode" value="true">`;
+  }
+  
   return html;
 }
+
 // 受注確認画面
 function getShippingComfirmHTML(e) {
-  const items = getAllRecords("商品");
-  const recipients = getAllRecords("担当者");
-  const deliveryMethods = getAllRecords("納品方法");
-  const receipts = getAllRecords("受付方法");
-  const deliveryTimes = getAllRecords("配送時間帯");
-  const invoiceTypes = getAllRecords("送り状種別");
-  const coolClss = getAllRecords("クール区分");
-  const cargos = getAllRecords("荷扱い");
-  const customers = getAllRecords("顧客情報");
+  const master = getMasterDataCached();
+  const recipients = master.recipients;
+  const deliveryMethods = master.deliveryMethods;
+  const receipts = master.receipts;
+  const deliveryTimes = master.deliveryTimes;
+  const invoiceTypes = master.invoiceTypes;
+  const coolClss = master.coolClss;
+  const cargos = master.cargos;
+  
   var nDate = new Date();
-  var strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
+  var strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
   const orderDate = e.parameter.orderDate ? e.parameter.orderDate : strDate;
   var n = 2;
   nDate.setDate(nDate.getDate() + n);
-  strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
-  const shippingDate = e.parameter.shippingDate
-    ? e.parameter.shippingDate
-    : strDate;
+  strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
+  const shippingDate = e.parameter.shippingDate ? e.parameter.shippingDate : strDate;
   nDate.setDate(nDate.getDate() + 1);
-  strDate = Utilities.formatDate(nDate, "JST", "yyyy-MM-dd");
-  const deliveryDate = e.parameter.deliveryDate
-    ? e.parameter.deliveryDate
-    : strDate;
-  let html = ``;
-  html += `<div style="background-color: magenta; color: white;">【顧客情報】</div>`;
-  html += `<div>
-                <label for="customerName" class="text-left form-label">顧客名</label>`;
-  html += `<input type="text" class="form-control" id="customerName" name="customerName" required value="${
-    e.parameter.customerName ? e.parameter.customerName : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="customerZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="customerZipcode" name="customerZipcode" required value="${
-    e.parameter.customerZipcode ? e.parameter.customerZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。" readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div>
-                <label for="customerAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="customerAddress" name="customerAddress" required value="${
-    e.parameter.customerAddress ? e.parameter.customerAddress : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="customerTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="customerTel" name="customerTel" required value="${
-    e.parameter.customerTel ? e.parameter.customerTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。"readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div style="background-color: darkgoldenrod; color: white;">【発送先情報】</div>`;
-  html += `<div>
-                <label for="shippingToName" class="text-left form-label">発送先名</label>`;
-  html += `<input type="text" class="form-control" id="shippingToName" name="shippingToName" required value="${
-    e.parameter.shippingToName ? e.parameter.shippingToName : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingToZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingToZipcode" name="shippingToZipcode" required value="${
-    e.parameter.shippingToZipcode ? e.parameter.shippingToZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。"readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div>
-                <label for="shippingToAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="shippingToAddress" name="shippingToAddress" required value="${
-    e.parameter.shippingToAddress ? e.parameter.shippingToAddress : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingToTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingToTel" name="shippingToTel" required value="${
-    e.parameter.shippingToTel ? e.parameter.shippingToTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。"readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div style="background-color: brown; color: white;">【発送元情報】</div>`;
-  html += `<div>
-                <label for="shippingFromName" class="text-left form-label">発送元名</label>`;
-  html += `<input type="text" class="form-control" id="shippingFromName" name="shippingFromName" required value="${
-    e.parameter.shippingFromName ? e.parameter.shippingFromName : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingFromZipcode" class="col-form-label">郵便番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingFromZipcode" name="shippingFromZipcode" required value="${
-    e.parameter.shippingFromZipcode ? e.parameter.shippingFromZipcode : ""
-  }" maxlength=7 pattern="[0-9]{7}" title="7桁の数字のみを入力してください。"readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div>
-                <label for="shippingFromAddress" class="text-left form-label">住所</label>`;
-  html += `<input type="text" class="form-control" id="shippingFromAddress" name="shippingFromAddress" required value="${
-    e.parameter.shippingFromAddress ? e.parameter.shippingFromAddress : ""
-  }" readonly>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingFromTel" class="col-form-label">電話番号</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <input type="text" class="form-control" id="shippingFromTel" name="shippingFromTel" required value="${
-    e.parameter.shippingFromTel ? e.parameter.shippingFromTel : ""
-  }" maxlength=11 pattern="^0[0-9]{9,10}$" title="10~11桁の数字のみを入力してください。"readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div style="background-color: darkcyan; color: white;">【受注基本情報】</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="shippingDate" class="col-form-label">発送日</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="date" class="form-control" id="shippingDate" name="shippingDate" required value="${shippingDate}" readonly>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryDate" class="col-form-label">納品日</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="date" class="form-control" id="deliveryDate" name="deliveryDate" required value="${deliveryDate}" readonly>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div>`;
-  html += `<label for="receiptWay" class="text-left form-label">受付方法</label>`;
-  html += `<select class="form-select" id="receiptWay" name="receiptWay" required >`;
-  for (const receipt of receipts) {
-    const receiptWay = receipt["受付方法"];
-    if (receiptWay == e.parameter.receiptWay) {
-      html += `<option value="${receiptWay}" selected>${receiptWay}</option>`;
-    } else {
-      html += `<option value="${receiptWay}" disabled>${receiptWay}</option>`;
-    }
+  strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
+  const deliveryDate = e.parameter.deliveryDate ? e.parameter.deliveryDate : strDate;
+
+  // ============================================
+  // CSS スタイル（確認画面用）
+  // ============================================
+  let html = `
+<style>
+/* セクションヘッダー共通スタイル */
+.section-header {
+  color: white;
+  padding: 8px 12px;
+  margin-top: 16px;
+  border-radius: 6px 6px 0 0;
+}
+.section-header:first-of-type {
+  margin-top: 0;
+}
+.section-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.section-header-label {
+  font-weight: bold;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* セクション本体 */
+.section-body {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+/* 各セクションのカラー */
+.section-shipping-to {
+  background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+}
+.section-customer {
+  background: linear-gradient(135deg, #c71585 0%, #db7093 100%);
+}
+.section-shipping-from {
+  background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+}
+.section-order-basic {
+  background: linear-gradient(135deg, #008b8b 0%, #20b2aa 100%);
+}
+.section-products {
+  background: linear-gradient(135deg, #228b22 0%, #32cd32 100%);
+}
+.section-shipping-info {
+  background: linear-gradient(135deg, #1e3a5f 0%, #4169e1 100%);
+}
+
+/* 確認画面用：読み取り専用フィールド */
+.confirm-field {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.confirm-field-label {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 2px;
+}
+.confirm-field-value {
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 確認画面用：インライン表示 */
+.confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.confirm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.confirm-item-label {
+  font-size: 0.85rem;
+  color: #666;
+}
+.confirm-item-value {
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+/* チェックリストバッジ */
+.checklist-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.checklist-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.checklist-badge.checked {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+.checklist-badge.unchecked {
+  background: #f8f9fa;
+  color: #999;
+  border: 1px solid #ddd;
+  text-decoration: line-through;
+}
+
+/* 日程カード */
+.date-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.date-card .badge {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
+.date-card .dates {
+  display: flex;
+  gap: 20px;
+}
+.date-card .date-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-card .date-label {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+.date-card .date-value {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* 商品テーブル（PC） */
+.product-table-pc { display: none; }
+.product-cards-sp { display: block; }
+
+@media (min-width: 768px) {
+  .product-table-pc { display: block; }
+  .product-cards-sp { display: none; }
+}
+
+/* 商品カード（スマホ） */
+.product-card {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.product-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.product-card-header .category {
+  background: #6c757d;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+.product-card-header .product-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.product-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.product-card-calc {
+  color: #666;
+  font-size: 0.9rem;
+}
+.product-card-total {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #28a745;
+}
+
+/* 合計セクション */
+.total-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+.total-section .label {
+  font-size: 1rem;
+}
+.total-section .amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  .section-header {
+    padding: 6px 8px;
   }
-  html += `</select>`;
-  html += `</div>`;
-  html += `<div>`;
-  html += `<label for="recipient" class="text-left form-label">受付者</label>`;
-  html += `<select class="form-select" id="recipient" name="recipient" required >`;
-  for (const recipient of recipients) {
-    const recip = recipient["名前"];
-    if (recip == e.parameter.recipient) {
-      html += `<option value="${recip}" selected>${recip}</option>`;
-    } else {
-      html += `<option value="${recip}" disabled>${recip}</option>`;
-    }
+  .section-header-label {
+    font-size: 0.9rem;
   }
-  html += `</select>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryMethod" class="col-form-label">納品方法</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <select class="form-select" id="deliveryMethod" name="deliveryMethod" required >`;
-  for (const deliveryMethod of deliveryMethods) {
-    const deliMethod = deliveryMethod["納品方法"];
-    if (deliMethod == e.parameter.deliveryMethod) {
-      html += `<option value="${deliMethod}" selected>${deliMethod}</option>`;
-    } else {
-      html += `<option value="${deliMethod}" disabled>${deliMethod}</option>`;
-    }
+  .section-body {
+    padding: 10px;
   }
-  html += `    </select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="deliveryTime" class="col-form-label">配達時間帯</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <select class="form-select" id="deliveryTime" name="deliveryTime" >`;
-  html += `         <option value=""></option>`;
-  for (const deliveryTime of deliveryTimes) {
-    const deliTime = deliveryTime["時間指定"];
-    const deliTimeVal = deliveryTime["時間指定値"];
-    const deliveryMethod = deliveryTime["納品方法"];
-    if (deliTimeVal == e.parameter.deliveryTime) {
-      html += `<option value="${deliTimeVal}" data-val="${deliveryMethod}" selected>${deliTime}</option>`;
-    } else {
-      html += `<option value="${deliTimeVal}" data-val="${deliveryMethod}" disabled>${deliTime}</option>`;
-    }
+  .confirm-row {
+    flex-direction: column;
+    gap: 8px;
   }
-  html += `    </select>`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("納品書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="納品書" name="checklist" checked onclick="return false;">納品書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="納品書" name="checklist" onclick="return false;">納品書`;
+  .date-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("請求書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="請求書" name="checklist" checked onclick="return false;">請求書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="請求書" name="checklist" onclick="return false;">請求書`;
+  .date-card .dates {
+    flex-direction: column;
+    gap: 4px;
   }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("領収書")) {
-    html += `       <input class="form-check-input" type="checkbox" value="領収書" name="checklist" checked onclick="return false;">領収書`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="領収書" name="checklist" onclick="return false;">領収書`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("パンフ")) {
-    html += `       <input class="form-check-input" type="checkbox" value="パンフ" name="checklist" checked onclick="return false;">パンフ`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="パンフ" name="checklist" onclick="return false;">パンフ`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `   <div class="col-auto">`;
-  html += `     <div class="form-check">`;
-  if (e.parameters.checklist && e.parameters.checklist.includes("レシピ")) {
-    html += `       <input class="form-check-input" type="checkbox" value="レシピ" name="checklist" checked onclick="return false;">レシピ`;
-  } else {
-    html += `       <input class="form-check-input" type="checkbox" value="レシピ" name="checklist" onclick="return false;">レシピ`;
-  }
-  html += `     </div>`;
-  html += `   </div>`;
-  html += `</div>`;
-  html += `<div>`;
-  html += `   <label for="otherAttach" class="col-form-label">その他添付</label>`;
-  html += `   <input type="text" class="form-control" id="otherAttach" name="otherAttach" value="${
-    e.parameter.otherAttach ? e.parameter.otherAttach : ""
-  }" readonly >`;
-  html += `</div>`;
+}
+</style>
+`;
+
+  // ============================================
+  // 発送先情報セクション
+  // ============================================
   html += `
-    <p class="m-3 fw-bold">以下の内容で受注していいですか？</p>
+<div class="section-header section-shipping-to">
+  <div class="section-header-row">
+    <span class="section-header-label">📦 発送先情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">発送先名</div>
+    <div class="confirm-field-value">${e.parameter.shippingToName || '-'}</div>
+  </div>`;
+  html += `<div class="confirm-row">
+    <div class="confirm-item">
+      <span class="confirm-item-label">〒</span>
+      <span class="confirm-item-value">${e.parameter.shippingToZipcode || '-'}</span>
+    </div>
+    <div class="confirm-item">
+      <span class="confirm-item-label">TEL</span>
+      <span class="confirm-item-value">${e.parameter.shippingToTel || '-'}</span>
+    </div>
+  </div>`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">住所</div>
+    <div class="confirm-field-value">${e.parameter.shippingToAddress || '-'}</div>
+  </div>`;
+  // Hidden inputs
+  html += `<input type="hidden" name="shippingToName" value="${e.parameter.shippingToName || ''}">`;
+  html += `<input type="hidden" name="shippingToZipcode" value="${e.parameter.shippingToZipcode || ''}">`;
+  html += `<input type="hidden" name="shippingToAddress" value="${e.parameter.shippingToAddress || ''}">`;
+  html += `<input type="hidden" name="shippingToTel" value="${e.parameter.shippingToTel || ''}">`;
+  html += `</div>`;
 
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col" class="text-start">商品分類</th>
-          <th scope="col" class="text-end">商品名</th>
-          <th scope="col" class="text-end">価格</th>
-          <th scope="col" class="text-end">個数</th>
-          <th scope="col" class="text-end">金額</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-  let total = 0;
-  var rowNum = 0;
-  for (let i = 0; i < 10; i++) {
-    rowNum++;
-    var bunrui = "bunrui" + rowNum;
-    var product = "product" + rowNum;
-    var price = "price" + rowNum;
-    var quantity = "quantity" + rowNum;
-    const bunruiVal = e.parameter[bunrui];
-    const productVal = e.parameter[product];
-    const count = Number(e.parameter[quantity]);
-    const unitPrice = Number(e.parameter[price]);
-    if (count > 0) {
-      const addPrice = unitPrice * count;
-      total += addPrice;
-      html += `<tr>`;
-      html += `<td class="text-start">`;
-      html += `<div class="d-flex justify-content-start">`;
-      html += `<input type="text" style="max-width: 100px; min-width: 60px;" class="form-control text-start" id="${bunrui}" name="${bunrui}"  value="${bunruiVal}" readonly>`;
-      html += `</div>`;
-      html += `</td>`;
-      html += `<td class="text-end">`;
-      html += `<div class="d-flex justify-content-end">`;
-      html += `<input type="text" style="max-width: 100px; min-width: 60px;" class="form-control text-end" id="${product}" name="${product}"  value="${productVal}" readonly>`;
-      html += `</div>`;
-      html += `</td>`;
-      html += `<td class="text-end">`;
-      html += `<div class="d-flex justify-content-end">`;
-      html += `<input type="number" style="max-width: 100px; min-width: 60px;" class="form-control text-end" id="${price}" name="${price}"  value="${unitPrice}" readonly>`;
-      html += `</div>`;
-      html += `</td>`;
-      html += `<td class="text-end">`;
-      html += `<div class="d-flex justify-content-end">`;
-      html += `<input type="number" style="max-width: 100px; min-width: 60px;" class="form-control text-end" id="${quantity}" name="${quantity}"  value="${count}" readonly>`;
-      html += `</div>`;
-      html += `</td>`;
-      html += `<td class="text-end">¥${addPrice.toLocaleString()}</td>`;
-      html += `</tr>`;
+  // ============================================
+  // 顧客情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-customer">
+  <div class="section-header-row">
+    <span class="section-header-label">👤 顧客情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">顧客名</div>
+    <div class="confirm-field-value">${e.parameter.customerName || '-'}</div>
+  </div>`;
+  html += `<div class="confirm-row">
+    <div class="confirm-item">
+      <span class="confirm-item-label">〒</span>
+      <span class="confirm-item-value">${e.parameter.customerZipcode || '-'}</span>
+    </div>
+    <div class="confirm-item">
+      <span class="confirm-item-label">TEL</span>
+      <span class="confirm-item-value">${e.parameter.customerTel || '-'}</span>
+    </div>
+  </div>`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">住所</div>
+    <div class="confirm-field-value">${e.parameter.customerAddress || '-'}</div>
+  </div>`;
+  // Hidden inputs
+  html += `<input type="hidden" name="customerName" value="${e.parameter.customerName || ''}">`;
+  html += `<input type="hidden" name="customerZipcode" value="${e.parameter.customerZipcode || ''}">`;
+  html += `<input type="hidden" name="customerAddress" value="${e.parameter.customerAddress || ''}">`;
+  html += `<input type="hidden" name="customerTel" value="${e.parameter.customerTel || ''}">`;
+  html += `</div>`;
+
+  // ============================================
+  // 発送元情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-shipping-from">
+  <div class="section-header-row">
+    <span class="section-header-label">🏭 発送元情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">発送元名</div>
+    <div class="confirm-field-value">${e.parameter.shippingFromName || '-'}</div>
+  </div>`;
+  html += `<div class="confirm-row">
+    <div class="confirm-item">
+      <span class="confirm-item-label">〒</span>
+      <span class="confirm-item-value">${e.parameter.shippingFromZipcode || '-'}</span>
+    </div>
+    <div class="confirm-item">
+      <span class="confirm-item-label">TEL</span>
+      <span class="confirm-item-value">${e.parameter.shippingFromTel || '-'}</span>
+    </div>
+  </div>`;
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">住所</div>
+    <div class="confirm-field-value">${e.parameter.shippingFromAddress || '-'}</div>
+  </div>`;
+  // Hidden inputs
+  html += `<input type="hidden" name="shippingFromName" value="${e.parameter.shippingFromName || ''}">`;
+  html += `<input type="hidden" name="shippingFromZipcode" value="${e.parameter.shippingFromZipcode || ''}">`;
+  html += `<input type="hidden" name="shippingFromAddress" value="${e.parameter.shippingFromAddress || ''}">`;
+  html += `<input type="hidden" name="shippingFromTel" value="${e.parameter.shippingFromTel || ''}">`;
+  html += `</div>`;
+
+  // ============================================
+  // 受注基本情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-order-basic">
+  <div class="section-header-row">
+    <span class="section-header-label">📝 受注基本情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
+  // 日程数をカウント
+  let dateCount = 0;
+  for (let i = 1; i <= 10; i++) {
+    if (e.parameter['shippingDate' + i]) {
+      dateCount = i;
+    } else {
+      break;
     }
   }
+  
+  // 日程カード表示
+  html += `<div class="mb-3">`;
+  html += `<div class="fw-bold mb-2">📅 発送日程（${dateCount}件）</div>`;
+  
+  for (let i = 1; i <= dateCount; i++) {
+    const sd = e.parameter['shippingDate' + i] || '';
+    const dd = e.parameter['deliveryDate' + i] || '';
+    html += `<div class="date-card">`;
+    html += `  <span class="badge">#${i}</span>`;
+    html += `  <div class="dates">`;
+    html += `    <div class="date-item">`;
+    html += `      <span class="date-label">発送日</span>`;
+    html += `      <span class="date-value">${sd}</span>`;
+    html += `    </div>`;
+    html += `    <div class="date-item">`;
+    html += `      <span class="date-label">→ 納品日</span>`;
+    html += `      <span class="date-value">${dd}</span>`;
+    html += `    </div>`;
+    html += `  </div>`;
+    html += `</div>`;
+    html += `<input type="hidden" name="shippingDate${i}" value="${sd}">`;
+    html += `<input type="hidden" name="deliveryDate${i}" value="${dd}">`;
+  }
+  html += `</div>`;
 
+  // 受付方法・受付者
+  html += `<div class="confirm-row">`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">受付方法</span>`;
+  html += `    <span class="confirm-item-value">${e.parameter.receiptWay || '-'}</span>`;
+  html += `  </div>`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">受付者</span>`;
+  html += `    <span class="confirm-item-value">${e.parameter.recipient || '-'}</span>`;
+  html += `  </div>`;
+  html += `</div>`;
+  html += `<input type="hidden" name="receiptWay" value="${e.parameter.receiptWay || ''}">`;
+  html += `<input type="hidden" name="recipient" value="${e.parameter.recipient || ''}">`;
+
+  // 納品方法・配達時間帯
+  // 配達時間帯の表示名を取得
+  let deliveryTimeDisplay = '-';
+  for (const dt of deliveryTimes) {
+    if (dt['時間指定値'] == e.parameter.deliveryTime) {
+      deliveryTimeDisplay = dt['時間指定'];
+      break;
+    }
+  }
+  html += `<div class="confirm-row">`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">納品方法</span>`;
+  html += `    <span class="confirm-item-value">${e.parameter.deliveryMethod || '-'}</span>`;
+  html += `  </div>`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">配達時間帯</span>`;
+  html += `    <span class="confirm-item-value">${deliveryTimeDisplay}</span>`;
+  html += `  </div>`;
+  html += `</div>`;
+  html += `<input type="hidden" name="deliveryMethod" value="${e.parameter.deliveryMethod || ''}">`;
+  html += `<input type="hidden" name="deliveryTime" value="${e.parameter.deliveryTime || ''}">`;
+
+  // チェックリストバッジ
+  const checklistItems = ['納品書', '請求書', '領収書', 'パンフ', 'レシピ'];
+  html += `<div class="checklist-badges">`;
+  for (const item of checklistItems) {
+    const isChecked = e.parameters.checklist && e.parameters.checklist.includes(item);
+    const badgeClass = isChecked ? 'checked' : 'unchecked';
+    const icon = isChecked ? '✓' : '';
+    html += `<span class="checklist-badge ${badgeClass}">${icon} ${item}</span>`;
+    if (isChecked) {
+      html += `<input type="hidden" name="checklist" value="${item}">`;
+    }
+  }
+  html += `</div>`;
+
+  // その他添付
+  if (e.parameter.otherAttach) {
+    html += `<div class="confirm-row">`;
+    html += `  <div class="confirm-item">`;
+    html += `    <span class="confirm-item-label">その他添付</span>`;
+    html += `    <span class="confirm-item-value">${e.parameter.otherAttach}</span>`;
+    html += `  </div>`;
+    html += `</div>`;
+  }
+  html += `<input type="hidden" name="otherAttach" value="${e.parameter.otherAttach || ''}">`;
+  html += `</div>`; // section-body閉じ
+
+  // ============================================
+  // 商品情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-products">
+  <div class="section-header-row">
+    <span class="section-header-label">🛒 商品情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
+  html += `<p class="fw-bold text-center mb-3">以下の内容で受注していいですか？</p>`;
+
+  // 商品データを収集
+  let total = 0;
+  const products = [];
+  
+  for (let i = 1; i <= 10; i++) {
+    const bunruiVal = e.parameter['bunrui' + i];
+    const productVal = e.parameter['product' + i];
+    const count = Number(e.parameter['quantity' + i]);
+    const unitPrice = Number(e.parameter['price' + i]);
+    
+    if (count > 0) {
+      const subtotal = unitPrice * count;
+      total += subtotal;
+      products.push({
+        row: i,
+        bunrui: bunruiVal,
+        product: productVal,
+        price: unitPrice,
+        quantity: count,
+        subtotal: subtotal
+      });
+    }
+  }
+  
+  // Hidden inputs（パラメータ保持用）
+  products.forEach(p => {
+    html += `<input type="hidden" name="bunrui${p.row}" value="${p.bunrui}">`;
+    html += `<input type="hidden" name="product${p.row}" value="${p.product}">`;
+    html += `<input type="hidden" name="price${p.row}" value="${p.price}">`;
+    html += `<input type="hidden" name="quantity${p.row}" value="${p.quantity}">`;
+  });
+  
+  // PC用テーブル表示
+  html += `<div class="product-table-pc">`;
+  html += `<table class="table table-striped">`;
+  html += `<thead class="table-dark">`;
   html += `<tr>`;
-  html += `<td class="text-end fs-2" colspan="3">合計:</td>`;
-  html += `<td class="text-end fs-2" colspan="2">¥${total.toLocaleString()}</td>`;
+  html += `<th class="text-start">分類</th>`;
+  html += `<th class="text-start">商品名</th>`;
+  html += `<th class="text-end">単価</th>`;
+  html += `<th class="text-end">数量</th>`;
+  html += `<th class="text-end">金額</th>`;
   html += `</tr>`;
+  html += `</thead>`;
+  html += `<tbody>`;
+  
+  products.forEach(p => {
+    html += `<tr>`;
+    html += `<td class="text-start">${p.bunrui}</td>`;
+    html += `<td class="text-start">${p.product}</td>`;
+    html += `<td class="text-end">¥${p.price.toLocaleString()}</td>`;
+    html += `<td class="text-end">${p.quantity}</td>`;
+    html += `<td class="text-end fw-bold">¥${p.subtotal.toLocaleString()}</td>`;
+    html += `</tr>`;
+  });
+  
   html += `</tbody>`;
   html += `</table>`;
-  html += `<div style="background-color: blue; color: white;">【発送情報】</div>`;
-  html += `<div>
-                <label for="sendProduct" class="text-left form-label">品名</label>`;
-  html += `       <input type="text" class="form-control" id="sendProduct" name="sendProduct" value="${
-    e.parameter.sendProduct ? e.parameter.sendProduct : ""
-  }" readonly >`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="invoiceType" class="col-form-label">送り状種別</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `<select class="form-select" id="invoiceType" name="invoiceType" >`;
-  html += `<option value=""></option>`;
-  for (const invoiceType of invoiceTypes) {
-    if (e.parameter.invoiceType == invoiceType["種別値"]) {
-      html += `<option value="${invoiceType["種別値"]}" data-val="${invoiceType["納品方法"]}" selected>${invoiceType["種別"]}</option>`;
-    } else {
-      html += `<option value="${invoiceType["種別値"]}" data-val="${invoiceType["納品方法"]}" disabled>${invoiceType["種別"]}</option>`;
-    }
-  }
-  html += `</select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="coolCls" class="col-form-label">クール区分</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `<select class="form-select" id="coolCls" name="coolCls" >`;
-  html += `<option value=""></option>`;
-  for (const coolCls of coolClss) {
-    if (e.parameter.coolCls == coolCls["種別値"]) {
-      html += `<option value="${coolCls["種別値"]}" data-val="${coolCls["納品方法"]}" selected>${coolCls["種別"]}</option>`;
-    } else {
-      html += `<option value="${coolCls["種別値"]}" data-val="${coolCls["納品方法"]}" disabled>${coolCls["種別"]}</option>`;
-    }
-  }
-  html += `</select>`;
-  html += `    </div>`;
+  
+  // スマホ用カード表示
+  html += `<div class="product-cards-sp">`;
+  
+  products.forEach(p => {
+    html += `<div class="product-card">`;
+    html += `  <div class="product-card-header">`;
+    html += `    <span class="category">${p.bunrui}</span>`;
+    html += `    <span class="product-name">${p.product}</span>`;
+    html += `  </div>`;
+    html += `  <div class="product-card-body">`;
+    html += `    <span class="product-card-calc">¥${p.price.toLocaleString()} × ${p.quantity}個</span>`;
+    html += `    <span class="product-card-total">¥${p.subtotal.toLocaleString()}</span>`;
+    html += `  </div>`;
+    html += `</div>`;
+  });
+  
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cargo1" class="col-form-label">荷扱い１</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `<select class="form-select" id="cargo1" name="cargo1" >`;
-  html += `<option value=""></option>`;
-  for (const cargo of cargos) {
-    if (e.parameter.cargo1 == cargo["種別値"]) {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" selected>${cargo["種別"]}</option>`;
-    } else {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" disabled>${cargo["種別"]}</option>`;
-    }
-  }
-  html += `</select>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cargo2" class="col-form-label">荷扱い２</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `<select class="form-select" id="cargo2" name="cargo2" >`;
-  html += `<option value=""></option>`;
-  for (const cargo of cargos) {
-    if (e.parameter.cargo2 == cargo["種別値"]) {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" selected>${cargo["種別"]}</option>`;
-    } else {
-      html += `<option value="${cargo["種別値"]}" data-val="${cargo["納品方法"]}" disabled>${cargo["種別"]}</option>`;
-    }
-  }
-  html += `</select>`;
-  html += `    </div>`;
+  
+  // 合計セクション
+  html += `<div class="total-section d-flex justify-content-between align-items-center">`;
+  html += `  <span class="label">合計金額</span>`;
+  html += `  <span class="amount">¥${total.toLocaleString()}</span>`;
   html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cashOnDelivery" class="col-form-label">代引総額</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="cashOnDelivery" name="cashOnDelivery" min='0'  value="${
-    e.parameter.cashOnDelivery ? e.parameter.cashOnDelivery : ""
-  }" readonly >`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="cashOnDeliTax" class="col-form-label">代引内税</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="cashOnDeliTax" name="cashOnDeliTax" min='0'  value="${
-    e.parameter.cashOnDeliTax ? e.parameter.cashOnDeliTax : ""
-  }" readonly >`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div class="mt-0 mb-2 row g-3 align-items-center">`;
-  html += `    <div class="col-auto">`;
-  html += `        <label for="copiePrint" class="col-form-label">発行枚数</label>`;
-  html += `    </div>`;
-  html += `    <div class="col-auto">`;
-  html += `       <input type="number" class="form-control" id="copiePrint" name="copiePrint" min='0'  value="${
-    e.parameter.copiePrint ? e.parameter.copiePrint : ""
-  }" readonly >`;
-  html += `    </div>`;
-  html += `</div>`;
-  html += `<div class="mb-3">`;
-  html += `<label for="csvmemo" class="text-left form-label">送り状　備考欄</label>`;
-  html += `<textarea class="form-control" id="csvmemo" name="csvmemo" rows="2" cols="30" maxlength="22" readonly>${
-    e.parameter.csvmemo ? e.parameter.csvmemo : ""
-  }</textarea>`;
-  html += `</div>`;
-  html += `<div class="mb-3">`;
-  html += `<label for="deliveryMemo" class="text-left form-label">納品書　備考欄</label>`;
-  html += `<textarea class="form-control" id="deliveryMemo" name="deliveryMemo" rows="3" cols="30" maxlength="90" readonly>${
-    e.parameter.deliveryMemo ? e.parameter.deliveryMemo : ""
-  }</textarea>`;
-  html += `<div class="mb-3">`;
-  html += `<label for="memo" class="text-left form-label">メモ</label>`;
-  html += `<textarea class="form-control" id="memo" name="memo" rows="3" cols="30" readonly>${e.parameter.memo}</textarea>`;
-  html += `</div>`;
-  html += `</div>`;
+  html += `</div>`; // section-body閉じ
 
+  // ============================================
+  // 発送情報セクション
+  // ============================================
+  html += `
+<div class="section-header section-shipping-info">
+  <div class="section-header-row">
+    <span class="section-header-label">🚚 発送情報</span>
+  </div>
+</div>
+<div class="section-body">
+`;
+
+  // 品名
+  html += `<div class="confirm-field">
+    <div class="confirm-field-label">品名</div>
+    <div class="confirm-field-value">${e.parameter.sendProduct || '-'}</div>
+  </div>`;
+  html += `<input type="hidden" name="sendProduct" value="${e.parameter.sendProduct || ''}">`;
+
+  // 送り状種別・クール区分の表示名取得
+  let invoiceTypeDisplay = '-';
+  for (const it of invoiceTypes) {
+    if (it['種別値'] == e.parameter.invoiceType) {
+      invoiceTypeDisplay = it['種別'];
+      break;
+    }
+  }
+  let coolClsDisplay = '-';
+  for (const cc of coolClss) {
+    if (cc['種別値'] == e.parameter.coolCls) {
+      coolClsDisplay = cc['種別'];
+      break;
+    }
+  }
+  
+  html += `<div class="confirm-row">`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">送り状種別</span>`;
+  html += `    <span class="confirm-item-value">${invoiceTypeDisplay}</span>`;
+  html += `  </div>`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">クール区分</span>`;
+  html += `    <span class="confirm-item-value">${coolClsDisplay}</span>`;
+  html += `  </div>`;
+  html += `</div>`;
+  html += `<input type="hidden" name="invoiceType" value="${e.parameter.invoiceType || ''}">`;
+  html += `<input type="hidden" name="coolCls" value="${e.parameter.coolCls || ''}">`;
+
+  // 荷扱い１・２の表示名取得
+  let cargo1Display = '-';
+  let cargo2Display = '-';
+  for (const c of cargos) {
+    if (c['種別値'] == e.parameter.cargo1) {
+      cargo1Display = c['種別'];
+    }
+    if (c['種別値'] == e.parameter.cargo2) {
+      cargo2Display = c['種別'];
+    }
+  }
+  
+  html += `<div class="confirm-row">`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">荷扱い１</span>`;
+  html += `    <span class="confirm-item-value">${cargo1Display}</span>`;
+  html += `  </div>`;
+  html += `  <div class="confirm-item">`;
+  html += `    <span class="confirm-item-label">荷扱い２</span>`;
+  html += `    <span class="confirm-item-value">${cargo2Display}</span>`;
+  html += `  </div>`;
+  html += `</div>`;
+  html += `<input type="hidden" name="cargo1" value="${e.parameter.cargo1 || ''}">`;
+  html += `<input type="hidden" name="cargo2" value="${e.parameter.cargo2 || ''}">`;
+
+  // 代引総額・代引内税
+  if (e.parameter.cashOnDelivery || e.parameter.cashOnDeliTax) {
+    html += `<div class="confirm-row">`;
+    html += `  <div class="confirm-item">`;
+    html += `    <span class="confirm-item-label">代引総額</span>`;
+    html += `    <span class="confirm-item-value">${e.parameter.cashOnDelivery ? '¥' + Number(e.parameter.cashOnDelivery).toLocaleString() : '-'}</span>`;
+    html += `  </div>`;
+    html += `  <div class="confirm-item">`;
+    html += `    <span class="confirm-item-label">代引内税</span>`;
+    html += `    <span class="confirm-item-value">${e.parameter.cashOnDeliTax ? '¥' + Number(e.parameter.cashOnDeliTax).toLocaleString() : '-'}</span>`;
+    html += `  </div>`;
+    html += `</div>`;
+  }
+  html += `<input type="hidden" name="cashOnDelivery" value="${e.parameter.cashOnDelivery || ''}">`;
+  html += `<input type="hidden" name="cashOnDeliTax" value="${e.parameter.cashOnDeliTax || ''}">`;
+
+  // 発行枚数
+  if (e.parameter.copiePrint) {
+    html += `<div class="confirm-row">`;
+    html += `  <div class="confirm-item">`;
+    html += `    <span class="confirm-item-label">発行枚数</span>`;
+    html += `    <span class="confirm-item-value">${e.parameter.copiePrint}枚</span>`;
+    html += `  </div>`;
+    html += `</div>`;
+  }
+  html += `<input type="hidden" name="copiePrint" value="${e.parameter.copiePrint || ''}">`;
+
+  // 備考欄
+  if (e.parameter.csvmemo) {
+    html += `<div class="confirm-field">
+      <div class="confirm-field-label">送り状 備考欄</div>
+      <div class="confirm-field-value">${e.parameter.csvmemo}</div>
+    </div>`;
+  }
+  html += `<input type="hidden" name="csvmemo" value="${e.parameter.csvmemo || ''}">`;
+
+  if (e.parameter.deliveryMemo) {
+    html += `<div class="confirm-field">
+      <div class="confirm-field-label">納品書 備考欄</div>
+      <div class="confirm-field-value">${e.parameter.deliveryMemo}</div>
+    </div>`;
+  }
+  html += `<input type="hidden" name="deliveryMemo" value="${e.parameter.deliveryMemo || ''}">`;
+
+  if (e.parameter.memo) {
+    html += `<div class="confirm-field">
+      <div class="confirm-field-label">メモ</div>
+      <div class="confirm-field-value">${e.parameter.memo}</div>
+    </div>`;
+  }
+  html += `<input type="hidden" name="memo" value="${e.parameter.memo || ''}">`;
+
+  html += `</div>`; // section-body閉じ
+
+  // 編集モードの場合
+  const editOrderIdConfirm = e.parameter.editOrderId || '';
+  if (editOrderIdConfirm) {
+    html += `<input type="hidden" name="editOrderId" value="${editOrderIdConfirm}">`;
+    html += `<input type="hidden" name="editMode" value="true">`;
+  }
+  
   return html;
 }
+
 // 受注IDの生成
 function generateId(length = 8) {
-  const [alphabets, numbers] = ["abcdefghijklmnopqrstuvwxyz", "0123456789"];
+  const [alphabets, numbers] = ['abcdefghijklmnopqrstuvwxyz', '0123456789'];
   const string = alphabets + numbers;
   let id = alphabets.charAt(Math.floor(Math.random() * alphabets.length));
   for (let i = 0; i < length - 1; i++) {
@@ -917,159 +1487,161 @@ function generateId(length = 8) {
 }
 // 受注登録
 function createOrder(e) {
-  // 納品ID
-  const deliveryId = generateId();
-  // 受注テーブルに複数レコードを追加する
-  const records = [];
-  const createRecords = [];
-  var rowNum = 0;
-  var dateNow = Utilities.formatDate(new Date(), "JST", "yyyy/MM/dd");
-
-  for (let i = 0; i < 10; i++) {
-    rowNum++;
-    var bunrui = "bunrui" + rowNum;
-    var product = "product" + rowNum;
-    var price = "price" + rowNum;
-    var quantity = "quantity" + rowNum;
-    const bunruiVal = e.parameter[bunrui];
-    const productVal = e.parameter[product];
-    const count = Number(e.parameter[quantity]);
-    const unitPrice = Number(e.parameter[price]);
-    if (count > 0) {
-      var record = [];
-      record["受注ID"] = deliveryId;
-      record["受注日"] = dateNow;
-      record["顧客名"] = e.parameter.customerName;
-      record["顧客郵便番号"] = e.parameter.customerZipcode;
-      record["顧客住所"] = e.parameter.customerAddress;
-      record["顧客電話番号"] = e.parameter.customerTel;
-      record["発送先名"] = e.parameter.shippingToName;
-      record["発送先郵便番号"] = e.parameter.shippingToZipcode;
-      record["発送先住所"] = e.parameter.shippingToAddress;
-      record["発送先電話番号"] = e.parameter.shippingToTel;
-      record["発送元名"] = e.parameter.shippingFromName;
-      record["発送元郵便番号"] = e.parameter.shippingFromZipcode;
-      record["発送元住所"] = e.parameter.shippingFromAddress;
-      record["発送元電話番号"] = e.parameter.shippingFromTel;
-      record["発送日"] = e.parameter.shippingDate;
-      record["納品日"] = e.parameter.deliveryDate;
-      record["受付方法"] = e.parameter.receiptWay;
-      record["受付者"] = e.parameter.recipient;
-      record["納品方法"] = e.parameter.deliveryMethod;
-      record["配達時間帯"] = e.parameter.deliveryTime
-        ? e.parameter.deliveryTime.split(":")[1]
-        : "";
-      record["納品書"] = e.parameters.checklist
-        ? e.parameters.checklist.includes("納品書")
-          ? "○"
-          : ""
-        : "";
-      record["請求書"] = e.parameters.checklist
-        ? e.parameters.checklist.includes("請求書")
-          ? "○"
-          : ""
-        : "";
-      record["領収書"] = e.parameters.checklist
-        ? e.parameters.checklist.includes("領収書")
-          ? "○"
-          : ""
-        : "";
-      record["パンフ"] = e.parameters.checklist
-        ? e.parameters.checklist.includes("パンフ")
-          ? "○"
-          : ""
-        : "";
-      record["レシピ"] = e.parameters.checklist
-        ? e.parameters.checklist.includes("レシピ")
-          ? "○"
-          : ""
-        : "";
-      record["その他添付"] = e.parameter.otherAttach;
-      record["品名"] = e.parameter.sendProduct;
-      record["送り状種別"] = e.parameter.invoiceType
-        ? e.parameter.invoiceType.split(":")[1]
-        : "";
-      record["クール区分"] = e.parameter.coolCls
-        ? e.parameter.coolCls.split(":")[1]
-        : "";
-      record["荷扱い１"] = e.parameter.cargo1
-        ? e.parameter.cargo1.split(":")[1]
-        : "";
-      record["荷扱い２"] = e.parameter.cargo2
-        ? e.parameter.cargo2.split(":")[1]
-        : "";
-      record["代引総額"] = e.parameter.cashOnDelivery;
-      record["代引内税"] = e.parameter.cashOnDeliTax;
-      record["発行枚数"] = e.parameter.copiePrint;
-      record["送り状備考欄"] = e.parameter.csvmemo;
-      record["納品書備考欄"] = e.parameter.deliveryMemo;
-      record["メモ"] = e.parameter.memo;
-      record["商品分類"] = bunruiVal;
-      record["商品名"] = productVal;
-      record["受注数"] = count;
-      record["販売価格"] = unitPrice;
-      record["小計"] = count * unitPrice;
-
-      const addRecord = [
-        record["受注ID"],
-        record["受注日"],
-        record["商品分類"],
-        record["商品名"],
-        record["受注数"],
-        record["販売価格"],
-        record["顧客名"],
-        record["顧客郵便番号"],
-        record["顧客住所"],
-        record["顧客電話番号"],
-        record["発送先名"],
-        record["発送先郵便番号"],
-        record["発送先住所"],
-        record["発送先電話番号"],
-        record["発送元名"],
-        record["発送元郵便番号"],
-        record["発送元住所"],
-        record["発送元電話番号"],
-        record["発送日"],
-        record["納品日"],
-        record["受付方法"],
-        record["受付者"],
-        record["納品方法"],
-        record["配達時間帯"],
-        record["納品書"],
-        record["請求書"],
-        record["領収書"],
-        record["パンフ"],
-        record["レシピ"],
-        record["その他添付"],
-        record["品名"],
-        record["送り状種別"],
-        record["クール区分"],
-        record["荷扱い１"],
-        record["荷扱い２"],
-        record["代引総額"],
-        record["代引内税"],
-        record["発行枚数"],
-        record["送り状備考欄"],
-        record["納品書備考欄"],
-        record["メモ"],
-        record["小計"],
-      ];
-      records.push(addRecord);
-      createRecords.push(record);
+  // 編集モードの場合、既存データを削除
+  const editOrderId = e.parameter.editOrderId || '';
+  if (editOrderId) {
+    const deletedCount = deleteOrderByOrderId(editOrderId);
+    Logger.log('削除した行数: ' + deletedCount);
+  }
+  // 日程数を取得
+  let dateCount = 0;
+  for (let i = 1; i <= 10; i++) {
+    if (e.parameter['shippingDate' + i]) {
+      dateCount = i;
+    } else {
+      break;
     }
   }
-  addRecords("受注", records);
-  if (e.parameter.deliveryMethod == "ヤマト") {
-    addRecordYamato("ヤマトCSV", records, e);
+  
+  // 日程ごとにループして受注登録
+  for (let dateIndex = 1; dateIndex <= dateCount; dateIndex++) {
+    const shippingDate = e.parameter['shippingDate' + dateIndex];
+    const deliveryDate = e.parameter['deliveryDate' + dateIndex];
+    
+    // 納品ID（日程ごとに別ID）
+    const deliveryId = generateId();
+    
+    // 受注テーブルに複数レコードを追加する
+    const records = [];
+    const createRecords = [];
+    var rowNum = 0;
+    var dateNow = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd');
+
+    for (let i = 0; i < 10; i++) {
+      rowNum++;
+      var bunrui = "bunrui" + rowNum;
+      var product = "product" + rowNum;
+      var price = "price" + rowNum;
+      var quantity = "quantity" + rowNum;
+      const bunruiVal = e.parameter[bunrui];
+      const productVal = e.parameter[product];
+      const count = Number(e.parameter[quantity]);
+      const unitPrice = Number(e.parameter[price]);
+      if (count > 0) {
+        var record = [];
+        record['受注ID'] = deliveryId;
+        record['受注日'] = dateNow;
+        record['顧客名'] = e.parameter.customerName;
+        record['顧客郵便番号'] = e.parameter.customerZipcode;
+        record['顧客住所'] = e.parameter.customerAddress;
+        record['顧客電話番号'] = e.parameter.customerTel;
+        record['発送先名'] = e.parameter.shippingToName;
+        record['発送先郵便番号'] = e.parameter.shippingToZipcode;
+        record['発送先住所'] = e.parameter.shippingToAddress;
+        record['発送先電話番号'] = e.parameter.shippingToTel;
+        record['発送元名'] = e.parameter.shippingFromName;
+        record['発送元郵便番号'] = e.parameter.shippingFromZipcode;
+        record['発送元住所'] = e.parameter.shippingFromAddress;
+        record['発送元電話番号'] = e.parameter.shippingFromTel;
+        record['発送日'] = shippingDate;  // ← 日程ごとの発送日
+        record['納品日'] = deliveryDate;  // ← 日程ごとの納品日
+        record['受付方法'] = e.parameter.receiptWay;
+        record['受付者'] = e.parameter.recipient;
+        record['納品方法'] = e.parameter.deliveryMethod;
+        record['配達時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[1] : "";
+        record['納品書'] = e.parameters.checklist ? e.parameters.checklist.includes('納品書') ? "○" : "" : "";
+        record['請求書'] = e.parameters.checklist ? e.parameters.checklist.includes('請求書') ? "○" : "" : "";
+        record['領収書'] = e.parameters.checklist ? e.parameters.checklist.includes('領収書') ? "○" : "" : "";
+        record['パンフ'] = e.parameters.checklist ? e.parameters.checklist.includes('パンフ') ? "○" : "" : "";
+        record['レシピ'] = e.parameters.checklist ? e.parameters.checklist.includes('レシピ') ? "○" : "" : "";
+        record['その他添付'] = e.parameter.otherAttach;
+        record['品名'] = e.parameter.sendProduct;
+        record['送り状種別'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[1] : "";
+        record['クール区分'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[1] : "";
+        record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[1] : "";
+        record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[1] : "";
+        record['代引総額'] = e.parameter.cashOnDelivery;
+        record['代引内税'] = e.parameter.cashOnDeliTax;
+        record['発行枚数'] = e.parameter.copiePrint;
+        record['送り状備考欄'] = e.parameter.csvmemo;
+        record['納品書備考欄'] = e.parameter.deliveryMemo;
+        record['メモ'] = e.parameter.memo;
+        record['商品分類'] = bunruiVal;
+        record['商品名'] = productVal;
+        record['受注数'] = count;
+        record['販売価格'] = unitPrice;
+        record['小計'] = count * unitPrice;
+
+        const addRecord = [
+          record['受注ID'],
+          record['受注日'],
+          record['商品分類'],
+          record['商品名'],
+          record['受注数'],
+          record['販売価格'],
+          record['顧客名'],
+          record['顧客郵便番号'],
+          record['顧客住所'],
+          record['顧客電話番号'],
+          record['発送先名'],
+          record['発送先郵便番号'],
+          record['発送先住所'],
+          record['発送先電話番号'],
+          record['発送元名'],
+          record['発送元郵便番号'],
+          record['発送元住所'],
+          record['発送元電話番号'],
+          record['発送日'],
+          record['納品日'],
+          record['受付方法'],
+          record['受付者'],
+          record['納品方法'],
+          record['配達時間帯'],
+          record['納品書'],
+          record['請求書'],
+          record['領収書'],
+          record['パンフ'],
+          record['レシピ'],
+          record['その他添付'],
+          record['品名'],
+          record['送り状種別'],
+          record['クール区分'],
+          record['荷扱い１'],
+          record['荷扱い２'],
+          record['代引総額'],
+          record['代引内税'],
+          record['発行枚数'],
+          record['送り状備考欄'],
+          record['納品書備考欄'],
+          record['メモ'],
+          record['小計']
+        ];
+        records.push(addRecord);
+        createRecords.push(record);
+      }
+    }
+    
+    // 日程ごとに登録処理を実行
+    addRecords('受注', records);
+    
+    if (e.parameter.deliveryMethod == 'ヤマト') {
+      addRecordYamato('ヤマトCSV', records, e);
+    }
+    if (e.parameter.deliveryMethod == '佐川') {
+      addRecordSagawa('佐川CSV', records, e);
+    }
+    if (e.parameters.checklist && e.parameters.checklist.includes('納品書')) {
+      createFile(createRecords);
+    }
+    if (e.parameters.checklist && e.parameters.checklist.includes('領収書')) {
+      createReceiptFile(createRecords);
+    }
   }
-  if (e.parameter.deliveryMethod == "佐川") {
-    addRecordSagawa("佐川CSV", records, e);
-  }
-  if (e.parameters.checklist && e.parameters.checklist.includes("納品書")) {
-    createFile(createRecords);
-  }
-  if (e.parameters.checklist && e.parameters.checklist.includes("領収書")) {
-    createReceiptFile(createRecords);
+
+  // 仮受注データ削除（AI取込一覧からの遷移時）
+  const tempOrderId = e.parameter.tempOrderId || '';
+  if (tempOrderId) {
+    deleteTempOrder(tempOrderId);
   }
 }
 // ヤマトCSV登録
@@ -1078,133 +1650,111 @@ function addRecordYamato(sheetName, records, e) {
   Logger.log(records);
   const adds = [];
   var record = [];
-  record["発送日"] = Utilities.formatDate(
-    new Date(records[0][18]),
-    "JST",
-    "yyyy/MM/dd"
-  );
-  record["お客様管理番号"] = "";
-  record["送り状種別"] = e.parameter.invoiceType
-    ? e.parameter.invoiceType.split(":")[0]
-    : "";
-  record["クール区分"] = e.parameter.coolCls
-    ? e.parameter.coolCls.split(":")[0]
-    : "";
-  record["伝票番号"] = "";
-  record["出荷予定日"] = Utilities.formatDate(
-    new Date(records[0][18]),
-    "JST",
-    "yyyy/MM/dd"
-  );
-  record["お届け予定（指定）日"] = Utilities.formatDate(
-    new Date(records[0][19]),
-    "JST",
-    "yyyy/MM/dd"
-  );
-  record["配達時間帯"] = e.parameter.deliveryTime
-    ? e.parameter.deliveryTime.split(":")[0]
-    : "";
-  record["お届け先コード"] = "";
-  record["お届け先電話番号"] = records[0][13];
-  record["お届け先電話番号枝番"] = "";
-  record["お届け先郵便番号"] = records[0][11];
-  record["お届け先住所"] = records[0][12];
-  record["お届け先住所（アパートマンション名）"] = "";
-  record["お届け先会社・部門名１"] = "";
-  record["お届け先会社・部門名２"] = "";
-  record["お届け先名"] = records[0][10];
-  record["お届け先名略称カナ"] = "";
-  record["敬称"] = "";
-  record["ご依頼主コード"] = "";
-  record["ご依頼主電話番号"] = records[0][17];
-  record["ご依頼主電話番号枝番"] = "";
-  record["ご依頼主郵便番号"] = records[0][15];
-  record["ご依頼主住所"] = records[0][16];
-  record["ご依頼主住所（アパートマンション名）"] = "";
-  record["ご依頼主名"] = records[0][14];
-  record["ご依頼主略称カナ"] = "";
-  record["品名コード１"] = "";
-  record["品名１"] = records[0][30];
-  record["品名コード２"] = "";
-  record["品名２"] = "";
-  record["荷扱い１"] = e.parameter.cargo1
-    ? e.parameter.cargo1.split(":")[0]
-    : "";
-  record["荷扱い２"] = e.parameter.cargo2
-    ? e.parameter.cargo2.split(":")[0]
-    : "";
-  record["記事"] = records[0][38];
-  record["コレクト代金引換額（税込）"] = records[0][35];
-  record["コレクト内消費税額等"] = records[0][36];
-  record["営業所止置き"] = "";
-  record["営業所コード"] = "";
-  record["発行枚数"] = records[0][37];
-  record["個数口枠の印字"] = "";
-  record["ご請求先顧客コード"] = "9999999999";
-  record["ご請求先分類コード"] = "";
-  record["運賃管理番号"] = "01";
-  record["クロネコwebコレクトデータ登録"] = "";
-  record["クロネコwebコレクト加盟店番号"] = "";
-  record["クロネコwebコレクト申込受付番号１"] = "";
-  record["クロネコwebコレクト申込受付番号２"] = "";
-  record["クロネコwebコレクト申込受付番号３"] = "";
-  record["お届け予定ｅメール利用区分"] = "";
-  record["お届け予定ｅメールe-mailアドレス"] = "";
-  record["入力機種"] = "";
-  record["お届け予定eメールメッセージ"] = "";
+  record['発送日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
+  record['お客様管理番号'] = "";
+  record['送り状種別'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[0] : "";
+  record['クール区分'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
+  record['伝票番号'] = "";
+  record['出荷予定日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
+  record['お届け予定（指定）日'] = Utilities.formatDate(new Date(records[0][19]), 'JST', 'yyyy/MM/dd');
+  record['配達時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[0] : "";
+  record['お届け先コード'] = "";
+  record['お届け先電話番号'] = records[0][13];
+  record['お届け先電話番号枝番'] = "";
+  record['お届け先郵便番号'] = records[0][11];
+  record['お届け先住所'] = records[0][12];
+  record['お届け先住所（アパートマンション名）'] = "";
+  record['お届け先会社・部門名１'] = "";
+  record['お届け先会社・部門名２'] = "";
+  record['お届け先名'] = records[0][10];
+  record['お届け先名略称カナ'] = "";
+  record['敬称'] = "";
+  record['ご依頼主コード'] = "";
+  record['ご依頼主電話番号'] = records[0][17];
+  record['ご依頼主電話番号枝番'] = "";
+  record['ご依頼主郵便番号'] = records[0][15];
+  record['ご依頼主住所'] = records[0][16];
+  record['ご依頼主住所（アパートマンション名）'] = "";
+  record['ご依頼主名'] = records[0][14];
+  record['ご依頼主略称カナ'] = "";
+  record['品名コード１'] = "";
+  record['品名１'] = records[0][30];
+  record['品名コード２'] = "";
+  record['品名２'] = "";
+  record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
+  record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
+  record['記事'] = records[0][38];
+  record['コレクト代金引換額（税込）'] = records[0][35];
+  record['コレクト内消費税額等'] = records[0][36];
+  record['営業所止置き'] = "";
+  record['営業所コード'] = "";
+  record['発行枚数'] = records[0][37];
+  record['個数口枠の印字'] = "";
+  record['ご請求先顧客コード'] = "019543385101";
+  record['ご請求先分類コード'] = "";
+  record['運賃管理番号'] = "01";
+  record['クロネコwebコレクトデータ登録'] = "";
+  record['クロネコwebコレクト加盟店番号'] = "";
+  record['クロネコwebコレクト申込受付番号１'] = "";
+  record['クロネコwebコレクト申込受付番号２'] = "";
+  record['クロネコwebコレクト申込受付番号３'] = "";
+  record['お届け予定ｅメール利用区分'] = "";
+  record['お届け予定ｅメールe-mailアドレス'] = "";
+  record['入力機種'] = "";
+  record['お届け予定eメールメッセージ'] = "";
   const addList = [
-    record["発送日"],
-    record["お客様管理番号"],
-    record["送り状種別"],
-    record["クール区分"],
-    record["伝票番号"],
-    record["出荷予定日"],
-    record["お届け予定（指定）日"],
-    record["配達時間帯"],
-    record["お届け先コード"],
-    record["お届け先電話番号"],
-    record["お届け先電話番号枝番"],
-    record["お届け先郵便番号"],
-    record["お届け先住所"],
-    record["お届け先住所（アパートマンション名）"],
-    record["お届け先会社・部門名１"],
-    record["お届け先会社・部門名２"],
-    record["お届け先名"],
-    record["お届け先名略称カナ"],
-    record["敬称"],
-    record["ご依頼主コード"],
-    record["ご依頼主電話番号"],
-    record["ご依頼主電話番号枝番"],
-    record["ご依頼主郵便番号"],
-    record["ご依頼主住所"],
-    record["ご依頼主住所（アパートマンション名）"],
-    record["ご依頼主名"],
-    record["ご依頼主略称カナ"],
-    record["品名コード１"],
-    record["品名１"],
-    record["品名コード２"],
-    record["品名２"],
-    record["荷扱い１"],
-    record["荷扱い２"],
-    record["記事"],
-    record["コレクト代金引換額（税込）"],
-    record["コレクト内消費税額等"],
-    record["営業所止置き"],
-    record["営業所コード"],
-    record["発行枚数"],
-    record["個数口枠の印字"],
-    record["ご請求先顧客コード"],
-    record["ご請求先分類コード"],
-    record["運賃管理番号"],
-    record["クロネコwebコレクトデータ登録"],
-    record["クロネコwebコレクト加盟店番号"],
-    record["クロネコwebコレクト申込受付番号１"],
-    record["クロネコwebコレクト申込受付番号２"],
-    record["クロネコwebコレクト申込受付番号３"],
-    record["お届け予定ｅメール利用区分"],
-    record["お届け予定ｅメールe-mailアドレス"],
-    record["入力機種"],
-    record["お届け予定eメールメッセージ"],
+    record['発送日'],
+    record['お客様管理番号'],
+    record['送り状種別'],
+    record['クール区分'],
+    record['伝票番号'],
+    record['出荷予定日'],
+    record['お届け予定（指定）日'],
+    record['配達時間帯'],
+    record['お届け先コード'],
+    record['お届け先電話番号'],
+    record['お届け先電話番号枝番'],
+    record['お届け先郵便番号'],
+    record['お届け先住所'],
+    record['お届け先住所（アパートマンション名）'],
+    record['お届け先会社・部門名１'],
+    record['お届け先会社・部門名２'],
+    record['お届け先名'],
+    record['お届け先名略称カナ'],
+    record['敬称'],
+    record['ご依頼主コード'],
+    record['ご依頼主電話番号'],
+    record['ご依頼主電話番号枝番'],
+    record['ご依頼主郵便番号'],
+    record['ご依頼主住所'],
+    record['ご依頼主住所（アパートマンション名）'],
+    record['ご依頼主名'],
+    record['ご依頼主略称カナ'],
+    record['品名コード１'],
+    record['品名１'],
+    record['品名コード２'],
+    record['品名２'],
+    record['荷扱い１'],
+    record['荷扱い２'],
+    record['記事'],
+    record['コレクト代金引換額（税込）'],
+    record['コレクト内消費税額等'],
+    record['営業所止置き'],
+    record['営業所コード'],
+    record['発行枚数'],
+    record['個数口枠の印字'],
+    record['ご請求先顧客コード'],
+    record['ご請求先分類コード'],
+    record['運賃管理番号'],
+    record['クロネコwebコレクトデータ登録'],
+    record['クロネコwebコレクト加盟店番号'],
+    record['クロネコwebコレクト申込受付番号１'],
+    record['クロネコwebコレクト申込受付番号２'],
+    record['クロネコwebコレクト申込受付番号３'],
+    record['お届け予定ｅメール利用区分'],
+    record['お届け予定ｅメールe-mailアドレス'],
+    record['入力機種'],
+    record['お届け予定eメールメッセージ']
   ];
   adds.push(addList);
   addRecords(sheetName, adds);
@@ -1215,181 +1765,164 @@ function addRecordSagawa(sheetName, records, e) {
   Logger.log(records);
   const adds = [];
   var record = [];
-  record["発送日"] = Utilities.formatDate(
-    new Date(records[0][18]),
-    "JST",
-    "yyyy/MM/dd"
-  );
-  record["お届け先コード取得区分"] = "";
-  record["お届け先コード"] = "";
-  record["お届け先電話番号"] = records[0][13];
-  record["お届け先郵便番号"] = records[0][11];
-  record["お届け先住所１"] = records[0][12];
-  record["お届け先住所２"] = "";
-  record["お届け先住所３"] = "";
-  record["お届け先名称１"] = records[0][10];
-  record["お届け先名称２"] = "";
-  record["お客様管理番号"] = "";
-  record["お客様コード"] = "";
-  record["部署ご担当者コード取得区分"] = "";
-  record["部署ご担当者コード"] = "";
-  record["部署ご担当者名称"] = "";
-  record["荷送人電話番号"] = "";
-  record["ご依頼主コード取得区分"] = "";
-  record["ご依頼主コード"] = "";
-  record["ご依頼主電話番号"] = records[0][17];
-  record["ご依頼主郵便番号"] = records[0][15];
-  record["ご依頼主住所１"] = records[0][16];
-  record["ご依頼主住所２"] = "";
-  record["ご依頼主名称１"] = records[0][14];
-  record["ご依頼主名称２"] = "";
-  record["荷姿"] = "";
+  record['発送日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
+  record['お届け先コード取得区分'] = "";
+  record['お届け先コード'] = "";
+  record['お届け先電話番号'] = records[0][13];
+  record['お届け先郵便番号'] = records[0][11];
+  record['お届け先住所１'] = records[0][12];
+  record['お届け先住所２'] = "";
+  record['お届け先住所３'] = "";
+  record['お届け先名称１'] = records[0][10];
+  record['お届け先名称２'] = "";
+  record['お客様管理番号'] = "";
+  record['お客様コード'] = "";
+  record['部署ご担当者コード取得区分'] = "";
+  record['部署ご担当者コード'] = "";
+  record['部署ご担当者名称'] = "";
+  record['荷送人電話番号'] = "";
+  record['ご依頼主コード取得区分'] = "";
+  record['ご依頼主コード'] = "";
+  record['ご依頼主電話番号'] = records[0][17];
+  record['ご依頼主郵便番号'] = records[0][15];
+  record['ご依頼主住所１'] = records[0][16];
+  record['ご依頼主住所２'] = "";
+  record['ご依頼主名称１'] = records[0][14];
+  record['ご依頼主名称２'] = "";
+  record['荷姿'] = "";
   if (records[0][30].length > 16) {
-    record["品名１"] = records[0][30].substring(0, 16);
-  } else {
-    record["品名１"] = records[0][30];
+    record['品名１'] = records[0][30].substring(0, 16);
   }
-  record["品名２"] = "";
-  record["品名３"] = "";
-  record["品名４"] = "";
-  record["品名５"] = "";
-  record["荷札荷姿"] = "";
-  record["荷札品名１"] = "";
-  record["荷札品名２"] = "";
-  record["荷札品名３"] = "";
-  record["荷札品名４"] = "";
-  record["荷札品名５"] = "";
-  record["荷札品名６"] = "";
-  record["荷札品名７"] = "";
-  record["荷札品名８"] = "";
-  record["荷札品名９"] = "";
-  record["荷札品名１０"] = "";
-  record["荷札品名１１"] = "";
-  record["出荷個数"] = records[0][37];
-  record["スピード指定"] = "000";
-  record["クール便指定"] = e.parameter.coolCls
-    ? e.parameter.coolCls.split(":")[0]
-    : "";
-  record["配達日"] = Utilities.formatDate(
-    new Date(records[0][19]),
-    "JST",
-    "yyyyMMdd"
-  );
-  record["配達指定時間帯"] = e.parameter.deliveryTime
-    ? e.parameter.deliveryTime.split(":")[0]
-    : "";
-  record["配達指定時間（時分）"] = "";
-  record["代引金額"] = records[0][35];
-  record["消費税"] = records[0][36];
-  record["決済種別"] = "";
-  record["保険金額"] = "";
-  record["指定シール１"] = e.parameter.cargo1
-    ? e.parameter.cargo1.split(":")[0]
-    : "";
-  record["指定シール２"] = e.parameter.cargo2
-    ? e.parameter.cargo2.split(":")[0]
-    : "";
-  record["指定シール３"] = "";
-  record["営業所受取"] = "";
-  record["SRC区分"] = "";
-  record["営業所受取営業所コード"] = "";
-  record["元着区分"] = e.parameter.invoiceType
-    ? e.parameter.invoiceType.split(":")[0]
-    : "";
-  record["メールアドレス"] = "";
-  record["ご不在時連絡先"] = records[0][13];
-  record["出荷予定日"] = "";
-  record["セット数"] = "";
-  record["お問い合せ送り状No."] = "";
-  record["出荷場印字区分"] = "";
-  record["集約解除指定"] = "";
-  record["編集０１"] = "";
-  record["編集０２"] = "";
-  record["編集０３"] = "";
-  record["編集０４"] = "";
-  record["編集０５"] = "";
-  record["編集０６"] = "";
-  record["編集０７"] = "";
-  record["編集０８"] = "";
-  record["編集０９"] = "";
-  record["編集１０"] = "";
+  else {
+    record['品名１'] = records[0][30];
+  }
+  record['品名２'] = "";
+  record['品名３'] = "";
+  record['品名４'] = "";
+  record['品名５'] = "";
+  record['荷札荷姿'] = "";
+  record['荷札品名１'] = "";
+  record['荷札品名２'] = "";
+  record['荷札品名３'] = "";
+  record['荷札品名４'] = "";
+  record['荷札品名５'] = "";
+  record['荷札品名６'] = "";
+  record['荷札品名７'] = "";
+  record['荷札品名８'] = "";
+  record['荷札品名９'] = "";
+  record['荷札品名１０'] = "";
+  record['荷札品名１１'] = "";
+  record['出荷個数'] = records[0][37];
+  record['スピード指定'] = "000";
+  record['クール便指定'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
+  record['配達日'] = Utilities.formatDate(new Date(records[0][19]), 'JST', 'yyyyMMdd');
+  record['配達指定時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[0] : "";
+  record['配達指定時間（時分）'] = "";
+  record['代引金額'] = records[0][35];
+  record['消費税'] = records[0][36];
+  record['決済種別'] = "";
+  record['保険金額'] = "";
+  record['指定シール１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
+  record['指定シール２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
+  record['指定シール３'] = "";
+  record['営業所受取'] = "";
+  record['SRC区分'] = "";
+  record['営業所受取営業所コード'] = "";
+  record['元着区分'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[0] : "";
+  record['メールアドレス'] = "";
+  record['ご不在時連絡先'] = records[0][13];
+  record['出荷予定日'] = "";
+  record['セット数'] = "";
+  record['お問い合せ送り状No.'] = "";
+  record['出荷場印字区分'] = "";
+  record['集約解除指定'] = "";
+  record['編集０１'] = "";
+  record['編集０２'] = "";
+  record['編集０３'] = "";
+  record['編集０４'] = "";
+  record['編集０５'] = "";
+  record['編集０６'] = "";
+  record['編集０７'] = "";
+  record['編集０８'] = "";
+  record['編集０９'] = "";
+  record['編集１０'] = "";
   const addList = [
-    record["発送日"],
-    record["お届け先コード取得区分"],
-    record["お届け先コード"],
-    record["お届け先電話番号"],
-    record["お届け先郵便番号"],
-    record["お届け先住所１"],
-    record["お届け先住所２"],
-    record["お届け先住所３"],
-    record["お届け先名称１"],
-    record["お届け先名称２"],
-    record["お客様管理番号"],
-    record["お客様コード"],
-    record["部署ご担当者コード取得区分"],
-    record["部署ご担当者コード"],
-    record["部署ご担当者名称"],
-    record["荷送人電話番号"],
-    record["ご依頼主コード取得区分"],
-    record["ご依頼主コード"],
-    record["ご依頼主電話番号"],
-    record["ご依頼主郵便番号"],
-    record["ご依頼主住所１"],
-    record["ご依頼主住所２"],
-    record["ご依頼主名称１"],
-    record["ご依頼主名称２"],
-    record["荷姿"],
-    record["品名１"],
-    record["品名２"],
-    record["品名３"],
-    record["品名４"],
-    record["品名５"],
-    record["荷札荷姿"],
-    record["荷札品名１"],
-    record["荷札品名２"],
-    record["荷札品名３"],
-    record["荷札品名４"],
-    record["荷札品名５"],
-    record["荷札品名６"],
-    record["荷札品名７"],
-    record["荷札品名８"],
-    record["荷札品名９"],
-    record["荷札品名１０"],
-    record["荷札品名１１"],
-    record["出荷個数"],
-    record["スピード指定"],
-    record["クール便指定"],
-    record["配達日"],
-    record["配達指定時間帯"],
-    record["配達指定時間（時分）"],
-    record["代引金額"],
-    record["消費税"],
-    record["決済種別"],
-    record["保険金額"],
-    record["指定シール１"],
-    record["指定シール２"],
-    record["指定シール３"],
-    record["営業所受取"],
-    record["SRC区分"],
-    record["営業所受取営業所コード"],
-    record["元着区分"],
-    record["メールアドレス"],
-    record["ご不在時連絡先"],
-    record["出荷予定日"],
-    record["セット数"],
-    record["お問い合せ送り状No."],
-    record["出荷場印字区分"],
-    record["集約解除指定"],
-    record["編集０１"],
-    record["編集０２"],
-    record["編集０３"],
-    record["編集０４"],
-    record["編集０５"],
-    record["編集０６"],
-    record["編集０７"],
-    record["編集０８"],
-    record["編集０９"],
-    record["編集１０"],
+    record['発送日'],
+    record['お届け先コード取得区分'],
+    record['お届け先コード'],
+    record['お届け先電話番号'],
+    record['お届け先郵便番号'],
+    record['お届け先住所１'],
+    record['お届け先住所２'],
+    record['お届け先住所３'],
+    record['お届け先名称１'],
+    record['お届け先名称２'],
+    record['お客様管理番号'],
+    record['お客様コード'],
+    record['部署ご担当者コード取得区分'],
+    record['部署ご担当者コード'],
+    record['部署ご担当者名称'],
+    record['荷送人電話番号'],
+    record['ご依頼主コード取得区分'],
+    record['ご依頼主コード'],
+    record['ご依頼主電話番号'],
+    record['ご依頼主郵便番号'],
+    record['ご依頼主住所１'],
+    record['ご依頼主住所２'],
+    record['ご依頼主名称１'],
+    record['ご依頼主名称２'],
+    record['荷姿'],
+    record['品名１'],
+    record['品名２'],
+    record['品名３'],
+    record['品名４'],
+    record['品名５'],
+    record['荷札荷姿'],
+    record['荷札品名１'],
+    record['荷札品名２'],
+    record['荷札品名３'],
+    record['荷札品名４'],
+    record['荷札品名５'],
+    record['荷札品名６'],
+    record['荷札品名７'],
+    record['荷札品名８'],
+    record['荷札品名９'],
+    record['荷札品名１０'],
+    record['荷札品名１１'],
+    record['出荷個数'],
+    record['スピード指定'],
+    record['クール便指定'],
+    record['配達日'],
+    record['配達指定時間帯'],
+    record['配達指定時間（時分）'],
+    record['代引金額'],
+    record['消費税'],
+    record['決済種別'],
+    record['保険金額'],
+    record['指定シール１'],
+    record['指定シール２'],
+    record['指定シール３'],
+    record['営業所受取'],
+    record['SRC区分'],
+    record['営業所受取営業所コード'],
+    record['元着区分'],
+    record['メールアドレス'],
+    record['ご不在時連絡先'],
+    record['出荷予定日'],
+    record['セット数'],
+    record['お問い合せ送り状No.'],
+    record['出荷場印字区分'],
+    record['集約解除指定'],
+    record['編集０１'],
+    record['編集０２'],
+    record['編集０３'],
+    record['編集０４'],
+    record['編集０５'],
+    record['編集０６'],
+    record['編集０７'],
+    record['編集０８'],
+    record['編集０９'],
+    record['編集１０']
   ];
   adds.push(addList);
   addRecords(sheetName, adds);
@@ -1400,16 +1933,12 @@ function addRecords(sheetName, records) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   const lastRow = sheet.getLastRow();
-  sheet
-    .getRange(lastRow + 1, 1, records.length, records[0].length)
-    .setNumberFormat("@")
-    .setValues(records)
-    .setBorder(true, true, true, true, true, true);
+  sheet.getRange(lastRow + 1, 1, records.length, records[0].length).setNumberFormat('@').setValues(records).setBorder(true, true, true, true, true, true);
 }
 // 在庫更新
 function updateZaiko(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("商品");
+  const sheet = ss.getSheetByName('商品');
   var rowNum = 0;
   for (let i = 0; i < 10; i++) {
     rowNum++;
@@ -1419,23 +1948,22 @@ function updateZaiko(e) {
     const count = Number(e.parameter[quantity]);
     var zaiko = 0;
     if (count > 0) {
-      const targetRow = sheet
-        .getRange("B:B")
-        .createTextFinder(productVal)
-        .matchEntireCell(true)
-        .findNext()
-        .getRow();
-      const targetCol = sheet
-        .getRange("1:1")
-        .createTextFinder("在庫数")
-        .matchEntireCell(true)
-        .findNext()
-        .getColumn();
+      const targetRow = sheet.getRange('B:B').createTextFinder(productVal).matchEntireCell(true).findNext().getRow();
+      const targetCol = sheet.getRange('1:1').createTextFinder('在庫数').matchEntireCell(true).findNext().getColumn();
       zaiko = Number(sheet.getRange(targetRow, targetCol).getValue());
       sheet.getRange(targetRow, targetCol).setValue(zaiko - count);
     }
   }
 }
+// 納品書のテンプレートファイル
+const DELIVERED_TEMPLATE = DriveApp.getFileById(getDeliveredTemplateId());
+// 納品書PDF出力先
+const DELIVERED_PDF_OUTDIR = DriveApp.getFolderById(getDeliveredPdfFolderId());
+// 領収書のテンプレートファイル　
+const RECEIPT_TEMPLATE = DriveApp.getFileById(getReceiptTemplateId());
+// 領収書PDF出力先
+const RECEIPT_PDF_OUTDIR = DriveApp.getFolderById(getReceiptPdfFolderId());
+
 // 納品書ファイル生成
 function createFile(records) {
   // PDF変換する元ファイルを作成する
@@ -1449,75 +1977,55 @@ function createFile(records) {
 // 納品書のドキュメントの中身を置換
 function createGDoc(rowVal) {
   // 顧客情報シートを取得する
-  const customerItems = getAllRecords("顧客情報");
-  const shippingToItems = getAllRecords("発送先情報");
-  const productItems = getAllRecords("商品");
+  const customerItems = getAllRecords('顧客情報');
+  const shippingToItems = getAllRecords('発送先情報');
+  const productItems = getAllRecords('商品');
   var customerItem = [];
   Logger.log(rowVal);
   Logger.log(rowVal[0]);
-  Logger.log(rowVal[0]["顧客名"]);
-  const shippingName = rowVal[0]["顧客名"].split("　");
+  Logger.log(rowVal[0]['顧客名']);
+  const shippingName = rowVal[0]['顧客名'].split('　');
   Logger.log(shippingName);
   // データ走査
   customerItems.forEach(function (wVal) {
     if (shippingName.length > 1) {
       // 会社名と同じ
-      if (
-        shippingName[1] == wVal["氏名"] &&
-        shippingName[0] == wVal["会社名"]
-      ) {
+      if (shippingName[1] == wVal['氏名'] && shippingName[0] == wVal['会社名']) {
         customerItem = wVal;
       }
-    } else {
+    }
+    else {
       // 会社名と同じ
-      if (shippingName[0] == wVal["氏名"]) {
+      if (shippingName[0] == wVal['氏名']) {
         customerItem = wVal;
       }
-      if (shippingName[0] == wVal["会社名"]) {
+      if (shippingName[0] == wVal['会社名']) {
         customerItem = wVal;
       }
     }
   });
   if (customerItem.length == 0) {
-    customerItem["会社名"] = rowVal[0]["顧客名"].split("　")[0];
-    customerItem["住所１"] = rowVal[0]["顧客住所"];
-    customerItem["郵便番号"] = rowVal[0]["顧客郵便番号"];
-    customerItem["住所２"] = "";
+    customerItem['会社名'] = rowVal[0]['顧客名'].split('　')[0];
+    customerItem['住所１'] = rowVal[0]['顧客住所'];
+    customerItem['郵便番号'] = rowVal[0]['顧客郵便番号'];
+    customerItem['住所２'] = "";
   }
   // テンプレートファイルをコピーする
-  const wCopyFile = DELIVERED_TEMPLATE.makeCopy(),
-    wCopyFileId = wCopyFile.getId(),
-    wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
+  const wCopyFile = DELIVERED_TEMPLATE.makeCopy()
+    , wCopyFileId = wCopyFile.getId()
+    , wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
   let wCopyDocBody = wCopyDoc.getBody(); // Googleドキュメント内の本文を取得する
-  var post = String(customerItem["郵便番号"]);
+  var post = String(customerItem['郵便番号']);
   post = post.substring(0, 3).concat("-").concat(post.substring(3, 7));
 
   // 注文書ファイル内の可変文字部（として用意していた箇所）を変更する
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{company_name}}",
-    customerItem["会社名"] ? customerItem["会社名"] : customerItem["氏名"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{post}}", post);
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{address1}}",
-    customerItem["住所１"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{address2}}",
-    customerItem["住所２"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{delivery_num}}",
-    rowVal[0]["受注ID"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{delivery_date}}",
-    Utilities.formatDate(new Date(rowVal[0]["納品日"]), "JST", "yyyy年MM月dd日")
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{deliveryMemo}}",
-    rowVal[0]["納品書備考欄"]
-  );
+  wCopyDocBody = wCopyDocBody.replaceText('{{company_name}}', customerItem['会社名'] ? customerItem['会社名'] : customerItem['氏名']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{post}}', post);
+  wCopyDocBody = wCopyDocBody.replaceText('{{address1}}', customerItem['住所１']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{address2}}', customerItem['住所２']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_num}}', rowVal[0]['受注ID']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_date}}', Utilities.formatDate(new Date(rowVal[0]['納品日']), 'JST', 'yyyy年MM月dd日'));
+  wCopyDocBody = wCopyDocBody.replaceText('{{deliveryMemo}}', rowVal[0]['納品書備考欄']);
   let totals = 0;
   let tentax = 0;
   let eigtax = 0;
@@ -1531,34 +2039,28 @@ function createGDoc(rowVal) {
     if (i < rowVal.length) {
       var productData;
       // 商品分類
-      var changeText = "{{bunrui" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        rowVal[i]["商品分類"]
-      );
+      var changeText = '{{bunrui' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['商品分類']);
       // 商品名
-      changeText = "{{product" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]["商品名"]);
+      changeText = '{{product' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['商品名']);
       // データ走査
       productItems.forEach(function (wVal) {
         // 商品名と同じ
-        if (wVal["商品名"] == rowVal[i]["商品名"]) {
+        if (wVal['商品名'] == rowVal[i]['商品名']) {
           productData = wVal;
         }
       });
       // 価格（P)
-      changeText = "{{price" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        "￥ " + rowVal[i]["販売価格"]
-      );
+      changeText = '{{price' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '￥ ' + rowVal[i]['販売価格']);
       // 数量
-      changeText = "{{c" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]["受注数"]);
+      changeText = '{{c' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['受注数']);
       // 金額
-      changeText = "{{amount" + (i + 1) + "}}";
-      total = rowVal[i]["受注数"] * rowVal[i]["販売価格"];
-      if (Number(productData["税率"]) > 8) {
+      changeText = '{{amount' + (i + 1) + '}}';
+      total = rowVal[i]['受注数'] * rowVal[i]['販売価格'];
+      if (Number(productData['税率']) > 8) {
         var taxValTotal = Math.round(Number(total * 1.1));
         var taxVal = taxValTotal - Number(total);
         tentax += taxVal;
@@ -1566,7 +2068,8 @@ function createGDoc(rowVal) {
         tax += taxVal;
         amount += total;
         totals += taxValTotal;
-      } else {
+      }
+      else {
         var taxValTotal = Math.round(Number(total * 1.08));
         var taxVal = taxValTotal - Number(total);
         eigtax += taxVal;
@@ -1575,57 +2078,36 @@ function createGDoc(rowVal) {
         amount += total;
         totals += taxValTotal;
       }
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        "￥ " + total.toLocaleString()
-      );
-    } else {
-      var changeText = "{{bunrui" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{product" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{price" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{c" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{amount" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '￥ ' + total.toLocaleString());
+    }
+    else {
+      var changeText = '{{bunrui' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{product' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{price' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{c' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{amount' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
     }
   }
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{amount}}",
-    amount.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{tax}}", tax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{10tax_t}}",
-    tentax_t.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{10tax}}", tentax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{8tax_t}}",
-    eigtax_t.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{8tax}}", eigtax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{amount_delivered}}",
-    totals.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{total}}",
-    "￥ " + totals.toLocaleString()
-  );
+  wCopyDocBody = wCopyDocBody.replaceText('{{amount}}', amount.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{tax}}', tax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{10tax_t}}', tentax_t.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{10tax}}', tentax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{8tax_t}}', eigtax_t.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{8tax}}', eigtax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{amount_delivered}}', totals.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{total}}', '￥ ' + totals.toLocaleString());
   wCopyDoc.saveAndClose();
 
   // ファイル名を変更する
-  let fileName =
-    Utilities.formatDate(new Date(), "JST", "yyyyMMdd") +
-    "_" +
-    customerItem["会社名"] +
-    " 御中";
+  let fileName = Utilities.formatDate(new Date(), 'JST', 'yyyyMMdd') + "_" + customerItem['会社名'] + ' 御中';
   wCopyFile.setName(fileName);
   // コピーしたファイルIDとファイル名を返却する（あとでこのIDをもとにPDFに変換するため）
-  return [wCopyFileId, fileName, customerItem["会社名"]];
+  return [wCopyFileId, fileName, customerItem['会社名']];
 }
 // PDF生成
 function createDeliveredPdf(docId, fileName, targetFolderName) {
@@ -1635,13 +2117,11 @@ function createDeliveredPdf(docId, fileName, targetFolderName) {
   // headersにアクセストークンを格納する
   let wOtions = {
     headers: {
-      Authorization: `Bearer ${ScriptApp.getOAuthToken()}`,
-    },
+      'Authorization': `Bearer ${ScriptApp.getOAuthToken()}`
+    }
   };
   // PDFを作成する
-  let wBlob = UrlFetchApp.fetch(wUrl, wOtions)
-    .getBlob()
-    .setName(fileName + ".pdf");
+  let wBlob = UrlFetchApp.fetch(wUrl, wOtions).getBlob().setName(fileName + '.pdf');
   // 保存先のフォルダが存在するか確認
   var targetFolder = null;
   var folders = DELIVERED_PDF_OUTDIR.getFoldersByName(targetFolderName);
@@ -1664,13 +2144,11 @@ function createReceiptPdf(docId, fileName) {
   // headersにアクセストークンを格納する
   let wOtions = {
     headers: {
-      Authorization: `Bearer ${ScriptApp.getOAuthToken()}`,
-    },
+      'Authorization': `Bearer ${ScriptApp.getOAuthToken()}`
+    }
   };
   // PDFを作成する
-  let wBlob = UrlFetchApp.fetch(wUrl, wOtions)
-    .getBlob()
-    .setName(fileName + ".pdf");
+  let wBlob = UrlFetchApp.fetch(wUrl, wOtions).getBlob().setName(fileName + '.pdf');
 
   //PDFを指定したフォルダに保存する
   return RECEIPT_PDF_OUTDIR.createFile(wBlob).getId();
@@ -1678,68 +2156,51 @@ function createReceiptPdf(docId, fileName) {
 // 領収書のドキュメントを置換
 function createReceiptGDoc(rowVal) {
   // 顧客情報シートを取得する
-  const customerItems = getAllRecords("顧客情報");
-  const shippingToItems = getAllRecords("発送先情報");
-  const productItems = getAllRecords("商品");
+  const customerItems = getAllRecords('顧客情報');
+  const shippingToItems = getAllRecords('発送先情報');
+  const productItems = getAllRecords('商品');
   var customerItem = [];
   Logger.log(rowVal);
   Logger.log(rowVal[0]);
-  Logger.log(rowVal[0]["顧客名"]);
-  const shippingName = rowVal[0]["顧客名"].split("　")[0];
+  Logger.log(rowVal[0]['顧客名']);
+  const shippingName = rowVal[0]['顧客名'].split('　')[0];
   Logger.log(shippingName);
   // データ走査
   shippingToItems.forEach(function (wVal) {
     if (shippingName.length > 1) {
       // 会社名と同じ
-      if (
-        shippingName[1] == wVal["氏名"] &&
-        shippingName[0] == wVal["会社名"]
-      ) {
+      if (shippingName[1] == wVal['氏名'] && shippingName[0] == wVal['会社名']) {
         customerItem = wVal;
       }
-    } else {
+    }
+    else {
       // 会社名と同じ
-      if (shippingName == wVal["氏名"]) {
+      if (shippingName == wVal['氏名']) {
         customerItem = wVal;
       }
     }
   });
   if (customerItem.length == 0) {
-    customerItem["会社名"] = rowVal[0]["顧客名"].split("　")[0];
-    customerItem["住所１"] = rowVal[0]["顧客住所"];
-    customerItem["郵便番号"] = rowVal[0]["顧客郵便番号"];
-    customerItem["住所２"] = "";
+    customerItem['会社名'] = rowVal[0]['顧客名'].split('　')[0];
+    customerItem['住所１'] = rowVal[0]['顧客住所'];
+    customerItem['郵便番号'] = rowVal[0]['顧客郵便番号'];
+    customerItem['住所２'] = "";
   }
   // テンプレートファイルをコピーする
-  const wCopyFile = RECEIPT_TEMPLATE.makeCopy(),
-    wCopyFileId = wCopyFile.getId(),
-    wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
+  const wCopyFile = RECEIPT_TEMPLATE.makeCopy()
+    , wCopyFileId = wCopyFile.getId()
+    , wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
   let wCopyDocBody = wCopyDoc.getBody(); // Googleドキュメント内の本文を取得する
-  var post = String(customerItem["郵便番号"]);
+  var post = String(customerItem['郵便番号']);
   post = post.substring(0, 3).concat("-").concat(post.substring(3, 7));
 
   // 注文書ファイル内の可変文字部（として用意していた箇所）を変更する
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{company_name}}",
-    customerItem["会社名"] ? customerItem["会社名"] : customerItem["氏名"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{post}}", post);
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{address1}}",
-    customerItem["住所１"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{address2}}",
-    customerItem["住所２"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{delivery_num}}",
-    rowVal[0]["受注ID"]
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{delivery_date}}",
-    Utilities.formatDate(new Date(rowVal[0]["納品日"]), "JST", "yyyy年MM月dd日")
-  );
+  wCopyDocBody = wCopyDocBody.replaceText('{{company_name}}', customerItem['会社名'] ? customerItem['会社名'] : customerItem['氏名']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{post}}', post);
+  wCopyDocBody = wCopyDocBody.replaceText('{{address1}}', customerItem['住所１']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{address2}}', customerItem['住所２']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_num}}', rowVal[0]['受注ID']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_date}}', Utilities.formatDate(new Date(rowVal[0]['納品日']), 'JST', 'yyyy年MM月dd日'));
   let totals = 0;
   let tentax = 0;
   let eigtax = 0;
@@ -1753,34 +2214,28 @@ function createReceiptGDoc(rowVal) {
     if (i < rowVal.length) {
       var productData;
       // 商品分類
-      var changeText = "{{bunrui" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        rowVal[i]["商品分類"]
-      );
+      var changeText = '{{bunrui' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['商品分類']);
       // 商品名
-      changeText = "{{product" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]["商品名"]);
+      changeText = '{{product' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['商品名']);
       // データ走査
       productItems.forEach(function (wVal) {
         // 商品名と同じ
-        if (wVal["商品名"] == rowVal[i]["商品名"]) {
+        if (wVal['商品名'] == rowVal[i]['商品名']) {
           productData = wVal;
         }
       });
       // 価格（P)
-      changeText = "{{price" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        "￥ " + rowVal[i]["販売価格"]
-      );
+      changeText = '{{price' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '￥ ' + rowVal[i]['販売価格']);
       // 数量
-      changeText = "{{c" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]["受注数"]);
+      changeText = '{{c' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, rowVal[i]['受注数']);
       // 金額
-      changeText = "{{amount" + (i + 1) + "}}";
-      total = rowVal[i]["受注数"] * rowVal[i]["販売価格"];
-      if (Number(productData["税率"]) > 8) {
+      changeText = '{{amount' + (i + 1) + '}}';
+      total = rowVal[i]['受注数'] * rowVal[i]['販売価格'];
+      if (Number(productData['税率']) > 8) {
         var taxValTotal = Math.round(Number(total * 1.1));
         var taxVal = taxValTotal - Number(total);
         tentax += taxVal;
@@ -1788,7 +2243,8 @@ function createReceiptGDoc(rowVal) {
         tax += taxVal;
         amount += total;
         totals += taxValTotal;
-      } else {
+      }
+      else {
         var taxValTotal = Math.round(Number(total * 1.08));
         var taxVal = taxValTotal - Number(total);
         eigtax += taxVal;
@@ -1797,53 +2253,33 @@ function createReceiptGDoc(rowVal) {
         amount += total;
         totals += taxValTotal;
       }
-      wCopyDocBody = wCopyDocBody.replaceText(
-        changeText,
-        "￥ " + total.toLocaleString()
-      );
-    } else {
-      var changeText = "{{bunrui" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{product" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{price" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{c" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
-      changeText = "{{amount" + (i + 1) + "}}";
-      wCopyDocBody = wCopyDocBody.replaceText(changeText, "");
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '￥ ' + total.toLocaleString());
+    }
+    else {
+      var changeText = '{{bunrui' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{product' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{price' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{c' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
+      changeText = '{{amount' + (i + 1) + '}}';
+      wCopyDocBody = wCopyDocBody.replaceText(changeText, '');
     }
   }
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{amount}}",
-    amount.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{tax}}", tax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{10tax_t}}",
-    tentax_t.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{10tax}}", tentax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{8tax_t}}",
-    eigtax_t.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText("{{8tax}}", eigtax.toLocaleString());
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{amount_delivered}}",
-    totals.toLocaleString()
-  );
-  wCopyDocBody = wCopyDocBody.replaceText(
-    "{{total}}",
-    "￥ " + totals.toLocaleString()
-  );
+  wCopyDocBody = wCopyDocBody.replaceText('{{amount}}', amount.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{tax}}', tax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{10tax_t}}', tentax_t.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{10tax}}', tentax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{8tax_t}}', eigtax_t.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{8tax}}', eigtax.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{amount_delivered}}', totals.toLocaleString());
+  wCopyDocBody = wCopyDocBody.replaceText('{{total}}', '￥ ' + totals.toLocaleString());
   wCopyDoc.saveAndClose();
 
   // ファイル名を変更する
-  let fileName =
-    customerItem["会社名"] +
-    "領収文書_" +
-    Utilities.formatDate(new Date(), "JST", "yyyyMMdd");
+  let fileName = customerItem['会社名'] + '領収文書_' + Utilities.formatDate(new Date(), 'JST', 'yyyyMMdd');
   wCopyFile.setName(fileName);
   // コピーしたファイルIDとファイル名を返却する（あとでこのIDをもとにPDFに変換するため）
   return [wCopyFileId, fileName];
@@ -1856,4 +2292,23 @@ function createReceiptFile(records) {
   createReceiptPdf(wFileRtn[0], wFileRtn[1]);
   // PDF変換したあとは元ファイルを削除する
   DriveApp.getFileById(wFileRtn[0]).setTrashed(true);
+}
+
+/**
+ * 仮受注データを削除（受注登録完了時）
+ */
+function deleteTempOrder(tempOrderId) {
+  const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
+  const sheet = ss.getSheetByName('仮受注');
+
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === tempOrderId) {
+      sheet.deleteRow(i + 1);
+      Logger.log(`仮受注データ削除: ${tempOrderId}`);
+      break;
+    }
+  }
 }

@@ -7,11 +7,40 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+    <!-- CSSに追加 -->
+  <style>
+    /* 文字を折り返す */
+    .cell-wrap {
+      white-space: normal !important;
+      word-wrap: break-word;
+      word-break: break-all;
+      line-height: 1.3;
+      text-align: left;
+      padding: 0.375rem 0.75rem;
+    }
+
+    /* 商品名の列幅を広げる */
+    .product-name-td {
+      min-width: 120px;
+      width: 50%; /* テーブル幅の50% */
+    }
+
+    /* スマホ用 */
+    @media (max-width: 768px) {
+      .table {
+        font-size: 0.85rem; /* 少し文字を小さく */
+      }
+      
+      .cell-wrap {
+        padding: 0.25rem 0.5rem; /* パディングを減らす */
+      }
+    }
+  </style>
 </head>
 
 <body>
   <div class="container">
-    <h2 class="text-center m-4">会社名</h2>
+    <h2 class="text-center m-4"><?= getCompanyDisplayName() ?></h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <div class="text-center">
         <button type="submit" class="btn main_btn" name="shipping" value="true">受注</button>
@@ -20,6 +49,13 @@
         <br>
         <button type="submit" class="btn main_btn" name="csvImport" value="true">受注CSV<br>取込</button>
         <button type="submit" class="btn main_btn" name="quotation" value="true">見積書<br>作成</button>
+        <button type="submit" class="btn main_btn" name="orderList" value="true" >発注<br>一覧</button>
+        <br>
+        <button type="submit" class="btn main_btn" name="orderListPage" value="true" >受注<br>一覧</button>
+        <button type="submit" class="btn main_btn" name="aiImportList" value="true" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative;">
+          🤖 AI取込<br>一覧
+          <span id="pendingImportBadge" class="badge bg-danger" style="position: absolute; top: -5px; right: -5px; font-size: 0.7rem;">0</span>
+        </button>
         <br>
         <button type="button" class="btn second_btn" name="openQuotaion" value="true" onclick="openUrlQuotaion()">見積書<br>参照</button>
         <button type="button" class="btn second_btn" name="openProduct" value="true" onclick="openUrlProduct()">商品情報<br>参照</button>
@@ -35,10 +71,10 @@
       <br>
       <div class="text-center" id="cntRes">
       </div>
-      <div class="text-center" id="invoiceYesterdayRes">
+      <!-- <div class="text-center" id="invoiceYesterdayRes">
       </div>
       <div class="text-center" id="yesterdayRes">
-      </div>
+      </div> -->
       <div class="text-center" id="invoiceTodayRes">
       </div>
       <div class="text-center" id="todayRes">
@@ -99,7 +135,21 @@
     }
     function setRes() {
       $("#cntRes").html('読み込み中...');
-      google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate(); 
+      google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate();
+      // 未処理のAI取込件数を取得
+      google.script.run.withSuccessHandler(function(count) {
+        const badge = document.getElementById('pendingImportBadge');
+        if (badge) {
+          if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }).withFailureHandler(function(e) {
+        console.error('AI取込件数取得エラー:', e);
+      }).getPendingImportCount();
     }
     function setTable(datas) {
       var res = JSON.parse(datas);
@@ -108,7 +158,7 @@
       <thead>
         <tr class="table-primary">
       `;
-      cntHtml += `<th scope="col">${res[0]['昨日']}</th>`;
+      // cntHtml += `<th scope="col">${res[0]['昨日']}</th>`;
       cntHtml += `<th style="background-color: #B0E3A4;" scope="col">${res[0]['今日']}</th>`;
       cntHtml += `<th scope="col">${res[0]['明日']}</th>`;
       cntHtml += `<th scope="col">${res[0]['明後日']}</th>`;
@@ -117,7 +167,7 @@
       </thead>`;
       cntHtml += `<tbody class="table-group-divider">
             <tr>`;
-      cntHtml += `<td scope="col">${res[1]['昨日']}件</td>`;
+      // cntHtml += `<td scope="col">${res[1]['昨日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['今日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['明日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['明後日']}件</td>`;
@@ -127,18 +177,18 @@
       </table>
       `;
       $("#cntRes").html(cntHtml);
-      if (res[2]) {
-        createInvoiceHtml(res[2], res[0]['昨日'], "#invoiceYesterdayRes");
-      }
-      else {
-        $("#invoiceYesterdayRes").html('');
-      }
-      if (res[3]) {
-        createProductHtml(res[3], res[0]['昨日'], "#yesterdayRes");
-      }
-      else {
-        $("#yesterdayRes").html('');
-      }
+      // if (res[2]) {
+      //   createInvoiceHtml(res[2], res[0]['昨日'], "#invoiceYesterdayRes");
+      // }
+      // else {
+      //   $("#invoiceYesterdayRes").html('');
+      // }
+      // if (res[3]) {
+      //   createProductHtml(res[3], res[0]['昨日'], "#yesterdayRes");
+      // }
+      // else {
+      //   $("#yesterdayRes").html('');
+      // }
       if (res[4]) {
         createInvoiceHtml(res[4], res[0]['今日'], "#invoiceTodayRes", true);
       }
@@ -213,63 +263,67 @@
     };
     function createInvoiceHtml(res, dateVal, idName, colorFlg) {
       var html = '';
+      
+      // 納品方法でグループ化
+      const grouped = {};
+      res.forEach(item => {
+        if (!grouped[item['納品方法']]) {
+          grouped[item['納品方法']] = [];
+        }
+        grouped[item['納品方法']].push(item);
+      });
+      
       if (colorFlg) {
-        html += `<p class="info_table today_color">${dateVal} 納品</p>`;
-        html += `<table class="table table-bordered">
-        <thead>
-          <tr class="table-primary">
-        `;
-        for (let i = 0; i < res.length; i++) {
-          html += `<th class="today_color" scope="col">`;
-          html += res[i]['納品方法'];
-          html += `</th>`;
-        }
-        html += `</tr>
-        </thead>`;
-        html += `<tbody class="table-group-divider">
-              <tr>`;
-        for (let i = 0; i < res.length; i++) {
-          html += `<td scope="col">`;
-          html += res[i]['件数'] +"件";
-          html += `</td>`;
-        }
+        html += `<p class="info_table today_color">${dateVal} 発送</p>`;
+      } else {
+        html += `<p class="info_table">${dateVal} 発送</p>`;
       }
-      else {
-        html += `<p class="info_table">${dateVal} 納品</p>`;
-        html += `<table class="table table-bordered">
-        <thead>
-          <tr class="table-primary">
-        `;
-        for (let i = 0; i < res.length; i++) {
-          html += `<th scope="col">`;
-          html += res[i]['納品方法'];
-          html += `</th>`;
+      
+      html += `<table class="table table-bordered">`;
+      html += `<thead><tr class="${colorFlg ? 'today_color' : 'table-primary'}">`;
+      
+      // ヘッダー作成
+      Object.entries(grouped).forEach(([method, items]) => {
+        if (method === 'ヤマト' || method === '佐川') {
+          html += `<th colspan="${items.length}" class="${colorFlg ? 'today_color' : ''}" scope="col">${method}</th>`;
+        } else {
+          html += `<th rowspan="2" class="${colorFlg ? 'today_color' : ''}" scope="col">${method}</th>`;
         }
-        html += `</tr>
-        </thead>`;
-        html += `<tbody class="table-group-divider">
-              <tr>`;
-        for (let i = 0; i < res.length; i++) {
-          html += `<td scope="col">`;
-          html += res[i]['件数'] +"件";
-          html += `</td>`;
+      });
+      
+      html += `</tr>`;
+      
+      // クール区分の行（ヤマト・佐川のみ）
+      html += `<tr class="${colorFlg ? 'today_color' : 'table-primary'}">`;
+      Object.entries(grouped).forEach(([method, items]) => {
+        if (method === 'ヤマト' || method === '佐川') {
+          items.forEach(item => {
+            html += `<th class="${colorFlg ? 'today_color' : ''}" scope="col">${item['クール区分']}</th>`;
+          });
         }
-      }
-      html += `</tr>
-      </tbody>
-      </table>
-      `;
+      });
+      html += `</tr></thead>`;
+      
+      // データ行
+      html += `<tbody class="table-group-divider"><tr>`;
+      Object.entries(grouped).forEach(([method, items]) => {
+        items.forEach(item => {
+          html += `<td scope="col">${item['個数']}個</td>`;
+        });
+      });
+      
+      html += `</tr></tbody></table>`;
       $(idName).html(html);
     }
     function createProductHtml(res, dateVal, idName, colorFlg) {
       var html = '';
       if (colorFlg) {
-        html += `<p class="info_table today_color">${dateVal} 商品</p>`;
+        // html += `<p class="info_table today_color">${dateVal} 商品</p>`;
         html += `<table class="table table-bordered">
         <thead>
           <tr class="today_color">`;
         html += `<th class="today_color" scope="col" rowspan="2">`;
-        html += "顧客名";
+        html += "発送先名";
         html += `</th>`;
         html += `<th class="today_color" scope="col">`;
         html += '商品名';
@@ -284,12 +338,12 @@
         html += `</th>`;
       }
       else {
-        html += `<p class="info_table">${dateVal} 商品</p>`;
+        // html += `<p class="info_table">${dateVal} 商品</p>`;
         html += `<table class="table table-bordered">
         <thead>
           <tr class="table-primary">`;
         html += `<th scope="col" rowspan="2">`;
-        html += "顧客名";
+        html += "発送先名";
         html += `</th>`;
         html += `<th scope="col">`;
         html += '商品名';
@@ -309,30 +363,37 @@
             <tr>`;
       for (let i = 0; i < res.length; i++) {
         html += `<td scope="col" rowspan=`+ res[i]['商品'].length * 2 +`>`;
-        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['顧客名'] + `>`;
+        html += `<div class="cell-wrap">` + res[i]['発送先名'] + `</div>`;
+        html += `</td>`;
+        html += `<td scope="col" class="product-name-td">`;
+        html += `<div class="cell-wrap">` + res[i]['商品'][0]['商品名'] + `</div>`;
         html += `</td>`;
         html += `<td scope="col">`;
-        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['商品名'] + `>`;
-        html += `</td>`;
-        html += `<td scope="col">`;
-        html += `<input type="text" style="width: 40px;" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['受注数'] + "個" +`>`;
+        html += `<div class="cell-wrap" style="width: 40px;">` + res[i]['商品'][0]['受注数'] + "個" + `</div>`;
         html += `</td>`;
         html += `</tr>`;
+        const memo0 = res[i]['商品'][0]['メモ'] || '';
+        const style0 = memo0 ? 'style="color: red; background-color: #FFFFCC;"' : ''; // メモがあればスタイルを適用
+
         html += `<td scope="col" colspan="2">`;
-        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][0]['メモ'] +`>`;
+        html += `<div class="cell-wrap" ${style0}>` + memo0 + `</div>`; // スタイルを適用
         html += `</td>`;
+        
         for (let j = 1; j < res[i]['商品'].length; j++) {
           html += `</tr>`;
-          html += `<td scope="col">`;
-          html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['商品名'] + `>`;
+          html += `<td scope="col" class="product-name-td">`;
+          html += `<div class="cell-wrap">` + res[i]['商品'][j]['商品名'] + `</div>`;
           html += `</td>`;
           html += `<td scope="col">`;
-          html += `<input type="text" style="width: 40px;" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['受注数'] + "個" +`>`;
+          html += `<div class="cell-wrap" style="width: 40px;">` + res[i]['商品'][j]['受注数'] + "個" + `</div>`;
           html += `</td>`;
-        html += `</tr>`;
-        html += `<td scope="col" colspan="2">`;
-        html += `<input type="text" class="form-control-plaintext" readonly value=` + res[i]['商品'][j]['メモ'] +`>`;
-        html += `</td>`;
+          html += `</tr>`;
+          const memoJ = res[i]['商品'][j]['メモ'] || '';
+          const styleJ = memoJ ? 'style="color: red; background-color: #FFFFCC;"' : ''; // メモがあればスタイルを適用
+          
+          html += `<td scope="col" colspan="2">`;
+          html += `<div class="cell-wrap" ${styleJ}>` + memoJ + `</div>`; // スタイルを適用
+          html += `</td>`;
         }
         html += `</tr>`;
       }

@@ -1,1 +1,10 @@
 node_modules*
+
+# 環境変数（機密情報を含む）
+.env
+.env.local
+.env.*.local
+
+# クレデンシャル
+*.credentials.json
+service-account*.json

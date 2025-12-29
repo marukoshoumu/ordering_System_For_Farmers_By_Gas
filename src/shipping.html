@@ -15,10 +15,126 @@
   <div class="container">
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <div class="mt-3">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="mainTop"
-                    value="true">ホーム画面に戻る</button>
+        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" 
+        name="mainTop" value="true"
+        onclick="clearAISession()">ホーム画面に戻る</button>
       </div>
       <h2 class="text-center m-4">受注管理</h2>
+      <!-- AI解析済みインジケーター（フォーム上部に表示） -->
+      <div class="ai-analyzed-indicator" id="aiAnalyzedIndicator">
+        <span>🤖 AI解析済み</span>
+        <span class="time" id="aiAnalyzedTime"></span>
+      </div>
+
+      <div class="ai-assistant-container">
+        <div class="ai-assistant-header" onclick="toggleAIAssistant()">
+          <h3>🤖 AI入力アシスタント（確認・修正して学習）</h3>
+          <button type="button" class="ai-assistant-toggle" id="aiToggleBtn">開く</button>
+        </div>
+        
+        <div class="ai-assistant-body" id="aiAssistantBody">
+          <div class="ai-input-tabs">
+            <button type="button" class="ai-tab-btn active" onclick="switchTab('text')">📝 テキスト</button>
+            <button type="button" class="ai-tab-btn" onclick="switchTab('file')">📎 ファイル</button>
+          </div>
+          
+          <div class="ai-tab-content active" id="textTab">
+            <div class="ai-input-area">
+              <textarea id="aiInputText" placeholder="メール、チャット、FAXの内容をそのまま貼り付けてください"></textarea>
+            </div>
+          </div>
+          
+          <div class="ai-tab-content" id="fileTab">
+            <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('orderFile').click()">
+              <input type="file" id="orderFile" accept=".pdf,image/*" onchange="handleFileSelect(event)">
+              <div class="icon">📄</div>
+              <div class="text">クリックまたはドラッグ＆ドロップ</div>
+              <div class="hint">PDF、画像ファイル</div>
+            </div>
+            <div id="filePreview"></div>
+          </div>
+          
+          <button type="button" class="ai-analyze-btn" id="aiAnalyzeBtn" onclick="analyzeWithAI()">
+            <span class="spinner"></span>
+            <span class="btn-text">🔍 AIで解析する</span>
+          </button>
+          
+          <div class="ai-result-area" id="aiResultArea">
+            <div class="ai-result-header">
+              📋 解析結果
+              <span class="confidence-badge" id="overallConfidence"></span>
+            </div>
+            
+            <div class="ai-result-body">
+              <div class="ai-alerts" id="aiAlerts"></div>
+              
+              <div class="ai-result-section">
+                <div class="ai-result-section-header">📅 日程</div>
+                <div class="ai-result-section-body">
+                  <div class="raw-data-info">
+                    <div class="row"><span class="label">発送日：</span><span id="aiResultShippingDate">-</span></div>
+                    <div class="row"><span class="label">納品日：</span><span id="aiResultDeliveryDate">-</span></div>
+                    <div class="row"><span class="label">時間指定：</span><span id="aiResultDeliveryTime">-</span></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="ai-result-section">
+                <div class="ai-result-section-header">📦 発送先 <span id="shippingToMatchBadge"></span></div>
+                <div class="ai-result-section-body">
+                  <div class="raw-data-info" id="aiResultShippingToRaw"></div>
+                  <div class="master-data-info" id="aiResultShippingToMaster" style="display:none;"></div>
+                  <div class="manual-select-info" id="aiResultShippingToManual" style="display:none;"></div>
+                  <div class="source-select-group" id="shippingToSourceSelect" style="display:none;"></div>
+                </div>
+              </div>
+              
+              <div class="ai-result-section">
+                <div class="ai-result-section-header">👤 顧客 <span id="customerMatchBadge"></span></div>
+                <div class="ai-result-section-body">
+                  <div class="raw-data-info" id="aiResultCustomerRaw"></div>
+                  <div class="master-data-info" id="aiResultCustomerMaster" style="display:none;"></div>
+                  <div class="manual-select-info" id="aiResultCustomerManual" style="display:none;"></div>
+                  <div class="source-select-group" id="customerSourceSelect" style="display:none;"></div>
+                </div>
+              </div>
+              
+              <div class="ai-result-section">
+                <div class="ai-result-section-header">🛒 商品</div>
+                <div class="ai-result-section-body" id="aiResultItems"></div>
+              </div>
+              
+              <div class="learn-summary" id="learnSummary" style="display:none;">
+                <div class="learn-summary-title">📚 学習予定のマッピング</div>
+                <div id="learnSummaryItems"></div>
+              </div>
+              
+              <div class="ai-result-section" id="memoSection" style="display:none;">
+                <div class="ai-result-section-header">📝 備考</div>
+                <div class="ai-result-section-body" id="aiResultMemo"></div>
+              </div>
+              
+              <div class="ai-error" id="aiError" style="display:none;"></div>
+              
+              <div class="ai-action-buttons">
+                <button type="button" class="ai-cancel-btn" onclick="clearAIResult()">キャンセル</button>
+                <button type="button" class="ai-apply-btn" onclick="applyAIResult()">✅ フォームに反映＆学習</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-warning-modal-overlay" id="aiWarningModal">
+        <div class="ai-warning-modal">
+          <div class="ai-warning-modal-header">⚠️ 入力内容を確認してください</div>
+          <div class="ai-warning-modal-body" id="aiWarningBody"></div>
+          <div class="ai-warning-modal-footer">
+            <button type="button" class="ai-warning-modify-btn" onclick="closeWarningModal()">修正する</button>
+            <button type="button" class="ai-warning-proceed-btn" onclick="proceedWithWarnings()">このまま進む</button>
+          </div>
+        </div>
+      </div>
       <div class="customerSearch_dg">
         <div>
           <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
@@ -199,577 +315,660 @@
       <div>
         <? output._ = shippingHTML ?>
       </div>
+      <!-- 仮受注ID（AI取込一覧から遷移した場合に設定） -->
+      <? if (typeof tempOrderId !== 'undefined' && tempOrderId) { ?>
+        <input type="hidden" name="tempOrderId" value="<?= tempOrderId ?>">
+      <? } ?>
       <div class="text-center">
-        <button type="submit" class="btn btn-primary me-3" name="shippingComfirm" value="true">受注確認</button>
+        <? if (isEditMode) { ?>
+          <button type="submit" class="btn btn-warning" name="shippingComfirm" value="true" onclick="return validateBeforeSubmit()">修正確認</button>
+        <? } else { ?>
+          <button type="submit" class="btn btn-primary" name="shippingComfirm" value="true" onclick="return validateBeforeSubmit()">受注確認</button>
+        <? } ?>
       </div>
       <div class="text-center mt-3">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main"
-                    value="true">ホーム画面に戻る</button>
+        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" 
+        name="mainTop" value="true"
+        onclick="clearAISession()">ホーム画面に戻る</button>
       </div>
     </form>
   </div>
   <script>
     var oriproduct = $('select[id="product1"]').html();
-        var oriquantity = $('select[id="quantity1"]').html();
-        function bunruiChange(numVal) {
-            var bunrui = 'bunrui' + numVal;
-            var product = 'product' + numVal;
-            var $product = $('select[id="' + product + '"]');
-            var val1 = $('select[id="' + bunrui + '"]').val();
-            $product.html(oriproduct).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-        }
-        function productChange(numVal) {
-            var product = 'product' + numVal;
-            var quantity = 'quantity' + numVal;
-            var price = 'price' + numVal;
-            var $quantity = $('select[id="' + quantity + '"]');
-            var $price = $('input[id="' + price + '"]');
-            var productVal = $('select[id="' + product + '"]').val();
-            var val1 = Number($('[data-name="' + productVal + '"]').data('zaiko'));
-            var val2 = Number($('[data-name="' + productVal + '"]').data('price'));
-            $price.val(val2);
-            $quantity.html(oriquantity).find('option').each(function (index) {
-                if (val1 < index) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-            if (numVal == 1) {
-                $('#sendProduct').val(productVal);
+    var oriquantity = $('select[id="quantity1"]').html();
+    function bunruiChange(numVal) {
+        var bunrui = 'bunrui' + numVal;
+        var product = 'product' + numVal;
+        var $product = $('select[id="' + product + '"]');
+        var val1 = $('select[id="' + bunrui + '"]').val();
+        $product.html(oriproduct).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).not(':first-child').remove();
             }
+        })
+    }
+    function productChange(numVal) {
+        var product = 'product' + numVal;
+        var quantity = 'quantity' + numVal;
+        var price = 'price' + numVal;
+        var $quantity = $('select[id="' + quantity + '"]');
+        var $price = $('input[id="' + price + '"]');
+        var productVal = $('select[id="' + product + '"]').val();
+        var val1 = Number($('[data-name="' + productVal + '"]').data('zaiko'));
+        var val2 = Number($('[data-name="' + productVal + '"]').data('price'));
+        var val3 = $('[data-name="' + productVal + '"]').data('abbreviation');
+        $price.val(val2);
+        $quantity.html(oriquantity).find('option').each(function (index) {
+            if (val1 < index) {
+                $(this).not(':first-child').remove();
+            }
+        })
+        if (numVal == 1) {
+            $('#sendProduct').val(val3);
         }
-        var orideliveryTime = $('select[id="deliveryTime"]').html();
-        var oriinvoiceType = $('select[id="invoiceType"]').html();
-        var oricoolCls = $('select[id="coolCls"]').html();
-        var oricargo1 = $('select[id="cargo1"]').html();
-        var oricargo2 = $('select[id="cargo2"]').html();
-        function deliveryMethodChange() {
-            var $deliveryMethod = $('select[id="deliveryMethod"]');
-            var $deliveryTime = $('select[id="deliveryTime"]');
-            var $invoiceType = $('select[id="invoiceType"]');
-            var $coolCls = $('select[id="coolCls"]');
-            var $cargo1 = $('select[id="cargo1"]');
-            var $cargo2 = $('select[id="cargo2"]');
-            var val1 = $deliveryMethod.val();
-            $deliveryTime.html(orideliveryTime).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-            $invoiceType.html(oriinvoiceType).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).remove();
-                }
-            })
-            $coolCls.html(oricoolCls).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).remove();
-                }
-            })
-            $cargo1.html(oricargo1).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-            $cargo2.html(oricargo2).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-        }
-        function farmChange() {
-            $('button[id="farmBtn"]').text('反映中..');
-            google.script.run.withSuccessHandler(farmChengeSuccess).getAllRecords('会社名', true);
-        }
-        function farmChengeSuccess(datas) {
-            var data = JSON.parse(datas);
-            $('input[id="shippingFromName"]').val(data[0]['名前']);
-            $('input[id="shippingFromZipcode"]').val(data[0]['郵便番号']);
-            $('input[id="shippingFromAddress"]').val(data[0]['住所']);
-            $('input[id="shippingFromTel"]').val(data[0]['電話番号']);
-            $('button[id="farmBtn"]').text('会社名');
-        }
-        function custCopy() {
-            $('input[id="shippingFromName"]').val($('input[id="customerName"]').val());
-            $('input[id="shippingFromZipcode"]').val($('input[id="customerZipcode"]').val());
-            $('input[id="shippingFromAddress"]').val($('input[id="customerAddress"]').val());
-            $('input[id="shippingFromTel"]').val($('input[id="customerTel"]').val());
-        }
-        function sendCopy() {
-            $('input[id="shippingFromName"]').val($('input[id="shippingToName"]').val());
-            $('input[id="shippingFromZipcode"]').val($('input[id="shippingToZipcode"]').val());
-            $('input[id="shippingFromAddress"]').val($('input[id="shippingToAddress"]').val());
-            $('input[id="shippingFromTel"]').val($('input[id="shippingToTel"]').val());
-        }
-        function customerSame() {
-            $('input[id="shippingToName"]').val($('input[id="customerName"]').val());
-            $('input[id="shippingToZipcode"]').val($('input[id="customerZipcode"]').val());
-            $('input[id="shippingToAddress"]').val($('input[id="customerAddress"]').val());
-            $('input[id="shippingToTel"]').val($('input[id="customerTel"]').val());
-        }
-        $(function () {
-            $(".customerInsertBtn_open").on("click", function () {
-                $(".customer_dg").dialog({
-                    title: "顧客新規登録",
-                    height: "500",
-                    modal: true,
-                    buttons: {
-                        "キャンセル": function () {
-                            $(this).dialog("close");
-                        },
-                        "登録": function () {
-                            addCustomer();
-                        },
+    }
+    var orideliveryTime = $('select[id="deliveryTime"]').html();
+    var oriinvoiceType = $('select[id="invoiceType"]').html();
+    var oricoolCls = $('select[id="coolCls"]').html();
+    var oricargo1 = $('select[id="cargo1"]').html();
+    var oricargo2 = $('select[id="cargo2"]').html();
+    function deliveryMethodChange() {
+        var $deliveryMethod = $('select[id="deliveryMethod"]');
+        var $deliveryTime = $('select[id="deliveryTime"]');
+        var $invoiceType = $('select[id="invoiceType"]');
+        var $coolCls = $('select[id="coolCls"]');
+        var $cargo1 = $('select[id="cargo1"]');
+        var $cargo2 = $('select[id="cargo2"]');
+        var val1 = $deliveryMethod.val();
+        $deliveryTime.html(orideliveryTime).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).not(':first-child').remove();
+            }
+        })
+        $invoiceType.html(oriinvoiceType).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).remove();
+            }
+        })
+        $coolCls.html(oricoolCls).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).remove();
+            }
+        })
+        $cargo1.html(oricargo1).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).not(':first-child').remove();
+            }
+        })
+        $cargo2.html(oricargo2).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).not(':first-child').remove();
+            }
+        })
+    }
+    function babaChange() {
+        $('button[id="babaBtn"]').text('反映中..');
+        google.script.run.withSuccessHandler(babaChengeSuccess).getCompanyRecordForShipping();
+    }
+    function babaChengeSuccess(datas) {
+        var data = JSON.parse(datas);
+        $('input[id="shippingFromName"]').val(data[0]['名前']);
+        $('input[id="shippingFromZipcode"]').val(data[0]['郵便番号']);
+        $('input[id="shippingFromAddress"]').val(data[0]['住所']);
+        $('input[id="shippingFromTel"]').val(data[0]['電話番号']);
+        var companyDisplayName = '<?= getCompanyDisplayName() ?>';
+        $('button[id="babaBtn"]').text(companyDisplayName);
+    }
+    function custCopy() {
+        $('input[id="shippingFromName"]').val($('input[id="customerName"]').val());
+        $('input[id="shippingFromZipcode"]').val($('input[id="customerZipcode"]').val());
+        $('input[id="shippingFromAddress"]').val($('input[id="customerAddress"]').val());
+        $('input[id="shippingFromTel"]').val($('input[id="customerTel"]').val());
+    }
+    function sendCopy() {
+        $('input[id="shippingFromName"]').val($('input[id="shippingToName"]').val());
+        $('input[id="shippingFromZipcode"]').val($('input[id="shippingToZipcode"]').val());
+        $('input[id="shippingFromAddress"]').val($('input[id="shippingToAddress"]').val());
+        $('input[id="shippingFromTel"]').val($('input[id="shippingToTel"]').val());
+    }
+    function customerSame() {
+        $('input[id="shippingToName"]').val($('input[id="customerName"]').val());
+        $('input[id="shippingToZipcode"]').val($('input[id="customerZipcode"]').val());
+        $('input[id="shippingToAddress"]').val($('input[id="customerAddress"]').val());
+        $('input[id="shippingToTel"]').val($('input[id="customerTel"]').val());
+    }
+    $(function () {
+        $(".customerInsertBtn_open").on("click", function () {
+            $(".customer_dg").dialog({
+                title: "顧客新規登録",
+                height: "500",
+                modal: true,
+                buttons: {
+                    "キャンセル": function () {
+                        $(this).dialog("close");
                     },
-                });
+                    "登録": function () {
+                        addCustomer();
+                    },
+                },
             });
         });
-        $(function () {
-            $(".shippingToInsertBtn_open").on("click", function () {
-                $(".shippingTo_dg").dialog({
-                    title: "発送先新規登録",
-                    height: "500",
-                    modal: true,
-                    buttons: {
-                        "キャンセル": function () {
-                            $(this).dialog("close");
-                        },
-                        "登録": function () {
-                            addShippingTo();
-                        },
+    });
+    $(function () {
+        $(".shippingToInsertBtn_open").on("click", function () {
+            $(".shippingTo_dg").dialog({
+                title: "発送先新規登録",
+                height: "500",
+                modal: true,
+                buttons: {
+                    "キャンセル": function () {
+                        $(this).dialog("close");
                     },
-                });
+                    "登録": function () {
+                        addShippingTo();
+                    },
+                },
             });
         });
-        function addCustomer() {
-            if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
-                alert('会社名または氏名が入力されていません。');
+    });
+    function addCustomer() {
+        if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
+            alert('会社名または氏名が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="customerZipcodeDg"]').val()) {
+            alert('郵便番号が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
+            alert('郵便番号は7桁の数字で入力して下さい。');
+            return false;
+        }
+        if (!$('input[id="customerAddress1Dg"]').val()) {
+            alert('住所１が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="customerTelDg"]').val()) {
+            alert('電話番号が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
+            alert('電話番号は10~11桁の数字で入力して下さい。');
+            return false;
+        }
+        if ($('input[id="customerPhoneDg"]').val()) {
+            if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
+                alert('携帯電話は10~11桁の数字で入力して下さい。');
                 return false;
             }
-            if (!$('input[id="customerZipcodeDg"]').val()) {
-                alert('郵便番号が入力されていません。');
+        }
+        if ($('input[id="customerFaxDg"]').val()) {
+            if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
+                alert('ＦＡＸは10~11桁の数字で入力して下さい。');
                 return false;
             }
-            if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
-                alert('郵便番号は7桁の数字で入力して下さい。');
+        }
+        if ($('input[id="customerMailDg"]').val()) {
+            if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
+                alert('メールアドレスは正しい形式で入力して下さい。');
                 return false;
             }
-            if (!$('input[id="customerAddress1Dg"]').val()) {
-                alert('住所１が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerTelDg"]').val()) {
-                alert('電話番号が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
-                alert('電話番号は10~11桁の数字で入力して下さい。');
-                return false;
-            }
-            if ($('input[id="customerPhoneDg"]').val()) {
-                if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
-                    alert('携帯電話は10~11桁の数字で入力して下さい。');
-                    return false;
-                }
-            }
-            if ($('input[id="customerFaxDg"]').val()) {
-                if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
-                    alert('ＦＡＸは10~11桁の数字で入力して下さい。');
-                    return false;
-                }
-            }
-            if ($('input[id="customerMailDg"]').val()) {
-                if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                    alert('メールアドレスは正しい形式で入力して下さい。');
-                    return false;
-                }
-            }
-            var record = {};
-            record['customerClassDg'] = $('select[id="customerClassDg"]').val();
-            record['customerNameDg'] = $('input[id="customerNameDg"]').val();
-            record['customerShowNameDg'] = $('input[id="customerShowNameDg"]').val();
-            record['customerFuriganaDg'] = $('input[id="customerFuriganaDg"]').val();
-            record['customerDepDg'] = $('input[id="customerDepDg"]').val();
-            record['customerPostDg'] = $('input[id="customerPostDg"]').val();
-            record['customerIdentDg'] = $('input[id="customerIdentDg"]').val();
-            record['customerZipcodeDg'] = $('input[id="customerZipcodeDg"]').val();
-            record['customerAddress1Dg'] = $('input[id="customerAddress1Dg"]').val();
-            record['customerAddress2Dg'] = $('input[id="customerAddress2Dg"]').val();
-            record['customerTelDg'] = $('input[id="customerTelDg"]').val();
-            record['customerPhoneDg'] = $('input[id="customerPhoneDg"]').val();
-            record['customerFaxDg'] = $('input[id="customerFaxDg"]').val();
-            record['customerMailDg'] = $('input[id="customerMailDg"]').val();
-            record['customerBillDg'] = $('select[id="customerBillDg"]').val();
-            record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
-            record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
+        }
+        var record = {};
+        record['customerClassDg'] = $('select[id="customerClassDg"]').val();
+        record['customerNameDg'] = $('input[id="customerNameDg"]').val();
+        record['customerShowNameDg'] = $('input[id="customerShowNameDg"]').val();
+        record['customerFuriganaDg'] = $('input[id="customerFuriganaDg"]').val();
+        record['customerDepDg'] = $('input[id="customerDepDg"]').val();
+        record['customerPostDg'] = $('input[id="customerPostDg"]').val();
+        record['customerIdentDg'] = $('input[id="customerIdentDg"]').val();
+        record['customerZipcodeDg'] = $('input[id="customerZipcodeDg"]').val();
+        record['customerAddress1Dg'] = $('input[id="customerAddress1Dg"]').val();
+        record['customerAddress2Dg'] = $('input[id="customerAddress2Dg"]').val();
+        record['customerTelDg'] = $('input[id="customerTelDg"]').val();
+        record['customerPhoneDg'] = $('input[id="customerPhoneDg"]').val();
+        record['customerFaxDg'] = $('input[id="customerFaxDg"]').val();
+        record['customerMailDg'] = $('input[id="customerMailDg"]').val();
+        record['customerBillDg'] = $('select[id="customerBillDg"]').val();
+        record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
+        record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
 
-            const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
-            if (checkAddFlg) {
-                if ($('input[name=customerSameDg]').prop("checked")) {
-                    google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
-                }
-                else {
-                    google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomer(JSON.stringify(record));
-                }
-            }
-        }
-        function addShippingTo() {
-            if (!$('input[id="shippingToNameDg"]').val() && !$('input[id="shippingToIdentDg"]').val()) {
-                alert('会社名または氏名が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="shippingToZipcodeDg"]').val()) {
-                alert('郵便番号が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="shippingToZipcodeDg"]').val().match(/[0-9]{7}/)) {
-                alert('郵便番号は7桁の数字で入力して下さい。');
-                return false;
-            }
-            if (!$('input[id="shippingToAddress1Dg"]').val()) {
-                alert('住所１が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="shippingToTelDg"]').val()) {
-                alert('電話番号が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="shippingToTelDg"]').val().match(/^0\d{9,10}$/)) {
-                alert('電話番号は10~11桁の数字で入力して下さい。');
-                return false;
-            }
-            if ($('input[id="shippingToMailDg"]').val()) {
-                if (!$('input[id="shippingToMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                    alert('メールアドレスは正しい形式で入力して下さい。');
-                    return false;
-                }
-            }
-            var record = {};
-            record['shippingToClassDg'] = $('select[id="shippingToClassDg"]').val();
-            record['shippingToNameDg'] = $('input[id="shippingToNameDg"]').val();
-            record['shippingToDepDg'] = $('input[id="shippingToDepDg"]').val();
-            record['shippingToPostDg'] = $('input[id="shippingToPostDg"]').val();
-            record['shippingToIdentDg'] = $('input[id="shippingToIdentDg"]').val();
-            record['shippingToZipcodeDg'] = $('input[id="shippingToZipcodeDg"]').val();
-            record['shippingToAddress1Dg'] = $('input[id="shippingToAddress1Dg"]').val();
-            record['shippingToAddress2Dg'] = $('input[id="shippingToAddress2Dg"]').val();
-            record['shippingToTelDg'] = $('input[id="shippingToTelDg"]').val();
-            record['shippingToPhoneDg'] = $('input[id="shippingToPhoneDg"]').val();
-            record['shippingToFaxDg'] = $('input[id="shippingToFaxDg"]').val();
-            record['shippingToMailDg'] = $('input[id="shippingToMailDg"]').val();
-            record['shippingToBillDg'] = $('select[id="shippingToBillDg"]').val();
-            record['shippingToDepositDateDg'] = $('select[id="shippingToDepositDateDg"]').val();
-            record['shippingToMemoDg'] = $('input[id="shippingToMemoDg"]').val();
-
-            const checkAddFlg = window.confirm('発送先情報を登録してもよろしいですか？');
-            if (checkAddFlg) {
-                google.script.run.withSuccessHandler(dataAddSuccessShippingTo).withFailureHandler(dataAddFail).addShippingTo(JSON.stringify(record));
-            }
-        }
-        function getAddress() {
-            var postalCode = document.getElementById("customerZipcodeDg").value;
-            var record = {};
-            record['postalCode'] = postalCode;
-            google.script.run.withSuccessHandler(dataPostSuccess).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
-        }
-
-        function dataPostSuccess(data) {
-            if (data) {
-                var res = JSON.parse(data);
-                $('input[id="customerAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
-            }
-        }
-        function getShippingToAddress() {
-            var postalCode = document.getElementById("shippingToZipcodeDg").value;
-            var record = {};
-            record['postalCode'] = postalCode;
-            google.script.run.withSuccessHandler(dataPostSuccessShippingTo).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
-        }
-
-        function dataPostSuccessShippingTo(data) {
-            if (data) {
-                var res = JSON.parse(data);
-                $('input[id="shippingToAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
-            }
-        }
-
-        function dataAddFail() {
-            alert("該当データがありませんでした。");
-        }
-        function addFail() {
-            alert("処理に失敗しました。");
-        }
-
-        function dataAddSuccess() {
-            alert("登録しました。");
-            if ($('input[id="customerNameDg"]').val()) {
-                $('input[id="customerName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
-            }
-            else {
-                $('input[id="customerName"]').val($('input[id="customerIdentDg"]').val());
-            }
-            $('input[id="customerZipcode"]').val($('input[id="customerZipcodeDg"]').val());
-            $('input[id="customerAddress"]').val($('input[id="customerAddress1Dg"]').val() + $('input[id="customerAddress2Dg"]').val());
-            $('input[id="customerTel"]').val($('input[id="customerTelDg"]').val());
+        const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
+        if (checkAddFlg) {
             if ($('input[name=customerSameDg]').prop("checked")) {
-                if ($('input[id="customerNameDg"]').val()) {
-                    $('input[id="shippingToName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
-                }
-                else {
-                    $('input[id="shippingToName"]').val($('input[id="customerIdentDg"]').val());
-                }
-                $('input[id="shippingToZipcode"]').val($('input[id="customerZipcodeDg"]').val());
-                $('input[id="shippingToAddress"]').val($('input[id="customerAddress1Dg"]').val() + $('input[id="customerAddress2Dg"]').val());
-                $('input[id="shippingToTel"]').val($('input[id="customerTelDg"]').val());
-            }
-            $(".customer_dg").dialog("close");
-        }
-        function dataAddSuccessShippingTo() {
-            alert("登録しました。");
-            if ($('input[id="shippingToNameDg"]').val()) {
-                $('input[id="shippingToName"]').val($('input[id="shippingToNameDg"]').val() + "　" + $('input[id="shippingToIdentDg"]').val());
+                google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
             }
             else {
-                $('input[id="shippingToName"]').val($('input[id="shippingToIdentDg"]').val());
+                google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomer(JSON.stringify(record));
             }
-            $('input[id="shippingToZipcode"]').val($('input[id="shippingToZipcodeDg"]').val());
-            $('input[id="shippingToAddress"]').val($('input[id="shippingToAddress1Dg"]').val() + $('input[id="shippingToAddress2Dg"]').val());
-            $('input[id="shippingToTel"]').val($('input[id="shippingToTelDg"]').val());
-            $(".shippingTo_dg").dialog("close");
         }
-        $(function () {
-            $(".customerSearchBtn_open").on("click", function () {
-                $(".customerSearch_dg").dialog({
-                    title: "顧客検索",
-                    width: "400",
-                    height: "500",
-                    modal: true,
-                    buttons: {
-                        "キャンセル": function () {
-                            $(this).dialog("close");
-                        },
-                        "検索": function () {
-                            customerSearch();
-                        },
+    }
+    function addShippingTo() {
+        if (!$('input[id="shippingToNameDg"]').val() && !$('input[id="shippingToIdentDg"]').val()) {
+            alert('会社名または氏名が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="shippingToZipcodeDg"]').val()) {
+            alert('郵便番号が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="shippingToZipcodeDg"]').val().match(/[0-9]{7}/)) {
+            alert('郵便番号は7桁の数字で入力して下さい。');
+            return false;
+        }
+        if (!$('input[id="shippingToAddress1Dg"]').val()) {
+            alert('住所１が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="shippingToTelDg"]').val()) {
+            alert('電話番号が入力されていません。');
+            return false;
+        }
+        if (!$('input[id="shippingToTelDg"]').val().match(/^0\d{9,10}$/)) {
+            alert('電話番号は10~11桁の数字で入力して下さい。');
+            return false;
+        }
+        if ($('input[id="shippingToMailDg"]').val()) {
+            if (!$('input[id="shippingToMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
+                alert('メールアドレスは正しい形式で入力して下さい。');
+                return false;
+            }
+        }
+        var record = {};
+        record['shippingToClassDg'] = $('select[id="shippingToClassDg"]').val();
+        record['shippingToNameDg'] = $('input[id="shippingToNameDg"]').val();
+        record['shippingToDepDg'] = $('input[id="shippingToDepDg"]').val();
+        record['shippingToPostDg'] = $('input[id="shippingToPostDg"]').val();
+        record['shippingToIdentDg'] = $('input[id="shippingToIdentDg"]').val();
+        record['shippingToZipcodeDg'] = $('input[id="shippingToZipcodeDg"]').val();
+        record['shippingToAddress1Dg'] = $('input[id="shippingToAddress1Dg"]').val();
+        record['shippingToAddress2Dg'] = $('input[id="shippingToAddress2Dg"]').val();
+        record['shippingToTelDg'] = $('input[id="shippingToTelDg"]').val();
+        record['shippingToPhoneDg'] = $('input[id="shippingToPhoneDg"]').val();
+        record['shippingToFaxDg'] = $('input[id="shippingToFaxDg"]').val();
+        record['shippingToMailDg'] = $('input[id="shippingToMailDg"]').val();
+        record['shippingToBillDg'] = $('select[id="shippingToBillDg"]').val();
+        record['shippingToDepositDateDg'] = $('select[id="shippingToDepositDateDg"]').val();
+        record['shippingToMemoDg'] = $('input[id="shippingToMemoDg"]').val();
+
+        const checkAddFlg = window.confirm('発送先情報を登録してもよろしいですか？');
+        if (checkAddFlg) {
+            google.script.run.withSuccessHandler(dataAddSuccessShippingTo).withFailureHandler(dataAddFail).addShippingTo(JSON.stringify(record));
+        }
+    }
+    function getAddress() {
+        var postalCode = document.getElementById("customerZipcodeDg").value;
+        var record = {};
+        record['postalCode'] = postalCode;
+        google.script.run.withSuccessHandler(dataPostSuccess).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
+    }
+
+    function dataPostSuccess(data) {
+        if (data) {
+            var res = JSON.parse(data);
+            $('input[id="customerAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
+        }
+    }
+    function getShippingToAddress() {
+        var postalCode = document.getElementById("shippingToZipcodeDg").value;
+        var record = {};
+        record['postalCode'] = postalCode;
+        google.script.run.withSuccessHandler(dataPostSuccessShippingTo).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
+    }
+
+    function dataPostSuccessShippingTo(data) {
+        if (data) {
+            var res = JSON.parse(data);
+            $('input[id="shippingToAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
+        }
+    }
+
+    function dataAddFail() {
+        alert("該当データがありませんでした。");
+    }
+    function addFail() {
+        alert("処理に失敗しました。");
+    }
+
+    function dataAddSuccess() {
+        alert("登録しました。");
+
+        const companyName = $('input[id="customerNameDg"]').val();
+        const personName = $('input[id="customerIdentDg"]').val();
+        const zipcode = $('input[id="customerZipcodeDg"]').val();
+        const address1 = $('input[id="customerAddress1Dg"]').val();
+        const address2 = $('input[id="customerAddress2Dg"]').val();
+        const tel = $('input[id="customerTelDg"]').val();
+
+        // 手動選択データを保存
+        manualCustomerSelection = {
+          companyName: companyName,
+          personName: personName,
+          displayName: companyName || personName,
+          zipcode: zipcode,
+          address: address1 + address2,
+          address1: address1,
+          address2: address2,
+          tel: tel,
+          source: 'manual_registration'
+        };
+        console.log('手動登録した顧客データを保存:', manualCustomerSelection);
+
+        if (companyName) {
+            $('input[id="customerName"]').val(companyName + "　" + personName);
+        }
+        else {
+            $('input[id="customerName"]').val(personName);
+        }
+        $('input[id="customerZipcode"]').val(zipcode);
+        $('input[id="customerAddress"]').val(address1 + address2);
+        $('input[id="customerTel"]').val(tel);
+
+        // AIモーダルの表示を更新
+        updateManualSelectionDisplay();
+
+        if ($('input[name=customerSameDg]').prop("checked")) {
+            if ($('input[id="customerNameDg"]').val()) {
+                $('input[id="shippingToName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
+            }
+            else {
+                $('input[id="shippingToName"]').val($('input[id="customerIdentDg"]').val());
+            }
+            $('input[id="shippingToZipcode"]').val($('input[id="customerZipcodeDg"]').val());
+            $('input[id="shippingToAddress"]').val($('input[id="customerAddress1Dg"]').val() + $('input[id="customerAddress2Dg"]').val());
+            $('input[id="shippingToTel"]').val($('input[id="customerTelDg"]').val());
+        }
+        $(".customer_dg").dialog("close");
+    }
+    function dataAddSuccessShippingTo() {
+        alert("登録しました。");
+
+        const companyName = $('input[id="shippingToNameDg"]').val();
+        const personName = $('input[id="shippingToIdentDg"]').val();
+        const zipcode = $('input[id="shippingToZipcodeDg"]').val();
+        const address1 = $('input[id="shippingToAddress1Dg"]').val();
+        const address2 = $('input[id="shippingToAddress2Dg"]').val();
+        const tel = $('input[id="shippingToTelDg"]').val();
+
+        // 手動選択データを保存
+        manualShippingToSelection = {
+          companyName: companyName,
+          personName: personName,
+          zipcode: zipcode,
+          address: address1 + address2,
+          address1: address1,
+          address2: address2,
+          tel: tel,
+          source: 'manual_registration'
+        };
+        console.log('手動登録した発送先データを保存:', manualShippingToSelection);
+
+        if (companyName) {
+            $('input[id="shippingToName"]').val(companyName + "　" + personName);
+        }
+        else {
+            $('input[id="shippingToName"]').val(personName);
+        }
+        $('input[id="shippingToZipcode"]').val(zipcode);
+        $('input[id="shippingToAddress"]').val(address1 + address2);
+        $('input[id="shippingToTel"]').val(tel);
+
+        // AIモーダルの表示を更新
+        updateManualSelectionDisplay();
+
+        $(".shippingTo_dg").dialog("close");
+    }
+    $(function () {
+        $(".customerSearchBtn_open").on("click", function () {
+            $(".customerSearch_dg").dialog({
+                title: "顧客検索",
+                width: "400",
+                height: "500",
+                modal: true,
+                buttons: {
+                    "キャンセル": function () {
+                        $(this).dialog("close");
                     },
-                });
+                    "検索": function () {
+                        customerSearch();
+                    },
+                },
             });
         });
-        function customerSearch() {
-            if (!$('input[id="customerSearchKeyDg"]').val()) {
-                alert('キーワードが入力されていません。');
-                return false;
-            }
-            $("#resCustArea").html('検索中...');
-            var record = {};
-            record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
-            record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
-            record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
-            google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+    });
+    function customerSearch() {
+        if (!$('input[id="customerSearchKeyDg"]').val()) {
+            alert('キーワードが入力されていません。');
+            return false;
         }
+        $("#resCustArea").html('検索中...');
+        var record = {};
+        record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
+        record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
+        record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
+        google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+    }
 
-        function dataSearchSuccess(datas) {
-            var res = JSON.parse(datas);
-            if (res && res.length > 0) {
-                var html = "<table>";
-                html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
-                for (let i = 0; i < res.length; i++) {
-                    var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
-                    html += "<tr>";
-                    html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
-                    html += "<td><input style='width:120px;' type='text' id='cust" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
-                    html += "<td><input style='width:120px;' type='text' id='ident" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
-                    html += "</tr>";
-                }
-                html += "</table>";
-                $("#resCustArea").html(html);
+    function dataSearchSuccess(datas) {
+        var res = JSON.parse(datas);
+        if (res && res.length > 0) {
+            var html = "<table>";
+            html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+            for (let i = 0; i < res.length; i++) {
+                var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+                html += "<tr>";
+                html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
+                html += "<td><input style='width:120px;' type='text' id='cust" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
+                html += "<td><input style='width:120px;' type='text' id='ident" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
+                html += "</tr>";
             }
-            else {
-                alert('該当データがありませんでした。');
-                $("#resCustArea").html('');
-            }
+            html += "</table>";
+            $("#resCustArea").html(html);
         }
-        function applyName(num) {
-            var nameVal = 'nameCust' + num;
-            var dataVal = $('button[id="' + nameVal + '"]').data('val');
-            var dataSp = dataVal.split('|');
-            $(".customerSearch_dg").dialog("close");
-            if (dataSp[0]) {
-                $('input[id="customerName"]').val(dataSp[0] + "　" + dataSp[1]);
-            }
-            else {
-                $('input[id="customerName"]').val(dataSp[1]);
-            }
-            $('input[id="customerZipcode"]').val(dataSp[2]);
-            $('input[id="customerAddress"]').val(dataSp[3]);
-            $('input[id="customerTel"]').val(dataSp[4]);
+        else {
+            alert('該当データがありませんでした。');
+            $("#resCustArea").html('');
         }
-        $(function () {
-            $(".shippingToSearchBtn_open").on("click", function () {
-                $(".shippingToSearch_dg").dialog({
-                    title: "発送先検索",
-                    width: "400",
-                    height: "500",
-                    modal: true,
-                    buttons: {
-                        "キャンセル": function () {
-                            $(this).dialog("close");
-                        },
-                        "検索": function () {
-                            shippingToSearch();
-                        },
+    }
+    function applyName(num) {
+        var nameVal = 'nameCust' + num;
+        var dataVal = $('button[id="' + nameVal + '"]').data('val');
+        var dataSp = dataVal.split('|');
+        $(".customerSearch_dg").dialog("close");
+
+        const companyName = dataSp[0];
+        const personName = dataSp[1];
+        const zipcode = dataSp[2];
+        const address = dataSp[3];
+        const tel = dataSp[4];
+
+        // 手動選択データを保存
+        manualCustomerSelection = {
+          companyName: companyName,
+          personName: personName,
+          displayName: companyName || personName,
+          zipcode: zipcode,
+          address: address,
+          tel: tel,
+          source: 'manual_search'
+        };
+        console.log('検索から選択した顧客データを保存:', manualCustomerSelection);
+
+        if (companyName) {
+            $('input[id="customerName"]').val(companyName + "　" + personName);
+        }
+        else {
+            $('input[id="customerName"]').val(personName);
+        }
+        $('input[id="customerZipcode"]').val(zipcode);
+        $('input[id="customerAddress"]').val(address);
+        $('input[id="customerTel"]').val(tel);
+
+        // AIモーダルの表示を更新
+        updateManualSelectionDisplay();
+    }
+    $(function () {
+        $(".shippingToSearchBtn_open").on("click", function () {
+            $(".shippingToSearch_dg").dialog({
+                title: "発送先検索",
+                width: "400",
+                height: "500",
+                modal: true,
+                buttons: {
+                    "キャンセル": function () {
+                        $(this).dialog("close");
                     },
-                });
+                    "検索": function () {
+                        shippingToSearch();
+                    },
+                },
             });
         });
-        function shippingToSearch() {
-            if (!$('input[id="shippingToSearchKeyDg"]').val()) {
-                alert('キーワードが入力されていません。');
-                return false;
-            }
-            $("#resShippingToArea").html('検索中...');
-            var record = {};
-            record['shippingToSearchBunruiDg'] = $('select[id="shippingToSearchBunruiDg"]').val();
-            record['shippingToSearchKeyDg'] = $('input[id="shippingToSearchKeyDg"]').val();
-            google.script.run.withSuccessHandler(dataShippingToSearchSuccess).withFailureHandler(dataAddFail).shippingToSearch(JSON.stringify(record));
+    });
+    function shippingToSearch() {
+        if (!$('input[id="shippingToSearchKeyDg"]').val()) {
+            alert('キーワードが入力されていません。');
+            return false;
         }
+        $("#resShippingToArea").html('検索中...');
+        var record = {};
+        record['shippingToSearchBunruiDg'] = $('select[id="shippingToSearchBunruiDg"]').val();
+        record['shippingToSearchKeyDg'] = $('input[id="shippingToSearchKeyDg"]').val();
+        google.script.run.withSuccessHandler(dataShippingToSearchSuccess).withFailureHandler(dataAddFail).shippingToSearch(JSON.stringify(record));
+    }
 
-        function dataShippingToSearchSuccess(datas) {
-            var res = JSON.parse(datas);
-            if (res && res.length > 0) {
-                var html = "<table>";
-                html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
-                for (let i = 0; i < res.length; i++) {
-                    var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
-                    html += "<tr>";
-                    html += "<td><button type='button' id='nameShipTo" + i + "' data-val='" + datVal + "' onclick='applyShippingToName(" + i + ")'>選択</button></td>";
-                    html += "<td><input style='width:120px;' type='text' id='custShipTo" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
-                    html += "<td><input style='width:120px;' type='text' id='identShipTo" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
-                    html += "</tr>";
-                }
-                html += "</table>";
-                $("#resShippingToArea").html(html);
+    function dataShippingToSearchSuccess(datas) {
+        var res = JSON.parse(datas);
+        if (res && res.length > 0) {
+            var html = "<table>";
+            html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+            for (let i = 0; i < res.length; i++) {
+                var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+                html += "<tr>";
+                html += "<td><button type='button' id='nameShipTo" + i + "' data-val='" + datVal + "' onclick='applyShippingToName(" + i + ")'>選択</button></td>";
+                html += "<td><input style='width:120px;' type='text' id='custShipTo" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
+                html += "<td><input style='width:120px;' type='text' id='identShipTo" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
+                html += "</tr>";
             }
-            else {
-                alert('該当データがありませんでした。');
-                $("#resShippingToArea").html('');
-            }
+            html += "</table>";
+            $("#resShippingToArea").html(html);
         }
-        function applyShippingToName(num) {
-            var nameVal = 'nameShipTo' + num;
-            var dataVal = $('button[id="' + nameVal + '"]').data('val');
-            var dataSp = dataVal.split('|');
-            $(".shippingToSearch_dg").dialog("close");
-            if (dataSp[0]) {
-                $('input[id="shippingToName"]').val(dataSp[0] + "　" + dataSp[1]);
-            }
-            else {
-                $('input[id="shippingToName"]').val(dataSp[1]);
-            }
-            $('input[id="shippingToZipcode"]').val(dataSp[2]);
-            $('input[id="shippingToAddress"]').val(dataSp[3]);
-            $('input[id="shippingToTel"]').val(dataSp[4]);
+        else {
+            alert('該当データがありませんでした。');
+            $("#resShippingToArea").html('');
         }
-        function setProductSearch() {
-            if (!$('input[id="customerName"]').val()) {
-                alert('顧客名が入力されていません。');
-                return false;
-            }
-            $("button[id='productSearch']").text('検索中...');
-            var customerName = $('input[id="customerName"]').val();
-            google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(customerName);
+    }
+    function applyShippingToName(num) {
+        var nameVal = 'nameShipTo' + num;
+        var dataVal = $('button[id="' + nameVal + '"]').data('val');
+        var dataSp = dataVal.split('|');
+        $(".shippingToSearch_dg").dialog("close");
 
-        }
-        function setQuotationSearch() {
-            if (!$('input[id="customerName"]').val()) {
-                alert('顧客名が入力されていません。');
-                return false;
-            }
-            $("button[id='quotationSearch']").text('検索中...');
-            var customerName = $('input[id="customerName"]').val();
-            google.script.run.withSuccessHandler(setQuotationDataList).withFailureHandler(dataAddFail).getQuotationData(customerName);
+        const companyName = dataSp[0];
+        const personName = dataSp[1];
+        const zipcode = dataSp[2];
+        const address = dataSp[3];
+        const tel = dataSp[4];
 
-        }
+        // 手動選択データを保存
+        manualShippingToSelection = {
+          companyName: companyName,
+          personName: personName,
+          zipcode: zipcode,
+          address: address,
+          tel: tel,
+          source: 'manual_search'
+        };
+        console.log('検索から選択した発送先データを保存:', manualShippingToSelection);
 
-        function setDataList(datas) {
-            var res = JSON.parse(datas);
-            if (res.length == 0) {
-                alert('対象データがありませんでした。');
-            }
-            else {
-                $('input[id="shippingToName"]').val(res[0]['発送先名']);
-                $('input[id="shippingToZipcode"]').val(res[0]['発送先郵便番号']);
-                $('input[id="shippingToAddress"]').val(res[0]['発送先住所']);
-                $('input[id="shippingToTel"]').val(res[0]['発送先電話番号']);
-                $('input[id="shippingFromName"]').val(res[0]['発送元名']);
-                $('input[id="shippingFromZipcode"]').val(res[0]['発送元郵便番号']);
-                $('input[id="shippingFromAddress"]').val(res[0]['発送元住所']);
-                $('input[id="shippingFromTel"]').val(res[0]['発送元電話番号']);
-                $('select[id="deliveryMethod"]').val(res[0]['納品方法']);
-                deliveryMethodChange();
-                $('select[id="deliveryTime"]').val(res[0]['配達時間帯']);
-                if (res[0]['納品書'] == '○') {
-                    $('input[id="deliveryChk"]').prop('checked', true);
-                }
-                if (res[0]['請求書'] == '○') {
-                    $('input[id="billChk"]').prop('checked', true);
-                }
-                if (res[0]['領収書'] == '○') {
-                    $('input[id="receiptChk"]').prop('checked', true);
-                }
-                if (res[0]['パンフ'] == '○') {
-                    $('input[id="pamphletChk"]').prop('checked', true);
-                }
-                if (res[0]['レシピ'] == '○') {
-                    $('input[id="recipeChk"]').prop('checked', true);
-                }
-                $('input[id="otherAttach"]').val(res[0]['その他添付']);
-                $('select[id="invoiceType"]').val(res[0]['送り状種別']);
-                $('select[id="coolCls"]').val(res[0]['クール区分']);
-                $('select[id="cargo1"]').val(res[0]['荷扱い１']);
-                $('select[id="cargo2"]').val(res[0]['荷扱い２']);
-                $('input[id="cashOnDelivery"]').val(res[0]['代引総額']);
-                $('input[id="cashOnDeliTax"]').val(res[0]['代引内税']);
-                $('input[id="copiePrint"]').val(res[0]['発行枚数']);
-                for (let i = 0; i < 10; i++) {
-                    var num = (i + 1);
-                    var bunrui = 'bunrui' + num;
-                    var product = 'product' + num;
-                    var quantity = 'quantity' + num;
-                    var price = 'price' + num;
-                    if (res.length > i) {
-                        var spData = res[i];
-                        $('select[id="' + bunrui + '"]').val(spData['商品分類']);
-                        bunruiChange(num);
-                        $('select[id="' + product + '"]').val(spData['商品名']);
-                        productChange(num);
-                        $('select[id="' + quantity + '"]').val(spData['受注数']);
-                        $('input[id="' + price + '"]').val(spData['販売価格']);
-                    }
-                    else {
-                        $('select[id="' + bunrui + '"]').val('');
-                        bunruiChange(num);
-                        $('select[id="' + product + '"]').val('');
-                        productChange(num);
-                        $('select[id="' + quantity + '"]').val('');
-                        $('input[id="' + price + '"]').val('');
-                    }
-                }
-                alert('前回の商品情報を反映しました。');
-            }
-            $("button[id='productSearch']").text('前回商品反映');
+        if (companyName) {
+            $('input[id="shippingToName"]').val(companyName + "　" + personName);
         }
-        function setQuotationDataList(datas) {
-            var res = JSON.parse(datas);
+        else {
+            $('input[id="shippingToName"]').val(personName);
+        }
+        $('input[id="shippingToZipcode"]').val(zipcode);
+        $('input[id="shippingToAddress"]').val(address);
+        $('input[id="shippingToTel"]').val(tel);
+
+        // AIモーダルの表示を更新
+        updateManualSelectionDisplay();
+    }
+    function setProductSearch() {
+        if (!$('input[id="shippingToName"]').val()) {
+            alert('発送先名が入力されていません。');
+            return false;
+        }
+        $("button[id='productSearch']").text('検索中...');
+        var shippingToName = $('input[id="shippingToName"]').val();
+        google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(shippingToName);
+
+    }
+    function setQuotationSearch() {
+        if (!$('input[id="customerName"]').val()) {
+            alert('顧客名が入力されていません。');
+            return false;
+        }
+        $("button[id='quotationSearch']").text('検索中...');
+        var customerName = $('input[id="customerName"]').val();
+        google.script.run.withSuccessHandler(setQuotationDataList).withFailureHandler(dataAddFail).getQuotationData(customerName);
+
+    }
+
+    function setDataList(datas) {
+        var res = JSON.parse(datas);
+        if (res.length == 0) {
+            alert('対象データがありませんでした。');
+        }
+        else {
+            $('input[id="shippingToName"]').val(res[0]['発送先名']);
+            $('input[id="shippingToZipcode"]').val(res[0]['発送先郵便番号']);
+            $('input[id="shippingToAddress"]').val(res[0]['発送先住所']);
+            $('input[id="shippingToTel"]').val(res[0]['発送先電話番号']);
+            $('input[id="shippingFromName"]').val(res[0]['発送元名']);
+            $('input[id="customerName"]').val(res[0]['顧客名']);
+            $('input[id="customerZipcode"]').val(res[0]['顧客郵便番号']);
+            $('input[id="customerAddress"]').val(res[0]['顧客住所']);
+            $('input[id="customerTel"]').val(res[0]['顧客電話番号']);
+            $('input[id="shippingFromName"]').val(res[0]['発送元名']);
+            $('input[id="shippingFromZipcode"]').val(res[0]['発送元郵便番号']);
+            $('input[id="shippingFromAddress"]').val(res[0]['発送元住所']);
+            $('input[id="shippingFromTel"]').val(res[0]['発送元電話番号']);
+            $('select[id="deliveryMethod"]').val(res[0]['納品方法']);
+            deliveryMethodChange();
+            $('select[id="deliveryTime"]').val(res[0]['配達時間帯']);
+            if (res[0]['納品書'] == '○') {
+                $('input[id="deliveryChk"]').prop('checked', true);
+            }
+            if (res[0]['請求書'] == '○') {
+                $('input[id="billChk"]').prop('checked', true);
+            }
+            if (res[0]['領収書'] == '○') {
+                $('input[id="receiptChk"]').prop('checked', true);
+            }
+            if (res[0]['パンフ'] == '○') {
+                $('input[id="pamphletChk"]').prop('checked', true);
+            }
+            if (res[0]['レシピ'] == '○') {
+                $('input[id="recipeChk"]').prop('checked', true);
+            }
+            $('input[id="otherAttach"]').val(res[0]['その他添付']);
+            $('select[id="invoiceType"]').val(res[0]['送り状種別']);
+            $('select[id="coolCls"]').val(res[0]['クール区分']);
+            $('select[id="cargo1"]').val(res[0]['荷扱い１']);
+            $('select[id="cargo2"]').val(res[0]['荷扱い２']);
+            $('input[id="cashOnDelivery"]').val(res[0]['代引総額']);
+            $('input[id="cashOnDeliTax"]').val(res[0]['代引内税']);
+            $('input[id="copiePrint"]').val(res[0]['発行枚数']);
+            $('textarea[id="csvmemo"]').val(res[0]['送り状備考欄'] || '');
+            $('textarea[id="deliveryMemo"]').val(res[0]['納品書備考欄'] || '');
+            $('textarea[id="memo"]').val(res[0]['メモ'] || '');
             for (let i = 0; i < 10; i++) {
                 var num = (i + 1);
                 var bunrui = 'bunrui' + num;
@@ -782,7 +981,8 @@
                     bunruiChange(num);
                     $('select[id="' + product + '"]').val(spData['商品名']);
                     productChange(num);
-                    $('input[id="' + price + '"]').val(spData['単価（外税）']);
+                    $('select[id="' + quantity + '"]').val(spData['受注数']);
+                    $('input[id="' + price + '"]').val(spData['販売価格']);
                 }
                 else {
                     $('select[id="' + bunrui + '"]').val('');
@@ -793,14 +993,1626 @@
                     $('input[id="' + price + '"]').val('');
                 }
             }
-            if (res.length == 0) {
-                alert('対象データがありませんでした。');
+            alert('前回の商品情報を反映しました。');
+        }
+        $("button[id='productSearch']").text('前回商品反映');
+    }
+    function setQuotationDataList(datas) {
+        var res = JSON.parse(datas);
+        for (let i = 0; i < 10; i++) {
+            var num = (i + 1);
+            var bunrui = 'bunrui' + num;
+            var product = 'product' + num;
+            var quantity = 'quantity' + num;
+            var price = 'price' + num;
+            if (res.length > i) {
+                var spData = res[i];
+                $('select[id="' + bunrui + '"]').val(spData['商品分類']);
+                bunruiChange(num);
+                $('select[id="' + product + '"]').val(spData['商品名']);
+                productChange(num);
+                $('input[id="' + price + '"]').val(spData['単価（外税）']);
             }
             else {
-                alert('見積書情報を反映しました。');
+                $('select[id="' + bunrui + '"]').val('');
+                bunruiChange(num);
+                $('select[id="' + product + '"]').val('');
+                productChange(num);
+                $('select[id="' + quantity + '"]').val('');
+                $('input[id="' + price + '"]').val('');
             }
-            $("button[id='quotationSearch']").text('見積書反映');
         }
+        if (res.length == 0) {
+            alert('対象データがありませんでした。');
+        }
+        else {
+            alert('見積書情報を反映しました。');
+        }
+        $("button[id='quotationSearch']").text('見積書反映');
+    }
+    // AI解析
+    // ===== グローバル変数 =====
+    let aiAnalysisResult = null;
+    let useShippingToMaster = false;
+    let useCustomerMaster = false;
+    let selectedFile = null;
+    let selectedFileBase64 = null;
+    let currentTab = 'text';
+    let productMaster = {};
+    let categoryList = [];
+    let productPrices = {};
+    let itemEdits = {};
+
+    // 手動選択データ
+    let manualCustomerSelection = null;
+    let manualShippingToSelection = null;
+
+    const AI_SESSION_KEY = 'aiSessionData';
+    const AI_EXCLUDE_CATEGORIES = ['送料', '手数料', '追加料金'];
+    const AI_EXCLUDE_PRODUCTS = ['送料', 'クール便追加', '代引手数料', '梱包料'];
+
+    /**
+     * 手動選択後にAIモーダル表示を更新
+     */
+    function updateManualSelectionDisplay() {
+      if (!aiAnalysisResult) return;
+
+      // 顧客と発送先の表示を更新
+      if (aiAnalysisResult.customer) {
+        displayCustomer(aiAnalysisResult.customer);
+      }
+      if (aiAnalysisResult.shippingTo) {
+        displayShippingTo(aiAnalysisResult.shippingTo);
+      }
+    }
+
+    /**
+     * 郵便番号のハイフンを除去
+     */
+    function sanitizeZipcode(zip) {
+      if (!zip) return '';
+      return String(zip).replace(/[-ー−‐]/g, '');
+    }
+
+    /**
+     * 電話番号・FAX番号のハイフンを除去
+     */
+    function sanitizeTel(tel) {
+      if (!tel) return '';
+      return String(tel).replace(/[-ー−‐]/g, '');
+    }
+
+    /**
+     * 住所文字列を都道府県＋市区町村(住所1)と番地以降(住所2)に分割
+     */
+    function splitAddressString(fullAddress) {
+      if (!fullAddress) {
+        return { address1: '', address2: '' };
+      }
+
+      const addr = String(fullAddress).trim();
+
+      // 市区町村の区切りパターン
+      const patterns = [
+        /(.*?[都道府県].*?[市区町村郡])/,  // 都道府県 + 市区町村
+        /(.*?[市区町村])/,                  // 市区町村のみ
+        /(.*?郡.*?[町村])/                  // 郡 + 町村
+      ];
+
+      for (const pattern of patterns) {
+        const match = addr.match(pattern);
+        if (match) {
+          const address1 = match[1];
+          const address2 = addr.substring(address1.length).trim();
+          return { address1, address2 };
+        }
+      }
+
+      // パターンマッチしない場合は中間で分割
+      const halfIndex = Math.floor(addr.length / 2);
+      return {
+        address1: addr.substring(0, halfIndex),
+        address2: addr.substring(halfIndex)
+      };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadAISessionData();
+      setupFileDragDrop();
+
+      // AI取込一覧から遷移した場合、自動でAIモーダルを開く
+      var shouldAutoOpen = <?= typeof autoOpenAI !== 'undefined' ? autoOpenAI : false ?>;
+      var preloadedAnalysis = <?= typeof aiAnalysisResult !== 'undefined' ? aiAnalysisResult : '""' ?>;
+
+      if (shouldAutoOpen && preloadedAnalysis && preloadedAnalysis !== '""') {
+        setTimeout(function() {
+          try {
+            var analysisData = typeof preloadedAnalysis === 'string' ? JSON.parse(preloadedAnalysis) : preloadedAnalysis;
+            openAIModalWithResult(analysisData);
+          } catch (e) {
+            console.error('AI解析結果のパースに失敗:', e);
+          }
+        }, 500);
+      }
+    });
+    
+    function toggleAIAssistant() {
+      const body = document.getElementById('aiAssistantBody');
+      const btn = document.getElementById('aiToggleBtn');
+      body.classList.toggle('open');
+      btn.textContent = body.classList.contains('open') ? '閉じる' : '開く';
+      if (body.classList.contains('open') && categoryList.length === 0) {
+        loadProductMaster();
+      }
+    }
+
+    /**
+     * AI取込一覧から遷移した場合に自動でモーダルを開いて解析結果を表示
+     */
+    function openAIModalWithResult(analysisData) {
+      // AIアシスタントを開く
+      const body = document.getElementById('aiAssistantBody');
+      const btn = document.getElementById('aiToggleBtn');
+      if (!body.classList.contains('open')) {
+        body.classList.add('open');
+        btn.textContent = '閉じる';
+      }
+
+      // 商品マスタをロード
+      if (categoryList.length === 0) {
+        loadProductMaster();
+      }
+
+      // 顧客・発送先マスタと照合して解析結果を強化
+      google.script.run
+        .withSuccessHandler(function(enhancedResultJson) {
+          try {
+            const enhancedData = JSON.parse(enhancedResultJson);
+
+            // 解析結果を設定
+            aiAnalysisResult = enhancedData;
+
+            // 解析済みインジケーターを表示
+            showAIAnalyzedIndicator(new Date().toISOString());
+
+            // 解析結果を表示（内部でsetupNewRegistrationButtons()が呼ばれる）
+            displayAnalysisResult(enhancedData);
+
+            console.log('AI取込一覧からの解析結果を表示しました（マスタ照合済み）');
+          } catch (e) {
+            console.error('強化された解析結果のパースに失敗:', e);
+            // フォールバック: 元のデータで表示
+            aiAnalysisResult = analysisData;
+            displayAnalysisResult(analysisData);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('マスタ照合エラー:', error);
+          // フォールバック: 元のデータで表示
+          aiAnalysisResult = analysisData;
+          showAIAnalyzedIndicator(new Date().toISOString());
+          displayAnalysisResult(analysisData);
+        })
+        .enhanceAnalysisResultFromTempOrder(JSON.stringify(analysisData));
+    }
+
+    /**
+     * 新規登録ボタンのセットアップ
+     * 新規または部分一致の場合にボタンを表示
+     */
+    function setupNewRegistrationButtons(analysisData) {
+      // 既存のボタンを削除
+      const existingCustomerBtns = document.getElementById('customerActionButtons');
+      if (existingCustomerBtns) existingCustomerBtns.remove();
+
+      const existingShippingBtns = document.getElementById('shippingToActionButtons');
+      if (existingShippingBtns) existingShippingBtns.remove();
+
+      // 顧客セクションにボタン追加（新規または部分一致の場合）
+      if (analysisData.customer) {
+        const isNew = analysisData.customer.isNewCustomer;
+        const isPartial = analysisData.customer.masterMatch === 'partial';
+
+        if (isNew || isPartial) {
+          const customerSection = document.querySelector('#aiResultCustomerRaw').parentElement;
+          const btnContainer = document.createElement('div');
+          btnContainer.id = 'customerActionButtons';
+          btnContainer.className = 'mt-2';
+          btnContainer.style.display = 'flex';
+          btnContainer.style.gap = '8px';
+
+          // 新規登録ボタン
+          const newBtn = document.createElement('button');
+          newBtn.type = 'button';
+          newBtn.className = 'btn btn-sm btn-primary';
+          newBtn.textContent = '📝 新規登録';
+          newBtn.onclick = function() { openNewCustomerFormWithAI(analysisData.customer); };
+          btnContainer.appendChild(newBtn);
+
+          // 検索ボタン
+          const searchBtn = document.createElement('button');
+          searchBtn.type = 'button';
+          searchBtn.className = 'btn btn-sm btn-secondary';
+          searchBtn.textContent = '🔍 顧客を検索';
+          searchBtn.onclick = function() { $('.customerSearchBtn_open').click(); };
+          btnContainer.appendChild(searchBtn);
+
+          customerSection.appendChild(btnContainer);
+        }
+      }
+
+      // 発送先セクションにボタン追加（新規または部分一致の場合）
+      if (analysisData.shippingTo) {
+        const isNew = analysisData.shippingTo.isNewShippingTo;
+        const isPartial = analysisData.shippingTo.masterMatch === 'partial';
+
+        if (isNew || isPartial) {
+          const shippingSection = document.querySelector('#aiResultShippingToRaw').parentElement;
+          const btnContainer = document.createElement('div');
+          btnContainer.id = 'shippingToActionButtons';
+          btnContainer.className = 'mt-2';
+          btnContainer.style.display = 'flex';
+          btnContainer.style.gap = '8px';
+
+          // 新規登録ボタン
+          const newBtn = document.createElement('button');
+          newBtn.type = 'button';
+          newBtn.className = 'btn btn-sm btn-primary';
+          newBtn.textContent = '📝 新規登録';
+          newBtn.onclick = function() { openNewShippingToFormWithAI(analysisData.shippingTo); };
+          btnContainer.appendChild(newBtn);
+
+          // 検索ボタン
+          const searchBtn = document.createElement('button');
+          searchBtn.type = 'button';
+          searchBtn.className = 'btn btn-sm btn-secondary';
+          searchBtn.textContent = '🔍 発送先を検索';
+          searchBtn.onclick = function() { $('.shippingToSearchBtn_open').click(); };
+          btnContainer.appendChild(searchBtn);
+
+          shippingSection.appendChild(btnContainer);
+        }
+      }
+    }
+
+    /**
+     * 顧客新規登録フォームを開いてAI解析値を反映
+     */
+    function openNewCustomerFormWithAI(customerData) {
+      console.log('顧客データ:', customerData);
+
+      // フォームをクリア
+      clearCustomerForm();
+
+      // AI解析値を反映（rawXXX or XXX プロパティに対応）
+      const companyName = customerData.rawCompanyName || customerData.companyName || '';
+      const personName = customerData.rawPersonName || customerData.personName || '';
+      const zipcode = customerData.rawZipcode || customerData.zipcode || '';
+      const address = customerData.rawAddress || customerData.address || '';
+      const tel = customerData.rawTel || customerData.tel || '';
+      const fax = customerData.rawFax || customerData.fax || '';
+
+      if (companyName) {
+        document.getElementById('customerNameDg').value = companyName;
+        document.getElementById('customerShowNameDg').value = companyName;
+      }
+      if (personName) {
+        document.getElementById('customerIdentDg').value = personName;
+      }
+      if (zipcode) {
+        // ハイフンを除去して反映
+        document.getElementById('customerZipcodeDg').value = sanitizeZipcode(zipcode);
+      }
+      if (address) {
+        // 住所を都道府県・市区町村で分割
+        const splitAddress = splitAddressString(address);
+        document.getElementById('customerAddress1Dg').value = splitAddress.address1;
+        document.getElementById('customerAddress2Dg').value = splitAddress.address2;
+      }
+      if (tel) {
+        // ハイフンを除去して反映
+        document.getElementById('customerTelDg').value = sanitizeTel(tel);
+      }
+      if (fax) {
+        // ハイフンを除去して反映
+        document.getElementById('customerFaxDg').value = sanitizeTel(fax);
+      }
+
+      // ダイアログを初期化して開く
+      const dialog = $('.customer_dg');
+      if (!dialog.hasClass('ui-dialog-content')) {
+        // 初期化されていない場合は初期化
+        dialog.dialog({
+          title: "顧客新規登録",
+          height: 500,
+          modal: true,
+          buttons: {
+            "キャンセル": function() { $(this).dialog("close"); },
+            "登録": function() { addCustomer(); }
+          }
+        });
+      }
+      dialog.dialog('open');
+    }
+
+    /**
+     * 発送先新規登録フォームを開いてAI解析値を反映
+     */
+    function openNewShippingToFormWithAI(shippingToData) {
+      console.log('発送先データ:', shippingToData);
+
+      // フォームをクリア
+      clearShippingToForm();
+
+      // AI解析値を反映（rawXXX or XXX プロパティに対応）
+      const companyName = shippingToData.rawCompanyName || shippingToData.companyName || '';
+      const personName = shippingToData.rawPersonName || shippingToData.personName || '';
+      const zipcode = shippingToData.rawZipcode || shippingToData.zipcode || '';
+      const address = shippingToData.rawAddress || shippingToData.address || '';
+      const tel = shippingToData.rawTel || shippingToData.tel || '';
+
+      if (companyName) {
+        document.getElementById('shippingToNameDg').value = companyName;
+      }
+      if (personName) {
+        document.getElementById('shippingToIdentDg').value = personName;
+      }
+      if (zipcode) {
+        // ハイフンを除去して反映
+        document.getElementById('shippingToZipcodeDg').value = sanitizeZipcode(zipcode);
+      }
+      if (address) {
+        // 住所を都道府県・市区町村で分割
+        const splitAddress = splitAddressString(address);
+        document.getElementById('shippingToAddress1Dg').value = splitAddress.address1;
+        document.getElementById('shippingToAddress2Dg').value = splitAddress.address2;
+      }
+      if (tel) {
+        // ハイフンを除去して反映
+        document.getElementById('shippingToTelDg').value = sanitizeTel(tel);
+      }
+
+      // ダイアログを初期化して開く
+      const dialog = $('.shippingTo_dg');
+      if (!dialog.hasClass('ui-dialog-content')) {
+        // 初期化されていない場合は初期化
+        dialog.dialog({
+          title: "発送先新規登録",
+          height: 500,
+          modal: true,
+          buttons: {
+            "キャンセル": function() { $(this).dialog("close"); },
+            "登録": function() { addShippingTo(); }
+          }
+        });
+      }
+      dialog.dialog('open');
+    }
+
+    /**
+     * 顧客フォームをクリア
+     */
+    function clearCustomerForm() {
+      document.getElementById('customerNameDg').value = '';
+      document.getElementById('customerShowNameDg').value = '';
+      document.getElementById('customerFuriganaDg').value = '';
+      document.getElementById('customerDepDg').value = '';
+      document.getElementById('customerPostDg').value = '';
+      document.getElementById('customerIdentDg').value = '';
+      document.getElementById('customerZipcodeDg').value = '';
+      document.getElementById('customerAddress1Dg').value = '';
+      document.getElementById('customerAddress2Dg').value = '';
+      document.getElementById('customerTelDg').value = '';
+      document.getElementById('customerPhoneDg').value = '';
+      document.getElementById('customerFaxDg').value = '';
+      document.getElementById('customerMailDg').value = '';
+      document.getElementById('customerMemoDg').value = '';
+    }
+
+    /**
+     * 発送先フォームをクリア
+     */
+    function clearShippingToForm() {
+      document.getElementById('shippingToNameDg').value = '';
+      document.getElementById('shippingToDepDg').value = '';
+      document.getElementById('shippingToIdentDg').value = '';
+      document.getElementById('shippingToZipcodeDg').value = '';
+      document.getElementById('shippingToAddress1Dg').value = '';
+      document.getElementById('shippingToAddress2Dg').value = '';
+      document.getElementById('shippingToTelDg').value = '';
+      document.getElementById('shippingToMailDg').value = '';
+      document.getElementById('shippingToMemoDg').value = '';
+    }
+
+    function loadProductMaster() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          productMaster = data.productsByCategory || {};
+          productPrices = data.productPrices || {};
+          categoryList = Object.keys(productMaster);
+        })
+        .withFailureHandler(function(error) {
+          console.error('商品マスタ取得エラー:', error);
+        })
+        .getProductMasterForUI();
+    }
+    
+    function loadAISessionData() {
+      const saved = sessionStorage.getItem(AI_SESSION_KEY);
+      if (!saved) return;
+      try {
+        const data = JSON.parse(saved);
+        const diffMinutes = (new Date() - new Date(data.analyzedAt)) / 1000 / 60;
+        if (diffMinutes > 30) {
+          sessionStorage.removeItem(AI_SESSION_KEY);
+          return;
+        }
+        showAIAnalyzedIndicator(data.analyzedAt);
+      } catch (e) {
+        sessionStorage.removeItem(AI_SESSION_KEY);
+      }
+    }
+    
+    function saveAISessionData() {
+      if (!aiAnalysisResult) return;
+      const sessionData = {
+        analyzedAt: new Date().toISOString(),
+        analysisResult: aiAnalysisResult,
+        items: [],
+        totalAmount: 0
+      };
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.productName) {
+          const amount = (edit.price || 0) * (edit.quantity || 0);
+          if (!AI_EXCLUDE_CATEGORIES.includes(edit.category) && !AI_EXCLUDE_PRODUCTS.includes(edit.productName)) {
+            sessionData.totalAmount += amount;
+          }
+          sessionData.items.push({
+            originalText: edit.originalText,
+            productName: edit.productName,
+            category: edit.category,
+            price: edit.price,
+            quantity: edit.quantity
+          });
+        }
+      });
+      sessionStorage.setItem(AI_SESSION_KEY, JSON.stringify(sessionData));
+    }
+    
+    function showAIAnalyzedIndicator(analyzedAt) {
+      const indicator = document.getElementById('aiAnalyzedIndicator');
+      const timeEl = document.getElementById('aiAnalyzedTime');
+      if (indicator && analyzedAt) {
+        const time = new Date(analyzedAt);
+        timeEl.textContent = '（' + time.getHours() + ':' + String(time.getMinutes()).padStart(2,'0') + ' 解析）';
+        indicator.classList.add('show');
+      }
+    }
+    
+    function clearAISession() {
+      sessionStorage.removeItem(AI_SESSION_KEY);
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.ai-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.ai-tab-content').forEach(content => content.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab + 'Tab').classList.add('active');
+    }
+    
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedFileBase64 = e.target.result.split(',')[1];
+        showFilePreview(file);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    function showFilePreview(file) {
+      const preview = document.getElementById('filePreview');
+      const icon = file.type.includes('pdf') ? '📄' : '🖼️';
+      const size = (file.size / 1024).toFixed(1) + ' KB';
+      preview.innerHTML = '<div class="file-preview"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + file.name + '</div><div class="file-size">' + size + '</div></div><button type="button" class="remove-btn" onclick="removeFile()">×</button></div>';
+    }
+    
+    function removeFile() {
+      selectedFile = null;
+      selectedFileBase64 = null;
+      document.getElementById('orderFile').value = '';
+      document.getElementById('filePreview').innerHTML = '';
+    }
+    
+    function setupFileDragDrop() {
+      const uploadArea = document.getElementById('fileUploadArea');
+      if (!uploadArea) return;
+      uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+      uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          document.getElementById('orderFile').files = e.dataTransfer.files;
+          handleFileSelect({ target: { files: [file] } });
+        }
+      });
+    }
+    
+    function analyzeWithAI() {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+      if (currentTab === 'text') {
+        const text = document.getElementById('aiInputText').value.trim();
+        if (!text) { alert('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderText(text);
+      } else {
+        if (!selectedFile || !selectedFileBase64) { alert('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
+      }
+    }
+    
+    function handleAnalysisSuccess(result) {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      try {
+        aiAnalysisResult = JSON.parse(result);
+        if (!aiAnalysisResult.success) { showError(aiAnalysisResult.error || '解析に失敗しました'); return; }
+        displayAnalysisResult(aiAnalysisResult);
+      } catch (e) {
+        showError('解析結果の処理に失敗: ' + e.message);
+      }
+    }
+    
+    function handleAnalysisError(error) {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      showError('解析エラー: ' + error.message);
+    }
+    
+    function displayAnalysisResult(result) {
+      document.getElementById('aiResultArea').classList.add('show');
+      itemEdits = {};
+      setConfidenceBadge('overallConfidence', result.overallConfidence);
+      displayAlerts(result.alerts || []);
+      document.getElementById('aiResultShippingDate').textContent = result.shippingDate || '指定なし';
+      document.getElementById('aiResultDeliveryDate').textContent = result.deliveryDate || '指定なし';
+      document.getElementById('aiResultDeliveryTime').textContent = result.deliveryTime || '指定なし';
+      displayShippingTo(result.shippingTo);
+      displayCustomer(result.customer);
+      displayItemsEditable(result.items, result.unknownItems);
+      if (result.memo) {
+        document.getElementById('memoSection').style.display = 'block';
+        document.getElementById('aiResultMemo').textContent = result.memo;
+      } else {
+        document.getElementById('memoSection').style.display = 'none';
+      }
+      document.getElementById('aiError').style.display = 'none';
+      updateLearnSummary();
+
+      // 新規登録・検索ボタンを設定（通常のAI解析でも表示）
+      setupNewRegistrationButtons(result);
+    }
+    
+    function displayAlerts(alerts) {
+      const container = document.getElementById('aiAlerts');
+      container.innerHTML = alerts.map(a => '<div class="ai-alert-item ' + (a.includes('新規') || a.includes('見つかりません') ? 'ai-alert-warning' : 'ai-alert-info') + '">' + a + '</div>').join('');
+    }
+    
+    function displayShippingTo(st) {
+      if (!st) return;
+      const badge = document.getElementById('shippingToMatchBadge');
+      if (st.isNewShippingTo) {
+        badge.innerHTML = '<span class="new-badge">新規</span>';
+      } else if (st.masterMatch === 'exact') {
+        badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+      } else if (st.masterMatch === 'partial') {
+        badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+      } else {
+        badge.innerHTML = '';
+      }
+      document.getElementById('aiResultShippingToRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (st.rawCompanyName || '-') + '</div><div class="row"><span class="label">宛名：</span>' + (st.rawPersonName || '-') + '</div><div class="row"><span class="label">〒：</span>' + (st.rawZipcode || '-') + '</div><div class="row"><span class="label">住所：</span>' + (st.rawAddress || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (st.rawTel || '-') + '</div>';
+
+      const masterDiv = document.getElementById('aiResultShippingToMaster');
+      const manualDiv = document.getElementById('aiResultShippingToManual');
+      const selectDiv = document.getElementById('shippingToSourceSelect');
+
+      // 手動選択データがある場合に表示
+      if (manualShippingToSelection) {
+        manualDiv.style.display = 'block';
+        const sourceType = manualShippingToSelection.source === 'manual_registration' ? '新規登録' : '検索';
+        manualDiv.innerHTML = '<strong>✋ 手動選択（' + sourceType + '）</strong><br>' +
+          [manualShippingToSelection.companyName, manualShippingToSelection.personName].filter(Boolean).join(' ') +
+          '<br>TEL: ' + (manualShippingToSelection.tel || '-') +
+          '<br>〒' + (manualShippingToSelection.zipcode || '-') + ' ' + (manualShippingToSelection.address || '-');
+      } else {
+        manualDiv.style.display = 'none';
+      }
+
+      if (st.masterData) {
+        masterDiv.style.display = 'block';
+        masterDiv.innerHTML = '<strong>📁 マスタ（' + st.matchedBy + '）</strong><br>' + (st.masterData.companyName || '') + ' ' + (st.masterData.personName || '') + '<br>〒' + (st.masterData.zipcode || '') + ' ' + (st.masterData.address || '') + '<br>TEL: ' + (st.masterData.tel || '-');
+        selectDiv.style.display = 'flex';
+
+        // 手動選択がある場合はボタンを3つ表示
+        if (manualShippingToSelection) {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'master\')">📁 マスタ</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'manual\')">✋ 手動選択</button>';
+          useShippingToMaster = false;
+        } else {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'master\')">📁 マスタ</button>';
+          useShippingToMaster = true;
+        }
+      } else if (manualShippingToSelection) {
+        // マスタなし、手動選択あり
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'flex';
+        selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+          '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'manual\')">✋ 手動選択</button>';
+        useShippingToMaster = false;
+      } else {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useShippingToMaster = false;
+      }
+    }
+    
+    function displayCustomer(cust) {
+      if (!cust) return;
+      const badge = document.getElementById('customerMatchBadge');
+      if (cust.isNewCustomer) {
+        badge.innerHTML = '<span class="new-badge">新規</span>';
+      } else if (cust.masterMatch === 'exact') {
+        badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+      } else if (cust.masterMatch === 'partial') {
+        badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+      } else {
+        badge.innerHTML = '';
+      }
+      document.getElementById('aiResultCustomerRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (cust.rawCompanyName || '-') + '</div><div class="row"><span class="label">担当：</span>' + (cust.rawPersonName || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (cust.rawTel || '-') + '</div>';
+
+      const masterDiv = document.getElementById('aiResultCustomerMaster');
+      const manualDiv = document.getElementById('aiResultCustomerManual');
+      const selectDiv = document.getElementById('customerSourceSelect');
+
+      // 手動選択データがある場合に表示
+      if (manualCustomerSelection) {
+        manualDiv.style.display = 'block';
+        const sourceType = manualCustomerSelection.source === 'manual_registration' ? '新規登録' : '検索';
+        manualDiv.innerHTML = '<strong>✋ 手動選択（' + sourceType + '）</strong><br>' +
+          (manualCustomerSelection.displayName || [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join(' ')) +
+          '<br>TEL: ' + (manualCustomerSelection.tel || '-') +
+          '<br>〒' + (manualCustomerSelection.zipcode || '-') + ' ' + (manualCustomerSelection.address || '-');
+      } else {
+        manualDiv.style.display = 'none';
+      }
+
+      if (cust.masterData) {
+        masterDiv.style.display = 'block';
+        masterDiv.innerHTML = '<strong>📁 マスタ（' + cust.matchedBy + '）</strong><br>' + (cust.masterData.displayName || cust.masterData.companyName || '') + '<br>TEL: ' + (cust.masterData.tel || '-');
+        selectDiv.style.display = 'flex';
+
+        // 手動選択がある場合はボタンを3つ表示
+        if (manualCustomerSelection) {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'master\')">📁 マスタ</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'manual\')">✋ 手動選択</button>';
+          useCustomerMaster = false;
+        } else {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'master\')">📁 マスタ</button>';
+          useCustomerMaster = true;
+        }
+      } else if (manualCustomerSelection) {
+        // マスタなし、手動選択あり
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'flex';
+        selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+          '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'manual\')">✋ 手動選択</button>';
+        useCustomerMaster = false;
+      } else {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useCustomerMaster = false;
+      }
+    }
+    
+    function displayItemsEditable(items, unknownItems) {
+      const container = document.getElementById('aiResultItems');
+      container.innerHTML = '';
+      if (!items || items.length === 0) {
+        container.innerHTML = '<p style="color:#999;">商品が見つかりませんでした</p>';
+        return;
+      }
+      items.forEach((item, index) => {
+        const mappingMatch = item.mappingMatch || {};
+        const isLearned = mappingMatch.found && mappingMatch.matchType === 'exact';
+        const canLearn = !isLearned && item.originalText;
+        
+        let price = 0;
+        let priceSource = 'none';
+        if (item.price && item.price > 0) {
+          price = item.price;
+          priceSource = item.priceSource || 'ai';
+        } else if (item.productName && productPrices[item.productName]) {
+          price = productPrices[item.productName];
+          priceSource = 'master';
+        }
+        
+        itemEdits[index] = {
+          category: item.category || '',
+          productName: item.productName || '',
+          spec: item.spec || '',
+          quantity: item.quantity || '',
+          unit: item.unit || 'ケース',
+          price: price,
+          priceSource: priceSource,
+          learn: canLearn && item.confidence !== 'low',
+          originalText: item.originalText || '',
+          originalProductName: item.productName || ''
+        };
+        
+        const cardClass = isLearned ? 'learned' : '';
+        let categoryOptions = '<option value="">選択...</option>';
+        categoryList.forEach(cat => {
+          categoryOptions += '<option value="' + cat + '" ' + (cat === item.category ? 'selected' : '') + '>' + cat + '</option>';
+        });
+        let productOptions = buildProductOptions(item.category, item.productName);
+        
+        let badgeHtml = '';
+        if (isLearned) {
+          badgeHtml = '<span class="mapping-badge">📚 学習済み（' + mappingMatch.usageCount + '回使用）</span>';
+        } else {
+          badgeHtml = '<span class="confidence-badge confidence-' + item.confidence + '">' + getConfidenceLabel(item.confidence) + '</span>';
+        }
+        
+        let priceBadgeHtml = '';
+        if (priceSource === 'ai') {
+          priceBadgeHtml = '<span class="price-badge ai">顧客指定</span>';
+        } else if (priceSource === 'master') {
+          priceBadgeHtml = '<span class="price-badge master">マスタ</span>';
+        }
+        
+        let learnHtml = '';
+        if (canLearn) {
+          const checked = itemEdits[index].learn ? 'checked' : '';
+          learnHtml = '<div class="item-learn-row ' + (itemEdits[index].learn ? 'will-learn' : '') + '" id="learnRow_' + index + '"><input type="checkbox" id="learn_' + index + '" ' + checked + ' onchange="toggleLearn(' + index + ')"><label for="learn_' + index + '">この対応を記憶する</label><span class="learn-preview" id="learnPreview_' + index + '" style="' + (itemEdits[index].learn ? '' : 'display:none') + '">→ ' + (item.productName || '未選択') + '</span></div>';
+        }
+        
+        container.innerHTML += '<div class="item-card ' + cardClass + '" id="itemCard_' + index + '"><div class="item-card-header"><span class="item-original-text">📝 ' + (item.originalText || '(原文なし)') + '</span>' + badgeHtml + '</div><div class="item-card-body"><div class="item-edit-row"><label>分類:</label><select id="category_' + index + '" onchange="onCategoryChange(' + index + ')">' + categoryOptions + '</select></div><div class="item-edit-row"><label>商品:</label><select id="product_' + index + '" onchange="onProductChange(' + index + ')">' + productOptions + '</select></div><div class="item-edit-row"><label>規格:</label><input type="text" id="spec_' + index + '" value="' + (item.spec || '') + '" onchange="onSpecChange(' + index + ')"></div><div class="item-edit-row"><label>価格:</label><div class="price-group"><input type="number" id="price_' + index + '" value="' + price + '" onchange="onPriceChange(' + index + ')"><span class="unit">円</span>' + priceBadgeHtml + '</div></div><div class="item-edit-row"><label>数量:</label><div class="quantity-group"><input type="number" id="quantity_' + index + '" value="' + (item.quantity || '') + '" step="0.1" onchange="onQuantityChange(' + index + ')"><select id="unit_' + index + '" onchange="onUnitChange(' + index + ')"><option value="ケース" ' + (item.unit === 'ケース' ? 'selected' : '') + '>ケース</option><option value="本" ' + (item.unit === '本' ? 'selected' : '') + '>本</option><option value="袋" ' + (item.unit === '袋' ? 'selected' : '') + '>袋</option><option value="kg" ' + (item.unit === 'kg' ? 'selected' : '') + '>kg</option><option value="個" ' + (item.unit === '個' ? 'selected' : '') + '>個</option></select></div></div>' + learnHtml + '</div></div>';
+      });
+    }
+    
+    function buildProductOptions(category, selectedProduct) {
+      let options = '<option value="">選択...</option>';
+      if (category && productMaster[category]) {
+        productMaster[category].forEach(prod => {
+          options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+        });
+      }
+      categoryList.forEach(cat => {
+        if (cat !== category && productMaster[cat]) {
+          options += '<optgroup label="── ' + cat + ' ──">';
+          productMaster[cat].forEach(prod => {
+            options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+          });
+          options += '</optgroup>';
+        }
+      });
+      return options;
+    }
+    
+    function onCategoryChange(index) {
+      const category = document.getElementById('category_' + index).value;
+      itemEdits[index].category = category;
+      const productSelect = document.getElementById('product_' + index);
+      productSelect.innerHTML = buildProductOptions(category, '');
+      itemEdits[index].productName = '';
+      itemEdits[index].price = 0;
+      document.getElementById('price_' + index).value = 0;
+      checkModified(index);
+      updateLearnSummary();
+    }
+    
+    function onProductChange(index) {
+      const productName = document.getElementById('product_' + index).value;
+      itemEdits[index].productName = productName;
+      if (productName && productPrices[productName] && itemEdits[index].priceSource !== 'ai') {
+        itemEdits[index].price = productPrices[productName];
+        itemEdits[index].priceSource = 'master';
+        document.getElementById('price_' + index).value = productPrices[productName];
+      }
+      const preview = document.getElementById('learnPreview_' + index);
+      if (preview) preview.textContent = '→ ' + (productName || '未選択');
+      checkModified(index);
+      updateLearnSummary();
+    }
+    
+    function onSpecChange(index) {
+      itemEdits[index].spec = document.getElementById('spec_' + index).value;
+      checkModified(index);
+    }
+    
+    function onPriceChange(index) {
+      itemEdits[index].price = Number(document.getElementById('price_' + index).value) || 0;
+      itemEdits[index].priceSource = 'manual';
+      checkModified(index);
+    }
+    
+    function onQuantityChange(index) {
+      itemEdits[index].quantity = document.getElementById('quantity_' + index).value;
+      checkModified(index);
+    }
+    
+    function onUnitChange(index) {
+      itemEdits[index].unit = document.getElementById('unit_' + index).value;
+      checkModified(index);
+    }
+    
+    function toggleLearn(index) {
+      const checked = document.getElementById('learn_' + index).checked;
+      itemEdits[index].learn = checked;
+      const row = document.getElementById('learnRow_' + index);
+      const preview = document.getElementById('learnPreview_' + index);
+      if (checked) { row.classList.add('will-learn'); preview.style.display = ''; }
+      else { row.classList.remove('will-learn'); preview.style.display = 'none'; }
+      updateLearnSummary();
+    }
+    
+    function checkModified(index) {
+      const card = document.getElementById('itemCard_' + index);
+      const edit = itemEdits[index];
+      if (edit.productName !== edit.originalProductName) { card.classList.add('modified'); }
+      else { card.classList.remove('modified'); }
+    }
+    
+    function updateLearnSummary() {
+      const summaryDiv = document.getElementById('learnSummary');
+      const itemsDiv = document.getElementById('learnSummaryItems');
+      const learnList = [];
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.learn && edit.originalText && edit.productName) {
+          learnList.push({ originalText: edit.originalText, productName: edit.productName, isModified: edit.productName !== edit.originalProductName });
+        }
+      });
+      if (learnList.length === 0) { summaryDiv.style.display = 'none'; return; }
+      summaryDiv.style.display = 'block';
+      itemsDiv.innerHTML = learnList.map(l => '<div class="learn-summary-item"><span class="original">「' + l.originalText + '」</span><span class="arrow">→</span><span class="product">' + l.productName + '</span>' + (l.isModified ? '<span class="modified-badge">修正済</span>' : '') + '</div>').join('');
+    }
+    
+    function selectSource(type, source) {
+      if (type === 'shippingTo') {
+        useShippingToMaster = (source === 'master');
+      } else {
+        useCustomerMaster = (source === 'master');
+      }
+
+      // ボタンの選択状態を更新
+      const btns = document.querySelectorAll('#' + type + 'SourceSelect .source-select-btn');
+      btns.forEach(btn => {
+        btn.classList.remove('selected');
+      });
+
+      // 選択されたソースのボタンにselectedクラスを追加
+      btns.forEach(btn => {
+        const btnText = btn.textContent.trim();
+        if ((source === 'raw' && btnText.includes('読み取り')) ||
+            (source === 'master' && btnText.includes('マスタ')) ||
+            (source === 'manual' && btnText.includes('手動選択'))) {
+          btn.classList.add('selected');
+        }
+      });
+
+      console.log('データソース選択:', type, source);
+    }
+    
+    function setConfidenceBadge(id, conf) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'confidence-badge confidence-' + (conf || 'low');
+      el.textContent = getConfidenceLabel(conf);
+    }
+    
+    function getConfidenceLabel(conf) {
+      return { high: '✅ 高', medium: '⚠️ 中', low: '❓ 低' }[conf] || '❓';
+    }
+    
+    function showError(msg) {
+      document.getElementById('aiResultArea').classList.add('show');
+      document.getElementById('aiError').style.display = 'block';
+      document.getElementById('aiError').textContent = msg;
+    }
+    
+    function clearAIResult() {
+      aiAnalysisResult = null;
+      useShippingToMaster = useCustomerMaster = false;
+      itemEdits = {};
+      document.getElementById('aiResultArea').classList.remove('show');
+      document.getElementById('aiInputText').value = '';
+      removeFile();
+    }
+    
+    function applyAIResult() {
+      if (!aiAnalysisResult) { alert('解析結果がありません'); return; }
+      
+      const mappingsToLearn = [];
+      const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.learn && edit.originalText && edit.productName) {
+          mappingsToLearn.push({ originalText: edit.originalText, productName: edit.productName, customerName: customerName, spec: edit.spec || '' });
+        }
+      });
+      
+      if (mappingsToLearn.length > 0) {
+        google.script.run.withSuccessHandler(function(results) { console.log('マッピング学習結果:', results); }).withFailureHandler(function(error) { console.error('マッピング学習エラー:', error); }).registerProductMappingBulk(mappingsToLearn);
+      }
+      
+      if (aiAnalysisResult.shippingDate) { setFormValue('shippingDate', aiAnalysisResult.shippingDate); }
+      if (aiAnalysisResult.deliveryDate) { setFormValue('deliveryDate', aiAnalysisResult.deliveryDate); }
+
+      // 発送先の適用（優先順位: 手動選択 > マスタ > AI読み取り）
+      if (manualShippingToSelection) {
+        // 手動選択データを使用
+        console.log('手動選択した発送先データを適用:', manualShippingToSelection);
+        const name = [manualShippingToSelection.companyName, manualShippingToSelection.personName].filter(Boolean).join('　');
+        setFormValue('shippingToName', name);
+        setFormValue('shippingToZipcode', manualShippingToSelection.zipcode || '');
+        setFormValue('shippingToAddress', manualShippingToSelection.address || '');
+        setFormValue('shippingToTel', manualShippingToSelection.tel || '');
+      } else {
+        const st = aiAnalysisResult.shippingTo;
+        if (st) {
+          const data = useShippingToMaster && st.masterData ? st.masterData : st;
+          setFormValue('shippingToName', useShippingToMaster ? [data.companyName, data.personName].filter(Boolean).join('　') : [st.rawCompanyName, st.rawPersonName].filter(Boolean).join('　'));
+          setFormValue('shippingToZipcode', (useShippingToMaster ? data.zipcode : st.rawZipcode) || '');
+          setFormValue('shippingToAddress', (useShippingToMaster ? data.address : st.rawAddress) || '');
+          setFormValue('shippingToTel', (useShippingToMaster ? data.tel : st.rawTel) || '');
+        }
+      }
+
+      // 顧客の適用（優先順位: 手動選択 > マスタ > AI読み取り）
+      if (manualCustomerSelection) {
+        // 手動選択データを使用
+        console.log('手動選択した顧客データを適用:', manualCustomerSelection);
+        const name = manualCustomerSelection.displayName ||
+                     [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join('　');
+        setFormValue('customerName', name);
+        setFormValue('customerZipcode', manualCustomerSelection.zipcode || '');
+        setFormValue('customerAddress', manualCustomerSelection.address || '');
+        setFormValue('customerTel', manualCustomerSelection.tel || '');
+      } else {
+        const cust = aiAnalysisResult.customer;
+        if (cust) {
+          const data = useCustomerMaster && cust.masterData ? cust.masterData : cust;
+          setFormValue('customerName', useCustomerMaster ? (data.displayName || [data.companyName, data.personName].filter(Boolean).join('　')) : [cust.rawCompanyName, cust.rawPersonName].filter(Boolean).join('　'));
+          setFormValue('customerZipcode', (useCustomerMaster ? data.zipcode : cust.rawZipcode) || '');
+          setFormValue('customerAddress', (useCustomerMaster ? data.address : cust.rawAddress) || '');
+          setFormValue('customerTel', (useCustomerMaster ? data.tel : cust.rawTel) || '');
+        }
+      }
+      
+      Object.keys(itemEdits).forEach((index, i) => {
+        const row = i + 1;
+        if (row > 10) return;
+        const edit = itemEdits[index];
+        if (edit.category) {
+          const bunrui = document.getElementById('bunrui' + row);
+          if (bunrui) { bunrui.value = edit.category; if (typeof bunruiChange === 'function') bunruiChange(row); }
+        }
+        if (edit.productName) {
+          setTimeout(() => {
+            const prod = document.getElementById('product' + row);
+            if (prod) {
+              for (let j = 0; j < prod.options.length; j++) {
+                if (prod.options[j].value === edit.productName) {
+                  prod.selectedIndex = j;
+                  if (typeof productChange === 'function') productChange(row);
+                  break;
+                }
+              }
+            }
+          }, 100 * i);
+        }
+        if (edit.price) {
+          setTimeout(() => {
+            const priceEl = document.getElementById('price' + row);
+            if (priceEl) priceEl.value = edit.price;
+          }, 100 * i + 30);
+        }
+        if (edit.quantity) {
+          setTimeout(() => {
+            const qty = document.getElementById('quantity' + row);
+            if (qty) qty.value = edit.quantity;
+          }, 100 * i + 50);
+        }
+      });
+      
+      saveAISessionData();
+      showAIAnalyzedIndicator(new Date().toISOString());
+      
+      let message = 'フォームに反映しました。';
+      if (mappingsToLearn.length > 0) { message += '\n\n📚 ' + mappingsToLearn.length + '件のマッピングを学習しました。'; }
+      if (aiAnalysisResult.alerts?.length) { message += '\n\n⚠️ ' + aiAnalysisResult.alerts.join('\n'); }
+      alert(message);
+      toggleAIAssistant();
+    }
+    
+    function setFormValue(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    }
+    
+    function validateBeforeSubmit() {
+      const warnings = performLocalCheck();
+      if (warnings.length === 0) { return true; }
+      showWarningModal(warnings);
+      return false;
+    }
+    
+    function performLocalCheck() {
+      const warnings = [];
+      const savedData = sessionStorage.getItem(AI_SESSION_KEY);
+      if (!savedData) {
+        warnings.push(...checkBasicValidation());
+        return warnings;
+      }
+      const aiData = JSON.parse(savedData);
+      const inputTotal = calculateInputTotal();
+      if (aiData.totalAmount && Math.abs(aiData.totalAmount - inputTotal) > 1) {
+        const diff = inputTotal - aiData.totalAmount;
+        warnings.push({ type: 'critical', icon: '🔴', title: '合計金額が異なります', detail: 'AI解析: ¥' + aiData.totalAmount.toLocaleString() + ' → 入力: ¥' + inputTotal.toLocaleString() + '（差額: ' + (diff >= 0 ? '+' : '') + '¥' + diff.toLocaleString() + '）' });
+      }
+      if (aiData.items) {
+        aiData.items.forEach(aiItem => {
+          if (AI_EXCLUDE_CATEGORIES.includes(aiItem.category) || AI_EXCLUDE_PRODUCTS.includes(aiItem.productName)) return;
+          const inputItem = findInputItem(aiItem.productName);
+          if (!inputItem) {
+            warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' が入力されていません', detail: 'AI解析: ' + aiItem.quantity + '個' });
+          } else {
+            if (inputItem.quantity != aiItem.quantity) {
+              warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の数量が変更されています', detail: 'AI解析: ' + aiItem.quantity + '個 → 入力: ' + inputItem.quantity + '個' });
+            }
+            if (inputItem.price != aiItem.price) {
+              warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の価格が変更されています', detail: 'AI解析: ¥' + (aiItem.price || 0).toLocaleString() + ' → 入力: ¥' + (inputItem.price || 0).toLocaleString() });
+            }
+          }
+        });
+      }
+      warnings.push(...checkBasicValidation());
+      return warnings;
+    }
+    
+    function calculateInputTotal() {
+      let total = 0;
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        const category = document.getElementById('bunrui' + i)?.value || '';
+        const price = Number(document.getElementById('price' + i)?.value) || 0;
+        const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+        if (AI_EXCLUDE_CATEGORIES.includes(category) || AI_EXCLUDE_PRODUCTS.includes(product)) continue;
+        total += price * quantity;
+      }
+      return total;
+    }
+    
+    function findInputItem(productName) {
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        if (product === productName) {
+          return { productName: product, price: Number(document.getElementById('price' + i)?.value) || 0, quantity: Number(document.getElementById('quantity' + i)?.value) || 0 };
+        }
+      }
+      return null;
+    }
+    
+    function checkBasicValidation() {
+      const warnings = [];
+      const products = [];
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        if (product && products.includes(product)) {
+          warnings.push({ type: 'warning', icon: '🟡', title: product + ' が重複しています', detail: '同じ商品が複数行あります' });
+        }
+        if (product) products.push(product);
+      }
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+        if (product && quantity >= 100) {
+          warnings.push({ type: 'info', icon: '💡', title: product + ' の数量が多いです', detail: quantity + '個 - 入力ミスではないか確認してください' });
+        }
+      }
+      return warnings;
+    }
+    
+    function showWarningModal(warnings) {
+      const body = document.getElementById('aiWarningBody');
+      body.innerHTML = warnings.map(w => '<div class="ai-warning-item ' + w.type + '"><span class="icon">' + w.icon + '</span><div class="content"><div class="title">' + w.title + '</div><div class="detail">' + w.detail + '</div></div></div>').join('');
+      document.getElementById('aiWarningModal').classList.add('show');
+    }
+    
+    function closeWarningModal() {
+      document.getElementById('aiWarningModal').classList.remove('show');
+    }
+    
+    function proceedWithWarnings() {
+      closeWarningModal();
+      const form = document.querySelector('form');
+      if (form) {
+        const btn = document.querySelector('[name="shippingComfirm"]');
+        if (btn) {
+          btn.removeAttribute('onclick');
+          btn.click();
+        }
+      }
+    }
+    // ============================================
+    // 複数日程登録機能
+    // ============================================
+
+    // 発送日程の追加
+    function addShippingDate() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      const currentCount = rows.length;
+      
+      if (currentCount >= 10) {
+        alert('日程は最大10件までです');
+        return;
+      }
+      
+      const newRowNum = currentCount + 1;
+      
+      // 前の行の日付を取得してデフォルト値を設定
+      const lastRow = rows[rows.length - 1];
+      const lastShippingDate = lastRow.querySelector('input[name^="shippingDate"]').value;
+      const lastDeliveryDate = lastRow.querySelector('input[name^="deliveryDate"]').value;
+      
+      // 1日後の日付を計算
+      const nextShipping = new Date(lastShippingDate);
+      nextShipping.setDate(nextShipping.getDate() + 1);
+      const nextShippingStr = nextShipping.toISOString().split('T')[0];
+      
+      const nextDelivery = new Date(lastDeliveryDate);
+      nextDelivery.setDate(nextDelivery.getDate() + 1);
+      const nextDeliveryStr = nextDelivery.toISOString().split('T')[0];
+      
+      const newRow = document.createElement('div');
+      newRow.className = 'shipping-date-row d-flex align-items-center gap-2 mb-2';
+      newRow.dataset.row = newRowNum;
+      newRow.innerHTML = `
+        <span class="badge bg-secondary">#${newRowNum}</span>
+        <label class="col-form-label">発送日</label>
+        <input type="date" class="form-control" style="width:160px;" name="shippingDate${newRowNum}" required value="${nextShippingStr}">
+        <label class="col-form-label">納品日</label>
+        <input type="date" class="form-control" style="width:160px;" name="deliveryDate${newRowNum}" required value="${nextDeliveryStr}">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)">✕</button>
+      `;
+      
+      container.appendChild(newRow);
+      updateRemoveButtons();
+    }
+
+    // 発送日程の削除
+    function removeShippingDate(btn) {
+      const row = btn.closest('.shipping-date-row');
+      row.remove();
+      renumberShippingDates();
+      updateRemoveButtons();
+    }
+
+    // 番号の振り直し
+    function renumberShippingDates() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      
+      rows.forEach((row, index) => {
+        const num = index + 1;
+        row.dataset.row = num;
+        row.querySelector('.badge').textContent = '#' + num;
+        row.querySelector('input[name^="shippingDate"]').name = 'shippingDate' + num;
+        row.querySelector('input[name^="deliveryDate"]').name = 'deliveryDate' + num;
+      });
+    }
+
+    // 削除ボタンの有効/無効制御（1件のときは削除不可）
+    function updateRemoveButtons() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      const buttons = container.querySelectorAll('.btn-outline-danger');
+      
+      buttons.forEach(btn => {
+        btn.disabled = rows.length <= 1;
+      });
+    }
+    // ============================================
+    // shipping.html - 受注ID取得・反映機能 JavaScript（修正版）
+    // 
+    // 修正: 反映前に商品行をクリアする処理を追加
+    // ============================================
+
+    // グローバル変数
+    let orderHistoryData = [];
+    let selectedOrderId = null;
+
+    /**
+     * 受注ID取得ボタン押下時の処理
+     */
+    function getOrderHistory() {
+      const shippingToName = document.getElementById('shippingToName').value.trim();
+      
+      if (!shippingToName) {
+        alert('発送先名を入力してください');
+        return;
+      }
+      
+      const btn = document.getElementById('getOrderHistoryBtn');
+      const originalText = btn.textContent;
+      btn.textContent = '取得中...';
+      btn.disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          
+          const orders = JSON.parse(result);
+          orderHistoryData = orders;
+          
+          if (orders.length === 0) {
+            alert('過去の受注データが見つかりませんでした');
+            document.getElementById('orderHistorySelect').style.display = 'none';
+            document.getElementById('applyOrderHistoryBtn').style.display = 'none';
+            return;
+          }
+          
+          const select = document.getElementById('orderHistorySelect');
+          select.innerHTML = '<option value="">発送日を選択...</option>';
+          
+          orders.forEach(function(order) {
+            const option = document.createElement('option');
+            option.value = order.orderId;
+            let label = order.shippingDate || '日付なし';
+            if (order.productSummary) {
+              label += ' (' + order.productSummary + ')';
+            }
+            option.textContent = label;
+            select.appendChild(option);
+          });
+          
+          select.style.display = 'inline-block';
+          document.getElementById('applyOrderHistoryBtn').style.display = 'inline-block';
+        })
+        .withFailureHandler(function(error) {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          alert('受注履歴の取得に失敗しました: ' + error.message);
+        })
+        .getOrderHistoryByShippingTo(shippingToName);
+    }
+
+    /**
+     * 発送日セレクトボックス変更時の処理
+     */
+    function onOrderHistorySelect() {
+      const select = document.getElementById('orderHistorySelect');
+      selectedOrderId = select.value;
+    }
+
+    /**
+     * 反映ボタン押下時の処理
+     */
+    function applyOrderHistory() {
+      if (!selectedOrderId) {
+        alert('発送日を選択してください');
+        return;
+      }
+      
+      const btn = document.getElementById('applyOrderHistoryBtn');
+      const originalText = btn.textContent;
+      btn.textContent = '反映中...';
+      btn.disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          
+          const data = JSON.parse(result);
+          
+          if (!data) {
+            alert('受注データの取得に失敗しました');
+            return;
+          }
+          
+          applyOrderDataToForm(data);
+          
+          alert('受注データを反映しました（発送日・納品日・個数は除外）');
+        })
+        .withFailureHandler(function(error) {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          alert('受注データの取得に失敗しました: ' + error.message);
+        })
+        .getOrderDataForInherit(selectedOrderId);
+    }
+
+    /**
+     * 商品行をクリアする
+     */
+    function clearProductRows() {
+      for (let rowNum = 1; rowNum <= 10; rowNum++) {
+        const bunruiEl = document.getElementById('bunrui' + rowNum);
+        if (bunruiEl) bunruiEl.selectedIndex = 0;
+        
+        const productEl = document.getElementById('product' + rowNum);
+        if (productEl) productEl.selectedIndex = 0;
+        
+        const priceEl = document.getElementById('price' + rowNum);
+        if (priceEl) priceEl.value = '';
+        
+        const quantityEl = document.getElementById('quantity' + rowNum);
+        if (quantityEl) quantityEl.value = '';
+      }
+    }
+
+    /**
+     * 受注データをフォームに反映
+     */
+    function applyOrderDataToForm(data) {
+      // 最初に商品行をクリア
+      clearProductRows();
+      
+      // 発送先情報（発送先名は変更しない）
+      document.getElementById('shippingToZipcode').value = data.shippingToZipcode || '';
+      document.getElementById('shippingToAddress').value = data.shippingToAddress || '';
+      document.getElementById('shippingToTel').value = data.shippingToTel || '';
+      
+      // 顧客情報
+      document.getElementById('customerName').value = data.customerName || '';
+      document.getElementById('customerZipcode').value = data.customerZipcode || '';
+      document.getElementById('customerAddress').value = data.customerAddress || '';
+      document.getElementById('customerTel').value = data.customerTel || '';
+      
+      // 発送元情報
+      document.getElementById('shippingFromName').value = data.shippingFromName || '';
+      document.getElementById('shippingFromZipcode').value = data.shippingFromZipcode || '';
+      document.getElementById('shippingFromAddress').value = data.shippingFromAddress || '';
+      document.getElementById('shippingFromTel').value = data.shippingFromTel || '';
+      
+      // 受付情報
+      if (data.receiptWay) {
+        const receiptWayEl = document.getElementById('receiptWay');
+        if (receiptWayEl) {
+          for (let i = 0; i < receiptWayEl.options.length; i++) {
+            if (receiptWayEl.options[i].value === data.receiptWay) {
+              receiptWayEl.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (data.recipient) {
+        const recipientEl = document.getElementById('recipient');
+        if (recipientEl) {
+          for (let i = 0; i < recipientEl.options.length; i++) {
+            if (recipientEl.options[i].value === data.recipient) {
+              recipientEl.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      }
+      
+      // 納品方法
+      if (data.deliveryMethod) {
+        const deliveryMethodEl = document.getElementById('deliveryMethod');
+        if (deliveryMethodEl) {
+          for (let i = 0; i < deliveryMethodEl.options.length; i++) {
+            if (deliveryMethodEl.options[i].value === data.deliveryMethod) {
+              deliveryMethodEl.selectedIndex = i;
+              if (typeof deliveryMethodChange === 'function') {
+                deliveryMethodChange();
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      // 配達時間帯
+      if (data.deliveryTime) {
+        setTimeout(function() {
+          const deliveryTimeEl = document.getElementById('deliveryTime');
+          if (deliveryTimeEl) {
+            for (let i = 0; i < deliveryTimeEl.options.length; i++) {
+              if (deliveryTimeEl.options[i].value === data.deliveryTime) {
+                deliveryTimeEl.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }, 100);
+      }
+      
+      // チェックリスト
+      if (data.checklist) {
+        const deliveryChk = document.getElementById('deliveryChk');
+        const billChk = document.getElementById('billChk');
+        const receiptChk = document.getElementById('receiptChk');
+        const pamphletChk = document.getElementById('pamphletChk');
+        const recipeChk = document.getElementById('recipeChk');
+        
+        if (deliveryChk) deliveryChk.checked = data.checklist.deliverySlip || false;
+        if (billChk) billChk.checked = data.checklist.bill || false;
+        if (receiptChk) receiptChk.checked = data.checklist.receipt || false;
+        if (pamphletChk) pamphletChk.checked = data.checklist.pamphlet || false;
+        if (recipeChk) recipeChk.checked = data.checklist.recipe || false;
+      }
+      
+      // その他添付
+      const otherAttachEl = document.getElementById('otherAttach');
+      if (otherAttachEl) {
+        otherAttachEl.value = data.otherAttach || '';
+      }
+      
+      // 商品情報（個数は空）
+      if (data.items && data.items.length > 0) {
+        data.items.forEach(function(item, index) {
+          const rowNum = index + 1;
+          if (rowNum > 10) return;
+          
+          const bunruiEl = document.getElementById('bunrui' + rowNum);
+          if (bunruiEl && item.bunrui) {
+            for (let i = 0; i < bunruiEl.options.length; i++) {
+              if (bunruiEl.options[i].value === item.bunrui) {
+                bunruiEl.selectedIndex = i;
+                if (typeof bunruiChange === 'function') {
+                  bunruiChange(rowNum);
+                }
+                break;
+              }
+            }
+          }
+          
+          setTimeout(function() {
+            const productEl = document.getElementById('product' + rowNum);
+            if (productEl && item.product) {
+              for (let i = 0; i < productEl.options.length; i++) {
+                if (productEl.options[i].value === item.product) {
+                  productEl.selectedIndex = i;
+                  if (typeof productChange === 'function') {
+                    productChange(rowNum);
+                  }
+                  break;
+                }
+              }
+            }
+            
+            const priceEl = document.getElementById('price' + rowNum);
+            if (priceEl && item.price) {
+              priceEl.value = item.price;
+            }
+            
+            const quantityEl = document.getElementById('quantity' + rowNum);
+            if (quantityEl) {
+              quantityEl.value = '';
+            }
+          }, 100 * rowNum);
+        });
+      }
+      
+      // 発送情報
+      const sendProductEl = document.getElementById('sendProduct');
+      if (sendProductEl) {
+        sendProductEl.value = data.sendProduct || '';
+      }
+      
+      // 送り状種別
+      if (data.invoiceType) {
+        setTimeout(function() {
+          const invoiceTypeEl = document.getElementById('invoiceType');
+          if (invoiceTypeEl) {
+            for (let i = 0; i < invoiceTypeEl.options.length; i++) {
+              if (invoiceTypeEl.options[i].value === data.invoiceType) {
+                invoiceTypeEl.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }, 150);
+      }
+      
+      // クール区分
+      if (data.coolCls) {
+        setTimeout(function() {
+          const coolClsEl = document.getElementById('coolCls');
+          if (coolClsEl) {
+            for (let i = 0; i < coolClsEl.options.length; i++) {
+              if (coolClsEl.options[i].value === data.coolCls) {
+                coolClsEl.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }, 150);
+      }
+      
+      // 荷扱い１
+      if (data.cargo1) {
+        setTimeout(function() {
+          const cargo1El = document.getElementById('cargo1');
+          if (cargo1El) {
+            for (let i = 0; i < cargo1El.options.length; i++) {
+              if (cargo1El.options[i].value === data.cargo1) {
+                cargo1El.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }, 150);
+      }
+      
+      // 荷扱い２
+      if (data.cargo2) {
+        setTimeout(function() {
+          const cargo2El = document.getElementById('cargo2');
+          if (cargo2El) {
+            for (let i = 0; i < cargo2El.options.length; i++) {
+              if (cargo2El.options[i].value === data.cargo2) {
+                cargo2El.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }, 150);
+      }
+      
+      // 代引総額・代引内税・発行枚数
+      const cashOnDeliveryEl = document.getElementById('cashOnDelivery');
+      if (cashOnDeliveryEl) {
+        cashOnDeliveryEl.value = data.cashOnDelivery || '';
+      }
+      
+      const cashOnDeliTaxEl = document.getElementById('cashOnDeliTax');
+      if (cashOnDeliTaxEl) {
+        cashOnDeliTaxEl.value = data.cashOnDeliTax || '';
+      }
+      
+      const copiePrintEl = document.getElementById('copiePrint');
+      if (copiePrintEl) {
+        copiePrintEl.value = data.copiePrint || '';
+      }
+      
+      // 備考欄
+      const csvmemoEl = document.getElementById('csvmemo');
+      if (csvmemoEl) {
+        csvmemoEl.value = data.csvmemo || '';
+      }
+      
+      const deliveryMemoEl = document.getElementById('deliveryMemo');
+      if (deliveryMemoEl) {
+        deliveryMemoEl.value = data.deliveryMemo || '';
+      }
+      
+      const memoEl = document.getElementById('memo');
+      if (memoEl) {
+        memoEl.value = data.memo || '';
+      }
+    }
   </script>
   <?!= HtmlService.createHtmlOutputFromFile('keyCheck').getContent(); ?>
 </body>

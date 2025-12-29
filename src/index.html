@@ -10,7 +10,7 @@
 
 <body>
   <div class="container">
-    <h2 class="text-center m-4">会社名ログイン</h2>
+    <h2 class="text-center m-4"><?= getCompanyDisplayName() ?>ログイン</h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <div>
         <div>
@@ -21,6 +21,7 @@
           <label for="loginPass" class="text-left form-label">パスワード</label>
           <input type="password" class="form-control" id="loginPass" name="loginPass">
         </div>
+        <input type="hidden" name="tempOrderId" value="<?= tempOrderId ?>">
         <button type="submit" class="btn btn-primary mt-3" name="login" value="true">ログイン</button><br>
       </div>
     </form>
