@@ -21,22 +21,42 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
  */
 function getProductMasterForUI() {
   try {
-    const products = getAllRecords('商品');
+    // マスタスプレッドシートをIDで直接開く（WebアプリではgetActiveSpreadsheetがnullになるため）
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (!masterSpreadsheetId) {
+      Logger.log('MASTER_SPREADSHEET_ID が未設定です');
+      return { productsByCategory: {}, productPrices: {} };
+    }
+    
+    const ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    const sheet = ss.getSheetByName('商品');
+    
+    if (!sheet) {
+      Logger.log('商品シートが見つかりません');
+      return { productsByCategory: {}, productPrices: {} };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
     const productsByCategory = {};
     const productPrices = {};
     
-    products.forEach(p => {
-      if (!p['商品名']) return;
-      const category = p['商品分類'] || '未分類';
-      const productName = p['商品名'];
-      const price = p['価格（P)'] || 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const record = {};
+      headers.forEach((h, idx) => { record[h] = row[idx]; });
+      
+      if (!record['商品名']) continue;
+      const category = record['商品分類'] || '未分類';
+      const productName = record['商品名'];
+      const price = record['価格（P)'] || 0;
       
       if (!productsByCategory[category]) {
         productsByCategory[category] = [];
       }
       productsByCategory[category].push(productName);
       productPrices[productName] = price;
-    });
+    }
     
     return { 
       productsByCategory,
@@ -767,28 +787,59 @@ function enhanceAnalysisResultFromTempOrder(analysisResultJson) {
   try {
     const result = typeof analysisResultJson === 'string' ? JSON.parse(analysisResultJson) : analysisResultJson;
 
+    // マスタスプレッドシートをIDで直接開く（WebアプリではgetActiveSpreadsheetがnullになるため）
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (!masterSpreadsheetId) {
+      Logger.log('MASTER_SPREADSHEET_ID が未設定です');
+      return analysisResultJson;
+    }
+    
+    const ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    
     // 顧客マスタ取得
-    const customerList = getAllRecords('顧客').map(c => ({
-      displayName: c['表示名'] || c['会社名'],
-      companyName: c['会社名'],
-      personName: c['氏名'],
-      zipcode: c['郵便番号'],
-      address1: c['住所１'],
-      address2: c['住所２'],
-      tel: c['電話番号'],
-      fax: c['ＦＡＸ'],
-      email: c['メールアドレス']
-    }));
+    const customerSheet = ss.getSheetByName('顧客情報');
+    const customerList = [];
+    if (customerSheet) {
+      const customerData = customerSheet.getDataRange().getValues();
+      const headers = customerData[0];
+      for (let i = 1; i < customerData.length; i++) {
+        const row = customerData[i];
+        const record = {};
+        headers.forEach((h, idx) => { record[h] = row[idx]; });
+        customerList.push({
+          displayName: record['表示名'] || record['会社名'],
+          companyName: record['会社名'],
+          personName: record['氏名'],
+          zipcode: record['郵便番号'],
+          address1: record['住所１'],
+          address2: record['住所２'],
+          tel: record['TEL'] || record['電話番号'],
+          fax: record['FAX'] || record['ＦＡＸ'],
+          email: record['メールアドレス']
+        });
+      }
+    }
 
     // 発送先マスタ取得
-    const shippingToList = getAllRecords('発送先').map(s => ({
-      companyName: s['会社名'],
-      personName: s['氏名'],
-      zipcode: s['郵便番号'],
-      address1: s['住所１'],
-      address2: s['住所２'],
-      tel: s['電話番号']
-    }));
+    const shippingToSheet = ss.getSheetByName('発送先情報');
+    const shippingToList = [];
+    if (shippingToSheet) {
+      const shippingToData = shippingToSheet.getDataRange().getValues();
+      const headers = shippingToData[0];
+      for (let i = 1; i < shippingToData.length; i++) {
+        const row = shippingToData[i];
+        const record = {};
+        headers.forEach((h, idx) => { record[h] = row[idx]; });
+        shippingToList.push({
+          companyName: record['会社名'],
+          personName: record['氏名'],
+          zipcode: record['郵便番号'],
+          address1: record['住所１'],
+          address2: record['住所２'],
+          tel: record['TEL'] || record['電話番号']
+        });
+      }
+    }
 
     // マスタデータで強化
     enhanceWithMasterData(result, customerList, shippingToList);

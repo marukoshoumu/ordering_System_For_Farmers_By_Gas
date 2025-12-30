@@ -2,8 +2,11 @@ function doGet(e) {
   const template = HtmlService.createTemplateFromFile('index');
   template.deployURL = ScriptApp.getService().getUrl();
   
-  // tempOrderIdがあれば保持してログイン画面に渡す
+  // URLパラメータを保持してログイン画面に渡す
   template.tempOrderId = e.parameter.tempOrderId || '';
+  template.redirectTo = e.parameter.aiImportList ? 'aiImportList' 
+                      : e.parameter.shipping ? 'shipping' 
+                      : '';
   
   const htmlOutput = template.evaluate();
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -33,6 +36,7 @@ function doPost(e) {
     }
     // ログイン成功
     const tempOrderId = e.parameter.tempOrderId || '';
+    const redirectTo = e.parameter.redirectTo || '';
     
     // tempOrderIdがあれば受注画面へ直接遷移
     if (tempOrderId) {
@@ -47,6 +51,32 @@ function doPost(e) {
       htmlOutput.setTitle('受注画面（AI入力）');
       return htmlOutput;
     }
+    
+    // リダイレクト先パラメータに応じて遷移
+    if (redirectTo === 'aiImportList') {
+      const template = HtmlService.createTemplateFromFile('aiImportList');
+      template.deployURL = ScriptApp.getService().getUrl();
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('AI取込一覧');
+      return htmlOutput;
+    }
+    
+    if (redirectTo === 'shipping') {
+      const template = HtmlService.createTemplateFromFile('shipping');
+      template.deployURL = ScriptApp.getService().getUrl();
+      template.isEditMode = false;
+      template.editOrderId = '';
+      template.tempOrderId = '';
+      template.autoOpenAI = false;
+      template.aiAnalysisResult = '';
+      template.shippingHTML = getshippingHTML(e);
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('受注画面');
+      return htmlOutput;
+    }
+    
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -80,10 +110,15 @@ function doPost(e) {
     if (tempOrderId) {
       // AI取込一覧から遷移した場合
       const tempOrderData = getTempOrderData(tempOrderId);
-      if (tempOrderData) {
+      if (tempOrderData && tempOrderData.analysisResult) {
         // 解析結果をテンプレートに渡す
-        template.aiAnalysisResult = JSON.stringify(tempOrderData.analysisResult);
+        // analysisResult.data に実際の解析データがある場合はそちらを使用
+        const analysisData = tempOrderData.analysisResult.data || tempOrderData.analysisResult;
+        template.aiAnalysisResult = JSON.stringify(analysisData);
         template.autoOpenAI = true;
+      } else {
+        template.autoOpenAI = false;
+        template.aiAnalysisResult = '';
       }
       template.shippingHTML = getshippingHTML(e);
     } else {
@@ -358,12 +393,28 @@ function getTempOrderData(tempOrderId) {
 
 // スプレッドシートのシート名からヘッダの文字列の連想配列を返却
 function getAllRecords(sheetName) {
-  return getAllRecords(sheetName, false);
+  return getAllRecordsInternal(sheetName, false);
 }
 
-function getAllRecords(sheetName, flg) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function getAllRecordsInternal(sheetName, flg) {
+  // WebアプリではgetActiveSpreadsheet()がnullになるため、マスタIDを使用
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (masterSpreadsheetId) {
+      ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    } else {
+      Logger.log('getAllRecords: スプレッドシートを開けませんでした');
+      return flg ? '[]' : [];
+    }
+  }
+  
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    Logger.log('getAllRecords: シート「' + sheetName + '」が見つかりません');
+    return flg ? '[]' : [];
+  }
+  
   const values = sheet.getDataRange().getValues();
   const labels = values.shift();
 

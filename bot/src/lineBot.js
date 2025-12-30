@@ -11,6 +11,23 @@ function getLineConfig() {
   };
 }
 
+/**
+ * 通知先LINEユーザーIDのリストを取得
+ * スクリプトプロパティ LINE_USER_IDS にカンマ区切りで設定
+ * 例: U59910f24d0338fe4953bf6490e5d2715,Uxxxxxxxxxxxxx
+ */
+function getLineUserIds() {
+  const props = PropertiesService.getScriptProperties();
+  const idsString = props.getProperty('LINE_USER_IDS') || '';
+  
+  if (!idsString) {
+    return [];
+  }
+  
+  // カンマ区切りで分割し、空白を除去
+  return idsString.split(',').map(id => id.trim()).filter(id => id);
+}
+
 // ========== LINE送信 ==========
 
 /**
@@ -205,7 +222,13 @@ function buildOrderFlexMessage(orderData) {
 function doPost(e) {
   const lineBotSpreadsheetId = PropertiesService.getScriptProperties().getProperty('LINE_BOT_SPREADSHEET_ID') || '';
   const ss = SpreadsheetApp.openById(lineBotSpreadsheetId);
-  const sheet = ss.getSheetByName("ログ");
+  let sheet = ss.getSheetByName("ログ");
+  
+  // ログシートがなければ作成
+  if (!sheet) {
+    sheet = createLogSheet(ss);
+  }
+  
   const now = new Date();
   const contents = e.postData.contents;
   
@@ -285,27 +308,50 @@ function replyMessage(replyToken, message) {
   UrlFetchApp.fetch(url, options);
 }
 
+// ========== シート自動作成 ==========
+
 /**
- * 受注確定処理
+ * ログシートを作成
  */
-function confirmOrder(tempOrderId) {
-  // TODO: 仮登録データを本登録に変更
-  console.log('受注確定:', tempOrderId);
+function createLogSheet(spreadsheet) {
+  const sheet = spreadsheet.insertSheet('ログ');
   
-  // スプレッドシートの該当レコードのステータスを「確定」に更新
-  // 実装は後ほど
+  // ヘッダー行を設定
+  const headers = ['日時', '種別', '内容'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  
+  // ヘッダー行のスタイル設定
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setBackground('#6aa84f');
+  headerRange.setFontColor('#ffffff');
+  headerRange.setFontWeight('bold');
+  
+  // 列幅を調整
+  sheet.setColumnWidth(1, 180);  // 日時
+  sheet.setColumnWidth(2, 100);  // 種別
+  sheet.setColumnWidth(3, 500);  // 内容
+  
+  // 行を固定
+  sheet.setFrozenRows(1);
+  
+  Logger.log('ログシートを作成しました');
+  return sheet;
 }
 
 // ========== テスト用 ==========
 
 /**
  * 接続テスト - 自分のLINEにメッセージを送信
- * 実行前に U0b0bef6e2d88d7d62c3f2f47c1351205 を設定してください
+ * 実行前にスクリプトプロパティに TEST_LINE_USER_ID を設定してください
  */
 function testSendMessage() {
-  // LINE公式アカウントを友だち追加した後、
-  // Webhook経由で取得したユーザーIDを設定
-  const testUserId = 'U0b0bef6e2d88d7d62c3f2f47c1351205';
+  // スクリプトプロパティからテスト用ユーザーIDを取得
+  const testUserId = PropertiesService.getScriptProperties().getProperty('TEST_LINE_USER_ID');
+  
+  if (!testUserId) {
+    Logger.log('エラー: TEST_LINE_USER_ID がスクリプトプロパティに設定されていません');
+    return;
+  }
   
   sendLineMessage(testUserId, 'GASからのテストメッセージです！');
 }
@@ -314,7 +360,12 @@ function testSendMessage() {
  * Flex Messageのテスト送信
  */
 function testSendFlexMessage() {
-  const testUserId = 'U0b0bef6e2d88d7d62c3f2f47c1351205';
+  const testUserId = PropertiesService.getScriptProperties().getProperty('TEST_LINE_USER_ID');
+  
+  if (!testUserId) {
+    Logger.log('エラー: TEST_LINE_USER_ID がスクリプトプロパティに設定されていません');
+    return;
+  }
   
   const testOrderData = {
     tempOrderId: 'TEST001',
@@ -342,141 +393,437 @@ function checkConfig() {
   console.log('シークレット設定あり:', !!secret);
 }
 
+// ========== 定期リマインド通知 ==========
+
 /**
- * 設定（ScriptPropertiesから取得）
+ * 毎日17時に実行：未処理があればLINE通知を送信
+ * トリガーから自動実行される
+ * LINE_USER_IDS にカンマ区切りで複数ユーザーIDを設定可能
  */
-function getLineConfig() {
+function sendDailyReminder() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const lineBotSpreadsheetId = props.getProperty('LINE_BOT_SPREADSHEET_ID') || '';
+    const lineUserIds = getLineUserIds();
+    
+    if (!lineBotSpreadsheetId || lineUserIds.length === 0) {
+      Logger.log('スクリプトプロパティが未設定です');
+      return;
+    }
+    
+    // 未処理件数をカウント
+    const unprocessedCount = countUnprocessedOrders(lineBotSpreadsheetId);
+    
+    if (unprocessedCount === 0) {
+      Logger.log('未処理なし - 通知スキップ');
+      return;
+    }
+    
+    // リマインド通知を全員に送信
+    const message = buildReminderFlexMessage(unprocessedCount);
+    lineUserIds.forEach(userId => {
+      sendFlexMessage(userId, message);
+    });
+    
+    Logger.log(`リマインド通知送信完了: 未処理${unprocessedCount}件 → ${lineUserIds.length}名に送信`);
+    
+  } catch (error) {
+    Logger.log('リマインド通知エラー: ' + error.toString());
+  }
+}
+
+/**
+ * 未処理件数をカウント
+ */
+function countUnprocessedOrders(spreadsheetId) {
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('仮受注');
+  
+  if (!sheet) {
+    Logger.log('仮受注シートが見つかりません');
+    return 0;
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  let count = 0;
+  
+  // C列がステータス（インデックス2）
+  for (let i = 1; i < data.length; i++) {
+    const status = data[i][2];
+    if (status === '未処理') {
+      count++;
+    }
+  }
+  
+  return count;
+}
+
+/**
+ * リマインド用Flex Messageを組み立て
+ */
+function buildReminderFlexMessage(count) {
+  const props = PropertiesService.getScriptProperties();
+  const deployUrl = props.getProperty('DEPLOY_URL') || 'https://script.google.com/macros/s/xxx/exec';
+  
   return {
-    MASTER_SPREADSHEET_ID: PropertiesService.getScriptProperties().getProperty('MASTER_SPREADSHEET_ID') || '',
-    LINE_USER_ID: PropertiesService.getScriptProperties().getProperty('LINE_USER_ID') || ''
+    type: 'flex',
+    altText: `未処理が${count}件あります`,
+    contents: {
+      type: 'bubble',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: `⏰ 未処理が${count}件あります`,
+            weight: 'bold',
+            size: 'md',
+            wrap: true
+          },
+          {
+            type: 'text',
+            text: '確認をお願いします',
+            size: 'sm',
+            color: '#888888',
+            margin: 'md'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#27AE60',
+            action: {
+              type: 'uri',
+              label: '確認する',
+              uri: deployUrl + '?aiImportList=true'
+            }
+          }
+        ]
+      }
+    }
   };
 }
 
 /**
- * 受注テキストを解析してLINE通知を送信
+ * Flex Messageを送信
  */
-function processOrder(orderText) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ログ");
-  const now = new Date();
-  const lineConfig = getLineConfig();
+function sendFlexMessage(to, flexMessage) {
+  const config = getLineConfig();
+  const url = 'https://api.line.me/v2/bot/message/push';
   
+  const payload = {
+    to: to,
+    messages: [flexMessage]
+  };
+  
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + config.channelAccessToken
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  
+  const response = UrlFetchApp.fetch(url, options);
+  Logger.log('Flex Message送信結果: ' + response.getContentText());
+  return response;
+}
+
+// ========== トリガー設定 ==========
+
+/**
+ * 定期リマインドトリガーを設定（手動実行）
+ * 毎日17時にsendDailyReminderを実行
+ */
+function setupDailyReminderTrigger() {
+  // 既存のトリガーを削除
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'sendDailyReminder') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // 新しいトリガーを作成（毎日17時）
+  ScriptApp.newTrigger('sendDailyReminder')
+    .timeBased()
+    .atHour(17)
+    .everyDays(1)
+    .create();
+  
+  Logger.log('トリガーを設定しました: sendDailyReminder を毎日17時に実行');
+}
+
+/**
+ * 定期リマインドトリガーを削除（手動実行）
+ */
+function removeDailyReminderTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'sendDailyReminder') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  Logger.log('定期リマインドトリガーを削除しました');
+}
+
+/**
+ * テスト: リマインド通知を手動送信
+ */
+function testDailyReminder() {
+  sendDailyReminder();
+}
+
+// ========== まとめ通知 ==========
+
+/**
+ * 5分ごとに実行：未通知の仮受注をまとめて通知
+ * トリガーから自動実行される
+ * LINE_USER_IDS にカンマ区切りで複数ユーザーIDを設定可能
+ */
+function checkAndSendBatchNotification() {
   try {
-    // 1. Gemini解析
-    sheet.appendRow([now, "解析開始", orderText.substring(0, 100) + "..."]);
-    const analysisResult = OrderSystem.analyzeOrderTextById(lineConfig.MASTER_SPREADSHEET_ID, orderText);
+    const props = PropertiesService.getScriptProperties();
+    const lineBotSpreadsheetId = props.getProperty('LINE_BOT_SPREADSHEET_ID') || '';
+    const lineUserIds = getLineUserIds();
     
-    if (!analysisResult || analysisResult.error) {
-      throw new Error(analysisResult?.error || '解析失敗');
+    if (!lineBotSpreadsheetId || lineUserIds.length === 0) {
+      Logger.log('スクリプトプロパティが未設定です');
+      return;
     }
     
-    // 2. 仮受注IDを生成
-    const tempOrderId = 'TMP' + Utilities.formatDate(now, 'JST', 'yyyyMMddHHmmss');
+    // 未通知データを取得
+    const queue = getNotificationQueue(lineBotSpreadsheetId);
     
-    // 3. 仮登録データを保存
-    saveTempOrder(tempOrderId, analysisResult, orderText);
+    if (queue.length === 0) {
+      Logger.log('未通知データなし - スキップ');
+      return;
+    }
     
-    // 4. LINE通知用データを作成
-    const orderData = {
-      tempOrderId: tempOrderId,
-      customerName: analysisResult.customer?.rawCompanyName || '不明',
-      customerMatch: analysisResult.customer?.masterMatch === 'exact',
-      shippingTo: analysisResult.shippingTo?.rawCompanyName || analysisResult.shippingTo?.rawAddress || '',
-      items: (analysisResult.items || []).map(item => ({
-        productName: item.productName || item.originalText,
-        quantity: item.quantity || 0,
-        unit: item.unit || 'ケース'
-      })),
-      confidence: analysisResult.overallConfidence || 'medium',
-      editFormUrl: createEditFormUrl(tempOrderId)
-    };
+    // 最初の受信から5分以上経過しているかチェック
+    const now = new Date();
+    const firstTimestamp = new Date(queue[0].createdAt);
+    const diffMinutes = (now - firstTimestamp) / 1000 / 60;
     
-    // 5. LINE送信
-    sendOrderConfirmation(lineConfig.LINE_USER_ID, orderData);
-    
-    sheet.appendRow([now, "LINE送信完了", tempOrderId]);
-    return { success: true, tempOrderId: tempOrderId };
+    // 5分以上経過、または10件以上たまっていれば送信
+    if (diffMinutes >= 5 || queue.length >= 10) {
+      Logger.log(`まとめ通知送信: ${queue.length}件 (経過時間: ${diffMinutes.toFixed(1)}分)`);
+      
+      // まとめ通知を全員に送信
+      const message = buildBatchFlexMessage(queue);
+      lineUserIds.forEach(userId => {
+        sendFlexMessage(userId, message);
+      });
+      
+      // 通知済みにマーク
+      markAsSent(lineBotSpreadsheetId, queue);
+      
+      Logger.log(`まとめ通知完了 → ${lineUserIds.length}名に送信`);
+    } else {
+      Logger.log(`待機中: ${queue.length}件 (経過時間: ${diffMinutes.toFixed(1)}分)`);
+    }
     
   } catch (error) {
-    sheet.appendRow([now, "エラー", error.message]);
-    sendLineMessage(lineConfig.LINE_USER_ID, '❌ 解析エラー: ' + error.message);
-    return { success: false, error: error.message };
+    Logger.log('まとめ通知エラー: ' + error.toString());
   }
 }
 
 /**
- * 仮受注データを保存
+ * 未通知の仮受注データを取得
  */
-function saveTempOrder(tempOrderId, analysisResult, originalText) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("仮受注");
+function getNotificationQueue(spreadsheetId) {
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('仮受注');
   
-  // シートがなければ作成
   if (!sheet) {
-    sheet = ss.insertSheet("仮受注");
-    sheet.appendRow(["仮受注ID", "登録日時", "ステータス", "顧客名", "発送先", "商品データ", "原文", "解析結果"]);
+    Logger.log('仮受注シートが見つかりません');
+    return [];
   }
-  
-  sheet.appendRow([
-    tempOrderId,
-    new Date(),
-    "未確定",
-    analysisResult.customer?.rawCompanyName || '',
-    analysisResult.shippingTo?.rawCompanyName || '',
-    JSON.stringify(analysisResult.items || []),
-    originalText,
-    JSON.stringify(analysisResult)
-  ]);
-}
-
-/**
- * 修正用フォームURLを生成（後で実装）
- */
-function createEditFormUrl(tempOrderId) {
-  // TODO: Googleフォーム連携
-  return 'https://example.com/edit?id=' + tempOrderId;
-}
-
-/**
- * 受注確定処理
- */
-function confirmOrder(tempOrderId) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("仮受注");
-  
-  if (!sheet) return { success: false, error: '仮受注シートがありません' };
   
   const data = sheet.getDataRange().getValues();
+  const headers = data[0];
   
+  // 列インデックスを取得
+  const idxTempOrderId = 0;   // A列: 仮受注ID
+  const idxCreatedAt = 1;     // B列: 登録日時
+  const idxStatus = 2;        // C列: ステータス
+  const idxCustomerName = 3;  // D列: 顧客名
+  
+  // 通知済みフラグ列を確認（なければ追加）
+  let idxNotified = headers.indexOf('通知済み');
+  if (idxNotified === -1) {
+    // 列を追加
+    const lastCol = sheet.getLastColumn();
+    sheet.getRange(1, lastCol + 1).setValue('通知済み');
+    sheet.getRange(1, lastCol + 2).setValue('通知日時');
+    idxNotified = lastCol; // 0-indexed
+  }
+  
+  const queue = [];
+  
+  // 未処理かつ未通知のデータを取得
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === tempOrderId) {
-      // ステータスを「確定」に更新
-      sheet.getRange(i + 1, 3).setValue("確定");
-      
-      // TODO: 本番の受注シートに登録
-      
-      return { success: true, message: '受注を確定しました' };
+    const row = data[i];
+    const status = row[idxStatus];
+    const notified = row[idxNotified];
+    
+    // 未処理かつ未通知（空 or FALSE）
+    if (status === '未処理' && !notified) {
+      queue.push({
+        rowIndex: i + 1,  // 1-indexed for sheet operations
+        tempOrderId: row[idxTempOrderId] || '',
+        createdAt: row[idxCreatedAt],
+        customerName: row[idxCustomerName] || '不明'
+      });
     }
   }
   
-  return { success: false, error: '該当する仮受注が見つかりません' };
+  // 登録日時でソート（古い順）
+  queue.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  
+  return queue;
 }
 
 /**
- * テスト: 受注処理の全体フロー
+ * 通知済みにマーク
  */
-function testProcessOrder() {
-  const testText = `
-お世話になっております。
-以下の通り注文します。
-
-大根 10ケース
-人参 5ケース
-
-12/30着でお願いします。
-
-田中商店
-  `;
+function markAsSent(spreadsheetId, queue) {
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('仮受注');
   
-  const result = processOrder(testText);
-  console.log('処理結果:', result);
+  if (!sheet) return;
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idxNotified = headers.indexOf('通知済み') + 1;  // 1-indexed
+  const idxNotifiedAt = headers.indexOf('通知日時') + 1;
+  
+  const now = new Date();
+  
+  queue.forEach(item => {
+    sheet.getRange(item.rowIndex, idxNotified).setValue(true);
+    sheet.getRange(item.rowIndex, idxNotifiedAt).setValue(now);
+  });
+}
+
+/**
+ * まとめ通知用Flex Messageを組み立て
+ */
+function buildBatchFlexMessage(queue) {
+  const props = PropertiesService.getScriptProperties();
+  const deployUrl = props.getProperty('DEPLOY_URL') || 'https://script.google.com/macros/s/xxx/exec';
+  
+  // 顧客名リストを作成（最大5件表示）
+  const customerNames = queue.slice(0, 5).map(item => `・${item.customerName}様`);
+  if (queue.length > 5) {
+    customerNames.push(`...他${queue.length - 5}件`);
+  }
+  
+  return {
+    type: 'flex',
+    altText: `新しい注文が${queue.length}件届きました`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: `📦 新しい注文が${queue.length}件`,
+            weight: 'bold',
+            size: 'lg',
+            color: '#ffffff'
+          },
+          {
+            type: 'text',
+            text: '届きました',
+            size: 'md',
+            color: '#ffffff'
+          }
+        ],
+        backgroundColor: '#27AE60'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: customerNames.map(name => ({
+          type: 'text',
+          text: name,
+          size: 'sm',
+          color: '#555555',
+          margin: 'sm'
+        }))
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#27AE60',
+            action: {
+              type: 'uri',
+              label: '一覧を確認',
+              uri: deployUrl + '?aiImportList=true'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+// ========== まとめ通知トリガー設定 ==========
+
+/**
+ * まとめ通知トリガーを設定（手動実行）
+ * 5分ごとにcheckAndSendBatchNotificationを実行
+ */
+function setupBatchNotificationTrigger() {
+  // 既存のトリガーを削除
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'checkAndSendBatchNotification') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // 新しいトリガーを作成（5分ごと）
+  ScriptApp.newTrigger('checkAndSendBatchNotification')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  
+  Logger.log('トリガーを設定しました: checkAndSendBatchNotification を5分ごとに実行');
+}
+
+/**
+ * まとめ通知トリガーを削除（手動実行）
+ */
+function removeBatchNotificationTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'checkAndSendBatchNotification') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  Logger.log('まとめ通知トリガーを削除しました');
+}
+
+/**
+ * テスト: まとめ通知を手動実行
+ */
+function testBatchNotification() {
+  checkAndSendBatchNotification();
 }

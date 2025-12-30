@@ -8,19 +8,81 @@
  * 1. GAS エディタを開く
  * 2. プロジェクトの設定 > スクリプトプロパティ
  * 3. 以下のキーと値を追加
+ * 
+ * 【パフォーマンス最適化】
+ * - CacheServiceで6時間キャッシュ（複数リクエスト間で共有）
+ * - メモリキャッシュ併用で同一リクエスト内は即座に返却
  */
 
 // ========================================
-// ScriptProperties から取得する設定
+// キャッシュ機構
 // ========================================
 
+// キャッシュキー
+const CONFIG_CACHE_KEY = 'SCRIPT_PROPERTIES_CACHE';
+// キャッシュ有効期間（秒）: 6時間
+const CONFIG_CACHE_DURATION = 21600;
+
+// メモリキャッシュ（同一リクエスト内で高速化）
+let _configCache = null;
+
 /**
- * スクリプトプロパティを取得
+ * スクリプトプロパティを一括取得してキャッシュ
+ * - 同一リクエスト内: メモリキャッシュから取得
+ * - 別リクエスト: CacheServiceから取得（6時間有効）
+ * - キャッシュなし: PropertiesServiceから取得してキャッシュ
+ * @returns {Object} 全プロパティのオブジェクト
+ */
+function getConfigAll() {
+  // 1. メモリキャッシュをチェック（同一リクエスト内で最速）
+  if (_configCache !== null) {
+    return _configCache;
+  }
+  
+  // 2. CacheServiceをチェック（複数リクエスト間で共有）
+  const cache = CacheService.getScriptCache();
+  const cachedData = cache.get(CONFIG_CACHE_KEY);
+  
+  if (cachedData) {
+    try {
+      _configCache = JSON.parse(cachedData);
+      return _configCache;
+    } catch (e) {
+      // パースエラーの場合は再取得
+    }
+  }
+  
+  // 3. PropertiesServiceから取得してキャッシュ
+  _configCache = PropertiesService.getScriptProperties().getProperties();
+  
+  // CacheServiceに保存（6時間有効）
+  try {
+    cache.put(CONFIG_CACHE_KEY, JSON.stringify(_configCache), CONFIG_CACHE_DURATION);
+  } catch (e) {
+    // キャッシュ保存エラーは無視（動作には影響なし）
+  }
+  
+  return _configCache;
+}
+
+/**
+ * スクリプトプロパティを取得（キャッシュ利用）
  * @param {string} key - プロパティキー
  * @returns {string} プロパティ値
  */
 function getConfig(key) {
-  return PropertiesService.getScriptProperties().getProperty(key) || '';
+  const props = getConfigAll();
+  return props[key] || '';
+}
+
+/**
+ * 設定キャッシュをクリア
+ * スクリプトプロパティを変更した後に呼び出す
+ */
+function clearConfigCache() {
+  _configCache = null;
+  const cache = CacheService.getScriptCache();
+  cache.remove(CONFIG_CACHE_KEY);
 }
 
 // === スプレッドシート ID ===
