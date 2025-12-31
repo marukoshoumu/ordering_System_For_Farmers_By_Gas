@@ -35,6 +35,135 @@
         padding: 0.25rem 0.5rem; /* パディングを減らす */
       }
     }
+    
+    /* アコーディオンメニュー */
+    .menu-accordion {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    .menu-section {
+      margin-bottom: 8px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #4a90a4 0%, #3d7a8c 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    
+    .menu-header:hover {
+      background: linear-gradient(135deg, #3d7a8c 0%, #2d6a7c 100%);
+    }
+    
+    .menu-header-util {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    }
+    
+    .menu-header-util:hover {
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    }
+    
+    .menu-arrow {
+      font-size: 0.7rem;
+      transition: transform 0.3s ease;
+    }
+    
+    .menu-header.collapsed .menu-arrow {
+      transform: rotate(-90deg);
+    }
+    
+    .menu-content {
+      display: none;
+      padding: 8px;
+      background: #f8fafc;
+    }
+    
+    .menu-content.show {
+      display: block;
+    }
+    
+    .menu-btn {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      margin-bottom: 6px;
+      background: #fff;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    
+    .menu-btn:last-child {
+      margin-bottom: 0;
+    }
+    
+    .menu-btn:hover {
+      background: #4a90a4;
+      color: #fff;
+      border-color: #4a90a4;
+      transform: translateX(4px);
+    }
+    
+    .menu-btn-sub {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      margin-bottom: 4px;
+      background: #fff;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    
+    .menu-btn-sub:last-child {
+      margin-bottom: 0;
+    }
+    
+    .menu-btn-sub:hover {
+      background: #7c9a6e;
+      color: #fff;
+      border-color: #7c9a6e;
+    }
+    
+    .menu-btn-util {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      background: #f3f4f6;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    
+    .menu-btn-util:hover {
+      background: #6b7280;
+      color: #fff;
+    }
   </style>
 </head>
 
@@ -42,36 +171,83 @@
   <div class="container">
     <h2 class="text-center m-4"><?= getCompanyDisplayName() ?></h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
-      <div class="text-center">
-        <button type="submit" class="btn main_btn" name="shipping" value="true">受注</button>
-        <button type="submit" class="btn main_btn" name="phoneOrder" value="true" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white;">
-          📞 電話<br>受注
-        </button>
-        <button type="submit" class="btn main_btn" name="createShippingSlips" value="true">送り状<br>作成</button>
-        <br>
-        <button type="submit" class="btn main_btn" name="createBill" value="true">請求書<br>作成</button>
-        <button type="submit" class="btn main_btn" name="csvImport" value="true">受注CSV<br>取込</button>
-        <button type="submit" class="btn main_btn" name="quotation" value="true">見積書<br>作成</button>
-        <br>
-        <button type="submit" class="btn main_btn" name="orderList" value="true" >発注<br>一覧</button>
-        <button type="submit" class="btn main_btn" name="orderListPage" value="true" >受注<br>一覧</button>
-        <button type="submit" class="btn main_btn" name="aiImportList" value="true" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative;">
-          🤖 AI取込<br>一覧
-          <span id="pendingImportBadge" class="badge bg-danger" style="position: absolute; top: -5px; right: -5px; font-size: 0.7rem;">0</span>
-        </button>
-        <br>
-        <button type="button" class="btn second_btn" name="openQuotaion" value="true" onclick="openUrlQuotaion()">見積書<br>参照</button>
-        <button type="button" class="btn second_btn" name="openProduct" value="true" onclick="openUrlProduct()">商品情報<br>参照</button>
-        <button type="button" class="btn second_btn" name="openCustomer" value="true" onclick="openUrlCustomer()">顧客情報<br>参照</button>
-        <br>
-        <button type="button" class="btn second_btn" name="openBill" value="true" onclick="openUrlBill()">請求書<br>参照</button>
-        <button type="button" class="btn second_btn" name="openDelivered" value="true" onclick="openUrlDelivered()">納品書<br>参照</button>
-        <button type="button" class="btn second_btn" name="openYamato" value="true" onclick="openUrlYamato()">送り状<br>ヤマト参照</button>
-        <br>
-        <button type="button" class="btn second_btn" name="openSagawa" value="true" onclick="openUrlSagawa()">送り状<br>佐川参照</button>
-        <button type="button" class="btn second_btn" name="openShipp" value="true" onclick="openUrlShipp()">受注<br>一覧</button>
-        <button type="button" class="btn second_btn" id="refreshCacheBtn" onclick="refreshMasterCache()" style="background: #6c757d; color: white;">🔄 キャッシュ<br>更新</button>
+      
+      <!-- アコーディオンメニュー -->
+      <div class="menu-accordion">
+        
+        <!-- 受注系 -->
+        <div class="menu-section">
+          <div class="menu-header" onclick="toggleSection(this)">
+            <span>📝 受注</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="menu-content show">
+            <button type="submit" class="btn menu-btn" name="shipping" value="true">📝 受注入力</button>
+            <button type="submit" class="btn menu-btn" name="phoneOrder" value="true">📞 電話受注</button>
+            <button type="submit" class="btn menu-btn" name="csvImport" value="true">📥 CSV取込</button>
+          </div>
+        </div>
+        
+        <!-- 一覧系 -->
+        <div class="menu-section">
+          <div class="menu-header" onclick="toggleSection(this)">
+            <span>📊 一覧</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="menu-content show">
+            <button type="submit" class="btn menu-btn" name="orderList" value="true">📊 発注一覧</button>
+            <button type="submit" class="btn menu-btn" name="orderListPage" value="true">📑 受注一覧</button>
+            <button type="submit" class="btn menu-btn" name="aiImportList" value="true" style="position: relative;">
+              🤖 AI取込一覧
+              <span id="pendingImportBadge" class="badge bg-danger" style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 作成系 -->
+        <div class="menu-section">
+          <div class="menu-header" onclick="toggleSection(this)">
+            <span>🛠️ 作成</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="menu-content">
+            <button type="submit" class="btn menu-btn" name="createShippingSlips" value="true">📦 送り状作成</button>
+            <button type="submit" class="btn menu-btn" name="createBill" value="true">💰 請求書作成</button>
+            <button type="submit" class="btn menu-btn" name="quotation" value="true">📋 見積書作成</button>
+          </div>
+        </div>
+        
+        <!-- 参照系 -->
+        <div class="menu-section">
+          <div class="menu-header" onclick="toggleSection(this)">
+            <span>🔍 参照</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="menu-content">
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlProduct()">🛍️ 商品情報</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlCustomer()">👥 顧客情報</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlShipp()">📑 受注シート</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlQuotaion()">📋 見積書</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlBill()">💰 請求書</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlDelivered()">📄 納品書</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlYamato()">🚚 ヤマト送り状</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlSagawa()">🚛 佐川送り状</button>
+          </div>
+        </div>
+        
+        <!-- その他 -->
+        <div class="menu-section">
+          <div class="menu-header menu-header-util" onclick="toggleSection(this)">
+            <span>⚙️ その他</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="menu-content">
+            <button type="button" class="btn menu-btn-util" id="refreshCacheBtn" onclick="refreshMasterCache()">🔄 キャッシュ更新</button>
+          </div>
+        </div>
+        
       </div>
+      
       <br>
       <div class="text-center" id="cntRes">
       </div>
@@ -132,16 +308,30 @@
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注'); 
     }
     
+    // アコーディオン開閉
+    function toggleSection(header) {
+      const content = header.nextElementSibling;
+      const isOpen = content.classList.contains('show');
+      
+      if (isOpen) {
+        content.classList.remove('show');
+        header.classList.add('collapsed');
+      } else {
+        content.classList.add('show');
+        header.classList.remove('collapsed');
+      }
+    }
+    
     // マスターデータキャッシュ更新
     function refreshMasterCache() {
       const btn = document.getElementById('refreshCacheBtn');
       btn.disabled = true;
-      btn.innerHTML = '🔄 更新中...';
+      btn.textContent = '🔄 更新中...';
       
       google.script.run
         .withSuccessHandler(function(result) {
           btn.disabled = false;
-          btn.innerHTML = '🔄 キャッシュ<br>更新';
+          btn.textContent = '🔄 キャッシュ更新';
           if (result.success) {
             alert('✅ ' + result.message + '\n商品数: ' + result.productCount + '件');
           } else {
@@ -150,7 +340,7 @@
         })
         .withFailureHandler(function(e) {
           btn.disabled = false;
-          btn.innerHTML = '🔄 キャッシュ<br>更新';
+          btn.textContent = '🔄 キャッシュ更新';
           alert('❌ キャッシュ更新に失敗しました: ' + e.message);
         })
         .refreshMasterDataCache();
