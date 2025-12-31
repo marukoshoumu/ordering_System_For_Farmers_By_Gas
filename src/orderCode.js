@@ -1737,8 +1737,21 @@ function createOrder(e) {
   // 編集モードの場合、既存データを削除
   const editOrderId = e.parameter.editOrderId || '';
   if (editOrderId) {
+    // 元の納品方法を取得
+    const oldOrder = getOrderByOrderId(editOrderId);
+
+    // 納品方法に応じてCSVデータを削除
+    if (oldOrder && oldOrder.deliveryMethod === 'ヤマト') {
+      const yamatoDeleted = deleteYamatoCSVByOrderId(editOrderId);
+      Logger.log('ヤマトCSV削除: ' + yamatoDeleted + '件');
+    } else if (oldOrder && oldOrder.deliveryMethod === '佐川') {
+      const sagawaDeleted = deleteSagawaCSVByOrderId(editOrderId);
+      Logger.log('佐川CSV削除: ' + sagawaDeleted + '件');
+    }
+
+    // 受注シート削除
     const deletedCount = deleteOrderByOrderId(editOrderId);
-    Logger.log('削除した行数: ' + deletedCount);
+    Logger.log('受注データ削除: ' + deletedCount + '件');
   }
   // 日程数を取得
   let dateCount = 0;
@@ -1870,12 +1883,12 @@ function createOrder(e) {
     
     // 日程ごとに登録処理を実行
     addRecords('受注', records);
-    
+
     if (e.parameter.deliveryMethod == 'ヤマト') {
-      addRecordYamato('ヤマトCSV', records, e);
+      addRecordYamato('ヤマトCSV', records, e, deliveryId);
     }
     if (e.parameter.deliveryMethod == '佐川') {
-      addRecordSagawa('佐川CSV', records, e);
+      addRecordSagawa('佐川CSV', records, e, deliveryId);
     }
     if (e.parameters.checklist && e.parameters.checklist.includes('納品書')) {
       createFile(createRecords);
@@ -1892,13 +1905,13 @@ function createOrder(e) {
   }
 }
 // ヤマトCSV登録
-function addRecordYamato(sheetName, records, e) {
+function addRecordYamato(sheetName, records, e, deliveryId) {
   Logger.log(e);
   Logger.log(records);
   const adds = [];
   var record = [];
   record['発送日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
-  record['お客様管理番号'] = "";
+  record['お客様管理番号'] = deliveryId || "";
   record['送り状種別'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[0] : "";
   record['クール区分'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
   record['伝票番号'] = "";
@@ -2007,7 +2020,7 @@ function addRecordYamato(sheetName, records, e) {
   addRecords(sheetName, adds);
 }
 // 佐川CSV登録
-function addRecordSagawa(sheetName, records, e) {
+function addRecordSagawa(sheetName, records, e, deliveryId) {
   Logger.log(e);
   Logger.log(records);
   const adds = [];
@@ -2022,7 +2035,7 @@ function addRecordSagawa(sheetName, records, e) {
   record['お届け先住所３'] = "";
   record['お届け先名称１'] = records[0][10];
   record['お届け先名称２'] = "";
-  record['お客様管理番号'] = "";
+  record['お客様管理番号'] = deliveryId || "";
   record['お客様コード'] = "";
   record['部署ご担当者コード取得区分'] = "";
   record['部署ご担当者コード'] = "";
@@ -2558,4 +2571,214 @@ function deleteTempOrder(tempOrderId) {
       break;
     }
   }
+}
+
+// ============================================
+// 既存データ移行スクリプト
+// ヤマトCSV/佐川CSVの「お客様管理番号」に受注IDを設定
+// ============================================
+
+/**
+ * 既存ヤマト/佐川CSVデータに受注IDを紐付ける移行スクリプト
+ * @returns {Object} - マッチング結果 {yamato: {success: N, failed: N}, sagawa: {success: N, failed: N}}
+ */
+function migrateExistingCSVData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 受注シートから全データ取得
+  const orderSheet = ss.getSheetByName('受注');
+  const orderData = orderSheet.getDataRange().getValues();
+  const orderHeaders = orderData[0];
+
+  // 受注シートのカラムインデックス取得
+  const orderIdCol = orderHeaders.indexOf('受注ID');
+  const shippingDateCol = orderHeaders.indexOf('発送日');
+  const shippingToNameCol = orderHeaders.indexOf('発送先名');
+  const shippingToTelCol = orderHeaders.indexOf('発送先電話番号');
+  const deliveryMethodCol = orderHeaders.indexOf('納品方法');
+
+  // 受注データをMap化（発送日+発送先名+電話番号 → 受注ID）
+  const orderMap = new Map();
+  for (let i = 1; i < orderData.length; i++) {
+    const row = orderData[i];
+    const orderId = row[orderIdCol];
+    const shippingDate = formatDateKey(row[shippingDateCol]);
+    const shippingToName = normalizeString(row[shippingToNameCol]);
+    const shippingToTel = normalizeString(row[shippingToTelCol]);
+    const deliveryMethod = row[deliveryMethodCol];
+
+    if (!orderId || !shippingDate || !shippingToName || !shippingToTel) continue;
+
+    const key = `${shippingDate}|${shippingToName}|${shippingToTel}`;
+
+    // 同一キーに複数の受注IDがある場合は配列で保持
+    if (!orderMap.has(key)) {
+      orderMap.set(key, []);
+    }
+    orderMap.get(key).push({ orderId, deliveryMethod });
+  }
+
+  Logger.log(`受注データ: ${orderMap.size}件のユニークキー作成`);
+
+  // ヤマトCSV移行
+  const yamatoResult = migrateCSVSheet('ヤマトCSV', orderMap, 'ヤマト');
+
+  // 佐川CSV移行
+  const sagawaResult = migrateCSVSheet('佐川CSV', orderMap, '佐川');
+
+  const result = {
+    yamato: yamatoResult,
+    sagawa: sagawaResult,
+    totalSuccess: yamatoResult.success + sagawaResult.success,
+    totalFailed: yamatoResult.failed + sagawaResult.failed
+  };
+
+  Logger.log('=== 移行完了 ===');
+  Logger.log(`ヤマトCSV: 成功=${yamatoResult.success}件, 失敗=${yamatoResult.failed}件`);
+  Logger.log(`佐川CSV: 成功=${sagawaResult.success}件, 失敗=${sagawaResult.failed}件`);
+  Logger.log(`合計: 成功=${result.totalSuccess}件, 失敗=${result.totalFailed}件`);
+
+  return result;
+}
+
+/**
+ * 個別CSVシートの移行処理
+ * @param {string} sheetName - シート名（ヤマトCSV or 佐川CSV）
+ * @param {Map} orderMap - 受注データのMap
+ * @param {string} deliveryMethod - 納品方法（ヤマト or 佐川）
+ * @returns {Object} - {success: N, failed: N, details: [...]}
+ */
+function migrateCSVSheet(sheetName, orderMap, deliveryMethod) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    Logger.log(`${sheetName}シートが見つかりません`);
+    return { success: 0, failed: 0, details: [] };
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // CSVシートのカラムインデックス取得
+  const shippingDateCol = headers.indexOf('発送日');
+  const customerMgmtNoCol = headers.indexOf('お客様管理番号');
+
+  // ヤマト: お届け先名, お届け先電話番号
+  // 佐川: お届け先名称１, お届け先電話番号
+  const shippingToNameCol = sheetName === 'ヤマトCSV'
+    ? headers.indexOf('お届け先名')
+    : headers.indexOf('お届け先名称１');
+  const shippingToTelCol = headers.indexOf('お届け先電話番号');
+
+  let successCount = 0;
+  let failedCount = 0;
+  const failedDetails = [];
+
+  // データ行をループ（ヘッダー行をスキップ）
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const currentCustomerMgmtNo = row[customerMgmtNoCol];
+
+    // 既にお客様管理番号が設定されている場合はスキップ
+    if (currentCustomerMgmtNo && currentCustomerMgmtNo !== '') {
+      continue;
+    }
+
+    const shippingDate = formatDateKey(row[shippingDateCol]);
+    const shippingToName = normalizeString(row[shippingToNameCol]);
+    const shippingToTel = normalizeString(row[shippingToTelCol]);
+
+    if (!shippingDate || !shippingToName || !shippingToTel) {
+      failedCount++;
+      failedDetails.push({
+        row: i + 1,
+        reason: '必須項目が空',
+        data: { shippingDate, shippingToName, shippingToTel }
+      });
+      continue;
+    }
+
+    const key = `${shippingDate}|${shippingToName}|${shippingToTel}`;
+    const matchedOrders = orderMap.get(key);
+
+    if (!matchedOrders || matchedOrders.length === 0) {
+      failedCount++;
+      failedDetails.push({
+        row: i + 1,
+        reason: '受注データに一致なし',
+        key: key
+      });
+      continue;
+    }
+
+    // 納品方法でフィルタリング
+    const matchedOrder = matchedOrders.find(o => o.deliveryMethod === deliveryMethod);
+
+    if (!matchedOrder) {
+      failedCount++;
+      failedDetails.push({
+        row: i + 1,
+        reason: `納品方法不一致（期待: ${deliveryMethod}）`,
+        key: key
+      });
+      continue;
+    }
+
+    // お客様管理番号に受注IDを設定
+    sheet.getRange(i + 1, customerMgmtNoCol + 1).setValue(matchedOrder.orderId);
+    successCount++;
+    Logger.log(`${sheetName} 行${i + 1}: お客様管理番号=${matchedOrder.orderId} 設定完了`);
+  }
+
+  Logger.log(`${sheetName}移行完了: 成功=${successCount}件, 失敗=${failedCount}件`);
+
+  if (failedCount > 0) {
+    Logger.log(`${sheetName}失敗詳細:`);
+    failedDetails.forEach(detail => {
+      Logger.log(`  行${detail.row}: ${detail.reason} - ${JSON.stringify(detail.key || detail.data)}`);
+    });
+  }
+
+  return { success: successCount, failed: failedCount, details: failedDetails };
+}
+
+/**
+ * 日付を統一フォーマットのキーに変換（yyyy/MM/dd）
+ */
+function formatDateKey(dateValue) {
+  if (!dateValue) return '';
+
+  try {
+    let date;
+    if (dateValue instanceof Date) {
+      date = dateValue;
+    } else if (typeof dateValue === 'string') {
+      date = new Date(dateValue.replace(/\//g, '-'));
+    } else {
+      return '';
+    }
+
+    if (isNaN(date.getTime())) return '';
+
+    return Utilities.formatDate(date, 'JST', 'yyyy/MM/dd');
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
+ * 文字列を正規化（空白除去、全角→半角変換）
+ */
+function normalizeString(str) {
+  if (!str) return '';
+
+  return String(str)
+    .replace(/\s+/g, '')  // 全ての空白を除去
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+      // 全角英数字を半角に変換
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    })
+    .replace(/[‐－―−]/g, '-')  // 各種ハイフンを統一
+    .toLowerCase();  // 小文字に統一
 }

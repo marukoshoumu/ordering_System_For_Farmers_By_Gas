@@ -201,18 +201,18 @@ function formatDateForInput(dateValue) {
  */
 function deleteOrderByOrderId(orderId) {
   if (!orderId) return 0;
-  
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('受注');
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const orderIdCol = headers.indexOf('受注ID');
-  
+
   if (orderIdCol === -1) {
     Logger.log('受注ID列が見つかりません');
     return 0;
   }
-  
+
   // 削除対象の行を特定（後ろから削除するため逆順で収集）
   const rowsToDelete = [];
   for (let i = data.length - 1; i >= 1; i--) {
@@ -220,12 +220,96 @@ function deleteOrderByOrderId(orderId) {
       rowsToDelete.push(i + 1); // シートの行番号（1-indexed）
     }
   }
-  
+
   // 後ろから削除
   rowsToDelete.forEach(rowNum => {
     sheet.deleteRow(rowNum);
   });
-  
+
   Logger.log('削除した行数: ' + rowsToDelete.length + ' (受注ID: ' + orderId + ')');
+  return rowsToDelete.length;
+}
+
+/**
+ * 受注IDでヤマトCSVデータを削除
+ * @param {string} orderId - 受注ID
+ * @returns {number} - 削除した行数
+ */
+function deleteYamatoCSVByOrderId(orderId) {
+  if (!orderId) return 0;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('ヤマトCSV');
+
+  if (!sheet) {
+    Logger.log('ヤマトCSVシートが見つかりません');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const customerMgmtNoCol = headers.indexOf('お客様管理番号');
+
+  if (customerMgmtNoCol === -1) {
+    Logger.log('お客様管理番号列が見つかりません');
+    return 0;
+  }
+
+  // 削除対象の行を特定（後ろから削除するため逆順で収集）
+  const rowsToDelete = [];
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][customerMgmtNoCol] === orderId) {
+      rowsToDelete.push(i + 1); // シートの行番号（1-indexed）
+    }
+  }
+
+  // 後ろから削除
+  rowsToDelete.forEach(rowNum => {
+    sheet.deleteRow(rowNum);
+  });
+
+  Logger.log('ヤマトCSV削除: ' + rowsToDelete.length + '件 (受注ID: ' + orderId + ')');
+  return rowsToDelete.length;
+}
+
+/**
+ * 受注IDで佐川CSVデータを削除
+ * @param {string} orderId - 受注ID
+ * @returns {number} - 削除した行数
+ */
+function deleteSagawaCSVByOrderId(orderId) {
+  if (!orderId) return 0;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('佐川CSV');
+
+  if (!sheet) {
+    Logger.log('佐川CSVシートが見つかりません');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const customerMgmtNoCol = headers.indexOf('お客様管理番号');
+
+  if (customerMgmtNoCol === -1) {
+    Logger.log('お客様管理番号列が見つかりません');
+    return 0;
+  }
+
+  // 削除対象の行を特定（後ろから削除するため逆順で収集）
+  const rowsToDelete = [];
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][customerMgmtNoCol] === orderId) {
+      rowsToDelete.push(i + 1); // シートの行番号（1-indexed）
+    }
+  }
+
+  // 後ろから削除
+  rowsToDelete.forEach(rowNum => {
+    sheet.deleteRow(rowNum);
+  });
+
+  Logger.log('佐川CSV削除: ' + rowsToDelete.length + '件 (受注ID: ' + orderId + ')');
   return rowsToDelete.length;
 }
