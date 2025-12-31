@@ -581,3 +581,521 @@ function getOrderDataForInherit(orderId) {
   
   return JSON.stringify(data);
 }
+
+// ============================================
+// 過去注文比較チェック機能
+// 電話対応時の入力ミス防止用
+// ============================================
+
+/**
+ * 発送先名から直近の注文履歴を取得し、現在の注文と比較して警告を生成
+ * @param {string} shippingToName - 発送先名
+ * @param {Array} currentItems - 現在の注文商品リスト [{productName, quantity}]
+ * @returns {string} - JSON形式の比較結果
+ */
+function checkOrderAgainstHistory(shippingToName, currentItems) {
+  if (!shippingToName || !currentItems || currentItems.length === 0) {
+    return JSON.stringify({ hasWarnings: false, warnings: [] });
+  }
+  
+  const searchName = shippingToName.trim();
+  const items = getAllRecords('受注');
+  
+  // 発送先名が一致する過去注文を取得（受注ID単位）
+  const orderMap = new Map();
+  
+  for (let i = 0; i < items.length; i++) {
+    const row = items[i];
+    const rowName = row['発送先名'];
+    
+    if (rowName && String(rowName).trim() === searchName) {
+      const orderId = row['受注ID'];
+      
+      if (!orderMap.has(orderId)) {
+        orderMap.set(orderId, {
+          orderId: orderId,
+          shippingDate: row['発送日'],
+          items: []
+        });
+      }
+      
+      const productName = row['商品名'];
+      const quantity = parseFloat(row['個数']) || 0;
+      
+      if (productName) {
+        orderMap.get(orderId).items.push({
+          productName: productName,
+          quantity: quantity
+        });
+      }
+    }
+  }
+  
+  // 発送日でソートして直近3回を取得
+  const recentOrders = Array.from(orderMap.values())
+    .sort((a, b) => {
+      const dateA = a.shippingDate ? new Date(a.shippingDate) : new Date(0);
+      const dateB = b.shippingDate ? new Date(b.shippingDate) : new Date(0);
+      return dateB - dateA;
+    })
+    .slice(0, 3);
+  
+  if (recentOrders.length === 0) {
+    return JSON.stringify({ hasWarnings: false, warnings: [], isNewCustomer: true });
+  }
+  
+  const warnings = [];
+  
+  // 1. 商品ごとの過去平均数量を計算
+  const productStats = new Map();
+  recentOrders.forEach(order => {
+    order.items.forEach(item => {
+      if (!productStats.has(item.productName)) {
+        productStats.set(item.productName, { totalQty: 0, count: 0 });
+      }
+      const stats = productStats.get(item.productName);
+      stats.totalQty += item.quantity;
+      stats.count += 1;
+    });
+  });
+  
+  // 2. 数量異常チェック（±50%以上の差異）
+  currentItems.forEach(currentItem => {
+    if (!currentItem.productName) return;
+    
+    const stats = productStats.get(currentItem.productName);
+    if (stats && stats.count > 0) {
+      const avgQty = stats.totalQty / stats.count;
+      const currentQty = parseFloat(currentItem.quantity) || 0;
+      
+      if (avgQty > 0 && currentQty > 0) {
+        const diff = Math.abs(currentQty - avgQty) / avgQty;
+        if (diff > 0.5) {
+          const direction = currentQty > avgQty ? '多い' : '少ない';
+          warnings.push({
+            type: 'quantity',
+            level: 'warning',
+            productName: currentItem.productName,
+            message: `${currentItem.productName}: 今回 ${currentQty} （過去平均: ${avgQty.toFixed(1)}）← ${direction}です`,
+            currentQty: currentQty,
+            avgQty: avgQty
+          });
+        }
+      }
+    }
+  });
+  
+  // 3. 常連商品の欠落チェック（3回中2回以上注文している商品）
+  productStats.forEach((stats, productName) => {
+    if (stats.count >= 2) {  // 直近3回中2回以上注文
+      const found = currentItems.some(item => item.productName === productName);
+      if (!found) {
+        warnings.push({
+          type: 'missing',
+          level: 'info',
+          productName: productName,
+          message: `${productName}: 今回なし（過去${stats.count}回連続で注文あり）← 漏れていませんか？`,
+          orderCount: stats.count
+        });
+      }
+    }
+  });
+  
+  // 4. 初めての商品チェック（過去に注文したことがない商品）
+  currentItems.forEach(currentItem => {
+    if (!currentItem.productName) return;
+    
+    if (!productStats.has(currentItem.productName)) {
+      warnings.push({
+        type: 'new',
+        level: 'info',
+        productName: currentItem.productName,
+        message: `${currentItem.productName}: この発送先では初めての注文です`,
+        currentQty: parseFloat(currentItem.quantity) || 0
+      });
+    }
+  });
+  
+  return JSON.stringify({
+    hasWarnings: warnings.length > 0,
+    warnings: warnings,
+    recentOrderCount: recentOrders.length,
+    isNewCustomer: false
+  });
+}
+
+/**
+ * 発送先名から直近の注文を取得（電話受注テンプレート用）
+ * @param {string} shippingToName - 発送先名
+ * @returns {string} - JSON形式の直近注文データ
+ */
+function getRecentOrderForTemplate(shippingToName) {
+  if (!shippingToName) {
+    return JSON.stringify(null);
+  }
+  
+  const searchName = shippingToName.trim();
+  const items = getAllRecords('受注');
+  
+  // 発送先名が一致する過去注文を取得
+  const orderMap = new Map();
+  
+  for (let i = 0; i < items.length; i++) {
+    const row = items[i];
+    const rowName = row['発送先名'];
+    
+    if (rowName && String(rowName).trim() === searchName) {
+      const orderId = row['受注ID'];
+      
+      if (!orderMap.has(orderId)) {
+        orderMap.set(orderId, {
+          orderId: orderId,
+          shippingDate: row['発送日'],
+          customerName: row['依頼人名'],
+          items: []
+        });
+      }
+      
+      const productName = row['商品名'];
+      const quantity = parseFloat(row['個数']) || 0;
+      const price = parseFloat(row['価格']) || 0;
+      const productCategory = row['商品分類'] || '';
+      
+      if (productName) {
+        orderMap.get(orderId).items.push({
+          productName: productName,
+          quantity: quantity,
+          price: price,
+          productCategory: productCategory
+        });
+      }
+    }
+  }
+  
+  // 発送日でソートして最新を取得
+  const recentOrder = Array.from(orderMap.values())
+    .sort((a, b) => {
+      const dateA = a.shippingDate ? new Date(a.shippingDate) : new Date(0);
+      const dateB = b.shippingDate ? new Date(b.shippingDate) : new Date(0);
+      return dateB - dateA;
+    })[0];
+  
+  if (!recentOrder) {
+    return JSON.stringify(null);
+  }
+  
+  // 発送日をフォーマット
+  let shippingDateStr = '';
+  if (recentOrder.shippingDate) {
+    try {
+      const d = new Date(recentOrder.shippingDate);
+      if (!isNaN(d.getTime())) {
+        shippingDateStr = Utilities.formatDate(d, 'JST', 'yyyy/MM/dd');
+      }
+    } catch (e) {
+      shippingDateStr = String(recentOrder.shippingDate);
+    }
+  }
+  
+  return JSON.stringify({
+    orderId: recentOrder.orderId,
+    shippingDate: shippingDateStr,
+    customerName: recentOrder.customerName,
+    items: recentOrder.items
+  });
+}
+// ============================================
+// 電話受注モード用関数
+// ============================================
+
+/**
+ * 電話受注モード用の発送先リストを取得
+ * 最終注文日でソートして、よく使う発送先を上位に表示
+ * @returns {string} - JSON形式の発送先リスト
+ */
+function getShippingToListForPhoneOrder() {
+  const items = getAllRecords('受注');
+  
+  // 発送先ごとに集計
+  const shippingToMap = new Map();
+  
+  // 1. まず発送先情報マスタから全発送先を取得（新規顧客対応）
+  const shippingToMaster = getAllRecords('発送先情報');
+  for (let i = 0; i < shippingToMaster.length; i++) {
+    const row = shippingToMaster[i];
+    const shippingToName = row['会社名'] || row['氏名'];
+    
+    if (!shippingToName) continue;
+    
+    const name = String(shippingToName).trim();
+    
+    if (!shippingToMap.has(name)) {
+      shippingToMap.set(name, {
+        shippingToName: name,
+        customerName: row['氏名'] || row['会社名'] || '',
+        shippingToZipcode: row['郵便番号'] || '',
+        shippingToAddress: (row['住所１'] || '') + (row['住所２'] || ''),
+        shippingToTel: row['TEL'] || '',
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: (row['住所１'] || '') + (row['住所２'] || ''),
+        customerTel: row['TEL'] || '',
+        lastOrderDate: null,
+        orderCount: 0,
+        isNewCustomer: true  // 新規顧客フラグ
+      });
+    }
+  }
+  
+  // 2. 受注履歴から発送先を取得・更新（既存顧客）
+  for (let i = 0; i < items.length; i++) {
+    const row = items[i];
+    const shippingToName = row['発送先名'];
+    
+    if (!shippingToName) continue;
+    
+    const name = String(shippingToName).trim();
+    
+    if (!shippingToMap.has(name)) {
+      shippingToMap.set(name, {
+        shippingToName: name,
+        customerName: row['依頼人名'] || '',
+        shippingToZipcode: row['発送先郵便番号'] || '',
+        shippingToAddress: row['発送先住所'] || '',
+        shippingToTel: row['発送先TEL'] || '',
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: row['住所'] || '',
+        customerTel: row['TEL'] || '',
+        lastOrderDate: null,
+        orderCount: 0,
+        isNewCustomer: false
+      });
+    }
+    
+    const data = shippingToMap.get(name);
+    data.orderCount++;
+    data.isNewCustomer = false;  // 注文履歴があるので新規ではない
+    
+    // 最終注文日を更新
+    const shippingDate = row['発送日'];
+    if (shippingDate) {
+      try {
+        const d = new Date(shippingDate);
+        if (!isNaN(d.getTime())) {
+          if (!data.lastOrderDate || d > data.lastOrderDate) {
+            data.lastOrderDate = d;
+          }
+        }
+      } catch (e) {
+        // 日付パースエラーは無視
+      }
+    }
+  }
+  
+  // 配列に変換してソート（最終注文日降順、注文回数降順、新規顧客は最後）
+  const result = Array.from(shippingToMap.values())
+    .sort((a, b) => {
+      // 新規顧客は最後に表示
+      if (a.isNewCustomer && !b.isNewCustomer) return 1;
+      if (!a.isNewCustomer && b.isNewCustomer) return -1;
+      
+      // まず最終注文日でソート
+      const dateA = a.lastOrderDate ? a.lastOrderDate.getTime() : 0;
+      const dateB = b.lastOrderDate ? b.lastOrderDate.getTime() : 0;
+      if (dateB !== dateA) return dateB - dateA;
+      
+      // 同日の場合は注文回数でソート
+      return b.orderCount - a.orderCount;
+    });
+  
+  // 日付をフォーマット
+  result.forEach(item => {
+    if (item.lastOrderDate) {
+      try {
+        item.lastOrderDate = Utilities.formatDate(item.lastOrderDate, 'JST', 'yyyy/MM/dd');
+      } catch (e) {
+        item.lastOrderDate = '';
+      }
+    } else {
+      item.lastOrderDate = '';
+    }
+  });
+  
+  return JSON.stringify(result);
+}
+
+/**
+ * 電話受注モード用の顧客候補を取得（サジェスト用）
+ * @param {string} query - 検索クエリ
+ * @returns {string} - JSON形式の顧客リスト
+ */
+function getCustomerSuggestionsForPhoneOrder(query) {
+  if (!query || query.trim().length < 1) {
+    return JSON.stringify([]);
+  }
+  
+  const searchQuery = query.trim().toLowerCase();
+  const customerMap = new Map();
+  
+  // 1. 顧客情報マスタから取得
+  const customers = getAllRecords('顧客情報');
+  for (let i = 0; i < customers.length; i++) {
+    const row = customers[i];
+    const customerName = row['会社名'] || row['氏名'] || '';
+    
+    if (!customerName) continue;
+    
+    const name = String(customerName).trim();
+    if (!name.toLowerCase().includes(searchQuery)) continue;
+    
+    if (!customerMap.has(name)) {
+      customerMap.set(name, {
+        customerName: name,
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: (row['住所１'] || '') + (row['住所２'] || ''),
+        customerTel: row['TEL'] || '',
+        source: 'master'
+      });
+    }
+  }
+  
+  // 2. 受注履歴からも取得（マスタにない顧客がいる可能性）
+  const orders = getAllRecords('受注');
+  for (let i = 0; i < orders.length; i++) {
+    const row = orders[i];
+    const customerName = row['依頼人名'] || '';
+    
+    if (!customerName) continue;
+    
+    const name = String(customerName).trim();
+    if (!name.toLowerCase().includes(searchQuery)) continue;
+    
+    if (!customerMap.has(name)) {
+      customerMap.set(name, {
+        customerName: name,
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: row['住所'] || '',
+        customerTel: row['TEL'] || '',
+        source: 'order'
+      });
+    }
+  }
+  
+  // 配列に変換して上位10件を返す
+  const result = Array.from(customerMap.values()).slice(0, 10);
+  
+  return JSON.stringify(result);
+}
+
+/**
+ * 発送先名から紐づく顧客情報を取得（自動入力用）
+ * @param {string} shippingToName - 発送先名
+ * @returns {string} - JSON形式の顧客情報
+ */
+function getCustomerByShippingTo(shippingToName) {
+  if (!shippingToName) {
+    return JSON.stringify(null);
+  }
+  
+  const searchName = shippingToName.trim();
+  const orders = getAllRecords('受注');
+  
+  // 受注履歴から発送先に紐づく顧客を検索（最新を優先）
+  for (let i = orders.length - 1; i >= 0; i--) {
+    const row = orders[i];
+    const rowShippingTo = row['発送先名'];
+    
+    if (rowShippingTo && String(rowShippingTo).trim() === searchName) {
+      return JSON.stringify({
+        customerName: row['依頼人名'] || '',
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: row['住所'] || '',
+        customerTel: row['TEL'] || ''
+      });
+    }
+  }
+  
+  // 受注履歴にない場合は発送先マスタから探す
+  const shippingToMaster = getAllRecords('発送先情報');
+  for (let i = 0; i < shippingToMaster.length; i++) {
+    const row = shippingToMaster[i];
+    const name = row['会社名'] || row['氏名'] || '';
+    
+    if (String(name).trim() === searchName) {
+      // 発送先マスタの情報を顧客情報として返す
+      return JSON.stringify({
+        customerName: row['氏名'] || row['会社名'] || '',
+        customerZipcode: row['郵便番号'] || '',
+        customerAddress: (row['住所１'] || '') + (row['住所２'] || ''),
+        customerTel: row['TEL'] || ''
+      });
+    }
+  }
+  
+  return JSON.stringify(null);
+}
+
+/**
+ * 電話受注の仮受注を登録（要確認フラグ付き）
+ * @param {Object} orderData - 受注データ
+ * @returns {string} - JSON形式の結果
+ */
+function createPhoneOrderDraft(orderData) {
+  try {
+    const data = typeof orderData === 'string' ? JSON.parse(orderData) : orderData;
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('仮受注');
+    
+    // 仮受注シートがなければ作成
+    if (!sheet) {
+      sheet = ss.insertSheet('仮受注');
+      const headers = [
+        '仮受注ID', 'ステータス', '登録日時', '要確認フラグ',
+        '発送先名', '発送先TEL', '発送先郵便番号', '発送先住所',
+        '顧客名', '顧客TEL', '顧客郵便番号', '顧客住所',
+        '発送日', '納品日', '商品情報', 'メモ', '受付方法'
+      ];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    }
+    
+    const tempOrderId = 'phone_' + Utilities.getUuid().substring(0, 8);
+    const now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
+    
+    // 商品情報をJSON文字列化
+    const itemsJson = JSON.stringify(data.items || []);
+    
+    const row = [
+      tempOrderId,
+      '未処理',
+      now,
+      data.needsConfirmation ? '要確認' : '',
+      data.shippingToName || '',
+      data.shippingToTel || '',
+      data.shippingToZipcode || '',
+      data.shippingToAddress || '',
+      data.customerName || '',
+      data.customerTel || '',
+      data.customerZipcode || '',
+      data.customerAddress || '',
+      data.shippingDate || '',
+      data.deliveryDate || '',
+      itemsJson,
+      data.memo || '',
+      '電話'
+    ];
+    
+    sheet.appendRow(row);
+    
+    return JSON.stringify({
+      success: true,
+      tempOrderId: tempOrderId,
+      message: '仮受注を登録しました'
+    });
+  } catch (e) {
+    return JSON.stringify({
+      success: false,
+      error: e.toString()
+    });
+  }
+}

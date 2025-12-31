@@ -1,29 +1,87 @@
+// キャッシュをクリアして再取得
+function refreshMasterDataCache() {
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove('masterData_v5');
+    const newData = getMasterDataCached();
+    return {
+      success: true,
+      message: 'キャッシュを更新しました',
+      productCount: newData.products ? newData.products.length : 0,
+      shippingFromCount: newData.shippingFromList ? newData.shippingFromList.length : 0
+    };
+  } catch (error) {
+    Logger.log('refreshMasterDataCache エラー: ' + error.toString());
+    return {
+      success: false,
+      message: 'キャッシュ更新に失敗しました: ' + error.toString()
+    };
+  }
+}
+
 // キャッシュ用関数を追加
 function getMasterDataCached() {
-  const cache = CacheService.getScriptCache();
-  const cacheKey = 'masterData_v1';
-  
-  let cached = cache.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'masterData_v5';
+    
+    let cached = cache.get(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      // productsとshippingFromListが含まれているか確認（古いキャッシュ対策）
+      if (parsed && parsed.products && parsed.shippingFromList) {
+        return parsed;
+      }
+    }
+    
+    // キャッシュがなければ取得
+    const shippingFromRecords = getAllRecords('発送元') || [];
+    const shippingFromList = shippingFromRecords.map(function(r) {
+      return {
+        name: r['発送元名'] || r['名前'] || '',
+        zipcode: r['郵便番号'] || '',
+        address: r['住所'] || '',
+        tel: r['電話番号'] || ''
+      };
+    });
+    const shippingFrom = shippingFromList.length > 0 ? shippingFromList[0] : { name: '', zipcode: '', address: '', tel: '' };
+    
+    const masterData = {
+      products: getAllRecords('商品') || [],
+      recipients: getAllRecords('担当者') || [],
+      deliveryMethods: getAllRecords('納品方法') || [],
+      receipts: getAllRecords('受付方法') || [],
+      deliveryTimes: getAllRecords('配送時間帯') || [],
+      invoiceTypes: getAllRecords('送り状種別') || [],
+      coolClss: getAllRecords('クール区分') || [],
+      cargos: getAllRecords('荷扱い') || [],
+      shippingFrom: shippingFrom,
+      shippingFromList: shippingFromList
+    };
+    
+    // 2時間キャッシュ（7200秒）
+    try {
+      cache.put(cacheKey, JSON.stringify(masterData), 7200);
+    } catch (cacheError) {
+      Logger.log('キャッシュ保存エラー: ' + cacheError.toString());
+    }
+    return masterData;
+  } catch (error) {
+    Logger.log('getMasterDataCached エラー: ' + error.toString());
+    // エラー時はデフォルト値を返す
+    return {
+      products: [],
+      recipients: [],
+      deliveryMethods: [],
+      receipts: [],
+      deliveryTimes: [],
+      invoiceTypes: [],
+      coolClss: [],
+      cargos: [],
+      shippingFrom: { name: '', zipcode: '', address: '', tel: '' },
+      shippingFromList: []
+    };
   }
-  
-  // キャッシュがなければ取得
-  const masterData = {
-    // items: getAllRecords('商品'),
-    recipients: getAllRecords('担当者'),
-    deliveryMethods: getAllRecords('納品方法'),
-    receipts: getAllRecords('受付方法'),
-    deliveryTimes: getAllRecords('配送時間帯'),
-    invoiceTypes: getAllRecords('送り状種別'),
-    coolClss: getAllRecords('クール区分'),
-    cargos: getAllRecords('荷扱い'),
-    // categorys: getAllRecords('商品分類')
-  };
-  
-  // 6時間キャッシュ（21600秒）
-  cache.put(cacheKey, JSON.stringify(masterData), 7200);
-  return masterData;
 }
 // 受注管理画面
 function getshippingHTML(e, alert = '') {
@@ -1331,6 +1389,69 @@ function getShippingComfirmHTML(e) {
   
   html += `</div>`;
   
+  // ============================================
+  // 過去注文比較チェック（電話対応時の入力ミス防止）
+  // ============================================
+  const shippingToName = e.parameter.shippingToName || '';
+  if (shippingToName && products.length > 0) {
+    // 現在の注文商品リストを作成
+    const currentItems = products.map(p => ({
+      productName: p.product,
+      quantity: p.quantity
+    }));
+    
+    try {
+      const checkResult = JSON.parse(checkOrderAgainstHistory(shippingToName, currentItems));
+      
+      if (checkResult.hasWarnings && checkResult.warnings.length > 0) {
+        html += `
+<div class="alert alert-warning mt-3" role="alert">
+  <div class="d-flex align-items-center mb-2">
+    <span class="me-2" style="font-size: 1.5rem;">⚠️</span>
+    <strong>過去注文との比較で確認が必要な点があります</strong>
+  </div>
+  <small class="text-muted d-block mb-2">（直近${checkResult.recentOrderCount}回の注文と比較）</small>
+  <ul class="mb-0 ps-3">`;
+        
+        // 警告の種類ごとに整理して表示
+        const quantityWarnings = checkResult.warnings.filter(w => w.type === 'quantity');
+        const missingWarnings = checkResult.warnings.filter(w => w.type === 'missing');
+        const newWarnings = checkResult.warnings.filter(w => w.type === 'new');
+        
+        // 数量異常（最も重要）
+        quantityWarnings.forEach(w => {
+          html += `<li class="text-danger"><strong>📊 数量確認:</strong> ${w.message}</li>`;
+        });
+        
+        // 常連商品の欠落
+        missingWarnings.forEach(w => {
+          html += `<li class="text-warning"><strong>📦 商品漏れ:</strong> ${w.message}</li>`;
+        });
+        
+        // 初めての商品（情報のみ）
+        newWarnings.forEach(w => {
+          html += `<li class="text-info"><strong>🆕 新規:</strong> ${w.message}</li>`;
+        });
+        
+        html += `
+  </ul>
+  <div class="mt-2">
+    <small class="text-muted">問題がなければそのまま「受注する」ボタンを押してください</small>
+  </div>
+</div>`;
+      } else if (checkResult.isNewCustomer) {
+        html += `
+<div class="alert alert-info mt-3" role="alert">
+  <span class="me-2">ℹ️</span>
+  <strong>新規発送先</strong>: この発送先への過去の注文履歴はありません
+</div>`;
+      }
+    } catch (error) {
+      // エラーの場合は警告セクションを表示しない（サイレントに失敗）
+      Logger.log('過去注文比較チェックエラー: ' + error.toString());
+    }
+  }
+  
   // 合計セクション
   html += `<div class="total-section d-flex justify-content-between align-items-center">`;
   html += `  <span class="label">合計金額</span>`;
@@ -1485,8 +1606,134 @@ function generateId(length = 8) {
   }
   return id;
 }
+
+// 新規顧客をマスタに登録（電話注文モード用）
+function registerNewCustomerToMaster(e) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 顧客情報シート
+    const customerSheet = ss.getSheetByName('顧客情報');
+    if (!customerSheet) {
+      Logger.log('顧客情報シートが見つかりません');
+      return;
+    }
+    const customerLastRow = customerSheet.getLastRow();
+    const customerBkSheet = ss.getSheetByName('顧客情報BK');
+    const customerBkLastRow = customerBkSheet ? customerBkSheet.getLastRow() : 0;
+    
+    // 発送先情報シート
+    const shippingToSheet = ss.getSheetByName('発送先情報');
+    if (!shippingToSheet) {
+      Logger.log('発送先情報シートが見つかりません');
+      return;
+    }
+    const shippingToLastRow = shippingToSheet.getLastRow();
+    const shippingToBkSheet = ss.getSheetByName('発送先情報BK');
+    const shippingToBkLastRow = shippingToBkSheet ? shippingToBkSheet.getLastRow() : 0;
+    
+    const customerName = e.parameter.customerName || '';
+    const customerCompany = e.parameter.customerCompany || '';
+    const customerZipcode = e.parameter.customerZipcode || '';
+    const customerAddress = e.parameter.customerAddress || '';
+    const customerTel = e.parameter.customerTel || '';
+    
+    const shippingToName = e.parameter.shippingToName || '';
+    const shippingToCompany = e.parameter.shippingToCompany || '';
+    const shippingToZipcode = e.parameter.shippingToZipcode || '';
+    const shippingToAddress = e.parameter.shippingToAddress || '';
+    const shippingToTel = e.parameter.shippingToTel || '';
+    
+    Logger.log('顧客登録: 会社名=' + customerCompany + ', 氏名=' + customerName);
+    Logger.log('発送先登録: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
+    
+    // 顧客情報に既に存在するかチェック（会社名と氏名の両方が一致する場合のみ重複とみなす）
+    const existingCustomers = getAllRecords('顧客情報');
+    const customerExists = existingCustomers.some(function(c) {
+      // 会社名と氏名の両方が一致する場合のみ重複
+      // 例: 既存「株式会社田中/田中太郎」と新規「田中太郎/田中太郎」は別人として登録可能
+      return c['会社名'] === customerCompany && c['氏名'] === customerName;
+    });
+    
+    // 顧客情報マスタに登録（存在しない場合のみ）
+    if (!customerExists && customerName) {
+      // カラム: 顧客分類,表示名,フリガナ,会社名,部署,役職,氏名,郵便番号,住所１,住所２,TEL,携帯電話,FAX,メールアドレス,請求書有無,入金期日,備考
+      const customerRow = [
+        '',                    // 顧客分類
+        '',                    // 表示名
+        '',                    // フリガナ
+        customerCompany,       // 会社名
+        '',                    // 部署
+        '',                    // 役職
+        customerName,          // 氏名
+        customerZipcode,       // 郵便番号
+        customerAddress,       // 住所１
+        '',                    // 住所２
+        customerTel,           // TEL
+        '',                    // 携帯電話
+        '',                    // FAX
+        '',                    // メールアドレス
+        '',                    // 請求書有無
+        '',                    // 入金期日
+        '【電話注文から自動登録】'  // 備考
+      ];
+      customerSheet.getRange(customerLastRow + 1, 1, 1, customerRow.length).setNumberFormat('@').setValues([customerRow]).setBorder(true, true, true, true, true, true);
+      if (customerBkSheet) {
+        customerBkSheet.getRange(customerBkLastRow + 1, 1, 1, customerRow.length).setNumberFormat('@').setValues([customerRow]).setBorder(true, true, true, true, true, true);
+      }
+      Logger.log('顧客情報マスタに登録: 会社名=' + customerCompany + ', 氏名=' + customerName);
+    }
+    
+    // 発送先情報に既に存在するかチェック（会社名と氏名の両方が一致する場合のみ重複とみなす）
+    const existingShippingTo = getAllRecords('発送先情報');
+    Logger.log('発送先情報マスタ件数: ' + existingShippingTo.length);
+    Logger.log('登録しようとしている発送先: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
+    
+    const shippingToExists = existingShippingTo.some(function(s) {
+      // 会社名と氏名の両方が一致する場合のみ重複とみなす
+      const match = s['会社名'] === shippingToCompany && s['氏名'] === shippingToName;
+      if (match) {
+        Logger.log('発送先一致: 会社名=' + s['会社名'] + ', 氏名=' + s['氏名']);
+      }
+      return match;
+    });
+    
+    Logger.log('発送先存在チェック結果: ' + shippingToExists);
+    
+    // 発送先情報マスタに登録（存在しない場合のみ）
+    if (!shippingToExists && shippingToName) {
+      // カラム: 会社名,部署,氏名,郵便番号,住所１,住所２,TEL,メールアドレス,備考
+      const shippingToRow = [
+        shippingToCompany,     // 会社名
+        '',                    // 部署
+        shippingToName,        // 氏名
+        shippingToZipcode,     // 郵便番号
+        shippingToAddress,     // 住所１
+        '',                    // 住所２
+        shippingToTel,         // TEL
+        '',                    // メールアドレス
+        '【電話注文から自動登録】'  // 備考
+      ];
+      shippingToSheet.getRange(shippingToLastRow + 1, 1, 1, shippingToRow.length).setNumberFormat('@').setValues([shippingToRow]).setBorder(true, true, true, true, true, true);
+      if (shippingToBkSheet) {
+        shippingToBkSheet.getRange(shippingToBkLastRow + 1, 1, 1, shippingToRow.length).setNumberFormat('@').setValues([shippingToRow]).setBorder(true, true, true, true, true, true);
+      }
+      Logger.log('発送先情報マスタに登録: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
+    }
+    
+  } catch (error) {
+    Logger.log('registerNewCustomerToMaster エラー: ' + error.toString());
+    // エラーがあっても受注処理は継続
+  }
+}
+
 // 受注登録
 function createOrder(e) {
+  // 新規顧客の場合、顧客情報・発送先情報マスタに登録
+  if (e.parameter.isNewCustomer === 'true') {
+    registerNewCustomerToMaster(e);
+  }
+  
   // 編集モードの場合、既存データを削除
   const editOrderId = e.parameter.editOrderId || '';
   if (editOrderId) {
@@ -2019,13 +2266,13 @@ function createGDoc(rowVal) {
   post = post.substring(0, 3).concat("-").concat(post.substring(3, 7));
 
   // 注文書ファイル内の可変文字部（として用意していた箇所）を変更する
-  wCopyDocBody = wCopyDocBody.replaceText('{{company_name}}', customerItem['会社名'] ? customerItem['会社名'] : customerItem['氏名']);
-  wCopyDocBody = wCopyDocBody.replaceText('{{post}}', post);
-  wCopyDocBody = wCopyDocBody.replaceText('{{address1}}', customerItem['住所１']);
-  wCopyDocBody = wCopyDocBody.replaceText('{{address2}}', customerItem['住所２']);
-  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_num}}', rowVal[0]['受注ID']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{company_name}}', customerItem['会社名'] ? customerItem['会社名'] : (customerItem['氏名'] || ''));
+  wCopyDocBody = wCopyDocBody.replaceText('{{post}}', post || '');
+  wCopyDocBody = wCopyDocBody.replaceText('{{address1}}', customerItem['住所１'] || '');
+  wCopyDocBody = wCopyDocBody.replaceText('{{address2}}', customerItem['住所２'] || '');
+  wCopyDocBody = wCopyDocBody.replaceText('{{delivery_num}}', rowVal[0]['受注ID'] || '');
   wCopyDocBody = wCopyDocBody.replaceText('{{delivery_date}}', Utilities.formatDate(new Date(rowVal[0]['納品日']), 'JST', 'yyyy年MM月dd日'));
-  wCopyDocBody = wCopyDocBody.replaceText('{{deliveryMemo}}', rowVal[0]['納品書備考欄']);
+  wCopyDocBody = wCopyDocBody.replaceText('{{deliveryMemo}}', rowVal[0]['納品書備考欄'] || '');
   let totals = 0;
   let tentax = 0;
   let eigtax = 0;

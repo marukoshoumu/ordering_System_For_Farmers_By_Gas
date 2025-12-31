@@ -8,3 +8,4 @@ node_modules*
 # クレデンシャル
 *.credentials.json
 service-account*.json.DS_Store
+.DS_Store

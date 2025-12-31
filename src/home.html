@@ -44,13 +44,16 @@
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <div class="text-center">
         <button type="submit" class="btn main_btn" name="shipping" value="true">受注</button>
+        <button type="submit" class="btn main_btn" name="phoneOrder" value="true" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white;">
+          📞 電話<br>受注
+        </button>
         <button type="submit" class="btn main_btn" name="createShippingSlips" value="true">送り状<br>作成</button>
-        <button type="submit" class="btn main_btn" name="createBill" value="true">請求書<br>作成</button>
         <br>
+        <button type="submit" class="btn main_btn" name="createBill" value="true">請求書<br>作成</button>
         <button type="submit" class="btn main_btn" name="csvImport" value="true">受注CSV<br>取込</button>
         <button type="submit" class="btn main_btn" name="quotation" value="true">見積書<br>作成</button>
-        <button type="submit" class="btn main_btn" name="orderList" value="true" >発注<br>一覧</button>
         <br>
+        <button type="submit" class="btn main_btn" name="orderList" value="true" >発注<br>一覧</button>
         <button type="submit" class="btn main_btn" name="orderListPage" value="true" >受注<br>一覧</button>
         <button type="submit" class="btn main_btn" name="aiImportList" value="true" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative;">
           🤖 AI取込<br>一覧
@@ -67,6 +70,7 @@
         <br>
         <button type="button" class="btn second_btn" name="openSagawa" value="true" onclick="openUrlSagawa()">送り状<br>佐川参照</button>
         <button type="button" class="btn second_btn" name="openShipp" value="true" onclick="openUrlShipp()">受注<br>一覧</button>
+        <button type="button" class="btn second_btn" id="refreshCacheBtn" onclick="refreshMasterCache()" style="background: #6c757d; color: white;">🔄 キャッシュ<br>更新</button>
       </div>
       <br>
       <div class="text-center" id="cntRes">
@@ -127,6 +131,31 @@
     function openUrlShipp() {
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注'); 
     }
+    
+    // マスターデータキャッシュ更新
+    function refreshMasterCache() {
+      const btn = document.getElementById('refreshCacheBtn');
+      btn.disabled = true;
+      btn.innerHTML = '🔄 更新中...';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btn.innerHTML = '🔄 キャッシュ<br>更新';
+          if (result.success) {
+            alert('✅ ' + result.message + '\n商品数: ' + result.productCount + '件');
+          } else {
+            alert('❌ ' + result.message);
+          }
+        })
+        .withFailureHandler(function(e) {
+          btn.disabled = false;
+          btn.innerHTML = '🔄 キャッシュ<br>更新';
+          alert('❌ キャッシュ更新に失敗しました: ' + e.message);
+        })
+        .refreshMasterDataCache();
+    }
+    
     function sendFail() {
       alert("処理に失敗しました。");  
     }

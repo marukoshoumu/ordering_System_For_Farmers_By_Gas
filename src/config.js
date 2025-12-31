@@ -186,7 +186,7 @@ const CONFIG = {
  */
 function getCompanyRecordForShipping() {
   const companyName = getCompanyDisplayName();
-  return getAllRecords(companyName, true);
+  return getAllRecordsInternal(companyName, true);
 }
 
 // ========================================

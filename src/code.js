@@ -92,6 +92,15 @@ function doPost(e) {
     htmlOutput.setTitle('ホーム画面');
     return htmlOutput;
   }
+  // 電話受注モード
+  else if (e.parameter.phoneOrder) {
+    const template = HtmlService.createTemplateFromFile('phoneOrder');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+    htmlOutput.setTitle('電話受注モード');
+    return htmlOutput;
+  }
   // 「受注」ボタンが押されたらshipping.htmlを返す
   else if (e.parameter.shipping) {
     const template = HtmlService.createTemplateFromFile('shipping');
