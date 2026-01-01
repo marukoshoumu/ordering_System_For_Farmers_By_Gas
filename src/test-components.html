@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コンポーネントテスト</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- デザインシステム読み込み（スタイルのみ） -->
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+
+  <style>
+    /* フォールバック用の基本スタイル */
+    body {
+      background: #f8fafc !important;
+      color: #1f2937 !important;
+      min-height: 100vh;
+    }
+    .diagnostic {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      margin: 20px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ユーティリティ（ローディング＋JS関数） -->
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+
+  <!-- 診断メッセージ -->
+  <script>console.log('test-components.html loaded');</script>
+  <div class="diagnostic">
+    <h3>🔍 診断情報</h3>
+    <p>このメッセージが表示されていれば、HTMLは正しく読み込まれています。</p>
+    <p>CSS変数が適用されているか確認してください。</p>
+  </div>
+  <div class="container" style="padding: 40px 20px; max-width: 900px;">
+    <h1 class="mb-4">🎨 統一デザインシステム - コンポーネントテスト</h1>
+
+    <!-- カラーパレットテスト -->
+    <section class="mb-5">
+      <h2 class="mb-3">カラーパレット</h2>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div style="background: var(--brand-primary); color: white; padding: 20px; border-radius: var(--radius-md);">
+            Primary
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: var(--brand-secondary); color: white; padding: 20px; border-radius: var(--radius-md);">
+            Secondary
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: var(--brand-accent); color: white; padding: 20px; border-radius: var(--radius-md);">
+            Accent
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- カードコンポーネントテスト -->
+    <section class="mb-5">
+      <h2 class="mb-3">カードコンポーネント</h2>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card-unified">
+            <div class="card-unified-header">
+              <div>
+                <h3 style="margin: 0; font-size: 1rem;">基本カード</h3>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">通常のカードデザイン</p>
+              </div>
+              <span style="color: var(--text-secondary); font-size: 0.85rem;">2025-12-31</span>
+            </div>
+            <div class="card-unified-body">
+              <p>これは統一カードコンポーネントのサンプルです。全画面で一貫したデザインを提供します。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card-unified status-pending">
+            <div class="card-unified-header">
+              <div>
+                <h3 style="margin: 0; font-size: 1rem;">未処理カード</h3>
+                <span style="background: var(--status-warning-light); color: #856404; padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">未処理</span>
+              </div>
+            </div>
+            <div class="card-unified-body">
+              <p>ステータスカラーが左ボーダーで表示されます。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card-unified status-success">
+            <div class="card-unified-header">
+              <h3 style="margin: 0; font-size: 1rem;">成功カード</h3>
+            </div>
+            <div class="card-unified-body">
+              <p>成功ステータスのカードです。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card-unified status-error">
+            <div class="card-unified-header">
+              <h3 style="margin: 0; font-size: 1rem;">エラーカード</h3>
+            </div>
+            <div class="card-unified-body">
+              <p>エラーステータスのカードです。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ボタンコンポーネントテスト -->
+    <section class="mb-5">
+      <h2 class="mb-3">ボタンコンポーネント</h2>
+
+      <div class="mb-3">
+        <button class="btn-unified btn-unified-primary">プライマリボタン</button>
+        <button class="btn-unified btn-unified-secondary">セカンダリボタン</button>
+        <button class="btn-unified btn-unified-outline">アウトラインボタン</button>
+      </div>
+
+      <div class="mb-3">
+        <button class="btn-unified btn-unified-primary btn-unified-sm">小サイズ</button>
+        <button class="btn-unified btn-unified-primary">標準サイズ</button>
+        <button class="btn-unified btn-unified-primary btn-unified-lg">大サイズ</button>
+      </div>
+
+      <div>
+        <button class="btn-unified btn-unified-primary" disabled>無効ボタン</button>
+      </div>
+    </section>
+
+    <!-- ローディングテスト -->
+    <section class="mb-5">
+      <h2 class="mb-3">ローディングコンポーネント</h2>
+
+      <button class="btn-unified btn-unified-primary" onclick="testLoading()">
+        ローディングをテスト
+      </button>
+
+      <button class="btn-unified btn-unified-secondary" onclick="testLoadingCustom()">
+        カスタムメッセージでテスト
+      </button>
+    </section>
+
+    <!-- Spacing & Shadow テスト -->
+    <section class="mb-5">
+      <h2 class="mb-3">Spacing & Shadow</h2>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div style="background: white; padding: var(--space-4); border-radius: var(--radius); box-shadow: var(--shadow-sm);">
+            Shadow SM
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: white; padding: var(--space-4); border-radius: var(--radius); box-shadow: var(--shadow);">
+            Shadow (標準)
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div style="background: white; padding: var(--space-4); border-radius: var(--radius); box-shadow: var(--shadow-lg);">
+            Shadow LG
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 成功メッセージ -->
+    <div class="card-unified status-success">
+      <div class="card-unified-header">
+        <h3 style="margin: 0; font-size: 1rem;">✅ テスト完了</h3>
+      </div>
+      <div class="card-unified-body">
+        <p>すべてのコンポーネントが正常に表示されていれば、デザインシステムは正しく機能しています。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function testLoading() {
+      showLoading();
+      setTimeout(function() {
+        hideLoading();
+        alert('ローディングテスト完了！');
+      }, 2000);
+    }
+
+    function testLoadingCustom() {
+      showLoading('カスタムメッセージで読み込み中...');
+      setTimeout(function() {
+        hideLoading();
+        alert('カスタムメッセージテスト完了！');
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

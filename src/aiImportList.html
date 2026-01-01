@@ -19,17 +19,11 @@
   <title>AI取込一覧</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <style>
-    :root {
-      --primary-color: #667eea;
-      --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --success-color: #28a745;
-      --warning-color: #ffc107;
-      --danger-color: #dc3545;
-    }
-
     body {
-      background-color: #f0f2f5;
+      background-color: var(--bg-body);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
@@ -41,15 +35,15 @@
 
     .card {
       border: none;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
     }
 
     .card-header {
-      background: var(--header-bg);
+      background: var(--gradient-purple);
       color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 16px 20px;
+      border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+      padding: var(--space-4) var(--space-5);
     }
 
     .card-header h1 {
@@ -60,10 +54,10 @@
 
     /* 未処理件数バッジ */
     .pending-badge {
-      background: #ff6b6b;
+      background: var(--status-error);
       color: white;
-      padding: 4px 12px;
-      border-radius: 20px;
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
       font-size: 0.875rem;
       font-weight: 600;
       animation: pulse 2s infinite;
@@ -87,24 +81,24 @@
     .summary-card {
       flex: 1;
       min-width: 120px;
-      padding: 12px 16px;
-      border-radius: 8px;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius);
       text-align: center;
     }
 
     .summary-card.pending {
-      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-      border: 1px solid #ffc107;
+      background: linear-gradient(135deg, var(--status-warning-light) 0%, #ffeaa7 100%);
+      border: 1px solid var(--status-warning);
     }
 
     .summary-card.processed {
-      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-      border: 1px solid #28a745;
+      background: linear-gradient(135deg, var(--status-success-light) 0%, #c3e6cb 100%);
+      border: 1px solid var(--status-success);
     }
 
     .summary-card.rejected {
-      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-      border: 1px solid #dc3545;
+      background: linear-gradient(135deg, var(--status-error-light) 0%, #f5c6cb 100%);
+      border: 1px solid var(--status-error);
     }
 
     .summary-card .count {
@@ -134,36 +128,27 @@
       background: #fff;
     }
 
-    /* カード形式の一覧 */
-    .import-card {
-      background: white;
-      border: 2px solid #e9ecef;
-      border-radius: 12px;
-      padding: 16px;
+    /* カード形式の一覧 - .card-unifiedを使用 */
+    .card-unified {
       margin-bottom: 16px;
-      transition: all 0.2s;
       position: relative;
     }
 
-    .import-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    .card-unified.pending {
+      border-left: 4px solid var(--status-warning);
     }
 
-    .import-card.pending {
-      border-left: 4px solid #ffc107;
-    }
-
-    .import-card.processed {
-      border-left: 4px solid #28a745;
+    .card-unified.processed {
+      border-left: 4px solid var(--status-success);
       opacity: 0.7;
     }
 
-    .import-card.rejected {
-      border-left: 4px solid #dc3545;
+    .card-unified.rejected {
+      border-left: 4px solid var(--status-error);
       opacity: 0.5;
     }
 
-    .import-card-header {
+    .card-unified-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -184,24 +169,24 @@
     }
 
     .import-card-status {
-      padding: 4px 10px;
-      border-radius: 20px;
+      padding: var(--space-1) 10px;
+      border-radius: var(--radius-full);
       font-size: 0.75rem;
       font-weight: 600;
     }
 
     .status-pending {
-      background: #fff3cd;
+      background: var(--status-warning-light);
       color: #856404;
     }
 
     .status-processed {
-      background: #d4edda;
+      background: var(--status-success-light);
       color: #155724;
     }
 
     .status-rejected {
-      background: #f8d7da;
+      background: var(--status-error-light);
       color: #721c24;
     }
 
@@ -282,24 +267,24 @@
 
     /* 信頼度バッジ */
     .confidence-badge {
-      padding: 2px 8px;
-      border-radius: 12px;
+      padding: 2px var(--space-2);
+      border-radius: var(--radius-md);
       font-size: 0.7rem;
       font-weight: 500;
     }
 
     .confidence-high {
-      background: #d4edda;
+      background: var(--status-success-light);
       color: #155724;
     }
 
     .confidence-medium {
-      background: #fff3cd;
+      background: var(--status-warning-light);
       color: #856404;
     }
 
     .confidence-low {
-      background: #f8d7da;
+      background: var(--status-error-light);
       color: #721c24;
     }
 
@@ -314,34 +299,34 @@
 
     .btn-process {
       flex: 2;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--gradient-purple);
       border: none;
       color: white;
-      padding: 10px 16px;
-      border-radius: 8px;
+      padding: 10px var(--space-4);
+      border-radius: var(--radius);
       font-weight: 600;
       transition: all 0.2s;
     }
 
     .btn-process:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      box-shadow: var(--shadow-md);
       color: white;
     }
 
     .btn-reject {
       flex: 1;
       background: white;
-      border: 2px solid #dc3545;
-      color: #dc3545;
-      padding: 10px 16px;
-      border-radius: 8px;
+      border: 2px solid var(--status-error);
+      color: var(--status-error);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius);
       font-weight: 500;
       transition: all 0.2s;
     }
 
     .btn-reject:hover {
-      background: #dc3545;
+      background: var(--status-error);
       color: white;
     }
 
@@ -389,7 +374,7 @@
 
     /* 確認モーダル */
     .modal-header.reject-header {
-      background: #dc3545;
+      background: var(--status-error);
       color: white;
     }
 
@@ -415,9 +400,9 @@
     }
 
     .original-text {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 12px;
+      background: var(--gray-100);
+      border-radius: var(--radius);
+      padding: var(--space-3);
       font-size: 0.85rem;
       white-space: pre-wrap;
       max-height: 200px;
@@ -548,7 +533,7 @@
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header" style="background: var(--header-bg); color: white;">
+      <div class="modal-header" style="background: var(--gradient-purple); color: white;">
         <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>取込詳細</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -674,8 +659,8 @@
       const moreCount = items.length - 3;
 
       return `
-        <div class="import-card ${statusClass}" onclick="showDetail('${escapeHtml(item.tempOrderId)}')">
-          <div class="import-card-header">
+        <div class="card-unified ${statusClass}" onclick="showDetail('${escapeHtml(item.tempOrderId)}')">
+          <div class="card-unified-header">
             <div>
               <div class="import-card-id">${escapeHtml(item.tempOrderId)}</div>
               <div class="import-card-time">

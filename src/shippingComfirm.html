@@ -5,6 +5,8 @@
   <base target="_top">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -17,10 +19,14 @@
       <? if (typeof tempOrderId !== 'undefined' && tempOrderId) { ?>
         <input type="hidden" name="tempOrderId" value="<?= tempOrderId ?>">
       <? } ?>
-      <button type="submit" class="btn btn-primary me-3" name="shippingSubmit" value="true">受注する</button>
-      <button type="submit" class="btn btn-outline-secondary me-3" name="shippingModify" value="true">修正する</button>
-      <div class="text-center">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+      
+      <!-- ボタンエリア（白背景で独立） -->
+      <div class="form-actions-area">
+        <button type="submit" class="btn btn-primary me-3" name="shippingSubmit" value="true">受注する</button>
+        <button type="submit" class="btn btn-outline-secondary me-3" name="shippingModify" value="true">修正する</button>
+        <div class="text-center mt-3">
+          <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+        </div>
       </div>
     </form>
   </div>

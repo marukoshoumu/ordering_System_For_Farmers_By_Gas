@@ -1,0 +1,557 @@
+<style>
+  /* ===============================================
+     コンポーネントスタイル
+     ===============================================
+
+     このファイルには、再利用可能なUIコンポーネントの
+     スタイル定義を記載します。
+
+     作成日: 2025-12-31
+  */
+
+  /* ===================================
+     統一カードコンポーネント
+     =================================== */
+
+  .card-unified {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+  }
+
+  .card-unified:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-unified-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .card-unified-body {
+    /* 柔軟なコンテンツエリア */
+  }
+
+  /* カードステータスバリエーション */
+  .card-unified.status-pending {
+    border-left: 4px solid var(--status-warning);
+  }
+
+  .card-unified.status-success {
+    border-left: 4px solid var(--status-success);
+  }
+
+  .card-unified.status-error {
+    border-left: 4px solid var(--status-error);
+  }
+
+  .card-unified.status-info {
+    border-left: 4px solid var(--status-info);
+  }
+
+  /* ===================================
+     ローディングコンポーネント
+     =================================== */
+
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    background: var(--bg-card);
+    padding: var(--space-8);
+    border-radius: var(--radius-md);
+    text-align: center;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--gray-200);
+    border-top: 4px solid var(--brand-primary);
+    border-radius: var(--radius-full);
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--space-4);
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+
+  /* ===================================
+     統一ボタンコンポーネント
+     =================================== */
+
+  .btn-unified {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .btn-unified-primary {
+    background: var(--brand-primary);
+    color: white;
+    border: 1px solid var(--brand-primary);
+  }
+
+  .btn-unified-primary:hover {
+    background: var(--brand-primary-dark);
+    border-color: var(--brand-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-unified-primary:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+  }
+
+  .btn-unified-secondary {
+    background: var(--brand-secondary);
+    color: white;
+    border: 1px solid var(--brand-secondary);
+  }
+
+  .btn-unified-secondary:hover {
+    background: var(--brand-secondary-dark);
+    border-color: var(--brand-secondary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-unified-secondary:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+  }
+
+  .btn-unified-outline {
+    background: white;
+    color: var(--brand-primary);
+    border: 2px solid var(--brand-primary);
+  }
+
+  .btn-unified-outline:hover {
+    background: var(--brand-primary);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-unified-outline:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+  }
+
+  /* ボタンサイズバリエーション */
+  .btn-unified-sm {
+    padding: var(--space-2) var(--space-4);
+    font-size: 0.8rem;
+  }
+
+  .btn-unified-lg {
+    padding: var(--space-4) var(--space-8);
+    font-size: 1rem;
+  }
+
+  /* 無効状態 */
+  .btn-unified:disabled,
+  .btn-unified-primary:disabled,
+  .btn-unified-secondary:disabled,
+  .btn-unified-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* ===================================
+     統一テーブルコンポーネント
+     =================================== */
+
+  .table-unified {
+    width: 100%;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border-collapse: collapse;
+  }
+
+  .table-unified thead {
+    background: var(--gradient-purple);
+  }
+
+  .table-unified th {
+    color: white;
+    font-weight: 600;
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-size: 0.875rem;
+  }
+
+  .table-unified tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s ease;
+  }
+
+  .table-unified tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .table-unified tbody tr:hover {
+    background: var(--bg-hover);
+  }
+
+  .table-unified td {
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+
+  .table-unified-striped tbody tr:nth-child(even) {
+    background: var(--bg-body);
+  }
+
+  /* テーブル内のステータスバッジ */
+  .table-badge {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .table-badge-success {
+    background: var(--status-success-light);
+    color: #155724;
+  }
+
+  .table-badge-warning {
+    background: var(--status-warning-light);
+    color: #856404;
+  }
+
+  .table-badge-error {
+    background: var(--status-error-light);
+    color: #721c24;
+  }
+
+  .table-badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  /* ===================================
+     統一フォームコンポーネント
+     =================================== */
+
+  .form-group-unified {
+    margin-bottom: var(--space-4);
+  }
+
+  .form-label-unified {
+    display: block;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+    font-size: 0.875rem;
+  }
+
+  .form-control-unified {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-control-unified:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--bg-hover);
+  }
+
+  .form-control-unified:disabled {
+    background: var(--bg-disabled);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+
+  /* フォーム入力サイズバリエーション */
+  .form-control-sm {
+    padding: var(--space-2);
+    font-size: 0.8rem;
+  }
+
+  .form-control-lg {
+    padding: var(--space-4);
+    font-size: 1rem;
+  }
+
+  /* テキストエリア */
+  .form-textarea-unified {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .form-textarea-unified:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--bg-hover);
+  }
+
+  /* セレクトボックス */
+  .form-select-unified {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+
+  .form-select-unified:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--bg-hover);
+  }
+
+  /* チェックボックス＆ラジオボタン */
+  .form-check-unified {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .form-check-input-unified {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .form-check-label-unified {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  /* フォームバリデーション */
+  .form-control-unified.is-invalid {
+    border-color: var(--status-error);
+  }
+
+  .form-control-unified.is-valid {
+    border-color: var(--status-success);
+  }
+
+  .form-feedback-unified {
+    font-size: 0.75rem;
+    margin-top: var(--space-1);
+  }
+
+  .form-feedback-invalid {
+    color: var(--status-error);
+  }
+
+  .form-feedback-valid {
+    color: var(--status-success);
+  }
+
+  /* ===================================
+     Bootstrap標準フォームクラスのカスタマイズ
+     （既存コードとの互換性維持）
+     =================================== */
+
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+    font-size: 0.875rem;
+  }
+
+  .form-control,
+  .form-select {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--bg-hover);
+  }
+
+  .form-control:disabled,
+  .form-select:disabled {
+    background: var(--bg-disabled);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+
+  .form-select {
+    cursor: pointer;
+  }
+
+  /* ===================================
+     Bootstrap標準ボタンクラスのカスタマイズ
+     （既存コードとの互換性維持）
+     =================================== */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .btn-primary {
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--brand-primary-dark);
+    border-color: var(--brand-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+  }
+
+  .btn-secondary {
+    background: var(--brand-secondary);
+    color: white;
+    border-color: var(--brand-secondary);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--brand-secondary-dark);
+    border-color: var(--brand-secondary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-warning {
+    background: var(--status-warning);
+    color: #856404;
+    border-color: var(--status-warning);
+  }
+
+  .btn-warning:hover:not(:disabled) {
+    background: #e0a800;
+    border-color: #e0a800;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-outline-secondary {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 2px solid var(--border-color);
+  }
+
+  .btn-outline-secondary:hover:not(:disabled) {
+    border-color: var(--text-secondary);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+  }
+
+  /* ボタンサイズ */
+  .btn-sm {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8rem;
+  }
+
+  .btn-lg {
+    padding: var(--space-4) var(--space-6);
+    font-size: 1rem;
+  }
+
+  /* ボタン余白 */
+  .me-3 {
+    margin-right: var(--space-3);
+  }
+
+</style>

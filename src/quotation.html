@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -161,7 +163,7 @@
         <div style="background-color: magenta; color: white;">【顧客情報】　
           <button type='button' class="customerInsertBtn_open">新規登録</button>
           <button type='button' class="customerSearchBtn_open">顧客検索</button>
-        </div>`
+        </div>
         <div>
           <label for="customerName" class="text-left form-label">顧客名</label>
           <input type="text" class="form-control" id="customerName" name="customerName" required value="">

@@ -1,0 +1,75 @@
+<!-- グローバルローディングオーバーレイ -->
+<div class="loading-overlay" id="globalLoading">
+  <div class="loading-spinner">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">処理中...</div>
+  </div>
+</div>
+
+<script>
+  /* ===============================================
+     ユーティリティ関数
+     ===============================================
+
+     グローバルローディング表示用の関数を提供します。
+
+     作成日: 2025-12-31
+  */
+
+  /**
+   * グローバルローディングを表示
+   * @param {string} message - 表示するメッセージ（デフォルト: '処理中...'）
+   */
+  function showLoading(message) {
+    message = message || '処理中...';
+    var loadingEl = document.getElementById('globalLoading');
+    var textEl = document.getElementById('loadingText');
+
+    if (loadingEl && textEl) {
+      textEl.textContent = message;
+      loadingEl.classList.add('show');
+    }
+  }
+
+  /**
+   * グローバルローディングを非表示
+   */
+  function hideLoading() {
+    var loadingEl = document.getElementById('globalLoading');
+
+    if (loadingEl) {
+      loadingEl.classList.remove('show');
+    }
+  }
+
+  // google.script.run のラッパー関数（エラーハンドリング付き）
+  function runWithLoading(functionName, successCallback, errorMessage) {
+    showLoading(errorMessage || '処理中...');
+
+    return {
+      withSuccessHandler: function(callback) {
+        return this.withFailureHandler(function(error) {
+          hideLoading();
+          alert('エラーが発生しました: ' + error);
+        })[functionName](callback);
+      },
+      withFailureHandler: function(callback) {
+        var self = this;
+        return {
+          [functionName]: function(successCallback) {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                hideLoading();
+                if (successCallback) successCallback(result);
+              })
+              .withFailureHandler(function(error) {
+                hideLoading();
+                if (callback) callback(error);
+              })
+              [functionName]();
+          }
+        };
+      }
+    };
+  }
+</script>

@@ -1,13 +1,30 @@
 function doGet(e) {
+  // テスト用：?test=components でコンポーネントテストページを表示
+  if (e.parameter.test === 'components') {
+    try {
+      const template = HtmlService.createTemplateFromFile('test-components');
+      const htmlOutput = template.evaluate();
+      htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      htmlOutput.setTitle('コンポーネントテスト');
+      return htmlOutput;
+    } catch (error) {
+      // エラーが発生した場合、エラー情報を表示
+      return HtmlService.createHtmlOutput(
+        '<html><body style="padding:20px;font-family:Arial;"><h1>エラー発生</h1><p>' +
+        error.message + '</p><pre>' + error.stack + '</pre></body></html>'
+      );
+    }
+  }
+
   const template = HtmlService.createTemplateFromFile('index');
   template.deployURL = ScriptApp.getService().getUrl();
-  
+
   // URLパラメータを保持してログイン画面に渡す
   template.tempOrderId = e.parameter.tempOrderId || '';
-  template.redirectTo = e.parameter.aiImportList ? 'aiImportList' 
-                      : e.parameter.shipping ? 'shipping' 
+  template.redirectTo = e.parameter.aiImportList ? 'aiImportList'
+                      : e.parameter.shipping ? 'shipping'
                       : '';
-  
+
   const htmlOutput = template.evaluate();
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   htmlOutput.setTitle('ログイン画面');

@@ -326,7 +326,7 @@ function getshippingHTML(e, alert = '') {
   // 発送先情報セクション
   // ============================================
   html += `
-<div class="section-header section-shipping-to">
+<div class="confirm-section section-shipping-to"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">📦 発送先情報</span>
     <button type='button' class="shippingToInsertBtn_open" title="新規登録">➕ 新規</button>
@@ -374,7 +374,7 @@ function getshippingHTML(e, alert = '') {
   // 顧客情報セクション
   // ============================================
   html += `
-<div class="section-header section-customer">
+<div class="confirm-section section-customer"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">👤 顧客情報</span>
     <button type='button' class="customerInsertBtn_open" title="新規登録">➕ 新規</button>
@@ -416,7 +416,7 @@ function getshippingHTML(e, alert = '') {
   // ============================================
   const companyDisplayName = getCompanyDisplayName();
   html += `
-<div class="section-header section-shipping-from">
+<div class="confirm-section section-shipping-from"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🏭 発送元情報</span>
     <button type="button" id="babaBtn" onclick="babaChange()" title="${companyDisplayName}の情報を入力">🌿 ${companyDisplayName}</button>
@@ -456,7 +456,7 @@ function getshippingHTML(e, alert = '') {
   // 受注基本情報セクション
   // ============================================
   html += `
-<div class="section-header section-order-basic">
+<div class="confirm-section section-order-basic"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">📝 受注基本情報</span>
   </div>
@@ -599,7 +599,7 @@ function getshippingHTML(e, alert = '') {
   // 商品情報セクション
   // ============================================
   html += `
-<div class="section-header section-products">
+<div class="confirm-section section-products"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🛒 商品情報</span>
   </div>
@@ -673,7 +673,7 @@ function getshippingHTML(e, alert = '') {
   // 発送情報セクション
   // ============================================
   html += `
-<div class="section-header section-shipping-info">
+<div class="confirm-section section-shipping-info"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🚚 発送情報</span>
   </div>
@@ -827,80 +827,74 @@ function getShippingComfirmHTML(e) {
   const deliveryDate = e.parameter.deliveryDate ? e.parameter.deliveryDate : strDate;
 
   // ============================================
-  // CSS スタイル（確認画面用）
+  // CSS スタイル（確認画面用 - デザインシステム統一）
   // ============================================
   let html = `
 <style>
-/* セクションヘッダー共通スタイル */
+/* セクションカード（.card-unified ベース） */
+.confirm-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
 .section-header {
   color: white;
-  padding: 8px 12px;
-  margin-top: 16px;
-  border-radius: 6px 6px 0 0;
-}
-.section-header:first-of-type {
-  margin-top: 0;
-}
-.section-header-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
 }
 .section-header-label {
-  font-weight: bold;
-  font-size: 0.95rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
+}
+
+/* 各セクションのカラー（グラデーション統一） */
+.section-shipping-to .section-header {
+  background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+}
+.section-customer .section-header {
+  background: var(--gradient-purple);
+}
+.section-shipping-from .section-header {
+  background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+}
+.section-order-basic .section-header {
+  background: linear-gradient(135deg, #008b8b 0%, #20b2aa 100%);
+}
+.section-products .section-header {
+  background: linear-gradient(135deg, #228b22 0%, #32cd32 100%);
+}
+.section-shipping-info .section-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #4169e1 100%);
 }
 
 /* セクション本体 */
 .section-body {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-
-/* 各セクションのカラー */
-.section-shipping-to {
-  background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
-}
-.section-customer {
-  background: linear-gradient(135deg, #c71585 0%, #db7093 100%);
-}
-.section-shipping-from {
-  background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
-}
-.section-order-basic {
-  background: linear-gradient(135deg, #008b8b 0%, #20b2aa 100%);
-}
-.section-products {
-  background: linear-gradient(135deg, #228b22 0%, #32cd32 100%);
-}
-.section-shipping-info {
-  background: linear-gradient(135deg, #1e3a5f 0%, #4169e1 100%);
+  background: var(--bg-card);
+  padding: var(--space-4);
 }
 
 /* 確認画面用：読み取り専用フィールド */
 .confirm-field {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
 }
 .confirm-field-label {
   font-size: 0.75rem;
-  color: #666;
-  margin-bottom: 2px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
 }
 .confirm-field-value {
   font-size: 0.95rem;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -908,21 +902,21 @@ function getShippingComfirmHTML(e) {
 .confirm-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 .confirm-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .confirm-item-label {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 .confirm-item-value {
   font-size: 0.95rem;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -930,34 +924,34 @@ function getShippingComfirmHTML(e) {
 .checklist-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
 }
 .checklist-badge {
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
   font-size: 0.8rem;
   font-weight: 500;
 }
 .checklist-badge.checked {
-  background: #d4edda;
+  background: var(--status-success-light);
   color: #155724;
-  border: 1px solid #28a745;
+  border: 1px solid var(--status-success);
 }
 .checklist-badge.unchecked {
-  background: #f8f9fa;
-  color: #999;
-  border: 1px solid #ddd;
+  background: var(--bg-body);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color);
   text-decoration: line-through;
 }
 
 /* 日程カード */
 .date-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-purple);
   color: white;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-2);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1084,12 +1078,11 @@ function getShippingComfirmHTML(e) {
   // 発送先情報セクション
   // ============================================
   html += `
-<div class="section-header section-shipping-to">
-  <div class="section-header-row">
+<div class="confirm-section section-shipping-to">
+  <div class="section-header">
     <span class="section-header-label">📦 発送先情報</span>
   </div>
-</div>
-<div class="section-body">
+  <div class="section-body">
 `;
   html += `<div class="confirm-field">
     <div class="confirm-field-label">発送先名</div>
@@ -1120,7 +1113,7 @@ function getShippingComfirmHTML(e) {
   // 顧客情報セクション
   // ============================================
   html += `
-<div class="section-header section-customer">
+<div class="confirm-section section-customer"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">👤 顧客情報</span>
   </div>
@@ -1156,7 +1149,7 @@ function getShippingComfirmHTML(e) {
   // 発送元情報セクション
   // ============================================
   html += `
-<div class="section-header section-shipping-from">
+<div class="confirm-section section-shipping-from"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🏭 発送元情報</span>
   </div>
@@ -1192,7 +1185,7 @@ function getShippingComfirmHTML(e) {
   // 受注基本情報セクション
   // ============================================
   html += `
-<div class="section-header section-order-basic">
+<div class="confirm-section section-order-basic"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">📝 受注基本情報</span>
   </div>
@@ -1301,7 +1294,7 @@ function getShippingComfirmHTML(e) {
   // 商品情報セクション
   // ============================================
   html += `
-<div class="section-header section-products">
+<div class="confirm-section section-products"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🛒 商品情報</span>
   </div>
@@ -1463,7 +1456,7 @@ function getShippingComfirmHTML(e) {
   // 発送情報セクション
   // ============================================
   html += `
-<div class="section-header section-shipping-info">
+<div class="confirm-section section-shipping-info"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🚚 発送情報</span>
   </div>

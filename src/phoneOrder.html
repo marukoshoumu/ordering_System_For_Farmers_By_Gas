@@ -7,28 +7,23 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
   <style>
     /* 電話受注モード専用スタイル */
-    :root {
-      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --success-gradient: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-      --warning-gradient: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-      --new-customer-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    }
-    
     body {
-      background: #f5f6fa;
+      background: var(--bg-body);
       -webkit-tap-highlight-color: transparent;
     }
     
     .phone-header {
-      background: var(--primary-gradient);
+      background: var(--gradient-purple);
       color: white;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      border-radius: 0 0 20px 20px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-5);
+      border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+      box-shadow: var(--shadow-lg);
     }
     
     .phone-header h4 {
@@ -41,19 +36,15 @@
       opacity: 0.9;
     }
     
-    /* 入力セクション */
-    .input-section {
-      background: white;
-      border-radius: 15px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    /* 入力セクション - .card-unifiedを使用 */
+    .card-unified {
+      margin-bottom: var(--space-4);
     }
-    
-    .input-section-header {
+
+    .card-unified-header {
       display: flex;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: var(--space-3);
     }
     
     .input-section-icon {
@@ -201,17 +192,17 @@
     }
     
     .btn-phone-primary {
-      background: var(--primary-gradient);
+      background: var(--gradient-purple);
       color: white;
     }
     
     .btn-phone-success {
-      background: var(--success-gradient);
+      background: var(--gradient-success);
       color: white;
     }
     
     .btn-phone-warning {
-      background: var(--new-customer-gradient);
+      background: var(--gradient-red);
       color: white;
     }
     
@@ -417,7 +408,7 @@
     
     /* 合計表示 */
     .total-bar {
-      background: var(--primary-gradient);
+      background: var(--gradient-purple);
       color: white;
       padding: 16px 20px;
       border-radius: 15px;
@@ -588,7 +579,7 @@
     }
     
     .mode-tab.existing.active {
-      background: var(--primary-gradient);
+      background: var(--gradient-purple);
       color: white;
     }
     
@@ -598,7 +589,7 @@
     }
     
     .mode-tab.new.active {
-      background: var(--new-customer-gradient);
+      background: var(--gradient-red);
       color: white;
     }
   </style>
@@ -646,8 +637,8 @@
       <!-- リピーターモード -->
       <div id="existingMode">
         <!-- 発送先入力 -->
-        <div class="input-section">
-          <div class="input-section-header">
+        <div class="card-unified">
+          <div class="card-unified-header">
             <div class="input-section-icon shipping">📦</div>
             <div>
               <div class="input-section-title">発送先</div>
@@ -674,8 +665,8 @@
         </div>
         
         <!-- 顧客入力 -->
-        <div class="input-section">
-          <div class="input-section-header">
+        <div class="card-unified">
+          <div class="card-unified-header">
             <div class="input-section-icon customer">👤</div>
             <div>
               <div class="input-section-title">顧客（依頼人）</div>
@@ -811,7 +802,7 @@
     
     <!-- ステップ2: 商品・数量入力 -->
     <div class="step-container" id="step2">
-      <div class="input-section">
+      <div class="card-unified">
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <div class="fw-bold" id="step2ShippingTo">-</div>
@@ -837,7 +828,7 @@
       </div>
       
       <!-- 選択済み商品エリア -->
-      <div class="input-section">
+      <div class="card-unified">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <label style="font-size: 0.9rem; color: #495057;">📋 選択済み商品 <span id="selectedCount">(0/10)</span></label>
         </div>
@@ -847,7 +838,7 @@
       </div>
       
       <!-- 商品追加エリア -->
-      <div class="input-section">
+      <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">➕ 商品を追加</label>
         <input type="text" 
                id="productSearchInput" 
@@ -863,7 +854,7 @@
       </div>
       
       <!-- メモ欄 -->
-      <div class="input-section">
+      <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📝 メモ</label>
         <textarea id="orderMemoInput" 
                   class="form-control" 
@@ -890,7 +881,7 @@
     
     <!-- ステップ3: 発送情報 -->
     <div class="step-container" id="step3">
-      <div class="input-section">
+      <div class="card-unified">
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <div class="fw-bold" id="step3ShippingTo">-</div>
@@ -903,7 +894,7 @@
       <h5 class="mb-3">🚚 発送情報を入力</h5>
       
       <!-- 発送元 -->
-      <div class="input-section">
+      <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📍 発送元</label>
         <div class="d-flex gap-2 flex-wrap mb-2">
           <button type="button" class="btn btn-outline-success btn-sm" onclick="setShippingFromCompany()" id="shippingFromCompanyBtn">
@@ -923,7 +914,7 @@
       </div>
       
       <!-- 配送オプション -->
-      <div class="input-section">
+      <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📦 配送オプション</label>
         
         <!-- 納品方法 -->
@@ -976,7 +967,7 @@
       </div>
       
       <!-- 帳票・同梱物チェックリスト -->
-      <div class="input-section">
+      <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📋 帳票・同梱物</label>
         <div class="row g-2 mt-1">
           <div class="col-6">
@@ -1013,7 +1004,7 @@
       </div>
       
       <!-- 選択済み商品サマリ -->
-      <div class="input-section">
+      <div class="card-unified">
         <div class="text-muted" style="font-size: 0.85rem;">📋 選択商品</div>
         <div id="step3ProductSummary" class="mt-1">-</div>
       </div>
@@ -1038,7 +1029,7 @@
     <div class="step-container" id="step4">
       <h5 class="mb-3">✓ 注文内容を確認</h5>
       
-      <div class="input-section">
+      <div class="card-unified">
         <div class="mb-2">
           <div class="text-muted" style="font-size: 0.8rem;">発送元</div>
           <div class="fw-bold" id="confirmShippingFrom">-</div>
@@ -1067,7 +1058,7 @@
       </div>
       
       <!-- 配送オプション表示 -->
-      <div class="input-section" id="confirmDeliveryOptionsArea">
+      <div class="card-unified" id="confirmDeliveryOptionsArea">
         <div class="text-muted mb-2" style="font-size: 0.85rem;">🚚 配送オプション</div>
         <div class="row g-2">
           <div class="col-6">
@@ -1098,7 +1089,7 @@
       </div>
       
       <!-- 帳票・同梱物表示 -->
-      <div class="input-section" id="confirmChecklistArea" style="display: none;">
+      <div class="card-unified" id="confirmChecklistArea" style="display: none;">
         <div class="text-muted mb-1" style="font-size: 0.85rem;">📋 帳票・同梱物</div>
         <div class="fw-bold" id="confirmChecklist">-</div>
       </div>
@@ -1108,7 +1099,7 @@
       </div>
       
       <!-- メモ表示 -->
-      <div id="confirmMemoArea" class="input-section" style="display: none;">
+      <div id="confirmMemoArea" class="card-unified" style="display: none;">
         <div class="text-muted" style="font-size: 0.85rem;">📝 メモ</div>
         <div id="confirmMemo" style="white-space: pre-wrap;"></div>
       </div>
