@@ -10,6 +10,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -485,44 +486,44 @@
     });
     function addCustomer() {
         if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
-            alert('会社名または氏名が入力されていません。');
+            showWarningToast('会社名または氏名が入力されていません。');
             return false;
         }
         if (!$('input[id="customerZipcodeDg"]').val()) {
-            alert('郵便番号が入力されていません。');
+            showWarningToast('郵便番号が入力されていません。');
             return false;
         }
         if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
-            alert('郵便番号は7桁の数字で入力して下さい。');
+            showWarningToast('郵便番号は7桁の数字で入力して下さい。');
             return false;
         }
         if (!$('input[id="customerAddress1Dg"]').val()) {
-            alert('住所１が入力されていません。');
+            showWarningToast('住所１が入力されていません。');
             return false;
         }
         if (!$('input[id="customerTelDg"]').val()) {
-            alert('電話番号が入力されていません。');
+            showWarningToast('電話番号が入力されていません。');
             return false;
         }
         if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
-            alert('電話番号は10~11桁の数字で入力して下さい。');
+            showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
             return false;
         }
         if ($('input[id="customerPhoneDg"]').val()) {
             if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
-                alert('携帯電話は10~11桁の数字で入力して下さい。');
+                showWarningToast('携帯電話は10~11桁の数字で入力して下さい。');
                 return false;
             }
         }
         if ($('input[id="customerFaxDg"]').val()) {
             if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
-                alert('ＦＡＸは10~11桁の数字で入力して下さい。');
+                showWarningToast('ＦＡＸは10~11桁の数字で入力して下さい。');
                 return false;
             }
         }
         if ($('input[id="customerMailDg"]').val()) {
             if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                alert('メールアドレスは正しい形式で入力して下さい。');
+                showWarningToast('メールアドレスは正しい形式で入力して下さい。');
                 return false;
             }
         }
@@ -557,32 +558,32 @@
     }
     function addShippingTo() {
         if (!$('input[id="shippingToNameDg"]').val() && !$('input[id="shippingToIdentDg"]').val()) {
-            alert('会社名または氏名が入力されていません。');
+            showWarningToast('会社名または氏名が入力されていません。');
             return false;
         }
         if (!$('input[id="shippingToZipcodeDg"]').val()) {
-            alert('郵便番号が入力されていません。');
+            showWarningToast('郵便番号が入力されていません。');
             return false;
         }
         if (!$('input[id="shippingToZipcodeDg"]').val().match(/[0-9]{7}/)) {
-            alert('郵便番号は7桁の数字で入力して下さい。');
+            showWarningToast('郵便番号は7桁の数字で入力して下さい。');
             return false;
         }
         if (!$('input[id="shippingToAddress1Dg"]').val()) {
-            alert('住所１が入力されていません。');
+            showWarningToast('住所１が入力されていません。');
             return false;
         }
         if (!$('input[id="shippingToTelDg"]').val()) {
-            alert('電話番号が入力されていません。');
+            showWarningToast('電話番号が入力されていません。');
             return false;
         }
         if (!$('input[id="shippingToTelDg"]').val().match(/^0\d{9,10}$/)) {
-            alert('電話番号は10~11桁の数字で入力して下さい。');
+            showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
             return false;
         }
         if ($('input[id="shippingToMailDg"]').val()) {
             if (!$('input[id="shippingToMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                alert('メールアドレスは正しい形式で入力して下さい。');
+                showWarningToast('メールアドレスは正しい形式で入力して下さい。');
                 return false;
             }
         }
@@ -636,14 +637,14 @@
     }
 
     function dataAddFail() {
-        alert("該当データがありませんでした。");
+        showInfoToast("該当データがありませんでした。");
     }
     function addFail() {
-        alert("処理に失敗しました。");
+        showErrorToast("処理に失敗しました。");
     }
 
     function dataAddSuccess() {
-        alert("登録しました。");
+        showSuccessToast("登録しました。");
 
         const companyName = $('input[id="customerNameDg"]').val();
         const personName = $('input[id="customerIdentDg"]').val();
@@ -693,7 +694,7 @@
         $(".customer_dg").dialog("close");
     }
     function dataAddSuccessShippingTo() {
-        alert("登録しました。");
+        showSuccessToast("登録しました。");
 
         const companyName = $('input[id="shippingToNameDg"]').val();
         const personName = $('input[id="shippingToIdentDg"]').val();
@@ -750,10 +751,10 @@
     });
     function customerSearch() {
         if (!$('input[id="customerSearchKeyDg"]').val()) {
-            alert('キーワードが入力されていません。');
+            showWarningToast('キーワードが入力されていません。');
             return false;
         }
-        $("#resCustArea").html('検索中...');
+        $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
         var record = {};
         record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
         record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
@@ -778,7 +779,7 @@
             $("#resCustArea").html(html);
         }
         else {
-            alert('該当データがありませんでした。');
+            showInfoToast('該当データがありませんでした。');
             $("#resCustArea").html('');
         }
     }
@@ -839,10 +840,10 @@
     });
     function shippingToSearch() {
         if (!$('input[id="shippingToSearchKeyDg"]').val()) {
-            alert('キーワードが入力されていません。');
+            showWarningToast('キーワードが入力されていません。');
             return false;
         }
-        $("#resShippingToArea").html('検索中...');
+        $("#resShippingToArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
         var record = {};
         record['shippingToSearchBunruiDg'] = $('select[id="shippingToSearchBunruiDg"]').val();
         record['shippingToSearchKeyDg'] = $('input[id="shippingToSearchKeyDg"]').val();
@@ -866,7 +867,7 @@
             $("#resShippingToArea").html(html);
         }
         else {
-            alert('該当データがありませんでした。');
+            showInfoToast('該当データがありませんでした。');
             $("#resShippingToArea").html('');
         }
     }
@@ -908,20 +909,20 @@
     }
     function setProductSearch() {
         if (!$('input[id="shippingToName"]').val()) {
-            alert('発送先名が入力されていません。');
+            showWarningToast('発送先名が入力されていません。');
             return false;
         }
-        $("button[id='productSearch']").text('検索中...');
+        $("button[id='productSearch']").html('<span class="btn-spinner"></span> 検索中...');
         var shippingToName = $('input[id="shippingToName"]').val();
         google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(shippingToName);
 
     }
     function setQuotationSearch() {
         if (!$('input[id="customerName"]').val()) {
-            alert('顧客名が入力されていません。');
+            showWarningToast('顧客名が入力されていません。');
             return false;
         }
-        $("button[id='quotationSearch']").text('検索中...');
+        $("button[id='quotationSearch']").html('<span class="btn-spinner"></span> 検索中...');
         var customerName = $('input[id="customerName"]').val();
         google.script.run.withSuccessHandler(setQuotationDataList).withFailureHandler(dataAddFail).getQuotationData(customerName);
 
@@ -930,7 +931,7 @@
     function setDataList(datas) {
         var res = JSON.parse(datas);
         if (res.length == 0) {
-            alert('対象データがありませんでした。');
+            showInfoToast('対象データがありませんでした。');
         }
         else {
             $('input[id="shippingToName"]').val(res[0]['発送先名']);
@@ -999,7 +1000,7 @@
                     $('input[id="' + price + '"]').val('');
                 }
             }
-            alert('前回の商品情報を反映しました。');
+            showSuccessToast('前回の商品情報を反映しました。');
         }
         $("button[id='productSearch']").text('前回商品反映');
     }
@@ -1029,10 +1030,10 @@
             }
         }
         if (res.length == 0) {
-            alert('対象データがありませんでした。');
+            showInfoToast('対象データがありませんでした。');
         }
         else {
-            alert('見積書情報を反映しました。');
+            showSuccessToast('見積書情報を反映しました。');
         }
         $("button[id='quotationSearch']").text('見積書反映');
     }
@@ -1238,7 +1239,7 @@
           // 検索ボタン
           const searchBtn = document.createElement('button');
           searchBtn.type = 'button';
-          searchBtn.className = 'btn btn-sm btn-secondary';
+          searchBtn.className = 'btn btn-sm btn-primary';
           searchBtn.textContent = '🔍 顧客を検索';
           searchBtn.onclick = function() { $('.customerSearchBtn_open').click(); };
           btnContainer.appendChild(searchBtn);
@@ -1271,7 +1272,7 @@
           // 検索ボタン
           const searchBtn = document.createElement('button');
           searchBtn.type = 'button';
-          searchBtn.className = 'btn btn-sm btn-secondary';
+          searchBtn.className = 'btn btn-sm btn-primary';
           searchBtn.textContent = '🔍 発送先を検索';
           searchBtn.onclick = function() { $('.shippingToSearchBtn_open').click(); };
           btnContainer.appendChild(searchBtn);
@@ -1556,10 +1557,10 @@
       btn.disabled = true;
       if (currentTab === 'text') {
         const text = document.getElementById('aiInputText').value.trim();
-        if (!text) { alert('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        if (!text) { showWarningToast('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
         google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderText(text);
       } else {
-        if (!selectedFile || !selectedFileBase64) { alert('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        if (!selectedFile || !selectedFileBase64) { showWarningToast('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
         google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
       }
     }
@@ -1950,7 +1951,7 @@
     }
     
     function applyAIResult() {
-      if (!aiAnalysisResult) { alert('解析結果がありません'); return; }
+      if (!aiAnalysisResult) { showWarningToast('解析結果がありません'); return; }
       
       const mappingsToLearn = [];
       const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
@@ -2051,7 +2052,7 @@
       let message = 'フォームに反映しました。';
       if (mappingsToLearn.length > 0) { message += '\n\n📚 ' + mappingsToLearn.length + '件のマッピングを学習しました。'; }
       if (aiAnalysisResult.alerts?.length) { message += '\n\n⚠️ ' + aiAnalysisResult.alerts.join('\n'); }
-      alert(message);
+      showInfoToast(message);
       toggleAIAssistant();
     }
     
@@ -2175,7 +2176,7 @@
       const currentCount = rows.length;
       
       if (currentCount >= 10) {
-        alert('日程は最大10件までです');
+        showWarningToast('日程は最大10件までです');
         return;
       }
       
@@ -2260,7 +2261,7 @@
       const shippingToName = document.getElementById('shippingToName').value.trim();
       
       if (!shippingToName) {
-        alert('発送先名を入力してください');
+        showWarningToast('発送先名を入力してください');
         return;
       }
       
@@ -2278,7 +2279,7 @@
           orderHistoryData = orders;
           
           if (orders.length === 0) {
-            alert('過去の受注データが見つかりませんでした');
+            showInfoToast('過去の受注データが見つかりませんでした');
             document.getElementById('orderHistorySelect').style.display = 'none';
             document.getElementById('applyOrderHistoryBtn').style.display = 'none';
             return;
@@ -2304,7 +2305,7 @@
         .withFailureHandler(function(error) {
           btn.textContent = originalText;
           btn.disabled = false;
-          alert('受注履歴の取得に失敗しました: ' + error.message);
+          showErrorToast('受注履歴の取得に失敗しました: ' + error.message);
         })
         .getOrderHistoryByShippingTo(shippingToName);
     }
@@ -2322,7 +2323,7 @@
      */
     function applyOrderHistory() {
       if (!selectedOrderId) {
-        alert('発送日を選択してください');
+        showWarningToast('発送日を選択してください');
         return;
       }
       
@@ -2339,18 +2340,18 @@
           const data = JSON.parse(result);
           
           if (!data) {
-            alert('受注データの取得に失敗しました');
+            showErrorToast('受注データの取得に失敗しました');
             return;
           }
           
           applyOrderDataToForm(data);
           
-          alert('受注データを反映しました（発送日・納品日・個数は除外）');
+          showSuccessToast('受注データを反映しました（発送日・納品日・個数は除外）');
         })
         .withFailureHandler(function(error) {
           btn.textContent = originalText;
           btn.disabled = false;
-          alert('受注データの取得に失敗しました: ' + error.message);
+          showErrorToast('受注データの取得に失敗しました: ' + error.message);
         })
         .getOrderDataForInherit(selectedOrderId);
     }

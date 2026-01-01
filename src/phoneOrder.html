@@ -9,6 +9,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
   <style>
     /* 電話受注モード専用スタイル */
@@ -440,38 +441,6 @@
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* ローディング */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255,255,255,0.9);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      flex-direction: column;
-    }
-    
-    .loading-overlay.show {
-      display: flex;
-    }
-    
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid #ddd;
-      border-top-color: #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
     }
     
     /* 日程選択 */
@@ -1135,12 +1104,6 @@
     </div>
   </div>
   
-  <!-- ローディング -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <div class="mt-3 text-muted">読み込み中...</div>
-  </div>
-  
   <script>
     // グローバル変数
     let shippingToList = [];
@@ -1156,14 +1119,14 @@
     
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
-      showLoading(true);
+      showLoading('初期化中...');
       
       // マスターデータを取得
       google.script.run
         .withSuccessHandler(function(data) {
           if (!data) {
-            alert('マスターデータの取得に失敗しました。ページを再読み込みしてください。');
-            showLoading(false);
+            showErrorToast('マスターデータの取得に失敗しました。ページを再読み込みしてください。');
+            hideLoading();
             return;
           }
           masterData = data;
@@ -1176,8 +1139,8 @@
         })
         .withFailureHandler(function(e) {
           console.error('マスターデータ取得エラー:', e);
-          alert('マスターデータの取得に失敗しました: ' + (e.message || e));
-          showLoading(false);
+          showErrorToast('マスターデータの取得に失敗しました: ' + (e.message || e));
+          hideLoading();
         })
         .getMasterDataCached();
       
@@ -1376,7 +1339,7 @@
           btn.innerHTML = originalText;
         })
         .withFailureHandler(function(e) {
-          alert('会社情報の取得に失敗しました');
+          showErrorToast('会社情報の取得に失敗しました');
           btn.innerHTML = originalText;
         })
         .getCompanyRecordForShipping();
@@ -1454,15 +1417,6 @@
       }
     }
     
-    function showLoading(show) {
-      const overlay = document.getElementById('loadingOverlay');
-      if (show) {
-        overlay.classList.add('show');
-      } else {
-        overlay.classList.remove('show');
-      }
-    }
-    
     // モード切替
     function switchMode(mode) {
       isNewCustomerMode = (mode === 'new');
@@ -1487,11 +1441,11 @@
       google.script.run
         .withSuccessHandler(function(data) {
           shippingToList = JSON.parse(data);
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
-          alert('発送先データの取得に失敗しました: ' + e.message);
-          showLoading(false);
+          showErrorToast('発送先データの取得に失敗しました: ' + e.message);
+          hideLoading();
         })
         .getShippingToListForPhoneOrder();
     }
@@ -1707,20 +1661,20 @@
       document.getElementById('step2Customer').textContent = '👤 ' + selectedCustomer.customerName;
       
       // 過去注文を取得
-      showLoading(true);
+      showLoading('過去の注文を取得中...');
       google.script.run
         .withSuccessHandler(function(data) {
           lastOrder = data ? JSON.parse(data) : null;
           setupProductList();
           goToStep(2);
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
           console.error('過去注文取得エラー:', e);
           lastOrder = null;
           setupProductList();
           goToStep(2);
-          showLoading(false);
+          hideLoading();
         })
         .getRecentOrderForTemplate(selectedShippingTo.shippingToName);
     }
@@ -1732,11 +1686,11 @@
       const phone = document.getElementById('newPhone').value.trim();
       
       if (!shippingToName) {
-        alert('発送先名（氏名）を入力してください');
+        showWarningToast('発送先名（氏名）を入力してください');
         return;
       }
       if (!phone) {
-        alert('電話番号を入力してください');
+        showWarningToast('電話番号を入力してください');
         return;
       }
       
@@ -1937,7 +1891,7 @@
     // 商品を追加
     function addProduct(element) {
       if (selectedProducts.length >= 10) {
-        alert('商品は最大10個までです');
+        showWarningToast('商品は最大10個までです');
         return;
       }
       
@@ -2089,7 +2043,7 @@
       const zipcode = zipcodeInput.value.replace(/[^0-9]/g, '');
       
       if (!zipcode || zipcode.length !== 7) {
-        alert('郵便番号を7桁で入力してください');
+        showWarningToast('郵便番号を7桁で入力してください');
         return;
       }
       
@@ -2104,12 +2058,12 @@
             const address = result.address1 + result.address2 + result.address3;
             addressInput.value = address;
           } else {
-            alert('住所が見つかりませんでした');
+            showInfoToast('住所が見つかりませんでした');
           }
         })
         .catch(error => {
           console.error('住所検索エラー:', error);
-          alert('住所検索に失敗しました');
+          showErrorToast('住所検索に失敗しました');
         });
     }
     
@@ -2151,7 +2105,7 @@
       // ステップ3（発送情報）に移動時は商品チェック
       if (step === 3) {
         if (selectedProducts.length === 0) {
-          alert('商品を1つ以上選択してください');
+          showWarningToast('商品を1つ以上選択してください');
           return;
         }
         prepareStep3();

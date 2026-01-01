@@ -10,6 +10,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -60,7 +61,7 @@
     setToday();
     function createShip() {
       if (!$('input[id="shippingDate"]').val()) {
-        alert('発送日が入力されていません。');
+        showWarningToast('発送日が入力されていません。');
         return false;
       }
       const checkAddFlg = window.confirm('発送伝票を作成してもよろしいですか？');
@@ -73,12 +74,12 @@
       }
     }
     function createFail() {
-      alert("該当データがありませんでした。");  
+      showInfoToast("該当データがありませんでした。");  
     }
     function createList(data) {
       if (data) {
         var res = JSON.parse(data);
-        alert("発送伝票を作成しました。");
+        showSuccessToast("発送伝票を作成しました。");
         $("button[id='createShippingSlips']").text('作成');
         var html = "";
         if (res['yamato']) {
@@ -90,7 +91,7 @@
         $("p[id='res']").html(html);
       }
       else {
-        alert("該当データがありませんでした。");  
+        showInfoToast("該当データがありませんでした。");  
         $("button[id='createShippingSlips']").text('作成');
       }
     }
@@ -101,7 +102,7 @@
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
     }
     function sendFail() {
-      alert("処理に失敗しました。");  
+      showErrorToast("処理に失敗しました。");  
     }
     function sendSucces(url) {
       window.open(url);

@@ -38,7 +38,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     box-shadow: var(--shadow);
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast) var(--ease-out);
     line-height: 1.3;
     display: inline-flex;
     align-items: center;
@@ -73,7 +73,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     box-shadow: var(--shadow);
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast) var(--ease-out);
     line-height: 1.3;
     display: inline-flex;
     align-items: center;
@@ -123,6 +123,45 @@
   .btn-util:hover {
     background: var(--gray) !important;
     color: #fff !important;
+  }
+
+  /* 受注画面スタイルのおしゃれなボタン（絵文字+テキスト） */
+  .customerInsertBtn_open,
+  .customerSearchBtn_open,
+  .shippingToInsertBtn_open,
+  .shippingToSearchBtn_open {
+    background: var(--bg-card) !important;
+    color: var(--brand-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 6px 12px !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .customerInsertBtn_open:hover,
+  .customerSearchBtn_open:hover,
+  .shippingToInsertBtn_open:hover,
+  .shippingToSearchBtn_open:hover {
+    background: var(--brand-primary) !important;
+    color: white !important;
+    border-color: var(--brand-primary) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(74, 144, 164, 0.3) !important;
+  }
+
+  .customerInsertBtn_open:active,
+  .customerSearchBtn_open:active,
+  .shippingToInsertBtn_open:active,
+  .shippingToSearchBtn_open:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
   }
 
   .info_table {
@@ -248,10 +287,11 @@
     background: var(--gradient-purple);
     color: white;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast) var(--ease-out);
   }
   .ai-assistant-header:hover {
     opacity: 0.95;
+    transform: translateY(-1px);
   }
   .ai-assistant-header h3 { 
     margin: 0; 
@@ -273,10 +313,16 @@
   }
   .ai-assistant-body {
     background: var(--bg-card);
-    padding: var(--space-4);
-    display: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 var(--space-4);
+    transition: max-height 0.3s ease, padding 0.3s ease;
   }
-  .ai-assistant-body.open { display: block; }
+  .ai-assistant-body.open {
+    max-height: 2000px;
+    padding: var(--space-4);
+  }
   
   .ai-analyzed-indicator {
     background: var(--status-success-light);
@@ -712,11 +758,16 @@
   /* フォームアクションエリア（白背景で独立表示） */
   .form-actions-area {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--space-5);
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
     margin-top: var(--space-6);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg);
+    transition: box-shadow var(--transition-base) var(--ease-out);
+  }
+
+  .form-actions-area:hover {
+    box-shadow: var(--shadow-xl);
   }
   
   /* 発送先情報ヘッダー */
@@ -805,4 +856,233 @@
       font-size: 0.8rem;
     }
   }
+
+  /* ===================================
+     追加のレスポンシブ調整
+     =================================== */
+
+  /* モバイル追加調整 */
+  @media (max-width: 575px) {
+    /* メインボタンをモバイルで大きく */
+    .main_btn,
+    .second_btn {
+      width: 100%;
+      max-width: 150px;
+      height: 70px;
+      font-size: 0.85rem;
+    }
+
+    /* AIアシスタントエリアのパディング調整 */
+    .ai-assistant-container {
+      margin-bottom: var(--space-4);
+    }
+
+    /* フォームアクションエリアのパディング調整 */
+    .form-actions-area {
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+    }
+  }
+
+  /* タブレット横向き・PC */
+  @media (min-width: 768px) {
+    /* ボタングループの最適化 */
+    .main_btn,
+    .second_btn {
+      min-width: 105px;
+    }
+  }
+
+  /* ===================================
+     jQuery UI モーダルのモダンデザイン
+     =================================== */
+
+  /* ダイアログオーバーレイ */
+  .ui-widget-overlay {
+    background: rgba(0, 0, 0, 0.5) !important;
+    opacity: 1 !important;
+    animation: fadeIn var(--transition-slow) var(--ease-out);
+  }
+
+  /* ダイアログ本体 */
+  .ui-dialog {
+    border: none !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-xl) !important;
+    padding: 0 !important;
+    background: var(--bg-card) !important;
+    animation: scaleIn var(--transition-slow) var(--ease-out);
+  }
+
+  /* ダイアログタイトルバー */
+  .ui-dialog-titlebar {
+    background: var(--gradient-primary) !important;
+    border: none !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    color: white !important;
+    padding: var(--space-4) var(--space-5) !important;
+    font-weight: 600 !important;
+  }
+
+  .ui-dialog-title {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: white !important;
+  }
+
+  /* 閉じるボタン */
+  .ui-dialog-titlebar-close {
+    background: transparent !important;
+    border: none !important;
+    right: var(--space-3) !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: var(--radius-full) !important;
+    transition: all var(--transition-fast) var(--ease-out) !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .ui-dialog-titlebar-close:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-50%) rotate(90deg) !important;
+  }
+
+  .ui-dialog-titlebar-close:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .ui-dialog-titlebar-close .ui-icon {
+    background: none !important;
+    text-indent: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .ui-dialog-titlebar-close .ui-icon:before {
+    content: '✕' !important;
+    font-size: 1.2rem !important;
+    color: white !important;
+    font-weight: bold !important;
+  }
+
+  /* ダイアログコンテンツ */
+  .ui-dialog-content {
+    padding: var(--space-5) !important;
+    font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+    overflow: auto !important;
+    max-height: calc(80vh - 120px) !important;
+  }
+
+  /* ダイアログボタンペイン */
+  .ui-dialog-buttonpane {
+    border-top: 1px solid var(--border-color) !important;
+    background: var(--bg-body) !important;
+    padding: var(--space-4) var(--space-5) !important;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+  }
+
+  .ui-dialog-buttonset {
+    display: flex !important;
+    gap: var(--space-2) !important;
+    justify-content: flex-end !important;
+  }
+
+  .ui-dialog-buttonset button {
+    padding: var(--space-3) var(--space-5) !important;
+    border-radius: var(--radius) !important;
+    font-weight: 500 !important;
+    border: none !important;
+    transition: all var(--transition-fast) var(--ease-out) !important;
+    cursor: pointer !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* プライマリボタン（検索、登録など） */
+  .ui-dialog-buttonset button:first-child {
+    background: var(--primary) !important;
+    color: white !important;
+  }
+
+  .ui-dialog-buttonset button:first-child:hover {
+    background: var(--primary-dark) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+
+  /* セカンダリボタン（キャンセルなど） */
+  .ui-dialog-buttonset button:last-child {
+    background: var(--gray-200) !important;
+    color: var(--text-primary) !important;
+  }
+
+  .ui-dialog-buttonset button:last-child:hover {
+    background: var(--gray-300) !important;
+  }
+
+  /* フォーム内の要素をモダンに */
+  .ui-dialog-content input[type="text"],
+  .ui-dialog-content input[type="date"],
+  .ui-dialog-content select {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    transition: all var(--transition-fast) var(--ease-out);
+  }
+
+  .ui-dialog-content input[type="text"]:focus,
+  .ui-dialog-content input[type="date"]:focus,
+  .ui-dialog-content select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.1);
+  }
+
+  /* テーブル内の検索結果 */
+  .ui-dialog-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-3);
+  }
+
+  .ui-dialog-content table th,
+  .ui-dialog-content table td {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+  }
+
+  .ui-dialog-content table tr:hover {
+    background: var(--bg-body);
+  }
+
+  /* モーダル内のボタン */
+  .ui-dialog-content button {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    border: none;
+    background: var(--primary);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast) var(--ease-out);
+    font-size: 0.85rem;
+  }
+
+  .ui-dialog-content button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
 </style>

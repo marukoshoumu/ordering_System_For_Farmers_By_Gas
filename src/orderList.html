@@ -18,6 +18,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -399,25 +400,6 @@
       filter: invert(1);
     }
 
-    /* ローディング */
-    .loading-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255,255,255,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      min-height: 200px;
-    }
-
-    .loading-overlay.hidden {
-      display: none;
-    }
-
     /* ページング */
     .pagination-section {
       padding: 16px 20px;
@@ -707,12 +689,6 @@
 
     <!-- テーブル -->
     <div class="table-section position-relative">
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
-
       <div class="result-count" id="resultCount">
         検索結果: <strong>0</strong> 件
       </div>
@@ -1085,19 +1061,19 @@
       customer: selectedCustomer || ''
     };
     
-    document.getElementById('loadingOverlay').classList.remove('hidden');
+    showLoading('検索中...');
     document.getElementById('emptyState').style.display = 'none';
     
     google.script.run
       .withSuccessHandler(function(result) {
-        document.getElementById('loadingOverlay').classList.add('hidden');
+        hideLoading();
         const data = JSON.parse(result);
         orderData = data.orders || [];
         currentPage = 1;
         renderTable();
       })
       .withFailureHandler(function(error) {
-        document.getElementById('loadingOverlay').classList.add('hidden');
+        hideLoading();
         alert('データ取得エラー: ' + error.message);
       })
       .getOrderListData(params);

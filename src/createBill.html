@@ -10,6 +10,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -56,7 +57,7 @@
           <input type="text" class="form-control" id="customerName" name="customerName">
         </div>
         <div class="col-auto">
-          <button type='button' class="customerSearchBtn_open">顧客検索</button>
+          <button type='button' class="customerSearchBtn_open" title="顧客検索">🔍 検索</button>
         </div>
       </div>
       <div class="row mb-3 align-items-center justify-content-center">
@@ -100,7 +101,7 @@
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
     }
     function sendFail() {
-      alert("処理に失敗しました。");  
+      showErrorToast("処理に失敗しました。");  
     }
     function sendSucces(url) {
       window.open(url);
@@ -148,13 +149,13 @@
       }
     }
     function createFail() {
-      alert("エラーが発生しました。");  
+      showErrorToast("エラーが発生しました。");  
       $("button[id='createBill']").text('作成');
     }
     function createList(data) {
       if (data) {
         var res = JSON.parse(data);
-        alert("請求書を作成しました。");
+        showSuccessToast("請求書を作成しました。");
         $("button[id='createBill']").text('作成');
         var html = "◆作成ファイル◆<br>";
         for (var ele of res) {
@@ -163,7 +164,7 @@
         $("p[id='res']").html(html);
       }
       else {
-        alert("該当データがありませんでした。");  
+        showInfoToast("該当データがありませんでした。");  
         $("button[id='createBill']").text('作成');
       }
     }
@@ -187,10 +188,10 @@
     });
     function customerSearch() {
       if (!$('input[id="customerSearchKeyDg"]').val()) {
-        alert('キーワードが入力されていません。');
+        showWarningToast('キーワードが入力されていません。');
         return false;
       }
-      $("#resCustArea").html('検索中...');
+      $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
       var record = {};
       record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
       record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
@@ -214,7 +215,7 @@
         $("#resCustArea").html(html);
       }
       else {
-        alert('該当データがありませんでした。');
+        showInfoToast('該当データがありませんでした。');
         $("#resCustArea").html('');
       }
     }
@@ -231,7 +232,7 @@
       }
     }
     function dataAddFail() {
-      alert("エラーが発生しました。");  
+      showErrorToast("エラーが発生しました。");  
     }
   </script>
 </body>

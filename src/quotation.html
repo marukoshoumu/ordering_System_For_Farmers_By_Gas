@@ -10,6 +10,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
@@ -160,9 +161,10 @@
         </div>
       </div>
       <div>
-        <div style="background-color: magenta; color: white;">【顧客情報】　
-          <button type='button' class="customerInsertBtn_open">新規登録</button>
-          <button type='button' class="customerSearchBtn_open">顧客検索</button>
+        <div style="background-color: magenta; color: white; padding: 10px 12px; border-radius: 6px 6px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-weight: 600;">【顧客情報】</span>
+          <button type='button' class="customerInsertBtn_open btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;" title="新規登録">➕ 新規</button>
+          <button type='button' class="customerSearchBtn_open btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;" title="顧客検索">🔍 検索</button>
         </div>
         <div>
           <label for="customerName" class="text-left form-label">顧客名</label>
@@ -589,44 +591,44 @@
         });
         function addCustomer() {
             if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
-                alert('会社名または氏名が入力されていません。');
+                showWarningToast('会社名または氏名が入力されていません。');
                 return false;
             }
             if (!$('input[id="customerZipcodeDg"]').val()) {
-                alert('郵便番号が入力されていません。');
+                showWarningToast('郵便番号が入力されていません。');
                 return false;
             }
             if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
-                alert('郵便番号は7桁の数字で入力して下さい。');
+                showWarningToast('郵便番号は7桁の数字で入力して下さい。');
                 return false;
             }
             if (!$('input[id="customerAddress1Dg"]').val()) {
-                alert('住所１が入力されていません。');
+                showWarningToast('住所１が入力されていません。');
                 return false;
             }
             if (!$('input[id="customerTelDg"]').val()) {
-                alert('電話番号が入力されていません。');
+                showWarningToast('電話番号が入力されていません。');
                 return false;
             }
             if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
-                alert('電話番号は10~11桁の数字で入力して下さい。');
+                showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
                 return false;
             }
             if ($('input[id="customerPhoneDg"]').val()) {
                 if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
-                    alert('携帯電話は10~11桁の数字で入力して下さい。');
+                    showWarningToast('携帯電話は10~11桁の数字で入力して下さい。');
                     return false;
                 }
             }
             if ($('input[id="customerFaxDg"]').val()) {
                 if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
-                    alert('ＦＡＸは10~11桁の数字で入力して下さい。');
+                    showWarningToast('ＦＡＸは10~11桁の数字で入力して下さい。');
                     return false;
                 }
             }
             if ($('input[id="customerMailDg"]').val()) {
                 if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                    alert('メールアドレスは正しい形式で入力して下さい。');
+                    showWarningToast('メールアドレスは正しい形式で入力して下さい。');
                     return false;
                 }
             }
@@ -673,14 +675,14 @@
             }
         }
         function dataAddFail() {
-            alert("該当データがありませんでした。");
+            showInfoToast("該当データがありませんでした。");
         }
         function addFail() {
-            alert("処理に失敗しました。");
+            showErrorToast("処理に失敗しました。");
         }
 
         function dataAddSuccess() {
-            alert("登録しました。");
+            showSuccessToast("登録しました。");
             if ($('input[id="customerNameDg"]').val()) {
                 $('input[id="customerName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
             }
@@ -709,10 +711,10 @@
         });
         function customerSearch() {
             if (!$('input[id="customerSearchKeyDg"]').val()) {
-                alert('キーワードが入力されていません。');
+                showWarningToast('キーワードが入力されていません。');
                 return false;
             }
-            $("#resCustArea").html('検索中...');
+            $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
             var record = {};
             record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
             record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
@@ -737,7 +739,7 @@
                 $("#resCustArea").html(html);
             }
             else {
-                alert('該当データがありませんでした。');
+                showInfoToast('該当データがありませんでした。');
                 $("#resCustArea").html('');
             }
         }
@@ -755,51 +757,51 @@
         }
         function setProductSearch() {
             if (!$('input[id="customerName"]').val()) {
-                alert('顧客名が入力されていません。');
+                showWarningToast('顧客名が入力されていません。');
                 return false;
             }
-            $("button[id='productSearch']").text('検索中...');
+            $("button[id='productSearch']").html('<span class="btn-spinner"></span> 検索中...');
             var customerName = $('input[id="customerName"]').val();
             google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(customerName);
 
         }
         function createQuoutation() {
             if (!$('input[id="customerName"]').val()) {
-                alert('顧客名が入力されていません。');
+                showWarningToast('顧客名が入力されていません。');
                 return false;
             }
             if (!$('input[id="shippingToName"]').val()) {
-                alert('納品場所が入力されていません。');
+                showWarningToast('納品場所が入力されていません。');
                 return false;
             }
             if (!$('select[id="deliveryMethod"]').val()) {
-                alert('納品方法が入力されていません。');
+                showWarningToast('納品方法が入力されていません。');
                 return false;
             }
             if (!$('input[id="leadTime"]').val()) {
-                alert('出荷リードタイムが入力されていません。');
+                showWarningToast('出荷リードタイムが入力されていません。');
                 return false;
             }
             const products = document.querySelectorAll('.productDiv'); // 商品を全て取得
             if (products.length < 1) {
-                alert('商品が１件も存在しません。');
+                showWarningToast('商品が１件も存在しません。');
                 return false;
             }
             for (let i = 1; i <= products.length; i++) {
                 if (!$('select[id="bunrui' + `${i}` + '"]').val()) {
-                    alert('商品分類が選択されていません。');
+                    showWarningToast('商品分類が選択されていません。');
                     return false;
                 }
                 if (!$('select[id="product' + `${i}` + '"]').val()) {
-                    alert('商品名が選択されていません。');
+                    showWarningToast('商品名が選択されていません。');
                     return false;
                 }
                 if (!$('input[id="price' + `${i}` + '"]').val()) {
-                    alert('単価が入力されていません。');
+                    showWarningToast('単価が入力されていません。');
                     return false;
                 }
                 if (!$('select[id="unit' + `${i}` + '"]').val()) {
-                    alert('単位が入力されていません。');
+                    showWarningToast('単位が入力されていません。');
                     return false;
                 }
             }
@@ -835,19 +837,19 @@
         }
         function createQuoutationSuccess(data) {
             if (data) {
-                alert("見積書を作成しました。");
+                showSuccessToast("見積書を作成しました。");
                 $("button[id='quoutationComfirm']").text('見積書作成');
                 var html = "◆作成ファイル◆<br>";
                 html += data + ".pdf" + "<br>";
                 $("p[id='res']").html(html);
             }
             else {
-                alert("該当データがありませんでした。");
+                showInfoToast("該当データがありませんでした。");
                 $("button[id='quoutationComfirm']").text('見積書作成');
             }
         }
         function createQuoutationFail() {
-            alert("エラーが発生しました。");
+            showErrorToast("エラーが発生しました。");
             $("button[id='quoutationComfirm']").text('見積書作成');
         }
   </script>

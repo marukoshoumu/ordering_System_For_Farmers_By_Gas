@@ -6,6 +6,8 @@
   - 価格対応（顧客指定 or マスタ価格）
 -->
 
+<?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+
 <style>
   .ai-assistant-container {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -29,14 +31,23 @@
     padding: 4px 12px;
     border-radius: 20px;
     cursor: pointer;
+    transition: background var(--transition-fast, 0.15s) ease;
+  }
+  .ai-assistant-toggle:hover {
+    background: #357abd;
   }
   .ai-assistant-body {
     background: white;
     border-radius: 0 0 12px 12px;
-    padding: 16px;
-    display: none;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 16px;
+    transition: max-height 0.3s ease, padding 0.3s ease;
   }
-  .ai-assistant-body.open { display: block; }
+  .ai-assistant-body.open {
+    max-height: 2000px;
+    padding: 16px;
+  }
   
   .ai-analyzed-indicator {
     background: #d4edda;
@@ -546,10 +557,10 @@
     btn.disabled = true;
     if (currentTab === 'text') {
       const text = document.getElementById('aiInputText').value.trim();
-      if (!text) { alert('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+      if (!text) { showWarningToast('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
       google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderText(text);
     } else {
-      if (!selectedFile || !selectedFileBase64) { alert('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+      if (!selectedFile || !selectedFileBase64) { showWarningToast('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
       google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
     }
   }
@@ -855,7 +866,7 @@
   }
   
   function applyAIResult() {
-    if (!aiAnalysisResult) { alert('解析結果がありません'); return; }
+    if (!aiAnalysisResult) { showWarningToast('解析結果がありません'); return; }
     
     const mappingsToLearn = [];
     const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
@@ -933,7 +944,7 @@
     let message = 'フォームに反映しました。';
     if (mappingsToLearn.length > 0) { message += '\n\n📚 ' + mappingsToLearn.length + '件のマッピングを学習しました。'; }
     if (aiAnalysisResult.alerts?.length) { message += '\n\n⚠️ ' + aiAnalysisResult.alerts.join('\n'); }
-    alert(message);
+    showInfoToast(message);
     toggleAIAssistant();
   }
   

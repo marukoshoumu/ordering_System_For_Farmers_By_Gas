@@ -6,14 +6,18 @@
   </div>
 </div>
 
+<!-- トーストコンテナ -->
+<div class="toast-container" id="toastContainer"></div>
+
 <script>
   /* ===============================================
      ユーティリティ関数
      ===============================================
 
-     グローバルローディング表示用の関数を提供します。
+     グローバルローディング、トースト通知を提供します。
 
      作成日: 2025-12-31
+     更新日: 2026-01-01 (トースト追加)
   */
 
   /**
@@ -42,6 +46,83 @@
     }
   }
 
+  /**
+   * トースト通知を表示
+   * @param {string} message - 表示するメッセージ
+   * @param {string} type - トーストタイプ ('success', 'error', 'warning', 'info')
+   * @param {number} duration - 表示時間（ミリ秒、デフォルト: 3000）
+   */
+  function showToast(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    // トーストアイコン
+    var icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    // トースト要素を作成
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = '<span class="toast-icon">' + icons[type] + '</span><span class="toast-message">' + message + '</span>';
+
+    // コンテナに追加
+    container.appendChild(toast);
+
+    // アニメーション開始
+    setTimeout(function() {
+      toast.classList.add('show');
+    }, 10);
+
+    // 自動削除
+    setTimeout(function() {
+      toast.classList.remove('show');
+      setTimeout(function() {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, duration);
+  }
+
+  /**
+   * 成功トースト
+   * @param {string} message - 表示するメッセージ
+   */
+  function showSuccessToast(message) {
+    showToast(message, 'success');
+  }
+
+  /**
+   * エラートースト
+   * @param {string} message - 表示するメッセージ
+   */
+  function showErrorToast(message) {
+    showToast(message, 'error', 4000);
+  }
+
+  /**
+   * 警告トースト
+   * @param {string} message - 表示するメッセージ
+   */
+  function showWarningToast(message) {
+    showToast(message, 'warning');
+  }
+
+  /**
+   * 情報トースト
+   * @param {string} message - 表示するメッセージ
+   */
+  function showInfoToast(message) {
+    showToast(message, 'info');
+  }
+
   // google.script.run のラッパー関数（エラーハンドリング付き）
   function runWithLoading(functionName, successCallback, errorMessage) {
     showLoading(errorMessage || '処理中...');
@@ -50,7 +131,7 @@
       withSuccessHandler: function(callback) {
         return this.withFailureHandler(function(error) {
           hideLoading();
-          alert('エラーが発生しました: ' + error);
+          showErrorToast('エラーが発生しました: ' + error);
         })[functionName](callback);
       },
       withFailureHandler: function(callback) {
@@ -64,6 +145,7 @@
               })
               .withFailureHandler(function(error) {
                 hideLoading();
+                showErrorToast('エラーが発生しました: ' + error);
                 if (callback) callback(error);
               })
               [functionName]();

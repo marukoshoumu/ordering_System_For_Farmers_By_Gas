@@ -8,6 +8,7 @@
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
   <style>
     /* 文字を折り返す */
@@ -87,13 +88,16 @@
     }
     
     .menu-content {
-      display: none;
-      padding: 8px;
+      max-height: 0;
+      overflow: hidden;
+      padding: 0 8px;
       background: #f8fafc;
+      transition: max-height 0.3s ease, padding 0.3s ease;
     }
     
     .menu-content.show {
-      display: block;
+      max-height: 1000px;
+      padding: 8px;
     }
     
     .menu-btn {
@@ -341,27 +345,27 @@
           btn.disabled = false;
           btn.textContent = '🔄 キャッシュ更新';
           if (result.success) {
-            alert('✅ ' + result.message + '\n商品数: ' + result.productCount + '件');
+            showSuccessToast('✅ ' + result.message + '\n商品数: ' + result.productCount + '件');
           } else {
-            alert('❌ ' + result.message);
+            showErrorToast('❌ ' + result.message);
           }
         })
         .withFailureHandler(function(e) {
           btn.disabled = false;
           btn.textContent = '🔄 キャッシュ更新';
-          alert('❌ キャッシュ更新に失敗しました: ' + e.message);
+          showErrorToast('❌ キャッシュ更新に失敗しました: ' + e.message);
         })
         .refreshMasterDataCache();
     }
     
     function sendFail() {
-      alert("処理に失敗しました。");  
+      showErrorToast("処理に失敗しました。");  
     }
     function sendSucces(url) {
       window.open(url);
     }
     function setRes() {
-      $("#cntRes").html('読み込み中...');
+      $("#cntRes").html('<div class="inline-spinner" style="padding: 20px; text-align: center;"><div class="mini-spinner"></div><span>読み込み中...</span></div>');
       google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate();
       // 未処理のAI取込件数を取得
       google.script.run.withSuccessHandler(function(count) {
@@ -466,7 +470,7 @@
       }
     }
     function setTableFail() {
-      alert("受注データ集計処理に失敗しました。");  
+      showErrorToast("受注データ集計処理に失敗しました。");  
     }
     // 詳細ダイアログを表示する関数
     function showDetailDialog(details) {

@@ -13,6 +13,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -330,25 +331,6 @@
       color: white;
     }
 
-    /* ローディング */
-    .loading-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255,255,255,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      min-height: 200px;
-    }
-
-    .loading-overlay.hidden {
-      display: none;
-    }
-
     /* 空状態 */
     .empty-state {
       padding: 60px 20px;
@@ -487,11 +469,6 @@
 
     <!-- 一覧 -->
     <div class="table-section position-relative">
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
 
       <div id="importListContainer">
         <!-- 動的に生成 -->
@@ -588,12 +565,12 @@
 
   // データ読み込み
   function loadImportData() {
-    document.getElementById('loadingOverlay').classList.remove('hidden');
+    showLoading('データ読み込み中...');
     document.getElementById('emptyState').style.display = 'none';
 
     google.script.run
       .withSuccessHandler(function(result) {
-        document.getElementById('loadingOverlay').classList.add('hidden');
+        hideLoading();
         try {
           importData = JSON.parse(result) || [];
           updateSummary();
@@ -605,8 +582,8 @@
         }
       })
       .withFailureHandler(function(error) {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        alert('データ取得エラー: ' + error.message);
+        hideLoading();
+        showErrorToast('データ取得エラー: ' + error.message);
       })
       .getAIImportList();
   }
@@ -785,11 +762,11 @@
           updateSummary();
           renderImportList();
         } else {
-          alert('却下に失敗しました: ' + (result.error || ''));
+          showErrorToast('却下に失敗しました: ' + (result.error || ''));
         }
       })
       .withFailureHandler(function(error) {
-        alert('エラー: ' + error.message);
+        showErrorToast('エラー: ' + error.message);
       })
       .rejectTempOrder(tempOrderId);
   }
@@ -810,13 +787,13 @@
           }
           updateSummary();
           renderImportList();
-          alert('削除しました');
+          showSuccessToast('削除しました');
         } else {
-          alert('削除に失敗しました: ' + (result.error || ''));
+          showErrorToast('削除に失敗しました: ' + (result.error || ''));
         }
       })
       .withFailureHandler(function(error) {
-        alert('エラー: ' + error.message);
+        showErrorToast('エラー: ' + error.message);
       })
       .deleteTempOrderData(tempOrderId);
   }
@@ -837,13 +814,13 @@
           }
           updateSummary();
           renderImportList();
-          alert('再登録しました');
+          showSuccessToast('再登録しました');
         } else {
-          alert('再登録に失敗しました: ' + (result.error || ''));
+          showErrorToast('再登録に失敗しました: ' + (result.error || ''));
         }
       })
       .withFailureHandler(function(error) {
-        alert('エラー: ' + error.message);
+        showErrorToast('エラー: ' + error.message);
       })
       .reactivateTempOrder(tempOrderId);
   }
