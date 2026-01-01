@@ -1,0 +1,136 @@
+<!-- 
+  shipping.html から分離したバリデーション関連のJavaScript
+  - 送信前バリデーション
+  - ローカルチェック
+  - 警告モーダル
+-->
+<script>
+    /**
+     * 送信前バリデーション
+     */
+    function validateBeforeSubmit() {
+      const warnings = performLocalCheck();
+      if (warnings.length === 0) { return true; }
+      showWarningModal(warnings);
+      return false;
+    }
+    
+    /**
+     * ローカルチェック実行
+     */
+    function performLocalCheck() {
+      const warnings = [];
+      const savedData = sessionStorage.getItem(AI_SESSION_KEY);
+      if (!savedData) {
+        warnings.push(...checkBasicValidation());
+        return warnings;
+      }
+      const aiData = JSON.parse(savedData);
+      const inputTotal = calculateInputTotal();
+      if (aiData.totalAmount && Math.abs(aiData.totalAmount - inputTotal) > 1) {
+        const diff = inputTotal - aiData.totalAmount;
+        warnings.push({ type: 'critical', icon: '🔴', title: '合計金額が異なります', detail: 'AI解析: ¥' + aiData.totalAmount.toLocaleString() + ' → 入力: ¥' + inputTotal.toLocaleString() + '（差額: ' + (diff >= 0 ? '+' : '') + '¥' + diff.toLocaleString() + '）' });
+      }
+      if (aiData.items) {
+        aiData.items.forEach(aiItem => {
+          if (AI_EXCLUDE_CATEGORIES.includes(aiItem.category) || AI_EXCLUDE_PRODUCTS.includes(aiItem.productName)) return;
+          const inputItem = findInputItem(aiItem.productName);
+          if (!inputItem) {
+            warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' が入力されていません', detail: 'AI解析: ' + aiItem.quantity + '個' });
+          } else {
+            if (inputItem.quantity != aiItem.quantity) {
+              warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の数量が変更されています', detail: 'AI解析: ' + aiItem.quantity + '個 → 入力: ' + inputItem.quantity + '個' });
+            }
+            if (inputItem.price != aiItem.price) {
+              warnings.push({ type: 'warning', icon: '🟡', title: aiItem.productName + ' の価格が変更されています', detail: 'AI解析: ¥' + (aiItem.price || 0).toLocaleString() + ' → 入力: ¥' + (inputItem.price || 0).toLocaleString() });
+            }
+          }
+        });
+      }
+      warnings.push(...checkBasicValidation());
+      return warnings;
+    }
+    
+    /**
+     * 入力合計金額計算
+     */
+    function calculateInputTotal() {
+      let total = 0;
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        const category = document.getElementById('bunrui' + i)?.value || '';
+        const price = Number(document.getElementById('price' + i)?.value) || 0;
+        const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+        if (AI_EXCLUDE_CATEGORIES.includes(category) || AI_EXCLUDE_PRODUCTS.includes(product)) continue;
+        total += price * quantity;
+      }
+      return total;
+    }
+    
+    /**
+     * 入力商品検索
+     */
+    function findInputItem(productName) {
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        if (product === productName) {
+          return { productName: product, price: Number(document.getElementById('price' + i)?.value) || 0, quantity: Number(document.getElementById('quantity' + i)?.value) || 0 };
+        }
+      }
+      return null;
+    }
+    
+    /**
+     * 基本バリデーション
+     */
+    function checkBasicValidation() {
+      const warnings = [];
+      const products = [];
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        if (product && products.includes(product)) {
+          warnings.push({ type: 'warning', icon: '🟡', title: product + ' が重複しています', detail: '同じ商品が複数行あります' });
+        }
+        if (product) products.push(product);
+      }
+      for (let i = 1; i <= 10; i++) {
+        const product = document.getElementById('product' + i)?.value || '';
+        const quantity = Number(document.getElementById('quantity' + i)?.value) || 0;
+        if (product && quantity >= 100) {
+          warnings.push({ type: 'info', icon: '💡', title: product + ' の数量が多いです', detail: quantity + '個 - 入力ミスではないか確認してください' });
+        }
+      }
+      return warnings;
+    }
+    
+    /**
+     * 警告モーダル表示
+     */
+    function showWarningModal(warnings) {
+      const body = document.getElementById('aiWarningBody');
+      body.innerHTML = warnings.map(w => '<div class="ai-warning-item ' + w.type + '"><span class="icon">' + w.icon + '</span><div class="content"><div class="title">' + w.title + '</div><div class="detail">' + w.detail + '</div></div></div>').join('');
+      document.getElementById('aiWarningModal').classList.add('show');
+    }
+    
+    /**
+     * 警告モーダル閉じる
+     */
+    function closeWarningModal() {
+      document.getElementById('aiWarningModal').classList.remove('show');
+    }
+    
+    /**
+     * 警告を確認して続行
+     */
+    function proceedWithWarnings() {
+      closeWarningModal();
+      const form = document.querySelector('form');
+      if (form) {
+        const btn = document.querySelector('[name="shippingComfirm"]');
+        if (btn) {
+          btn.removeAttribute('onclick');
+          btn.click();
+        }
+      }
+    }
+</script>

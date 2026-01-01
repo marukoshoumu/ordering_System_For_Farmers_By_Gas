@@ -1,0 +1,94 @@
+<!-- 
+  shipping.html から分離した複数日程登録機能のJavaScript
+  - 発送日程の追加/削除
+  - 番号振り直し
+-->
+<script>
+    // ============================================
+    // 複数日程登録機能
+    // ============================================
+
+    /**
+     * 発送日程の追加
+     */
+    function addShippingDate() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      const currentCount = rows.length;
+      
+      if (currentCount >= 10) {
+        showWarningToast('日程は最大10件までです');
+        return;
+      }
+      
+      const newRowNum = currentCount + 1;
+      
+      // 前の行の日付を取得してデフォルト値を設定
+      const lastRow = rows[rows.length - 1];
+      const lastShippingDate = lastRow.querySelector('input[name^="shippingDate"]').value;
+      const lastDeliveryDate = lastRow.querySelector('input[name^="deliveryDate"]').value;
+      
+      // 1日後の日付を計算
+      const nextShipping = new Date(lastShippingDate);
+      nextShipping.setDate(nextShipping.getDate() + 1);
+      const nextShippingStr = nextShipping.toISOString().split('T')[0];
+      
+      const nextDelivery = new Date(lastDeliveryDate);
+      nextDelivery.setDate(nextDelivery.getDate() + 1);
+      const nextDeliveryStr = nextDelivery.toISOString().split('T')[0];
+      
+      const newRow = document.createElement('div');
+      newRow.className = 'shipping-date-row d-flex align-items-center gap-2 mb-2';
+      newRow.dataset.row = newRowNum;
+      newRow.innerHTML = `
+        <span class="badge bg-secondary">#${newRowNum}</span>
+        <label class="col-form-label">発送日</label>
+        <input type="date" class="form-control" style="width:160px;" name="shippingDate${newRowNum}" required value="${nextShippingStr}">
+        <label class="col-form-label">納品日</label>
+        <input type="date" class="form-control" style="width:160px;" name="deliveryDate${newRowNum}" required value="${nextDeliveryStr}">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)">✕</button>
+      `;
+      
+      container.appendChild(newRow);
+      updateRemoveButtons();
+    }
+
+    /**
+     * 発送日程の削除
+     */
+    function removeShippingDate(btn) {
+      const row = btn.closest('.shipping-date-row');
+      row.remove();
+      renumberShippingDates();
+      updateRemoveButtons();
+    }
+
+    /**
+     * 番号の振り直し
+     */
+    function renumberShippingDates() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      
+      rows.forEach((row, index) => {
+        const num = index + 1;
+        row.dataset.row = num;
+        row.querySelector('.badge').textContent = '#' + num;
+        row.querySelector('input[name^="shippingDate"]').name = 'shippingDate' + num;
+        row.querySelector('input[name^="deliveryDate"]').name = 'deliveryDate' + num;
+      });
+    }
+
+    /**
+     * 削除ボタンの有効/無効制御（1件のときは削除不可）
+     */
+    function updateRemoveButtons() {
+      const container = document.getElementById('shippingDateContainer');
+      const rows = container.querySelectorAll('.shipping-date-row');
+      const buttons = container.querySelectorAll('.btn-outline-danger');
+      
+      buttons.forEach(btn => {
+        btn.disabled = rows.length <= 1;
+      });
+    }
+</script>

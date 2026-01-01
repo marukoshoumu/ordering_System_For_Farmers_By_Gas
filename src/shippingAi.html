@@ -1,0 +1,1042 @@
+<!-- 
+  shipping.html から分離したAI解析関連のJavaScript
+  - AI入力アシスタント機能
+  - 顧客/発送先マスタ照合
+  - 商品マッピング学習
+  - セッション管理
+-->
+<script>
+    // ===== AI解析 グローバル変数 =====
+    let aiAnalysisResult = null;
+    let useShippingToMaster = false;
+    let useCustomerMaster = false;
+    let selectedFile = null;
+    let selectedFileBase64 = null;
+    let currentTab = 'text';
+    let productMaster = {};
+    let categoryList = [];
+    let productPrices = {};
+    let itemEdits = {};
+
+    // 手動選択データ
+    let manualCustomerSelection = null;
+    let manualShippingToSelection = null;
+
+    const AI_SESSION_KEY = 'aiSessionData';
+    const AI_EXCLUDE_CATEGORIES = ['送料', '手数料', '追加料金'];
+    const AI_EXCLUDE_PRODUCTS = ['送料', 'クール便追加', '代引手数料', '梱包料'];
+
+    /**
+     * 手動選択後にAIモーダル表示を更新
+     */
+    function updateManualSelectionDisplay() {
+      if (!aiAnalysisResult) return;
+      if (aiAnalysisResult.customer) {
+        displayCustomer(aiAnalysisResult.customer);
+      }
+      if (aiAnalysisResult.shippingTo) {
+        displayShippingTo(aiAnalysisResult.shippingTo);
+      }
+    }
+
+    /**
+     * 郵便番号のハイフンを除去
+     */
+    function sanitizeZipcode(zip) {
+      if (!zip) return '';
+      return String(zip).replace(/[-ー−‐]/g, '');
+    }
+
+    /**
+     * 電話番号・FAX番号のハイフンを除去
+     */
+    function sanitizeTel(tel) {
+      if (!tel) return '';
+      return String(tel).replace(/[-ー−‐]/g, '');
+    }
+
+    /**
+     * 住所文字列を都道府県＋市区町村(住所1)と番地以降(住所2)に分割
+     */
+    function splitAddressString(fullAddress) {
+      if (!fullAddress) {
+        return { address1: '', address2: '' };
+      }
+      const addr = String(fullAddress).trim();
+      const patterns = [
+        /(.*?[都道府県].*?[市区町村郡])/,
+        /(.*?[市区町村])/,
+        /(.*?郡.*?[町村])/
+      ];
+      for (const pattern of patterns) {
+        const match = addr.match(pattern);
+        if (match) {
+          const address1 = match[1];
+          const address2 = addr.substring(address1.length).trim();
+          return { address1, address2 };
+        }
+      }
+      const halfIndex = Math.floor(addr.length / 2);
+      return {
+        address1: addr.substring(0, halfIndex),
+        address2: addr.substring(halfIndex)
+      };
+    }
+
+    /**
+     * AIアシスタントの開閉
+     */
+    function toggleAIAssistant() {
+      const body = document.getElementById('aiAssistantBody');
+      const btn = document.getElementById('aiToggleBtn');
+      body.classList.toggle('open');
+      btn.textContent = body.classList.contains('open') ? '閉じる' : '開く';
+      if (body.classList.contains('open') && categoryList.length === 0) {
+        loadProductMaster();
+      }
+    }
+
+    /**
+     * AI取込一覧から遷移した場合に自動でモーダルを開いて解析結果を表示
+     */
+    function openAIModalWithResult(analysisData) {
+      const body = document.getElementById('aiAssistantBody');
+      const btn = document.getElementById('aiToggleBtn');
+      if (!body.classList.contains('open')) {
+        body.classList.add('open');
+        btn.textContent = '閉じる';
+      }
+      if (categoryList.length === 0) {
+        loadProductMaster();
+      }
+      google.script.run
+        .withSuccessHandler(function(enhancedResultJson) {
+          try {
+            const enhancedData = JSON.parse(enhancedResultJson);
+            aiAnalysisResult = enhancedData;
+            showAIAnalyzedIndicator(new Date().toISOString());
+            displayAnalysisResult(enhancedData);
+            console.log('AI取込一覧からの解析結果を表示しました（マスタ照合済み）');
+          } catch (e) {
+            console.error('強化された解析結果のパースに失敗:', e);
+            aiAnalysisResult = analysisData;
+            displayAnalysisResult(analysisData);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('マスタ照合エラー:', error);
+          aiAnalysisResult = analysisData;
+          showAIAnalyzedIndicator(new Date().toISOString());
+          displayAnalysisResult(analysisData);
+        })
+        .enhanceAnalysisResultFromTempOrder(JSON.stringify(analysisData));
+    }
+
+    /**
+     * 新規登録ボタンのセットアップ
+     */
+    function setupNewRegistrationButtons(analysisData) {
+      const existingCustomerBtns = document.getElementById('customerActionButtons');
+      if (existingCustomerBtns) existingCustomerBtns.remove();
+      const existingShippingBtns = document.getElementById('shippingToActionButtons');
+      if (existingShippingBtns) existingShippingBtns.remove();
+
+      if (analysisData.customer) {
+        const isNew = analysisData.customer.isNewCustomer;
+        const isPartial = analysisData.customer.masterMatch === 'partial';
+        if (isNew || isPartial) {
+          const customerSection = document.querySelector('#aiResultCustomerRaw').parentElement;
+          const btnContainer = document.createElement('div');
+          btnContainer.id = 'customerActionButtons';
+          btnContainer.className = 'mt-2';
+          btnContainer.style.display = 'flex';
+          btnContainer.style.gap = '8px';
+
+          const newBtn = document.createElement('button');
+          newBtn.type = 'button';
+          newBtn.className = 'btn btn-sm btn-primary';
+          newBtn.textContent = '📝 新規登録';
+          newBtn.onclick = function() { openNewCustomerFormWithAI(analysisData.customer); };
+          btnContainer.appendChild(newBtn);
+
+          const searchBtn = document.createElement('button');
+          searchBtn.type = 'button';
+          searchBtn.className = 'btn btn-sm btn-primary';
+          searchBtn.textContent = '🔍 顧客を検索';
+          searchBtn.onclick = function() { $('.customerSearchBtn_open').click(); };
+          btnContainer.appendChild(searchBtn);
+
+          customerSection.appendChild(btnContainer);
+        }
+      }
+
+      if (analysisData.shippingTo) {
+        const isNew = analysisData.shippingTo.isNewShippingTo;
+        const isPartial = analysisData.shippingTo.masterMatch === 'partial';
+        if (isNew || isPartial) {
+          const shippingSection = document.querySelector('#aiResultShippingToRaw').parentElement;
+          const btnContainer = document.createElement('div');
+          btnContainer.id = 'shippingToActionButtons';
+          btnContainer.className = 'mt-2';
+          btnContainer.style.display = 'flex';
+          btnContainer.style.gap = '8px';
+
+          const newBtn = document.createElement('button');
+          newBtn.type = 'button';
+          newBtn.className = 'btn btn-sm btn-primary';
+          newBtn.textContent = '📝 新規登録';
+          newBtn.onclick = function() { openNewShippingToFormWithAI(analysisData.shippingTo); };
+          btnContainer.appendChild(newBtn);
+
+          const searchBtn = document.createElement('button');
+          searchBtn.type = 'button';
+          searchBtn.className = 'btn btn-sm btn-primary';
+          searchBtn.textContent = '🔍 発送先を検索';
+          searchBtn.onclick = function() { $('.shippingToSearchBtn_open').click(); };
+          btnContainer.appendChild(searchBtn);
+
+          shippingSection.appendChild(btnContainer);
+        }
+      }
+    }
+
+    /**
+     * 顧客新規登録フォームを開いてAI解析値を反映
+     */
+    function openNewCustomerFormWithAI(customerData) {
+      console.log('顧客データ:', customerData);
+      clearCustomerForm();
+
+      const companyName = customerData.rawCompanyName || customerData.companyName || '';
+      const personName = customerData.rawPersonName || customerData.personName || '';
+      const zipcode = customerData.rawZipcode || customerData.zipcode || '';
+      const address = customerData.rawAddress || customerData.address || '';
+      const tel = customerData.rawTel || customerData.tel || '';
+      const fax = customerData.rawFax || customerData.fax || '';
+
+      if (companyName) {
+        document.getElementById('customerNameDg').value = companyName;
+        document.getElementById('customerShowNameDg').value = companyName;
+      }
+      if (personName) {
+        document.getElementById('customerIdentDg').value = personName;
+      }
+      if (zipcode) {
+        document.getElementById('customerZipcodeDg').value = sanitizeZipcode(zipcode);
+      }
+      if (address) {
+        const splitAddress = splitAddressString(address);
+        document.getElementById('customerAddress1Dg').value = splitAddress.address1;
+        document.getElementById('customerAddress2Dg').value = splitAddress.address2;
+      }
+      if (tel) {
+        document.getElementById('customerTelDg').value = sanitizeTel(tel);
+      }
+      if (fax) {
+        document.getElementById('customerFaxDg').value = sanitizeTel(fax);
+      }
+
+      const dialog = $('.customer_dg');
+      if (!dialog.hasClass('ui-dialog-content')) {
+        dialog.dialog({
+          title: "顧客新規登録",
+          height: 500,
+          modal: true,
+          buttons: {
+            "キャンセル": function() { $(this).dialog("close"); },
+            "登録": function() { addCustomer(); }
+          }
+        });
+      }
+      dialog.dialog('open');
+    }
+
+    /**
+     * 発送先新規登録フォームを開いてAI解析値を反映
+     */
+    function openNewShippingToFormWithAI(shippingToData) {
+      console.log('発送先データ:', shippingToData);
+      clearShippingToForm();
+
+      const companyName = shippingToData.rawCompanyName || shippingToData.companyName || '';
+      const personName = shippingToData.rawPersonName || shippingToData.personName || '';
+      const zipcode = shippingToData.rawZipcode || shippingToData.zipcode || '';
+      const address = shippingToData.rawAddress || shippingToData.address || '';
+      const tel = shippingToData.rawTel || shippingToData.tel || '';
+
+      if (companyName) {
+        document.getElementById('shippingToNameDg').value = companyName;
+      }
+      if (personName) {
+        document.getElementById('shippingToIdentDg').value = personName;
+      }
+      if (zipcode) {
+        document.getElementById('shippingToZipcodeDg').value = sanitizeZipcode(zipcode);
+      }
+      if (address) {
+        const splitAddress = splitAddressString(address);
+        document.getElementById('shippingToAddress1Dg').value = splitAddress.address1;
+        document.getElementById('shippingToAddress2Dg').value = splitAddress.address2;
+      }
+      if (tel) {
+        document.getElementById('shippingToTelDg').value = sanitizeTel(tel);
+      }
+
+      const dialog = $('.shippingTo_dg');
+      if (!dialog.hasClass('ui-dialog-content')) {
+        dialog.dialog({
+          title: "発送先新規登録",
+          height: 500,
+          modal: true,
+          buttons: {
+            "キャンセル": function() { $(this).dialog("close"); },
+            "登録": function() { addShippingTo(); }
+          }
+        });
+      }
+      dialog.dialog('open');
+    }
+
+    /**
+     * 顧客フォームをクリア
+     */
+    function clearCustomerForm() {
+      document.getElementById('customerNameDg').value = '';
+      document.getElementById('customerShowNameDg').value = '';
+      document.getElementById('customerFuriganaDg').value = '';
+      document.getElementById('customerDepDg').value = '';
+      document.getElementById('customerPostDg').value = '';
+      document.getElementById('customerIdentDg').value = '';
+      document.getElementById('customerZipcodeDg').value = '';
+      document.getElementById('customerAddress1Dg').value = '';
+      document.getElementById('customerAddress2Dg').value = '';
+      document.getElementById('customerTelDg').value = '';
+      document.getElementById('customerPhoneDg').value = '';
+      document.getElementById('customerFaxDg').value = '';
+      document.getElementById('customerMailDg').value = '';
+      document.getElementById('customerMemoDg').value = '';
+    }
+
+    /**
+     * 発送先フォームをクリア
+     */
+    function clearShippingToForm() {
+      document.getElementById('shippingToNameDg').value = '';
+      document.getElementById('shippingToDepDg').value = '';
+      document.getElementById('shippingToIdentDg').value = '';
+      document.getElementById('shippingToZipcodeDg').value = '';
+      document.getElementById('shippingToAddress1Dg').value = '';
+      document.getElementById('shippingToAddress2Dg').value = '';
+      document.getElementById('shippingToTelDg').value = '';
+      document.getElementById('shippingToMailDg').value = '';
+      document.getElementById('shippingToMemoDg').value = '';
+    }
+
+    /**
+     * 商品マスタの読み込み
+     */
+    function loadProductMaster() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          productMaster = data.productsByCategory || {};
+          productPrices = data.productPrices || {};
+          categoryList = Object.keys(productMaster);
+        })
+        .withFailureHandler(function(error) {
+          console.error('商品マスタ取得エラー:', error);
+        })
+        .getProductMasterForUI();
+    }
+    
+    /**
+     * AIセッションデータの読み込み
+     */
+    function loadAISessionData() {
+      const saved = sessionStorage.getItem(AI_SESSION_KEY);
+      if (!saved) return;
+      try {
+        const data = JSON.parse(saved);
+        const diffMinutes = (new Date() - new Date(data.analyzedAt)) / 1000 / 60;
+        if (diffMinutes > 30) {
+          sessionStorage.removeItem(AI_SESSION_KEY);
+          return;
+        }
+        showAIAnalyzedIndicator(data.analyzedAt);
+      } catch (e) {
+        sessionStorage.removeItem(AI_SESSION_KEY);
+      }
+    }
+    
+    /**
+     * AIセッションデータの保存
+     */
+    function saveAISessionData() {
+      if (!aiAnalysisResult) return;
+      const sessionData = {
+        analyzedAt: new Date().toISOString(),
+        analysisResult: aiAnalysisResult,
+        items: [],
+        totalAmount: 0
+      };
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.productName) {
+          const amount = (edit.price || 0) * (edit.quantity || 0);
+          if (!AI_EXCLUDE_CATEGORIES.includes(edit.category) && !AI_EXCLUDE_PRODUCTS.includes(edit.productName)) {
+            sessionData.totalAmount += amount;
+          }
+          sessionData.items.push({
+            originalText: edit.originalText,
+            productName: edit.productName,
+            category: edit.category,
+            price: edit.price,
+            quantity: edit.quantity
+          });
+        }
+      });
+      sessionStorage.setItem(AI_SESSION_KEY, JSON.stringify(sessionData));
+    }
+    
+    /**
+     * AI解析済みインジケーターの表示
+     */
+    function showAIAnalyzedIndicator(analyzedAt) {
+      const indicator = document.getElementById('aiAnalyzedIndicator');
+      const timeEl = document.getElementById('aiAnalyzedTime');
+      if (indicator && analyzedAt) {
+        const time = new Date(analyzedAt);
+        timeEl.textContent = '（' + time.getHours() + ':' + String(time.getMinutes()).padStart(2,'0') + ' 解析）';
+        indicator.classList.add('show');
+      }
+    }
+    
+    /**
+     * AIセッションのクリア
+     */
+    function clearAISession() {
+      sessionStorage.removeItem(AI_SESSION_KEY);
+    }
+    
+    /**
+     * タブ切り替え
+     */
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.ai-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.ai-tab-content').forEach(content => content.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab + 'Tab').classList.add('active');
+    }
+    
+    /**
+     * ファイル選択処理
+     */
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedFileBase64 = e.target.result.split(',')[1];
+        showFilePreview(file);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    /**
+     * ファイルプレビュー表示
+     */
+    function showFilePreview(file) {
+      const preview = document.getElementById('filePreview');
+      const icon = file.type.includes('pdf') ? '📄' : '🖼️';
+      const size = (file.size / 1024).toFixed(1) + ' KB';
+      preview.innerHTML = '<div class="file-preview"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + file.name + '</div><div class="file-size">' + size + '</div></div><button type="button" class="remove-btn" onclick="removeFile()">×</button></div>';
+    }
+    
+    /**
+     * ファイル削除
+     */
+    function removeFile() {
+      selectedFile = null;
+      selectedFileBase64 = null;
+      document.getElementById('orderFile').value = '';
+      document.getElementById('filePreview').innerHTML = '';
+    }
+    
+    /**
+     * ファイルドラッグ&ドロップ設定
+     */
+    function setupFileDragDrop() {
+      const uploadArea = document.getElementById('fileUploadArea');
+      if (!uploadArea) return;
+      uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+      uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          document.getElementById('orderFile').files = e.dataTransfer.files;
+          handleFileSelect({ target: { files: [file] } });
+        }
+      });
+    }
+    
+    /**
+     * AI解析実行
+     */
+    function analyzeWithAI() {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+      if (currentTab === 'text') {
+        const text = document.getElementById('aiInputText').value.trim();
+        if (!text) { showWarningToast('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderText(text);
+      } else {
+        if (!selectedFile || !selectedFileBase64) { showWarningToast('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
+        google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
+      }
+    }
+    
+    /**
+     * AI解析成功コールバック
+     */
+    function handleAnalysisSuccess(result) {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      try {
+        aiAnalysisResult = JSON.parse(result);
+        if (!aiAnalysisResult.success) { showError(aiAnalysisResult.error || '解析に失敗しました'); return; }
+        displayAnalysisResult(aiAnalysisResult);
+      } catch (e) {
+        showError('解析結果の処理に失敗: ' + e.message);
+      }
+    }
+    
+    /**
+     * AI解析エラーコールバック
+     */
+    function handleAnalysisError(error) {
+      const btn = document.getElementById('aiAnalyzeBtn');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      showError('解析エラー: ' + error.message);
+    }
+    
+    /**
+     * 解析結果の表示
+     */
+    function displayAnalysisResult(result) {
+      document.getElementById('aiResultArea').classList.add('show');
+      itemEdits = {};
+      setConfidenceBadge('overallConfidence', result.overallConfidence);
+      displayAlerts(result.alerts || []);
+      document.getElementById('aiResultShippingDate').textContent = result.shippingDate || '指定なし';
+      document.getElementById('aiResultDeliveryDate').textContent = result.deliveryDate || '指定なし';
+      document.getElementById('aiResultDeliveryTime').textContent = result.deliveryTime || '指定なし';
+      displayShippingTo(result.shippingTo);
+      displayCustomer(result.customer);
+      displayItemsEditable(result.items, result.unknownItems);
+      if (result.memo) {
+        document.getElementById('memoSection').style.display = 'block';
+        document.getElementById('aiResultMemo').textContent = result.memo;
+      } else {
+        document.getElementById('memoSection').style.display = 'none';
+      }
+      document.getElementById('aiError').style.display = 'none';
+      updateLearnSummary();
+      setupNewRegistrationButtons(result);
+    }
+    
+    /**
+     * アラート表示
+     */
+    function displayAlerts(alerts) {
+      const container = document.getElementById('aiAlerts');
+      container.innerHTML = alerts.map(a => '<div class="ai-alert-item ' + (a.includes('新規') || a.includes('見つかりません') ? 'ai-alert-warning' : 'ai-alert-info') + '">' + a + '</div>').join('');
+    }
+    
+    /**
+     * 発送先データ表示
+     */
+    function displayShippingTo(st) {
+      if (!st) return;
+      const badge = document.getElementById('shippingToMatchBadge');
+      if (st.isNewShippingTo) {
+        badge.innerHTML = '<span class="new-badge">新規</span>';
+      } else if (st.masterMatch === 'exact') {
+        badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+      } else if (st.masterMatch === 'partial') {
+        badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+      } else {
+        badge.innerHTML = '';
+      }
+      document.getElementById('aiResultShippingToRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (st.rawCompanyName || '-') + '</div><div class="row"><span class="label">宛名：</span>' + (st.rawPersonName || '-') + '</div><div class="row"><span class="label">〒：</span>' + (st.rawZipcode || '-') + '</div><div class="row"><span class="label">住所：</span>' + (st.rawAddress || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (st.rawTel || '-') + '</div>';
+
+      const masterDiv = document.getElementById('aiResultShippingToMaster');
+      const manualDiv = document.getElementById('aiResultShippingToManual');
+      const selectDiv = document.getElementById('shippingToSourceSelect');
+
+      if (manualShippingToSelection) {
+        manualDiv.style.display = 'block';
+        const sourceType = manualShippingToSelection.source === 'manual_registration' ? '新規登録' : '検索';
+        manualDiv.innerHTML = '<strong>✋ 手動選択（' + sourceType + '）</strong><br>' +
+          [manualShippingToSelection.companyName, manualShippingToSelection.personName].filter(Boolean).join(' ') +
+          '<br>TEL: ' + (manualShippingToSelection.tel || '-') +
+          '<br>〒' + (manualShippingToSelection.zipcode || '-') + ' ' + (manualShippingToSelection.address || '-');
+      } else {
+        manualDiv.style.display = 'none';
+      }
+
+      if (st.masterData) {
+        masterDiv.style.display = 'block';
+        masterDiv.innerHTML = '<strong>📁 マスタ（' + st.matchedBy + '）</strong><br>' + (st.masterData.companyName || '') + ' ' + (st.masterData.personName || '') + '<br>〒' + (st.masterData.zipcode || '') + ' ' + (st.masterData.address || '') + '<br>TEL: ' + (st.masterData.tel || '-');
+        selectDiv.style.display = 'flex';
+
+        if (manualShippingToSelection) {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'master\')">📁 マスタ</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'manual\')">✋ 手動選択</button>';
+          useShippingToMaster = false;
+        } else {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'master\')">📁 マスタ</button>';
+          useShippingToMaster = true;
+        }
+      } else if (manualShippingToSelection) {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'flex';
+        selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'shippingTo\',\'raw\')">📝 読み取り</button>' +
+          '<button type="button" class="source-select-btn selected" onclick="selectSource(\'shippingTo\',\'manual\')">✋ 手動選択</button>';
+        useShippingToMaster = false;
+      } else {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useShippingToMaster = false;
+      }
+    }
+    
+    /**
+     * 顧客データ表示
+     */
+    function displayCustomer(cust) {
+      if (!cust) return;
+      const badge = document.getElementById('customerMatchBadge');
+      if (cust.isNewCustomer) {
+        badge.innerHTML = '<span class="new-badge">新規</span>';
+      } else if (cust.masterMatch === 'exact') {
+        badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
+      } else if (cust.masterMatch === 'partial') {
+        badge.innerHTML = '<span class="master-match-badge master-match-partial">⚠️ 部分一致</span>';
+      } else {
+        badge.innerHTML = '';
+      }
+      document.getElementById('aiResultCustomerRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (cust.rawCompanyName || '-') + '</div><div class="row"><span class="label">担当：</span>' + (cust.rawPersonName || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (cust.rawTel || '-') + '</div>';
+
+      const masterDiv = document.getElementById('aiResultCustomerMaster');
+      const manualDiv = document.getElementById('aiResultCustomerManual');
+      const selectDiv = document.getElementById('customerSourceSelect');
+
+      if (manualCustomerSelection) {
+        manualDiv.style.display = 'block';
+        const sourceType = manualCustomerSelection.source === 'manual_registration' ? '新規登録' : '検索';
+        manualDiv.innerHTML = '<strong>✋ 手動選択（' + sourceType + '）</strong><br>' +
+          (manualCustomerSelection.displayName || [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join(' ')) +
+          '<br>TEL: ' + (manualCustomerSelection.tel || '-') +
+          '<br>〒' + (manualCustomerSelection.zipcode || '-') + ' ' + (manualCustomerSelection.address || '-');
+      } else {
+        manualDiv.style.display = 'none';
+      }
+
+      if (cust.masterData) {
+        masterDiv.style.display = 'block';
+        masterDiv.innerHTML = '<strong>📁 マスタ（' + cust.matchedBy + '）</strong><br>' + (cust.masterData.displayName || cust.masterData.companyName || '') + '<br>TEL: ' + (cust.masterData.tel || '-');
+        selectDiv.style.display = 'flex';
+
+        if (manualCustomerSelection) {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'master\')">📁 マスタ</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'manual\')">✋ 手動選択</button>';
+          useCustomerMaster = false;
+        } else {
+          selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+            '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'master\')">📁 マスタ</button>';
+          useCustomerMaster = true;
+        }
+      } else if (manualCustomerSelection) {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'flex';
+        selectDiv.innerHTML = '<button type="button" class="source-select-btn" onclick="selectSource(\'customer\',\'raw\')">📝 読み取り</button>' +
+          '<button type="button" class="source-select-btn selected" onclick="selectSource(\'customer\',\'manual\')">✋ 手動選択</button>';
+        useCustomerMaster = false;
+      } else {
+        masterDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useCustomerMaster = false;
+      }
+    }
+    
+    /**
+     * 編集可能な商品リスト表示
+     */
+    function displayItemsEditable(items, unknownItems) {
+      const container = document.getElementById('aiResultItems');
+      container.innerHTML = '';
+      if (!items || items.length === 0) {
+        container.innerHTML = '<p style="color:#999;">商品が見つかりませんでした</p>';
+        return;
+      }
+      items.forEach((item, index) => {
+        const mappingMatch = item.mappingMatch || {};
+        const isLearned = mappingMatch.found && mappingMatch.matchType === 'exact';
+        const canLearn = !isLearned && item.originalText;
+        
+        let price = 0;
+        let priceSource = 'none';
+        if (item.price && item.price > 0) {
+          price = item.price;
+          priceSource = item.priceSource || 'ai';
+        } else if (item.productName && productPrices[item.productName]) {
+          price = productPrices[item.productName];
+          priceSource = 'master';
+        }
+        
+        itemEdits[index] = {
+          category: item.category || '',
+          productName: item.productName || '',
+          spec: item.spec || '',
+          quantity: item.quantity || '',
+          unit: item.unit || 'ケース',
+          price: price,
+          priceSource: priceSource,
+          learn: canLearn && item.confidence !== 'low',
+          originalText: item.originalText || '',
+          originalProductName: item.productName || ''
+        };
+        
+        const cardClass = isLearned ? 'learned' : '';
+        let categoryOptions = '<option value="">選択...</option>';
+        categoryList.forEach(cat => {
+          categoryOptions += '<option value="' + cat + '" ' + (cat === item.category ? 'selected' : '') + '>' + cat + '</option>';
+        });
+        let productOptions = buildProductOptions(item.category, item.productName);
+        
+        let badgeHtml = '';
+        if (isLearned) {
+          badgeHtml = '<span class="mapping-badge">📚 学習済み（' + mappingMatch.usageCount + '回使用）</span>';
+        } else {
+          badgeHtml = '<span class="confidence-badge confidence-' + item.confidence + '">' + getConfidenceLabel(item.confidence) + '</span>';
+        }
+        
+        let priceBadgeHtml = '';
+        if (priceSource === 'ai') {
+          priceBadgeHtml = '<span class="price-badge ai">顧客指定</span>';
+        } else if (priceSource === 'master') {
+          priceBadgeHtml = '<span class="price-badge master">マスタ</span>';
+        }
+        
+        let learnHtml = '';
+        if (canLearn) {
+          const checked = itemEdits[index].learn ? 'checked' : '';
+          learnHtml = '<div class="item-learn-row ' + (itemEdits[index].learn ? 'will-learn' : '') + '" id="learnRow_' + index + '"><input type="checkbox" id="learn_' + index + '" ' + checked + ' onchange="toggleLearn(' + index + ')"><label for="learn_' + index + '">この対応を記憶する</label><span class="learn-preview" id="learnPreview_' + index + '" style="' + (itemEdits[index].learn ? '' : 'display:none') + '">→ ' + (item.productName || '未選択') + '</span></div>';
+        }
+        
+        container.innerHTML += '<div class="item-card ' + cardClass + '" id="itemCard_' + index + '"><div class="item-card-header"><span class="item-original-text">📝 ' + (item.originalText || '(原文なし)') + '</span>' + badgeHtml + '</div><div class="item-card-body"><div class="item-edit-row"><label>分類:</label><select id="category_' + index + '" onchange="onCategoryChange(' + index + ')">' + categoryOptions + '</select></div><div class="item-edit-row"><label>商品:</label><select id="product_' + index + '" onchange="onProductChange(' + index + ')">' + productOptions + '</select></div><div class="item-edit-row"><label>規格:</label><input type="text" id="spec_' + index + '" value="' + (item.spec || '') + '" onchange="onSpecChange(' + index + ')"></div><div class="item-edit-row"><label>価格:</label><div class="price-group"><input type="number" id="price_' + index + '" value="' + price + '" onchange="onPriceChange(' + index + ')"><span class="unit">円</span>' + priceBadgeHtml + '</div></div><div class="item-edit-row"><label>数量:</label><div class="quantity-group"><input type="number" id="quantity_' + index + '" value="' + (item.quantity || '') + '" step="0.1" onchange="onQuantityChange(' + index + ')"><select id="unit_' + index + '" onchange="onUnitChange(' + index + ')"><option value="ケース" ' + (item.unit === 'ケース' ? 'selected' : '') + '>ケース</option><option value="本" ' + (item.unit === '本' ? 'selected' : '') + '>本</option><option value="袋" ' + (item.unit === '袋' ? 'selected' : '') + '>袋</option><option value="kg" ' + (item.unit === 'kg' ? 'selected' : '') + '>kg</option><option value="個" ' + (item.unit === '個' ? 'selected' : '') + '>個</option></select></div></div>' + learnHtml + '</div></div>';
+      });
+    }
+    
+    /**
+     * 商品オプション生成
+     */
+    function buildProductOptions(category, selectedProduct) {
+      let options = '<option value="">選択...</option>';
+      if (category && productMaster[category]) {
+        productMaster[category].forEach(prod => {
+          options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+        });
+      }
+      categoryList.forEach(cat => {
+        if (cat !== category && productMaster[cat]) {
+          options += '<optgroup label="── ' + cat + ' ──">';
+          productMaster[cat].forEach(prod => {
+            options += '<option value="' + prod + '" ' + (prod === selectedProduct ? 'selected' : '') + '>' + prod + '</option>';
+          });
+          options += '</optgroup>';
+        }
+      });
+      return options;
+    }
+    
+    /**
+     * カテゴリ変更ハンドラ
+     */
+    function onCategoryChange(index) {
+      const category = document.getElementById('category_' + index).value;
+      itemEdits[index].category = category;
+      const productSelect = document.getElementById('product_' + index);
+      productSelect.innerHTML = buildProductOptions(category, '');
+      itemEdits[index].productName = '';
+      itemEdits[index].price = 0;
+      document.getElementById('price_' + index).value = 0;
+      checkModified(index);
+      updateLearnSummary();
+    }
+    
+    /**
+     * 商品変更ハンドラ
+     */
+    function onProductChange(index) {
+      const productName = document.getElementById('product_' + index).value;
+      itemEdits[index].productName = productName;
+      if (productName && productPrices[productName] && itemEdits[index].priceSource !== 'ai') {
+        itemEdits[index].price = productPrices[productName];
+        itemEdits[index].priceSource = 'master';
+        document.getElementById('price_' + index).value = productPrices[productName];
+      }
+      const preview = document.getElementById('learnPreview_' + index);
+      if (preview) preview.textContent = '→ ' + (productName || '未選択');
+      checkModified(index);
+      updateLearnSummary();
+    }
+    
+    function onSpecChange(index) {
+      itemEdits[index].spec = document.getElementById('spec_' + index).value;
+      checkModified(index);
+    }
+    
+    function onPriceChange(index) {
+      itemEdits[index].price = Number(document.getElementById('price_' + index).value) || 0;
+      itemEdits[index].priceSource = 'manual';
+      checkModified(index);
+    }
+    
+    function onQuantityChange(index) {
+      itemEdits[index].quantity = document.getElementById('quantity_' + index).value;
+      checkModified(index);
+    }
+    
+    function onUnitChange(index) {
+      itemEdits[index].unit = document.getElementById('unit_' + index).value;
+      checkModified(index);
+    }
+    
+    /**
+     * 学習チェックボックス切り替え
+     */
+    function toggleLearn(index) {
+      const checked = document.getElementById('learn_' + index).checked;
+      itemEdits[index].learn = checked;
+      const row = document.getElementById('learnRow_' + index);
+      const preview = document.getElementById('learnPreview_' + index);
+      if (checked) { row.classList.add('will-learn'); preview.style.display = ''; }
+      else { row.classList.remove('will-learn'); preview.style.display = 'none'; }
+      updateLearnSummary();
+    }
+    
+    /**
+     * 変更チェック
+     */
+    function checkModified(index) {
+      const card = document.getElementById('itemCard_' + index);
+      const edit = itemEdits[index];
+      if (edit.productName !== edit.originalProductName) { card.classList.add('modified'); }
+      else { card.classList.remove('modified'); }
+    }
+    
+    /**
+     * 学習サマリ更新
+     */
+    function updateLearnSummary() {
+      const summaryDiv = document.getElementById('learnSummary');
+      const itemsDiv = document.getElementById('learnSummaryItems');
+      const learnList = [];
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.learn && edit.originalText && edit.productName) {
+          learnList.push({ originalText: edit.originalText, productName: edit.productName, isModified: edit.productName !== edit.originalProductName });
+        }
+      });
+      if (learnList.length === 0) { summaryDiv.style.display = 'none'; return; }
+      summaryDiv.style.display = 'block';
+      itemsDiv.innerHTML = learnList.map(l => '<div class="learn-summary-item"><span class="original">「' + l.originalText + '」</span><span class="arrow">→</span><span class="product">' + l.productName + '</span>' + (l.isModified ? '<span class="modified-badge">修正済</span>' : '') + '</div>').join('');
+    }
+    
+    /**
+     * データソース選択
+     */
+    function selectSource(type, source) {
+      if (type === 'shippingTo') {
+        useShippingToMaster = (source === 'master');
+      } else {
+        useCustomerMaster = (source === 'master');
+      }
+      const btns = document.querySelectorAll('#' + type + 'SourceSelect .source-select-btn');
+      btns.forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      btns.forEach(btn => {
+        const btnText = btn.textContent.trim();
+        if ((source === 'raw' && btnText.includes('読み取り')) ||
+            (source === 'master' && btnText.includes('マスタ')) ||
+            (source === 'manual' && btnText.includes('手動選択'))) {
+          btn.classList.add('selected');
+        }
+      });
+      console.log('データソース選択:', type, source);
+    }
+    
+    /**
+     * 信頼度バッジ設定
+     */
+    function setConfidenceBadge(id, conf) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'confidence-badge confidence-' + (conf || 'low');
+      el.textContent = getConfidenceLabel(conf);
+    }
+    
+    /**
+     * 信頼度ラベル取得
+     */
+    function getConfidenceLabel(conf) {
+      return { high: '✅ 高', medium: '⚠️ 中', low: '❓ 低' }[conf] || '❓';
+    }
+    
+    /**
+     * エラー表示
+     */
+    function showError(msg) {
+      document.getElementById('aiResultArea').classList.add('show');
+      document.getElementById('aiError').style.display = 'block';
+      document.getElementById('aiError').textContent = msg;
+    }
+    
+    /**
+     * AI解析結果クリア
+     */
+    function clearAIResult() {
+      aiAnalysisResult = null;
+      useShippingToMaster = useCustomerMaster = false;
+      itemEdits = {};
+      document.getElementById('aiResultArea').classList.remove('show');
+      document.getElementById('aiInputText').value = '';
+      removeFile();
+    }
+    
+    /**
+     * AI解析結果をフォームに反映
+     */
+    function applyAIResult() {
+      if (!aiAnalysisResult) { showWarningToast('解析結果がありません'); return; }
+      
+      const mappingsToLearn = [];
+      const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
+      Object.keys(itemEdits).forEach(index => {
+        const edit = itemEdits[index];
+        if (edit.learn && edit.originalText && edit.productName) {
+          mappingsToLearn.push({ originalText: edit.originalText, productName: edit.productName, customerName: customerName, spec: edit.spec || '' });
+        }
+      });
+      
+      if (mappingsToLearn.length > 0) {
+        google.script.run.withSuccessHandler(function(results) { console.log('マッピング学習結果:', results); }).withFailureHandler(function(error) { console.error('マッピング学習エラー:', error); }).registerProductMappingBulk(mappingsToLearn);
+      }
+      
+      if (aiAnalysisResult.shippingDate) { setFormValue('shippingDate', aiAnalysisResult.shippingDate); }
+      if (aiAnalysisResult.deliveryDate) { setFormValue('deliveryDate', aiAnalysisResult.deliveryDate); }
+
+      // 発送先の適用（優先順位: 手動選択 > マスタ > AI読み取り）
+      if (manualShippingToSelection) {
+        console.log('手動選択した発送先データを適用:', manualShippingToSelection);
+        const name = [manualShippingToSelection.companyName, manualShippingToSelection.personName].filter(Boolean).join('　');
+        setFormValue('shippingToName', name);
+        setFormValue('shippingToZipcode', manualShippingToSelection.zipcode || '');
+        setFormValue('shippingToAddress', manualShippingToSelection.address || '');
+        setFormValue('shippingToTel', manualShippingToSelection.tel || '');
+      } else {
+        const st = aiAnalysisResult.shippingTo;
+        if (st) {
+          const data = useShippingToMaster && st.masterData ? st.masterData : st;
+          setFormValue('shippingToName', useShippingToMaster ? [data.companyName, data.personName].filter(Boolean).join('　') : [st.rawCompanyName, st.rawPersonName].filter(Boolean).join('　'));
+          setFormValue('shippingToZipcode', (useShippingToMaster ? data.zipcode : st.rawZipcode) || '');
+          setFormValue('shippingToAddress', (useShippingToMaster ? data.address : st.rawAddress) || '');
+          setFormValue('shippingToTel', (useShippingToMaster ? data.tel : st.rawTel) || '');
+        }
+      }
+
+      // 顧客の適用（優先順位: 手動選択 > マスタ > AI読み取り）
+      if (manualCustomerSelection) {
+        console.log('手動選択した顧客データを適用:', manualCustomerSelection);
+        const name = manualCustomerSelection.displayName ||
+                     [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join('　');
+        setFormValue('customerName', name);
+        setFormValue('customerZipcode', manualCustomerSelection.zipcode || '');
+        setFormValue('customerAddress', manualCustomerSelection.address || '');
+        setFormValue('customerTel', manualCustomerSelection.tel || '');
+      } else {
+        const cust = aiAnalysisResult.customer;
+        if (cust) {
+          const data = useCustomerMaster && cust.masterData ? cust.masterData : cust;
+          setFormValue('customerName', useCustomerMaster ? (data.displayName || [data.companyName, data.personName].filter(Boolean).join('　')) : [cust.rawCompanyName, cust.rawPersonName].filter(Boolean).join('　'));
+          setFormValue('customerZipcode', (useCustomerMaster ? data.zipcode : cust.rawZipcode) || '');
+          setFormValue('customerAddress', (useCustomerMaster ? data.address : cust.rawAddress) || '');
+          setFormValue('customerTel', (useCustomerMaster ? data.tel : cust.rawTel) || '');
+        }
+      }
+      
+      Object.keys(itemEdits).forEach((index, i) => {
+        const row = i + 1;
+        if (row > 10) return;
+        const edit = itemEdits[index];
+        if (edit.category) {
+          const bunrui = document.getElementById('bunrui' + row);
+          if (bunrui) { bunrui.value = edit.category; if (typeof bunruiChange === 'function') bunruiChange(row); }
+        }
+        if (edit.productName) {
+          setTimeout(() => {
+            const prod = document.getElementById('product' + row);
+            if (prod) {
+              for (let j = 0; j < prod.options.length; j++) {
+                if (prod.options[j].value === edit.productName) {
+                  prod.selectedIndex = j;
+                  if (typeof productChange === 'function') productChange(row);
+                  break;
+                }
+              }
+            }
+          }, 100 * i);
+        }
+        if (edit.price) {
+          setTimeout(() => {
+            const priceEl = document.getElementById('price' + row);
+            if (priceEl) priceEl.value = edit.price;
+          }, 100 * i + 30);
+        }
+        if (edit.quantity) {
+          setTimeout(() => {
+            const qty = document.getElementById('quantity' + row);
+            if (qty) qty.value = edit.quantity;
+          }, 100 * i + 50);
+        }
+      });
+      
+      saveAISessionData();
+      showAIAnalyzedIndicator(new Date().toISOString());
+      
+      let message = 'フォームに反映しました。';
+      if (mappingsToLearn.length > 0) { message += '\n\n📚 ' + mappingsToLearn.length + '件のマッピングを学習しました。'; }
+      if (aiAnalysisResult.alerts?.length) { message += '\n\n⚠️ ' + aiAnalysisResult.alerts.join('\n'); }
+      showInfoToast(message);
+      toggleAIAssistant();
+    }
+    
+    /**
+     * フォーム値設定ユーティリティ
+     */
+    function setFormValue(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    }
+</script>
