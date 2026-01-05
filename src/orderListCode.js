@@ -39,18 +39,18 @@ function getOrderListData(params) {
   }
   
   // 除外する商品分類・商品名
-  const excludeCategories = ['送料', '手数料', '追加料金'];
+  const excludeCategories = ['送料', '手数料', '追加料金', '送料・代引手数料'];
   const excludeProducts = ['送料', 'クール便追加', '代引手数料', '梱包料'];
-  
+
   // 受注IDでグループ化
   const orderMap = new Map();
-  
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const orderId = row[orderIdCol];
-    
+
     if (!orderId) continue;
-    
+
     // 発送日でフィルタ
     const shippingDateRaw = row[shippingDateCol];
     if (shippingDateRaw) {
@@ -59,15 +59,15 @@ function getOrderListData(params) {
       if (startDate && shipDate < startDate) continue;
       if (endDate && shipDate > endDate) continue;
     }
-    
+
     // 発送先フィルタ
     const shippingToName = row[shippingToNameCol] || '';
     if (searchDestination && !shippingToName.includes(searchDestination)) continue;
-    
+
     // 顧客フィルタ
     const customerName = row[customerNameCol] || '';
     if (searchCustomer && !customerName.includes(searchCustomer)) continue;
-    
+
     // グループ化（初回のみ基本情報を設定）
     if (!orderMap.has(orderId)) {
       orderMap.set(orderId, {
@@ -78,21 +78,24 @@ function getOrderListData(params) {
         deliveryDate: row[deliveryDateCol],
         customerName: customerName,
         destinationName: shippingToName,   // HTML側の名前に合わせる
-        productName: row[sendProductCol] || '',  // 品名（HTML側の名前に合わせる）
-        quantity: 0,  // 商品数（後で計算）
+        items: [],  // 商品ごとの配列
         totalAmount: 0
       });
     }
-    
+
     // 商品情報を集計（除外対象以外）
     const bunrui = row[bunruiCol] || '';
     const product = row[productCol] || '';
     const qty = Number(row[quantityCol]) || 0;
     const price = Number(row[priceCol]) || 0;
-    
+
     if (!excludeCategories.includes(bunrui) && !excludeProducts.includes(product)) {
       const order = orderMap.get(orderId);
-      order.quantity += 1;  // 商品行数をカウント
+      // 商品情報を配列に追加
+      order.items.push({
+        product: product,
+        quantity: qty
+      });
       order.totalAmount += price * qty;
     }
   }
@@ -110,7 +113,7 @@ function getOrderListData(params) {
     return (a.customerName || '').localeCompare(b.customerName || '');
   });
   
-  // 日付をフォーマット & shippingDateRawを削除
+  // 日付をフォーマット & shippingDateRawを削除 & 商品情報を整形
   orders = orders.map(order => {
     return {
       orderId: order.orderId,
@@ -119,8 +122,7 @@ function getOrderListData(params) {
       deliveryDate: formatDateForDisplay(order.deliveryDate),
       customerName: order.customerName,
       destinationName: order.destinationName,
-      productName: order.productName,
-      quantity: order.quantity,
+      items: order.items,  // 商品配列をそのまま渡す
       totalAmount: order.totalAmount
     };
   });

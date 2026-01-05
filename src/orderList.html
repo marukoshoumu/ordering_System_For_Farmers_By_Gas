@@ -637,6 +637,8 @@
             <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
             <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
             <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
+            <input type="radio" class="btn-check" name="period" id="periodLastMonth" value="lastMonth">
+            <label class="btn btn-outline-primary" for="periodLastMonth">先月</label>
             <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
             <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
             <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
@@ -699,14 +701,14 @@
           <table class="order-table">
             <thead>
               <tr>
-                <th class="col-date">受注日</th>
                 <th class="col-date">発送日</th>
                 <th class="col-date">納品日</th>
                 <th class="col-name">顧客名</th>
                 <th class="col-name">発送先名</th>
-                <th class="col-product">品名</th>
-                <th class="col-quantity">商品数</th>
+                <th class="col-product">商品名</th>
+                <th class="col-quantity">個数</th>
                 <th class="col-action">操作</th>
+                <th class="col-date">受注日</th>
               </tr>
             </thead>
             <tbody id="orderTableBody">
@@ -802,7 +804,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
         <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
-          <i class="bi bi-copy me-1"></i>引継
+          <i class="bi bi-copy me-1"></i>コピー
         </button>
         <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
           <i class="bi bi-pencil me-1"></i>修正
@@ -1001,6 +1003,12 @@
               .replace(/"/g, '&quot;')
               .replace(/'/g, '&#39;');
   }
+
+  // <br>タグを許可するエスケープ関数
+  function escapeHtmlWithBr(str) {
+    if (!str) return '';
+    return escapeHtml(str).replace(/&lt;br&gt;/g, '<br>');
+  }
   
   // 日付範囲取得（修正版：今日起点）
   function getDateRange() {
@@ -1017,7 +1025,7 @@
         thisWeekEnd.setDate(today.getDate() + 6);
         dateTo = formatDate(thisWeekEnd);
         break;
-        
+
       case 'nextWeek':
         // 来週：7日後から7日間（7日後〜13日後）
         const nextWeekStart = new Date(today);
@@ -1027,19 +1035,25 @@
         nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
         dateTo = formatDate(nextWeekEnd);
         break;
-        
+
+      case 'lastMonth':
+        // 先月：先月1日〜先月末
+        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth(), 0));
+        break;
+
       case 'thisMonth':
         // 今月：月初〜月末
         dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
         dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
         break;
-        
+
       case 'nextMonth':
         // 来月：来月1日〜来月末
         dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 1));
         dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 2, 0));
         break;
-        
+
       case 'custom':
         // 期間指定
         dateFrom = document.getElementById('dateFrom').value;
@@ -1103,77 +1117,117 @@
     const endIndex = Math.min(startIndex + pageSize, totalCount);
     const pageData = orderData.slice(startIndex, endIndex);
     
-    // PC用テーブル描画（行クリックで詳細表示）
-    tbody.innerHTML = pageData.map(order => `
-      <tr onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
-        <td class="col-date">${formatDisplayDate(order.orderDate)}</td>
-        <td class="col-date">${formatDisplayDate(order.shippingDate)}</td>
-        <td class="col-date">${formatDisplayDate(order.deliveryDate)}</td>
-        <td class="col-name">
-          <div class="cell-text" data-tooltip="${escapeHtml(order.customerName)}">${escapeHtml(order.customerName)}</div>
-        </td>
-        <td class="col-name">
-          <div class="cell-text" data-tooltip="${escapeHtml(order.destinationName)}">${escapeHtml(order.destinationName)}</div>
-        </td>
-        <td class="col-product">
-          <div class="cell-text" data-tooltip="${escapeHtml(order.productName)}">${escapeHtml(order.productName)}</div>
-        </td>
-        <td class="col-quantity">${order.quantity}点</td>
-        <td class="col-action" onclick="event.stopPropagation();">
-          <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="引継">
-            <i class="bi bi-copy"></i>引継
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    // PC用テーブル描画（商品ごとに行を生成）
+    let tableRows = '';
+    pageData.forEach(order => {
+      const itemCount = order.items ? order.items.length : 0;
+      if (itemCount === 0) return;  // 商品がない場合はスキップ
+
+      // 商品ごとに行を生成
+      order.items.forEach((item, index) => {
+        const isFirstRow = index === 0;
+        tableRows += `<tr onclick="showOrderDetail('${escapeHtml(order.orderId)}')">`;
+
+        // 最初の行のみ共通情報を表示（rowspanで結合）
+        if (isFirstRow) {
+          tableRows += `
+            <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.shippingDate)}</td>
+            <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.deliveryDate)}</td>
+            <td class="col-name" rowspan="${itemCount}">
+              <div class="cell-text" data-tooltip="${escapeHtml(order.customerName)}">${escapeHtml(order.customerName)}</div>
+            </td>
+            <td class="col-name" rowspan="${itemCount}">
+              <div class="cell-text" data-tooltip="${escapeHtml(order.destinationName)}">${escapeHtml(order.destinationName)}</div>
+            </td>
+          `;
+        }
+
+        // 各行に商品情報を表示
+        tableRows += `
+          <td class="col-product">
+            <div class="cell-text" data-tooltip="${escapeHtml(item.product)}">${escapeHtml(item.product)}</div>
+          </td>
+          <td class="col-quantity">${item.quantity}点</td>
+        `;
+
+        // 最初の行のみ操作ボタンと受注日を表示（rowspanで結合）
+        if (isFirstRow) {
+          tableRows += `
+            <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
+              <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="コピー">
+                <i class="bi bi-copy"></i>コピー
+              </button>
+            </td>
+            <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.orderDate)}</td>
+          `;
+        }
+
+        tableRows += '</tr>';
+      });
+    });
+    tbody.innerHTML = tableRows;
     
     // スマホ用カード描画（カードクリックで詳細表示）
-    cardsContainer.innerHTML = pageData.map(order => `
-      <div class="order-card" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
-        <div class="order-card-header">
-          <div class="order-card-dates">
-            <span class="date-label">発送</span>
-            <span class="date-value">${formatDisplayDate(order.shippingDate)}</span>
-            <span class="date-separator">→</span>
-            <span class="date-label">納品</span>
-            <span class="date-value">${formatDisplayDate(order.deliveryDate)}</span>
+    let cardsHtml = '';
+    pageData.forEach(order => {
+      const itemCount = order.items ? order.items.length : 0;
+      if (itemCount === 0) return;  // 商品がない場合はスキップ
+
+      // 商品リストを生成
+      const itemsHtml = order.items.map(item =>
+        `<div style="padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
+          <strong>${escapeHtml(item.product)}</strong> - ${item.quantity}点
+        </div>`
+      ).join('');
+
+      cardsHtml += `
+        <div class="order-card" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
+          <div class="order-card-header">
+            <div class="order-card-dates">
+              <span class="date-label">発送</span>
+              <span class="date-value">${formatDisplayDate(order.shippingDate)}</span>
+              <span class="date-separator">→</span>
+              <span class="date-label">納品</span>
+              <span class="date-value">${formatDisplayDate(order.deliveryDate)}</span>
+            </div>
+            <span class="order-card-quantity">${itemCount}点</span>
           </div>
-          <span class="order-card-quantity">${order.quantity}点</span>
-        </div>
-        <div class="order-card-row">
-          <span class="order-card-icon"><i class="bi bi-person"></i></span>
-          <div class="order-card-value">
-            <div class="order-card-label">顧客</div>
-            ${escapeHtml(order.customerName)}
+          <div class="order-card-row">
+            <span class="order-card-icon"><i class="bi bi-person"></i></span>
+            <div class="order-card-value">
+              <div class="order-card-label">顧客</div>
+              ${escapeHtml(order.customerName)}
+            </div>
+          </div>
+          <div class="order-card-row">
+            <span class="order-card-icon"><i class="bi bi-geo-alt"></i></span>
+            <div class="order-card-value">
+              <div class="order-card-label">発送先</div>
+              ${escapeHtml(order.destinationName)}
+            </div>
+          </div>
+          <div class="order-card-row">
+            <span class="order-card-icon"><i class="bi bi-box-seam"></i></span>
+            <div class="order-card-value">
+              <div class="order-card-label">商品</div>
+              ${itemsHtml}
+            </div>
+          </div>
+          <div class="order-card-buttons" onclick="event.stopPropagation();">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')">
+              <i class="bi bi-pencil me-1"></i>修正
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="inheritOrder('${escapeHtml(order.orderId)}')">
+              <i class="bi bi-copy me-1"></i>コピー
+            </button>
           </div>
         </div>
-        <div class="order-card-row">
-          <span class="order-card-icon"><i class="bi bi-geo-alt"></i></span>
-          <div class="order-card-value">
-            <div class="order-card-label">発送先</div>
-            ${escapeHtml(order.destinationName)}
-          </div>
-        </div>
-        <div class="order-card-row">
-          <span class="order-card-icon"><i class="bi bi-box-seam"></i></span>
-          <div class="order-card-value">
-            <div class="order-card-label">品名</div>
-            ${escapeHtml(order.productName)}
-          </div>
-        </div>
-        <div class="order-card-buttons" onclick="event.stopPropagation();">
-          <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')">
-            <i class="bi bi-pencil me-1"></i>修正
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-success" onclick="inheritOrder('${escapeHtml(order.orderId)}')">
-            <i class="bi bi-copy me-1"></i>引継
-          </button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    });
+    cardsContainer.innerHTML = cardsHtml;
     
     // ページング表示
     if (totalPages > 1) {
