@@ -558,12 +558,14 @@ function enhanceWithMasterMatch(analysisData, masterData) {
 }
 
 /**
- * 顧客マスタとの照合
+ * 顧客マスタとの照合（受注画面と統一）
  */
 function findBestCustomerMatch(rawCustomer, customerList) {
   const rawCompany = normalizeStringForMatch(rawCustomer.rawCompanyName || '');
+  const rawPerson = normalizeStringForMatch(rawCustomer.rawPersonName || '');
   const rawTel = normalizeTelForMatch(rawCustomer.rawTel || '');
   const rawFax = normalizeTelForMatch(rawCustomer.rawFax || '');
+  const rawZipcode = normalizeZipcodeForMatch(rawCustomer.rawZipcode || '');
 
   let bestMatch = { match: 'none', score: 0, matchedBy: '' };
 
@@ -572,10 +574,13 @@ function findBestCustomerMatch(rawCustomer, customerList) {
     let matchedBy = [];
 
     const masterCompany = normalizeStringForMatch(master.companyName || '');
+    const masterPerson = normalizeStringForMatch(master.personName || '');
     const masterTel = normalizeTelForMatch(master.tel || '');
     const masterFax = normalizeTelForMatch(master.fax || '');
+    const masterZipcode = normalizeZipcodeForMatch(master.zipcode || '');
+    const masterDisplayName = normalizeStringForMatch(master.displayName || '');
 
-    // 電話番号一致
+    // 電話番号一致（高信頼度）
     if (rawTel && masterTel && rawTel === masterTel) {
       score += 100;
       matchedBy.push('電話番号');
@@ -587,6 +592,12 @@ function findBestCustomerMatch(rawCustomer, customerList) {
       matchedBy.push('FAX');
     }
 
+    // 郵便番号一致
+    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
+      score += 50;
+      matchedBy.push('郵便番号');
+    }
+
     // 会社名一致
     if (rawCompany && masterCompany) {
       if (rawCompany === masterCompany) {
@@ -595,6 +606,23 @@ function findBestCustomerMatch(rawCustomer, customerList) {
       } else if (rawCompany.includes(masterCompany) || masterCompany.includes(rawCompany)) {
         score += 40;
         matchedBy.push('会社名(部分)');
+      }
+    }
+
+    // 表示名一致
+    if (rawCompany && masterDisplayName && rawCompany === masterDisplayName) {
+      score += 70;
+      matchedBy.push('表示名');
+    }
+
+    // 氏名一致
+    if (rawPerson && masterPerson) {
+      if (rawPerson === masterPerson) {
+        score += 60;
+        matchedBy.push('氏名');
+      } else if (rawPerson.includes(masterPerson) || masterPerson.includes(rawPerson)) {
+        score += 30;
+        matchedBy.push('氏名(部分)');
       }
     }
 
@@ -619,8 +647,10 @@ function findBestCustomerMatch(rawCustomer, customerList) {
  */
 function findBestShippingToMatch(rawShippingTo, shippingToList) {
   const rawCompany = normalizeStringForMatch(rawShippingTo.rawCompanyName || '');
+  const rawPerson = normalizeStringForMatch(rawShippingTo.rawPersonName || '');
   const rawTel = normalizeTelForMatch(rawShippingTo.rawTel || '');
   const rawZipcode = normalizeZipcodeForMatch(rawShippingTo.rawZipcode || '');
+  const rawFax = normalizeTelForMatch(rawShippingTo.rawFax || '');
 
   let bestMatch = { match: 'none', score: 0, matchedBy: '' };
 
@@ -629,8 +659,11 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
     let matchedBy = [];
 
     const masterCompany = normalizeStringForMatch(master.companyName || '');
+    const masterPerson = normalizeStringForMatch(master.personName || '');
     const masterTel = normalizeTelForMatch(master.tel || '');
     const masterZipcode = normalizeZipcodeForMatch(master.zipcode || '');
+    const masterFax = normalizeTelForMatch(master.fax || '');
+    const masterDisplayName = normalizeStringForMatch(master.displayName || '');
 
     // 電話番号一致
     if (rawTel && masterTel && rawTel === masterTel) {
@@ -644,6 +677,12 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
       matchedBy.push('郵便番号');
     }
 
+    // FAX番号一致
+    if (rawFax && masterFax && rawFax === masterFax) {
+      score += 90;
+      matchedBy.push('FAX');
+    }
+
     // 会社名一致
     if (rawCompany && masterCompany) {
       if (rawCompany === masterCompany) {
@@ -652,6 +691,23 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
       } else if (rawCompany.includes(masterCompany) || masterCompany.includes(rawCompany)) {
         score += 40;
         matchedBy.push('会社名(部分)');
+      }
+    }
+
+    // 表示名一致
+    if (rawCompany && masterDisplayName && rawCompany === masterDisplayName) {
+      score += 70;
+      matchedBy.push('表示名');
+    }
+
+    // 氏名一致
+    if (rawPerson && masterPerson) {
+      if (rawPerson === masterPerson) {
+        score += 60;
+        matchedBy.push('氏名');
+      } else if (rawPerson.includes(masterPerson) || masterPerson.includes(rawPerson)) {
+        score += 30;
+        matchedBy.push('氏名(部分)');
       }
     }
 
