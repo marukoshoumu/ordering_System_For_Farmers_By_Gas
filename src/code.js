@@ -41,7 +41,13 @@ function doPost(e) {
   Logger.log(e);
   if (e.parameter.login) {
     const items = getAllRecords('pass');
-    if (items[0]['id'] != e.parameter.loginId || items[0]['pass'] != e.parameter.loginPass) {
+    // 入力されたIDとパスワードに一致するユーザーを検索
+    const user = items.find(item =>
+      item['id'] === e.parameter.loginId && item['pass'] === e.parameter.loginPass
+    );
+
+    if (!user) {
+      // ユーザーが見つからない場合はログインエラー
       const template = HtmlService.createTemplateFromFile('login');
       template.deployURL = ScriptApp.getService().getUrl();
       const alert = 'IDまたはパスワードが間違っています。';
@@ -52,7 +58,7 @@ function doPost(e) {
       return htmlOutput;
     }
     // ログイン成功 - 権限情報を取得
-    const userRole = items[0]['権限'] || 'admin';  // デフォルトは管理者
+    const userRole = user['権限'] || 'admin';  // デフォルトは管理者
     const tempOrderId = e.parameter.tempOrderId || '';
     const redirectTo = e.parameter.redirectTo || '';
 
