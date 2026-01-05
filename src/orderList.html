@@ -620,6 +620,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h1><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
       <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+        <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
         <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
           <i class="bi bi-house"></i> ホーム
         </button>

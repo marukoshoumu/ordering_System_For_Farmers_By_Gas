@@ -109,10 +109,11 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.main || e.parameter.mainTop) {
-    // ホーム画面への遷移（ログイン後以外）- 権限情報がないのでadminとして扱う
+    // ホーム画面への遷移
+    const userRole = e.parameter.userRole || 'admin';  // パラメータから取得、なければadmin
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = 'admin';  // セッションがないためデフォルト値
+    template.userRole = userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('ホーム画面');
