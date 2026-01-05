@@ -176,10 +176,13 @@
   <div class="container">
     <h2 class="text-center m-4"><?= getCompanyDisplayName() ?></h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
-      
+      <!-- 権限情報を引き継ぐ -->
+      <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
+
       <!-- アコーディオンメニュー -->
       <div class="menu-accordion">
-        
+
+        <? if (userRole !== 'viewer') { ?>
         <!-- 受注系 -->
         <div class="menu-section">
           <div class="menu-header" onclick="toggleSection(this)">
@@ -192,7 +195,8 @@
             <button type="submit" class="btn menu-btn" name="csvImport" value="true">📥 CSV取込</button>
           </div>
         </div>
-        
+        <? } ?>
+
         <!-- 一覧系 -->
         <div class="menu-section">
           <div class="menu-header" onclick="toggleSection(this)">
@@ -202,13 +206,16 @@
           <div class="menu-content show">
             <button type="submit" class="btn menu-btn" name="orderList" value="true">📊 製造数一覧</button>
             <button type="submit" class="btn menu-btn" name="orderListPage" value="true">📑 受注一覧</button>
+            <? if (userRole !== 'viewer') { ?>
             <button type="submit" class="btn menu-btn" name="aiImportList" value="true" style="position: relative;">
               🤖 AI取込一覧
               <span id="pendingImportBadge" class="badge bg-danger" style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
             </button>
+            <? } ?>
           </div>
         </div>
-        
+
+        <? if (userRole !== 'viewer') { ?>
         <!-- 作成系 -->
         <div class="menu-section">
           <div class="menu-header" onclick="toggleSection(this)">
@@ -221,7 +228,7 @@
             <button type="submit" class="btn menu-btn" name="quotation" value="true">📋 見積書作成</button>
           </div>
         </div>
-        
+
         <!-- 参照系 -->
         <div class="menu-section">
           <div class="menu-header" onclick="toggleSection(this)">
@@ -239,7 +246,7 @@
             <button type="button" class="btn menu-btn-sub" onclick="openUrlSagawa()">🚛 佐川送り状</button>
           </div>
         </div>
-        
+
         <!-- その他 -->
         <div class="menu-section">
           <div class="menu-header menu-header-util" onclick="toggleSection(this)">
@@ -251,7 +258,8 @@
             <button type="button" class="btn menu-btn-util" onclick="openTestComponents()">🎨 デザインシステムテスト</button>
           </div>
         </div>
-        
+        <? } ?>
+
       </div>
       
       <br>

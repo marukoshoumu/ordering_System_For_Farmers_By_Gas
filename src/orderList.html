@@ -707,7 +707,9 @@
                 <th class="col-name">発送先名</th>
                 <th class="col-product">商品名</th>
                 <th class="col-quantity">個数</th>
+                <? if (userRole !== 'viewer') { ?>
                 <th class="col-action">操作</th>
+                <? } ?>
                 <th class="col-date">受注日</th>
               </tr>
             </thead>
@@ -803,12 +805,14 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
+        <? if (userRole !== 'viewer') { ?>
         <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
           <i class="bi bi-copy me-1"></i>コピー
         </button>
         <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
           <i class="bi bi-pencil me-1"></i>修正
         </button>
+        <? } ?>
       </div>
     </div>
   </div>
@@ -826,13 +830,14 @@
 
 <script>
   // グローバル変数
+  const userRole = '<?= userRole || "admin" ?>';  // ユーザー権限
   let selectedDestination = null;
   let selectedCustomer = null;
   let orderData = [];
   let currentPage = 1;
   const pageSize = 50;
   let currentDetailOrderId = null;
-  
+
   // 初期化
   document.addEventListener('DOMContentLoaded', function() {
     initializeDateInputs();
@@ -1152,15 +1157,20 @@
 
         // 最初の行のみ操作ボタンと受注日を表示（rowspanで結合）
         if (isFirstRow) {
+          // viewerの場合はボタンを表示しない
+          if (userRole !== 'viewer') {
+            tableRows += `
+              <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
+                <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="コピー">
+                  <i class="bi bi-copy"></i>コピー
+                </button>
+              </td>
+            `;
+          }
           tableRows += `
-            <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
-              <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="コピー">
-                <i class="bi bi-copy"></i>コピー
-              </button>
-            </td>
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.orderDate)}</td>
           `;
         }
@@ -1216,6 +1226,7 @@
               ${itemsHtml}
             </div>
           </div>
+          ${userRole !== 'viewer' ? `
           <div class="order-card-buttons" onclick="event.stopPropagation();">
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')">
               <i class="bi bi-pencil me-1"></i>修正
@@ -1224,6 +1235,7 @@
               <i class="bi bi-copy me-1"></i>コピー
             </button>
           </div>
+          ` : ''}
         </div>
       `;
     });

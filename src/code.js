@@ -51,9 +51,15 @@ function doPost(e) {
       htmlOutput.setTitle('ログイン画面');
       return htmlOutput;
     }
-    // ログイン成功
+    // ログイン成功 - 権限情報を取得
+    const userRole = items[0]['権限'] || 'admin';  // デフォルトは管理者
     const tempOrderId = e.parameter.tempOrderId || '';
     const redirectTo = e.parameter.redirectTo || '';
+
+    // viewerの場合、AI取込一覧へのアクセスを制限
+    if (userRole === 'viewer' && (redirectTo === 'aiImportList' || tempOrderId)) {
+      return redirectToHome(userRole);
+    }
     
     // tempOrderIdがあれば受注画面へ直接遷移
     if (tempOrderId) {
@@ -96,14 +102,17 @@ function doPost(e) {
     
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('ホーム画面');
     return htmlOutput;
   }
   else if (e.parameter.main || e.parameter.mainTop) {
+    // ホーム画面への遷移（ログイン後以外）- 権限情報がないのでadminとして扱う
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = 'admin';  // セッションがないためデフォルト値
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('ホーム画面');
@@ -111,6 +120,10 @@ function doPost(e) {
   }
   // 電話受注モード
   else if (e.parameter.phoneOrder) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('phoneOrder');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -120,6 +133,10 @@ function doPost(e) {
   }
   // 「受注」ボタンが押されたらshipping.htmlを返す
   else if (e.parameter.shipping) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
 
@@ -161,6 +178,10 @@ function doPost(e) {
   }
   // 「受注確認」ボタンが押されたらconfirm.htmlを返す
   else if (e.parameter.shippingComfirm) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     if (isZero(e)) {
       const template = HtmlService.createTemplateFromFile('shipping');
       const alert = '少なくとも1個以上注文してください。';
@@ -189,6 +210,10 @@ function doPost(e) {
   }
   // 確認画面で「修正する」ボタンが押されたらform.htmlを返す
   else if (e.parameter.shippingModify) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
     
@@ -211,6 +236,10 @@ function doPost(e) {
   }
   // 確認画面で「受注する」ボタンが押されたらcomplete画面へ
   else if (e.parameter.shippingSubmit) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     createOrder(e);
     //updateZaiko(e);
     const template = HtmlService.createTemplateFromFile('shippingComplete');
@@ -221,6 +250,10 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.createShippingSlips) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('createShippingSlips');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -229,6 +262,10 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.createBill) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('createBill');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -237,6 +274,10 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.csvImport) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('csvImport');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -245,6 +286,10 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.quotation) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('quotation');
     template.deployURL = ScriptApp.getService().getUrl();
     const htmlOutput = template.evaluate();
@@ -253,23 +298,33 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.orderList) {
+    const userRole = e.parameter.userRole || 'admin';
     const template = HtmlService.createTemplateFromFile('HeatmapOrderList');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
     return template.evaluate()
-      .setTitle('発注一覧')
+      .setTitle('製造数一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   else if (e.parameter.orderListPage) {
+    const userRole = e.parameter.userRole || 'admin';
     const template = HtmlService.createTemplateFromFile('orderList');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
     return template.evaluate()
       .setTitle('受注一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // AI取込一覧画面
+  // AI取込一覧画面（viewerはアクセス不可）
   else if (e.parameter.aiImportList) {
+    const userRole = e.parameter.userRole || 'admin';
+    // viewerの不正アクセスをブロック
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
     const template = HtmlService.createTemplateFromFile('aiImportList');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
     return template.evaluate()
       .setTitle('AI取込一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -475,4 +530,19 @@ function isZero(e) {
     return true;
   }
   return false;
+}
+
+/**
+ * ホーム画面にリダイレクト（権限不足時）
+ * @param {string} userRole - ユーザー権限（admin/viewer）
+ * @returns {HtmlOutput} ホーム画面
+ */
+function redirectToHome(userRole) {
+  const template = HtmlService.createTemplateFromFile('home');
+  template.deployURL = ScriptApp.getService().getUrl();
+  template.userRole = userRole || 'admin';
+  const htmlOutput = template.evaluate();
+  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  htmlOutput.setTitle('ホーム画面');
+  return htmlOutput;
 }
