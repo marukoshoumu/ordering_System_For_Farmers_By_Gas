@@ -523,7 +523,7 @@ function buildPDFAnalysisPrompt(productList, mappingList) {
     }
     productsByCategory[p.category].push(`${p.name}（¥${p.price || 0}）`);
   });
-  
+
   let productMasterText = '';
   for (const category in productsByCategory) {
     productMasterText += `【${category}】\n`;
@@ -542,12 +542,45 @@ function buildPDFAnalysisPrompt(productList, mappingList) {
     });
   }
 
+  // 自社名を取得
+  const companyName = getCompanyDisplayName();
+
   const today = new Date();
   const year = today.getFullYear();
 
   return `あなたは受注データ解析の専門家です。
 この画像/PDFは発注書、注文書、出荷指示書、FAXのいずれかです。
 内容を正確に読み取り、以下のJSON形式で返してください。
+
+═══════════════════════════════════════════════════════════
+【重要: 顧客（注文者）の特定ルール】
+═══════════════════════════════════════════════════════════
+
+1. **「○○御中」「○○様」は受注会社（あなた）であり、顧客ではありません**
+   - 特に「${companyName}」は受注会社（自社）です。絶対に顧客として抽出しないでください。
+   - 「御中」「様」が付いている企業名は必ず受信先（自社）です。
+
+2. **顧客（注文者）を特定する方法**（優先順位順）:
+   a) 「依頼先」「発注元」「送信元」として明記されている企業
+   b) FAXの送信元ヘッダー（「From: ○○」など）
+   c) 本文の最初の挨拶文に登場する企業（例: 「株式会社○○です」「○○よりご注文」）
+   d) 署名欄・名刺情報に記載されている企業
+   e) 連絡先（TEL/FAX）とセットで記載されている企業名
+
+3. **顧客として扱わないもの**:
+   - 受注会社（${companyName}）
+   - 「御中」「様」が付いている企業名
+
+4. **発送先の扱い**:
+   - 「届け先」「配送先」「納入先」「納品先」「送り先」「センター」「倉庫」はすべて shippingTo に入れる
+   - 倉庫名や配送センター名も発送先として正しい情報です
+
+5. **顧客情報が不明な場合**:
+   - customer フィールドは null にする
+   - alerts に「顧客情報が特定できませんでした」と記載
+
+【受注会社（自社）= 絶対に顧客にしないこと】
+${companyName}
 
 ═══════════════════════════════════════════════════════════
 【商品マスタ】※可能な限りこの中から選んでください
@@ -571,13 +604,6 @@ ${mappingText}
 - 「出荷日」「発送日」「発日」→ shippingDate
 - 令和7年 = 2025年、R7 = 2025年、25年 = 2025年
 
-■ 発注元（顧客）
-- FAX送信元、発注者欄の会社名/担当者
-- 「御中」「様」の前が会社名や個人名
-
-■ 発送先
-- 「届け先」「配送先」「納入先」「センター」の記載
-
 ■ 商品（重要）
 - originalText: 原文の表記をそのまま（学習用に重要）
 - productName: 商品マスタから最も近い商品名を選択
@@ -597,23 +623,23 @@ ${mappingText}
   "shippingDate": "YYYY-MM-DD",
   "deliveryDate": "YYYY-MM-DD",
   "deliveryTime": "午前中/14-16時 など",
-  
+
   "customer": {
-    "rawCompanyName": "発注元の会社名",
+    "rawCompanyName": "注文者の会社名（送信元企業）",
     "rawDepartment": "部署名",
     "rawPersonName": "担当者名",
     "rawTel": "電話番号",
     "rawFax": "FAX番号"
   },
-  
+
   "shippingTo": {
-    "rawCompanyName": "発送先の会社名/施設名",
+    "rawCompanyName": "発送先の会社名・店舗名・倉庫名",
     "rawPersonName": "宛名/担当者",
     "rawZipcode": "郵便番号（7桁数字）",
     "rawAddress": "住所",
     "rawTel": "電話番号"
   },
-  
+
   "items": [
     {
       "originalText": "原文の商品表記をそのまま",
@@ -625,18 +651,24 @@ ${mappingText}
       "confidence": "high/medium/low"
     }
   ],
-  
+
   "unknownItems": [
     {
       "originalText": "マスタにない商品の原文",
       "reason": "不明な理由"
     }
   ],
-  
+
   "memo": "備考/連絡事項",
   "alerts": ["注意事項があれば配列で"],
   "overallConfidence": "high/medium/low"
-}`;
+}
+
+【最終確認】
+- customer.rawCompanyName に「${companyName}」が入っていないか確認
+- 「御中」「様」付きの企業名が customer に入っていないか確認
+
+上記に該当する場合は、customer を null に修正してください。`;
 }
 
 function buildTextAnalysisPrompt(text, productList, mappingList, customerList, shippingToList) {
@@ -648,7 +680,7 @@ function buildTextAnalysisPrompt(text, productList, mappingList, customerList, s
     }
     productsByCategory[p.category].push(`${p.name}（¥${p.price || 0}）`);
   });
-  
+
   let productMasterText = '';
   for (const category in productsByCategory) {
     productMasterText += `【${category}】\n`;
@@ -665,12 +697,43 @@ function buildTextAnalysisPrompt(text, productList, mappingList, customerList, s
     });
   }
 
+  // 自社名を取得
+  const companyName = getCompanyDisplayName();
+
   const today = new Date();
   const year = today.getFullYear();
 
   return `あなたは受注データ解析の専門家です。
 以下のテキストはメール、チャット、またはFAXの内容です。
 注文内容を抽出してJSON形式で返してください。
+
+【重要: 顧客（注文者）の特定ルール】
+
+1. **「○○御中」「○○様」は受注会社（あなた）であり、顧客ではありません**
+   - 特に「${companyName}」は受注会社（自社）です。絶対に顧客として抽出しないでください。
+   - 「御中」「様」が付いている企業名は必ず受信先（自社）です。
+
+2. **顧客（注文者）を特定する方法**（優先順位順）:
+   a) 「依頼先」「発注元」「送信元」として明記されている企業
+   b) FAXの送信元ヘッダー（「From: ○○」など）
+   c) 本文の最初の挨拶文に登場する企業（例: 「株式会社○○です」「○○よりご注文」）
+   d) 署名欄・名刺情報に記載されている企業
+   e) 連絡先（TEL/FAX）とセットで記載されている企業名
+
+3. **顧客として扱わないもの**:
+   - 受注会社（${companyName}）
+   - 「御中」「様」が付いている企業名
+
+4. **発送先の扱い**:
+   - 「届け先」「配送先」「納入先」「納品先」「送り先」「センター」「倉庫」はすべて shippingTo に入れる
+   - 倉庫名や配送センター名も発送先として正しい情報です
+
+5. **顧客情報が不明な場合**:
+   - customer フィールドは null にする
+   - alerts に「顧客情報が特定できませんでした」と記載
+
+【受注会社（自社）= 絶対に顧客にしないこと】
+${companyName}
 
 【商品マスタ】
 ${productMasterText}
@@ -681,19 +744,20 @@ ${mappingText}
 【注文内容】
 ${text}
 
-【出力形式】※JSONのみ
+【出力形式】※JSONのみ、説明文不要
 {
   "success": true,
   "shippingDate": "YYYY-MM-DD",
   "deliveryDate": "YYYY-MM-DD",
   "deliveryTime": "時間指定",
   "customer": {
-    "rawCompanyName": "会社名",
-    "rawPersonName": "氏名",
-    "rawTel": "電話番号"
+    "rawCompanyName": "注文者の会社名（送信元企業）",
+    "rawPersonName": "注文者の氏名（担当者名）",
+    "rawTel": "電話番号",
+    "rawFax": "FAX番号"
   },
   "shippingTo": {
-    "rawCompanyName": "発送先名",
+    "rawCompanyName": "発送先の会社名・店舗名・倉庫名",
     "rawPersonName": "宛名",
     "rawZipcode": "郵便番号",
     "rawAddress": "住所",
@@ -712,9 +776,15 @@ ${text}
   ],
   "unknownItems": [],
   "memo": "備考",
-  "alerts": [],
+  "alerts": ["警告メッセージ"],
   "overallConfidence": "high/medium/low"
-}`;
+}
+
+【最終確認】
+- customer.rawCompanyName に「${companyName}」が入っていないか確認
+- 「御中」「様」付きの企業名が customer に入っていないか確認
+
+上記に該当する場合は、customer を null に修正してください。`;
 }
 
 // ====================================
@@ -855,32 +925,60 @@ function enhanceAnalysisResultFromTempOrder(analysisResultJson) {
 function enhanceWithMasterData(result, customerList, shippingToList) {
   if (!result.alerts) result.alerts = [];
 
+  // 自社名を取得
+  const companyName = getCompanyDisplayName();
+  const normalizedCompanyName = normalizeString(companyName);
+
   // 顧客照合
   if (result.customer) {
-    const customerMatch = findBestMatch(result.customer, customerList, 'customer');
-    if (customerMatch.match === 'exact' || customerMatch.match === 'partial') {
-      const matched = customerList[customerMatch.index];
-      result.customer.masterData = {
-        displayName: matched.displayName,
-        companyName: matched.companyName,
-        personName: matched.personName,
-        zipcode: matched.zipcode,
-        address: (matched.address1 || '') + (matched.address2 || ''),
-        tel: matched.tel,
-        fax: matched.fax,
-        email: matched.email
-      };
-      result.customer.masterMatch = customerMatch.match;
-      result.customer.matchedBy = customerMatch.matchedBy;
-      result.customer.isNewCustomer = false;
-      
-      if (customerMatch.match === 'partial') {
-        result.alerts.push(`顧客「${customerMatch.matchedBy}」で部分一致しました`);
-      }
+    // まず自社名チェック（最終防御層）
+    const rawCompany = normalizeString(result.customer.rawCompanyName || '');
+    if (rawCompany === normalizedCompanyName ||
+        rawCompany === normalizeString(companyName + '様') ||
+        rawCompany === normalizeString(companyName + '御中')) {
+      // 自社名が顧客として抽出されている場合
+      result.customer = null;
+      result.customerMatch = 'none';
+      result.customerMatchIndex = null;
+      result.customerMatchScore = 0;
+      result.alerts.push('⚠️ AIが自社名（' + companyName + '）を顧客として抽出しました。これは誤りです。FAXの送信元情報を確認してください。');
     } else {
-      result.customer.masterMatch = 'none';
-      result.customer.isNewCustomer = true;
-      result.alerts.push('⚠️ 新規顧客の可能性があります');
+      // 通常のマッチング処理
+      const customerMatch = findBestMatch(result.customer, customerList, 'customer');
+      if (customerMatch.match === 'exact' || customerMatch.match === 'partial') {
+        const matched = customerList[customerMatch.index];
+
+        // マッチング結果も自社名でないか再チェック
+        if (normalizeString(matched.companyName) === normalizedCompanyName) {
+          result.customer = null;
+          result.customerMatch = 'none';
+          result.customerMatchIndex = null;
+          result.customerMatchScore = 0;
+          result.alerts.push('⚠️ 顧客マッチング結果が自社名（' + companyName + '）でした。マッチングを無効化しました。');
+        } else {
+          result.customer.masterData = {
+            displayName: matched.displayName,
+            companyName: matched.companyName,
+            personName: matched.personName,
+            zipcode: matched.zipcode,
+            address: (matched.address1 || '') + (matched.address2 || ''),
+            tel: matched.tel,
+            fax: matched.fax,
+            email: matched.email
+          };
+          result.customer.masterMatch = customerMatch.match;
+          result.customer.matchedBy = customerMatch.matchedBy;
+          result.customer.isNewCustomer = false;
+
+          if (customerMatch.match === 'partial') {
+            result.alerts.push(`顧客「${customerMatch.matchedBy}」で部分一致しました`);
+          }
+        }
+      } else {
+        result.customer.masterMatch = 'none';
+        result.customer.isNewCustomer = true;
+        result.alerts.push('⚠️ 新規顧客の可能性があります');
+      }
     }
   }
 
@@ -899,7 +997,7 @@ function enhanceWithMasterData(result, customerList, shippingToList) {
       result.shippingTo.masterMatch = shippingToMatch.match;
       result.shippingTo.matchedBy = shippingToMatch.matchedBy;
       result.shippingTo.isNewShippingTo = false;
-      
+
       if (shippingToMatch.match === 'partial') {
         result.alerts.push(`発送先「${shippingToMatch.matchedBy}」で部分一致しました`);
       }
@@ -920,13 +1018,29 @@ function findBestMatch(rawData, masterList, type) {
   const rawZipcode = normalizeZipcode(rawData.rawZipcode || '');
   const rawFax = normalizeTel(rawData.rawFax || '');
 
+  // 自社名と「御中」「様」付きを除外リストに追加
+  const companyName = getCompanyDisplayName();
+  const excludeCompanies = [
+    normalizeString(companyName),
+    normalizeString(companyName + '様'),
+    normalizeString(companyName + '御中')
+  ];
+
   let bestMatch = { match: 'none', index: null, score: 0, matchedBy: '' };
 
   masterList.forEach((master, index) => {
+    const masterCompany = normalizeString(master.companyName || '');
+
+    // 除外リストに該当する場合はスキップ（顧客マッチングの場合のみ）
+    if (type === 'customer' && excludeCompanies.some(exclude =>
+      exclude && (masterCompany === exclude || masterCompany.includes(exclude))
+    )) {
+      return; // このマスタをスキップ
+    }
+
     let score = 0;
     let matchedBy = [];
 
-    const masterCompany = normalizeString(master.companyName || '');
     const masterPerson = normalizeString(master.personName || '');
     const masterTel = normalizeTel(master.tel || '');
     const masterZipcode = normalizeZipcode(master.zipcode || '');
@@ -1000,6 +1114,20 @@ function findBestMatch(rawData, masterList, type) {
 // ====================================
 // ユーティリティ
 // ====================================
+
+/**
+ * 自社名を取得
+ * @returns {string} 自社の表示名
+ */
+function getCompanyDisplayName() {
+  // スクリプトプロパティから取得
+  const companyName = PropertiesService.getScriptProperties().getProperty('COMPANY_NAME');
+  if (!companyName) {
+    Logger.log('警告: COMPANY_NAME プロパティが未設定です。スクリプトプロパティに設定してください。');
+    return '';  // 空文字を返す（プロンプトには何も挿入されない）
+  }
+  return companyName;
+}
 
 function normalizeString(str) {
   if (!str) return '';
