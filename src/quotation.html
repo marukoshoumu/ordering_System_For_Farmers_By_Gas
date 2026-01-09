@@ -202,6 +202,12 @@
     </form>
   </div>
   <script>
+    // ========================================
+    // 検索パフォーマンス改善: マスタデータキャッシュ
+    // ========================================
+    var cachedCustomers = [];
+    var masterDataLoaded = false;
+
     let productsData;
         let bunruisData;
         let unitsData;
@@ -714,12 +720,48 @@
                 showWarningToast('キーワードが入力されていません。');
                 return false;
             }
-            $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
-            var record = {};
-            record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
-            record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
-            record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
-            google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+
+            // キャッシュが読み込まれていない場合は旧方式にフォールバック
+            if (!masterDataLoaded) {
+              console.warn('マスタデータ未ロード - 旧方式で検索します');
+              $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
+              var record = {};
+              record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
+              record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
+              record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
+              google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+              return;
+            }
+
+            // メモリ内フィルタリング（高速検索）
+            var bunrui = $('select[id="customerSearchBunruiDg"]').val();
+            var searchClass = $('select[id="customerSearchClassDg"]').val();
+            var key = $('input[id="customerSearchKeyDg"]').val();
+
+            var results = cachedCustomers.filter(function(customer) {
+              // 顧客分類フィルタ
+              if (searchClass && customer['顧客分類'] !== searchClass) {
+                return false;
+              }
+
+              // 検索対象カラムを決定
+              var targetValue = '';
+              if (bunrui == "1") {
+                targetValue = customer['会社名'] || '';
+              } else if (bunrui == "2") {
+                targetValue = customer['氏名'] || '';
+              } else if (bunrui == "3") {
+                targetValue = customer['表示名'] || '';
+              } else if (bunrui == "4") {
+                targetValue = customer['フリガナ'] || '';
+              }
+
+              // キーワード検索
+              return String(targetValue).includes(key);
+            });
+
+            // 結果を表示
+            dataSearchSuccess(JSON.stringify(results));
         }
 
         function dataSearchSuccess(datas) {
@@ -852,6 +894,31 @@
             showErrorToast("エラーが発生しました。");
             $("button[id='quoutationComfirm']").text('見積書作成');
         }
+
+        // ========================================
+        // 検索パフォーマンス改善: マスタデータロード
+        // ========================================
+        function loadMasterDataForSearch() {
+          console.log('マスタデータをロード中...');
+          google.script.run
+            .withSuccessHandler(function(data) {
+              try {
+                const masterData = JSON.parse(data);
+                cachedCustomers = masterData.customers || [];
+                masterDataLoaded = true;
+                console.log('マスタデータロード完了:', cachedCustomers.length + '件の顧客');
+              } catch (e) {
+                console.error('マスタデータのパースに失敗:', e);
+              }
+            })
+            .withFailureHandler(function(e) {
+              console.error('マスタデータのロードに失敗:', e);
+            })
+            .getAllMasterDataForSearch();
+        }
+
+        // ページロード時に実行
+        loadMasterDataForSearch();
   </script>
   <?!= HtmlService.createHtmlOutputFromFile('keyCheck').getContent(); ?>
 </body>
