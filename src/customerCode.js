@@ -1099,3 +1099,72 @@ function createPhoneOrderDraft(orderData) {
     });
   }
 }
+
+// ============================================
+// 検索パフォーマンス改善用関数
+// ページロード時に1回だけマスタデータを取得し、
+// ブラウザ側でキャッシュ＆メモリ内検索を実現
+// ============================================
+
+/**
+ * 顧客・発送先マスタを一括取得（検索用キャッシュ）
+ * @returns {string} - JSON形式のマスタデータ { customers: [...], shippingTos: [...] }
+ */
+function getAllMasterDataForSearch() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 顧客情報取得
+  const customerSheet = ss.getSheetByName('顧客情報');
+  const customers = [];
+
+  if (customerSheet) {
+    const customerValues = customerSheet.getDataRange().getValues();
+
+    for (let i = 1; i < customerValues.length; i++) {
+      const row = customerValues[i];
+      customers.push({
+        '顧客分類': row[0] || '',
+        '表示名': row[1] || '',
+        'フリガナ': row[2] || '',
+        '会社名': row[3] || '',
+        '部署': row[4] || '',
+        '役職': row[5] || '',
+        '氏名': row[6] || '',
+        '郵便番号': row[7] || '',
+        '住所１': row[8] || '',
+        '住所２': row[9] || '',
+        'TEL': row[10] || '',
+        '携帯電話': row[11] || '',
+        'FAX': row[12] || '',
+        'メールアドレス': row[13] || ''
+      });
+    }
+  }
+
+  // 発送先情報取得
+  const shippingToSheet = ss.getSheetByName('発送先情報');
+  const shippingTos = [];
+
+  if (shippingToSheet) {
+    const shippingToValues = shippingToSheet.getDataRange().getValues();
+
+    for (let i = 1; i < shippingToValues.length; i++) {
+      const row = shippingToValues[i];
+      shippingTos.push({
+        '会社名': row[0] || '',
+        '部署': row[1] || '',
+        '氏名': row[2] || '',
+        '郵便番号': row[3] || '',
+        '住所１': row[4] || '',
+        '住所２': row[5] || '',
+        'TEL': row[6] || '',
+        'メールアドレス': row[7] || ''
+      });
+    }
+  }
+
+  return JSON.stringify({
+    customers: customers,
+    shippingTos: shippingTos
+  });
+}
