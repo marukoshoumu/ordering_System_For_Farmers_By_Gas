@@ -304,6 +304,15 @@ function doPost(e) {
     htmlOutput.setTitle('見積書作成');
     return htmlOutput;
   }
+  else if (e.parameter.salesDashboard) {
+    const userRole = e.parameter.userRole || 'admin';
+    const template = HtmlService.createTemplateFromFile('salesDashboard');
+    template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
+    return template.evaluate()
+      .setTitle('売上ダッシュボード')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   else if (e.parameter.orderList) {
     const userRole = e.parameter.userRole || 'admin';
     const template = HtmlService.createTemplateFromFile('HeatmapOrderList');

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+
+  <style>
+    .dashboard-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .summary-card {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin-bottom: 15px;
+    }
+
+    .summary-card h3 {
+      font-size: 2rem;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .summary-card p {
+      margin: 5px 0;
+      opacity: 0.9;
+    }
+
+    .growth-positive {
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    .growth-negative {
+      color: #ef4444;
+      font-weight: bold;
+    }
+
+    .chart-container {
+      min-height: 400px;
+      position: relative;
+    }
+
+    .table-responsive {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .rank-badge {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center;
+      border-radius: 50%;
+      font-weight: bold;
+      color: white;
+      margin-right: 10px;
+    }
+
+    .rank-1 { background: #ffd700; }
+    .rank-2 { background: #c0c0c0; }
+    .rank-3 { background: #cd7f32; }
+    .rank-other { background: #94a3b8; }
+
+    .segment-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .segment-active { background: #10b981; color: white; }
+    .segment-warning { background: #f59e0b; color: white; }
+    .segment-risk { background: #ef4444; color: white; }
+    .segment-churned { background: #6b7280; color: white; }
+
+    .alert-custom {
+      border-left: 4px solid #ef4444;
+      background: #fef2f2;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid py-4">
+    <form method="POST" action="<?= deployURL ?>">
+      <div class="mb-3">
+        <button type="submit" formnovalidate class="btn btn-outline-secondary" name="mainTop" value="true">
+          ← ホーム画面に戻る
+        </button>
+      </div>
+    </form>
+
+    <h2 class="text-center mb-4">📊 売上ダッシュボード</h2>
+
+    <div class="dashboard-card">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <label for="targetMonth" class="form-label">📅 対象月</label>
+          <input type="month" class="form-control" id="targetMonth" value="">
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-primary" onclick="loadDashboardData()">🔄 更新</button>
+          <button class="btn btn-success" onclick="runAllAnalyses()">⚡ 全分析実行</button>
+        </div>
+      </div>
+      <p class="text-muted mt-2 mb-0">最終更新: <span id="lastUpdate">-</span></p>
+    </div>
+
+    <div class="row" id="summaryCards">
+      <div class="col-md-3">
+        <div class="summary-card">
+          <p>売上高</p>
+          <h3 id="totalSales">¥0</h3>
+          <p id="salesGrowth">-</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="summary-card">
+          <p>受注件数</p>
+          <h3 id="totalOrders">0件</h3>
+          <p id="ordersGrowth">-</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="summary-card">
+          <p>販売商品数</p>
+          <h3 id="productCount">0種類</h3>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="summary-card">
+          <p>総販売数</p>
+          <h3 id="totalQuantity">0個</h3>
+        </div>
+      </div>
+    </div>
+
+    <div id="churnAlert" style="display: none;">
+      <div class="alert-custom">
+        <h5>⚠️ 離脱リスク顧客（91日以上注文なし）</h5>
+        <div id="churnCustomerList"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="dashboard-card">
+          <h5>📈 商品分類別構成比</h5>
+          <div id="categoryChart" class="chart-container"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="dashboard-card">
+          <h5>📊 売上ランキング TOP10</h5>
+          <div id="top10Chart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>🏆 売上ランキング TOP20</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="exportToCSV()">📥 CSV出力</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover" id="rankingTable">
+          <thead class="table-light">
+            <tr>
+              <th>順位</th>
+              <th>商品名</th>
+              <th>商品分類</th>
+              <th class="text-end">売上高</th>
+              <th class="text-end">数量</th>
+              <th class="text-end">受注回数</th>
+            </tr>
+          </thead>
+          <tbody id="rankingTableBody">
+            <tr>
+              <td colspan="6" class="text-center">読み込み中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="retention-tab" data-bs-toggle="tab" data-bs-target="#retention" type="button">
+            👥 顧客リテンション分析
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="seasonal-tab" data-bs-toggle="tab" data-bs-target="#seasonal" type="button">
+            🌸 季節パターン分析
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button">
+            📈 顧客傾向分析
+          </button>
+        </li>
+      </ul>
+      <div class="tab-content p-3" id="analysisTabContent">
+        <div class="tab-pane fade show active" id="retention" role="tabpanel">
+          <p class="text-muted">顧客を最終注文日からの経過日数でセグメント化しています。</p>
+          <div id="retentionContent">読み込み中...</div>
+        </div>
+        <div class="tab-pane fade" id="seasonal" role="tabpanel">
+          <p class="text-muted">過去2年間のデータから商品ごとの季節トレンドを分析しています。</p>
+          <div id="seasonalContent">読み込み中...</div>
+        </div>
+        <div class="tab-pane fade" id="trends" role="tabpanel">
+          <p class="text-muted">RFM分析と商品親和性で顧客の購買パターンを可視化しています。</p>
+          <div id="trendsContent">読み込み中...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('salesDashboardScript').getContent(); ?>
+</body>
+
+</html>

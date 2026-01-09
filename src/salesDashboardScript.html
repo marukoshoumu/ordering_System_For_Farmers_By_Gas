@@ -1,0 +1,557 @@
+<script>
+// 売上ダッシュボード JavaScript
+
+let dashboardData = null;
+
+// Google Charts読み込み
+google.charts.load('current', {'packages':['corechart']});
+google.charts.setOnLoadCallback(initializeDashboard);
+
+function initializeDashboard() {
+  const now = new Date();
+  const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('targetMonth').value = yearMonth;
+  loadDashboardData();
+}
+
+function loadDashboardData() {
+  const targetMonth = document.getElementById('targetMonth').value;
+  if (!targetMonth) {
+    showToast('対象月を選択してください', 'warning');
+    return;
+  }
+
+  showLoading('データ読み込み中...');
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      if (data.success) {
+        dashboardData = data;
+        renderDashboard(data);
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ja-JP');
+        showToast('データを更新しました', 'success');
+      } else {
+        showToast('データ取得エラー: ' + data.message, 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('エラー: ' + error.message, 'error');
+    })
+    .getSalesDashboardData(targetMonth);
+}
+
+function renderDashboard(data) {
+  document.getElementById('totalSales').textContent = '¥' + data.summary.totalSales.toLocaleString();
+  document.getElementById('totalOrders').textContent = data.summary.totalOrders.toLocaleString() + '件';
+  document.getElementById('productCount').textContent = data.summary.productCount.toLocaleString() + '種類';
+  document.getElementById('totalQuantity').textContent = data.summary.totalQuantity.toLocaleString() + '個';
+
+  const salesGrowthEl = document.getElementById('salesGrowth');
+  const salesGrowth = data.summary.salesGrowth;
+  const salesGrowthClass = salesGrowth >= 0 ? 'growth-positive' : 'growth-negative';
+  const salesGrowthIcon = salesGrowth >= 0 ? '↗' : '↘';
+
+  salesGrowthEl.textContent = '前月比 ';
+  const growthSpan = document.createElement('span');
+  growthSpan.className = salesGrowthClass;
+  growthSpan.textContent = salesGrowthIcon + ' ' + salesGrowth.toFixed(1) + '%';
+  salesGrowthEl.appendChild(growthSpan);
+
+  const ordersGrowthEl = document.getElementById('ordersGrowth');
+  const ordersGrowth = data.summary.ordersGrowth;
+  const ordersGrowthClass = ordersGrowth >= 0 ? 'growth-positive' : 'growth-negative';
+  const ordersGrowthIcon = ordersGrowth >= 0 ? '↗' : '↘';
+
+  ordersGrowthEl.textContent = '前月比 ';
+  const ordersSpan = document.createElement('span');
+  ordersSpan.className = ordersGrowthClass;
+  ordersSpan.textContent = ordersGrowthIcon + ' ' + (ordersGrowth > 0 ? '+' : '') + ordersGrowth + '件';
+  ordersGrowthEl.appendChild(ordersSpan);
+
+  if (data.churnRiskCustomers && data.churnRiskCustomers.length > 0) {
+    document.getElementById('churnAlert').style.display = 'block';
+    const churnList = document.getElementById('churnCustomerList');
+    churnList.textContent = '';
+
+    data.churnRiskCustomers.slice(0, 5).forEach(c => {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-danger me-2';
+      badge.textContent = c['顧客名'] + ' (' + c['経過日数'] + '日)';
+      churnList.appendChild(badge);
+    });
+  } else {
+    document.getElementById('churnAlert').style.display = 'none';
+  }
+
+  drawCategoryChart(data.categoryData);
+  drawTop10Chart(data.top20);
+  renderRankingTable(data.top20);
+  loadAnalysisTabs();
+}
+
+function drawCategoryChart(categoryData) {
+  const chartData = [['商品分類', '売上高']];
+  Object.keys(categoryData).forEach(category => {
+    chartData.push([category, categoryData[category].sales]);
+  });
+
+  const data = google.visualization.arrayToDataTable(chartData);
+
+  const options = {
+    pieHole: 0.4,
+    colors: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a'],
+    chartArea: {width: '90%', height: '80%'},
+    legend: {position: 'bottom'},
+    pieSliceText: 'percentage',
+    tooltip: {
+      text: 'both',
+      trigger: 'selection'
+    }
+  };
+
+  const chart = new google.visualization.PieChart(document.getElementById('categoryChart'));
+  chart.draw(data, options);
+}
+
+function drawTop10Chart(top20) {
+  const chartData = [['商品名', '売上高', { role: 'style' }]];
+  const top10 = top20.slice(0, 10);
+
+  const colors = [
+    '#ffd700', '#c0c0c0', '#cd7f32',
+    '#667eea', '#764ba2', '#f093fb',
+    '#4facfe', '#43e97b', '#fa709a', '#ff6b6b'
+  ];
+
+  top10.forEach((item, index) => {
+    chartData.push([
+      item['商品名'].substring(0, 15),
+      item['売上高'] || 0,
+      colors[index]
+    ]);
+  });
+
+  const data = google.visualization.arrayToDataTable(chartData);
+
+  const options = {
+    chartArea: {width: '70%', height: '80%'},
+    hAxis: {
+      title: '売上高 (円)',
+      format: '¥#,###'
+    },
+    vAxis: {
+      title: '商品名'
+    },
+    legend: 'none',
+    bars: 'horizontal'
+  };
+
+  const chart = new google.visualization.BarChart(document.getElementById('top10Chart'));
+  chart.draw(data, options);
+}
+
+function renderRankingTable(top20) {
+  const tbody = document.getElementById('rankingTableBody');
+  tbody.textContent = '';
+
+  if (!top20 || top20.length === 0) {
+    const row = tbody.insertRow();
+    const cell = row.insertCell();
+    cell.colSpan = 6;
+    cell.className = 'text-center';
+    cell.textContent = 'データがありません';
+    return;
+  }
+
+  top20.forEach((item, index) => {
+    const rank = index + 1;
+    const rankBadgeClass = rank <= 3 ? 'rank-' + rank : 'rank-other';
+
+    const row = tbody.insertRow();
+
+    const rankCell = row.insertCell();
+    const badge = document.createElement('span');
+    badge.className = 'rank-badge ' + rankBadgeClass;
+    badge.textContent = rank;
+    rankCell.appendChild(badge);
+
+    const nameCell = row.insertCell();
+    nameCell.textContent = item['商品名'] || '-';
+
+    const categoryCell = row.insertCell();
+    categoryCell.textContent = item['商品分類'] || '-';
+
+    const salesCell = row.insertCell();
+    salesCell.className = 'text-end';
+    salesCell.textContent = '¥' + (item['売上高'] || 0).toLocaleString();
+
+    const quantityCell = row.insertCell();
+    quantityCell.className = 'text-end';
+    quantityCell.textContent = (item['受注数合計'] || 0).toLocaleString();
+
+    const ordersCell = row.insertCell();
+    ordersCell.className = 'text-end';
+    ordersCell.textContent = (item['受注回数'] || 0).toLocaleString();
+  });
+}
+
+function loadAnalysisTabs() {
+  google.script.run
+    .withSuccessHandler(renderRetentionAnalysis)
+    .withFailureHandler(function(error) {
+      document.getElementById('retentionContent').textContent = 'エラー: ' + error.message;
+    })
+    .getAllRecords('顧客リテンション分析');
+
+  google.script.run
+    .withSuccessHandler(renderSeasonalAnalysis)
+    .withFailureHandler(function(error) {
+      document.getElementById('seasonalContent').textContent = 'エラー: ' + error.message;
+    })
+    .getAllRecords('季節パターン分析');
+
+  google.script.run
+    .withSuccessHandler(renderTrendsAnalysis)
+    .withFailureHandler(function(error) {
+      document.getElementById('trendsContent').textContent = 'エラー: ' + error.message;
+    })
+    .getAllRecords('顧客傾向分析');
+}
+
+function renderRetentionAnalysis(data) {
+  const container = document.getElementById('retentionContent');
+  container.textContent = '';
+
+  if (!data || data.length === 0) {
+    container.textContent = 'データがありません。「全分析実行」ボタンで分析を実行してください。';
+    return;
+  }
+
+  const segments = {
+    'アクティブ(30日以内)': [],
+    '要注意(31-60日)': [],
+    'リスク(61-90日)': [],
+    '離脱(91日以上)': []
+  };
+
+  data.forEach(row => {
+    const segment = row['セグメント'] || '';
+    if (segments[segment]) {
+      segments[segment].push(row);
+    }
+  });
+
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  Object.keys(segments).forEach(segmentName => {
+    const count = segments[segmentName].length;
+    const badgeClass = segmentName.includes('アクティブ') ? 'segment-active' :
+                       segmentName.includes('要注意') ? 'segment-warning' :
+                       segmentName.includes('リスク') ? 'segment-risk' : 'segment-churned';
+
+    const col = document.createElement('div');
+    col.className = 'col-md-3';
+
+    const card = document.createElement('div');
+    card.className = 'card mb-3';
+
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body text-center';
+
+    const badge = document.createElement('span');
+    badge.className = 'segment-badge ' + badgeClass;
+    badge.textContent = segmentName;
+
+    const countText = document.createElement('h3');
+    countText.className = 'mt-3';
+    countText.textContent = count + '社';
+
+    cardBody.appendChild(badge);
+    cardBody.appendChild(countText);
+    card.appendChild(cardBody);
+    col.appendChild(card);
+    row.appendChild(col);
+  });
+
+  container.appendChild(row);
+
+  if (segments['離脱(91日以上)'].length > 0) {
+    const title = document.createElement('h6');
+    title.className = 'mt-4';
+    title.textContent = '離脱リスク上位10社';
+    container.appendChild(title);
+
+    const tableDiv = document.createElement('div');
+    tableDiv.className = 'table-responsive';
+
+    const table = document.createElement('table');
+    table.className = 'table table-sm';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['顧客名', '最終注文日', '経過日数', '累計売上'].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    segments['離脱(91日以上)'].slice(0, 10).forEach(row => {
+      const tr = document.createElement('tr');
+
+      const td1 = document.createElement('td');
+      td1.textContent = row['顧客名'];
+      tr.appendChild(td1);
+
+      const td2 = document.createElement('td');
+      td2.textContent = row['最終注文日'];
+      tr.appendChild(td2);
+
+      const td3 = document.createElement('td');
+      td3.textContent = row['経過日数'] + '日';
+      tr.appendChild(td3);
+
+      const td4 = document.createElement('td');
+      td4.textContent = '¥' + (row['累計売上'] || 0).toLocaleString();
+      tr.appendChild(td4);
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableDiv.appendChild(table);
+    container.appendChild(tableDiv);
+  }
+}
+
+function renderSeasonalAnalysis(data) {
+  const container = document.getElementById('seasonalContent');
+  container.textContent = '';
+
+  if (!data || data.length === 0) {
+    container.textContent = 'データがありません。「全分析実行」ボタンで分析を実行してください。';
+    return;
+  }
+
+  const tableDiv = document.createElement('div');
+  tableDiv.className = 'table-responsive';
+
+  const table = document.createElement('table');
+  table.className = 'table table-hover';
+
+  const thead = document.createElement('thead');
+  thead.className = 'table-light';
+  const headerRow = document.createElement('tr');
+  ['商品名', 'ピーク月', 'オフ月', '季節性強度', '推奨アクション'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  data.slice(0, 20).forEach(row => {
+    const tr = document.createElement('tr');
+
+    const td1 = document.createElement('td');
+    td1.textContent = row['商品名'];
+    tr.appendChild(td1);
+
+    const td2 = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = row['ピーク月'];
+    td2.appendChild(strong);
+    tr.appendChild(td2);
+
+    const td3 = document.createElement('td');
+    td3.textContent = row['オフ月'];
+    tr.appendChild(td3);
+
+    const td4 = document.createElement('td');
+    const strength = row['季節性強度'] || 0;
+    const strengthColor = strength > 0.5 ? 'danger' : strength > 0.3 ? 'warning' : 'success';
+    const badge = document.createElement('span');
+    badge.className = 'badge bg-' + strengthColor;
+    badge.textContent = strength.toFixed(2);
+    td4.appendChild(badge);
+    tr.appendChild(td4);
+
+    const td5 = document.createElement('td');
+    const small = document.createElement('small');
+    small.textContent = row['推奨アクション'];
+    td5.appendChild(small);
+    tr.appendChild(td5);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  tableDiv.appendChild(table);
+  container.appendChild(tableDiv);
+}
+
+function renderTrendsAnalysis(data) {
+  const container = document.getElementById('trendsContent');
+  container.textContent = '';
+
+  if (!data || data.length === 0) {
+    container.textContent = 'データがありません。「全分析実行」ボタンで分析を実行してください。';
+    return;
+  }
+
+  const segments = {};
+  data.forEach(row => {
+    const segment = row['セグメント'] || '一般';
+    if (!segments[segment]) {
+      segments[segment] = { count: 0, totalSales: 0 };
+    }
+    segments[segment].count += 1;
+    segments[segment].totalSales += (row['累計売上'] || 0);
+  });
+
+  const row = document.createElement('div');
+  row.className = 'row mb-4';
+
+  Object.keys(segments).forEach(segment => {
+    const col = document.createElement('div');
+    col.className = 'col-md-2';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body text-center';
+
+    const title = document.createElement('h6');
+    title.textContent = segment;
+
+    const count = document.createElement('p');
+    count.className = 'mb-0';
+    count.textContent = segments[segment].count + '社';
+
+    const sales = document.createElement('small');
+    sales.textContent = '¥' + segments[segment].totalSales.toLocaleString();
+
+    cardBody.appendChild(title);
+    cardBody.appendChild(count);
+    cardBody.appendChild(sales);
+    card.appendChild(cardBody);
+    col.appendChild(card);
+    row.appendChild(col);
+  });
+
+  container.appendChild(row);
+
+  const vipTitle = document.createElement('h6');
+  vipTitle.textContent = 'VIP・ロイヤル顧客';
+  container.appendChild(vipTitle);
+
+  const tableDiv = document.createElement('div');
+  tableDiv.className = 'table-responsive';
+
+  const table = document.createElement('table');
+  table.className = 'table table-sm';
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['顧客名', 'セグメント', '累計売上', '注文回数', '次回注文予測日', 'お気に入り商品'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  data.filter(r => r['セグメント'] === 'VIP' || r['セグメント'] === 'ロイヤル')
+    .slice(0, 10)
+    .forEach(row => {
+      const tr = document.createElement('tr');
+
+      const td1 = document.createElement('td');
+      td1.textContent = row['顧客名'];
+      tr.appendChild(td1);
+
+      const td2 = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-primary';
+      badge.textContent = row['セグメント'];
+      td2.appendChild(badge);
+      tr.appendChild(td2);
+
+      const td3 = document.createElement('td');
+      td3.textContent = '¥' + (row['累計売上'] || 0).toLocaleString();
+      tr.appendChild(td3);
+
+      const td4 = document.createElement('td');
+      td4.textContent = row['注文回数'];
+      tr.appendChild(td4);
+
+      const td5 = document.createElement('td');
+      td5.textContent = row['次回注文予測日'] || '-';
+      tr.appendChild(td5);
+
+      const td6 = document.createElement('td');
+      const small = document.createElement('small');
+      small.textContent = row['お気に入り商品TOP3'] || '-';
+      td6.appendChild(small);
+      tr.appendChild(td6);
+
+      tbody.appendChild(tr);
+    });
+  table.appendChild(tbody);
+  tableDiv.appendChild(table);
+  container.appendChild(tableDiv);
+}
+
+function runAllAnalyses() {
+  if (!confirm('全分析を実行します。数分かかる場合があります。よろしいですか？')) {
+    return;
+  }
+
+  showLoading('分析実行中...');
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      showToast('全分析が完了しました', 'success');
+      loadDashboardData();
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('エラー: ' + error.message, 'error');
+    })
+    .runAllAnalyses();
+}
+
+function exportToCSV() {
+  if (!dashboardData || !dashboardData.top20) {
+    showToast('データがありません', 'warning');
+    return;
+  }
+
+  const csv = ['順位,商品名,商品分類,売上高,数量,受注回数'];
+  dashboardData.top20.forEach((item, index) => {
+    csv.push([
+      index + 1,
+      item['商品名'],
+      item['商品分類'],
+      item['売上高'],
+      item['受注数合計'],
+      item['受注回数']
+    ].join(','));
+  });
+
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = '売上ランキング_' + dashboardData.targetMonth + '.csv';
+  link.click();
+
+  showToast('CSVをダウンロードしました', 'success');
+}
+</script>
