@@ -305,7 +305,19 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.salesDashboard) {
-    const userRole = e.parameter.userRole || 'admin';
+    const userRole = e.parameter.userRole || '';
+
+    // admin権限チェック
+    if (userRole !== 'admin') {
+      const errorTemplate = HtmlService.createTemplateFromFile('error');
+      errorTemplate.errorMessage = 'この機能はadmin権限が必要です。';
+      errorTemplate.deployURL = ScriptApp.getService().getUrl();
+      errorTemplate.userRole = userRole;
+      return errorTemplate.evaluate()
+        .setTitle('アクセス拒否')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+
     const template = HtmlService.createTemplateFromFile('salesDashboard');
     template.deployURL = ScriptApp.getService().getUrl();
     template.userRole = userRole;

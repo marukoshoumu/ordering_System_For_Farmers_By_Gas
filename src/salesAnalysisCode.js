@@ -13,7 +13,6 @@ function aggregateMonthlySales() {
     const orders = getAllRecords('受注');
 
     if (!orders || orders.length === 0) {
-      Logger.log('受注データがありません');
       return { success: false, message: '受注データがありません' };
     }
 
@@ -33,6 +32,11 @@ function aggregateMonthlySales() {
 
         if (!productName) return; // 商品名なしはスキップ
 
+        // 送料・代引手数料を除外
+        if (productName === '送料' || productName === '代引手数料') {
+          return;
+        }
+
         const key = `${yearMonth}|${productName}`;
 
         if (!monthlyData[key]) {
@@ -50,7 +54,7 @@ function aggregateMonthlySales() {
         monthlyData[key].totalSales += (quantity * price);
         monthlyData[key].orderCount += 1;
       } catch (e) {
-        Logger.log('受注データ処理エラー: ' + e.toString());
+        // エラーをスキップ
       }
     });
 
@@ -80,6 +84,9 @@ function aggregateMonthlySales() {
     // シートクリア＆書き込み
     aggregationSheet.clear();
     if (rows.length > 1) {
+      // 年月列を先にテキスト形式に設定（日付型への自動変換を防ぐ）
+      aggregationSheet.getRange(1, 1, rows.length, 1).setNumberFormat('@');
+
       aggregationSheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
 
       // ヘッダー装飾
@@ -96,14 +103,12 @@ function aggregateMonthlySales() {
       }
     }
 
-    Logger.log(`月次集計完了: ${Object.keys(monthlyData).length}件`);
     return {
       success: true,
       message: `月次集計完了: ${Object.keys(monthlyData).length}件`,
       count: Object.keys(monthlyData).length
     };
   } catch (error) {
-    Logger.log('aggregateMonthlySales エラー: ' + error.toString());
     return { success: false, message: 'エラー: ' + error.toString() };
   }
 }
@@ -127,21 +132,27 @@ function analyzeCustomerRetention() {
     orders.forEach(order => {
       const customerName = order['顧客名'] || '';
       const orderDate = new Date(order['受注日']);
+      const productName = order['商品名'] || '';
       const quantity = Number(order['受注数']) || 0;
       const price = Number(order['販売価格']) || 0;
       const sales = quantity * price;
 
       if (!customerName || isNaN(orderDate.getTime())) return;
 
-      // 最終注文日を更新
+      // 送料・代引手数料を除外
+      const isShippingFee = productName === '送料' || productName === '代引手数料';
+
+      // 最終注文日を更新（送料・代引手数料も含めて判定）
       if (!customerLastOrder[customerName] || orderDate > customerLastOrder[customerName]) {
         customerLastOrder[customerName] = orderDate;
       }
 
-      // 売上累計
-      customerTotalSales[customerName] = (customerTotalSales[customerName] || 0) + sales;
+      // 売上累計（送料・代引手数料は除外）
+      if (!isShippingFee) {
+        customerTotalSales[customerName] = (customerTotalSales[customerName] || 0) + sales;
+      }
 
-      // 注文回数
+      // 注文回数（送料・代引手数料も含めてカウント）
       customerOrderCount[customerName] = (customerOrderCount[customerName] || 0) + 1;
     });
 
@@ -233,7 +244,6 @@ function analyzeCustomerRetention() {
       }
     }
 
-    Logger.log(`顧客リテンション分析完了: ${Object.keys(customerLastOrder).length}顧客`);
 
     return {
       success: true,
@@ -246,7 +256,6 @@ function analyzeCustomerRetention() {
       topChurnRisk: segments.churned.slice(0, 10) // 離脱リスク上位10顧客
     };
   } catch (error) {
-    Logger.log('analyzeCustomerRetention エラー: ' + error.toString());
     return { success: false, message: 'エラー: ' + error.toString() };
   }
 }
@@ -275,6 +284,9 @@ function analyzeSeasonalPatterns() {
       const sales = quantity * price;
 
       if (!productName || isNaN(orderDate.getTime()) || orderDate < twoYearsAgo) return;
+
+      // 送料・代引手数料を除外
+      if (productName === '送料' || productName === '代引手数料') return;
 
       const month = orderDate.getMonth() + 1; // 1-12
       const year = orderDate.getFullYear();
@@ -422,7 +434,6 @@ function analyzeSeasonalPatterns() {
       }
     }
 
-    Logger.log(`季節パターン分析完了: ${seasonalPatterns.length}商品`);
 
     return {
       success: true,
@@ -430,7 +441,6 @@ function analyzeSeasonalPatterns() {
       topSeasonal: seasonalPatterns.slice(0, 10) // 季節性の強い上位10商品
     };
   } catch (error) {
-    Logger.log('analyzeSeasonalPatterns エラー: ' + error.toString());
     return { success: false, message: 'エラー: ' + error.toString() };
   }
 }
@@ -459,6 +469,9 @@ function analyzeCustomerTrends() {
       const sales = quantity * price;
 
       if (!customerName || isNaN(orderDate.getTime())) return;
+
+      // 送料・代引手数料を除外（お気に入り商品リストから除外するため）
+      if (productName === '送料' || productName === '代引手数料') return;
 
       if (!customerData[customerName]) {
         customerData[customerName] = {
@@ -621,7 +634,6 @@ function analyzeCustomerTrends() {
       }
     }
 
-    Logger.log(`顧客傾向分析完了: ${customerTrends.length}顧客`);
 
     // セグメント別集計
     const segmentSummary = {};
@@ -640,7 +652,6 @@ function analyzeCustomerTrends() {
       vipCustomers: customerTrends.filter(t => t.segment === 'VIP')
     };
   } catch (error) {
-    Logger.log('analyzeCustomerTrends エラー: ' + error.toString());
     return { success: false, message: 'エラー: ' + error.toString() };
   }
 }
@@ -649,7 +660,6 @@ function analyzeCustomerTrends() {
  * 全分析を一括実行
  */
 function runAllAnalyses() {
-  Logger.log('=== 売上分析開始 ===');
 
   const results = {
     monthly: aggregateMonthlySales(),
@@ -658,10 +668,50 @@ function runAllAnalyses() {
     trends: analyzeCustomerTrends()
   };
 
-  Logger.log('=== 売上分析完了 ===');
-  Logger.log(JSON.stringify(results, null, 2));
 
   return results;
+}
+
+/**
+ * 商品略称マッピングを取得
+ * @return {Object} 商品名をキー、略称を値とするオブジェクト
+ */
+function getProductAbbreviationMap() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const productSheet = ss.getSheetByName('商品');
+
+    if (!productSheet) {
+      return {};
+    }
+
+    const values = productSheet.getDataRange().getValues();
+    const headers = values[0];
+
+    const nameIndex = headers.indexOf('商品名');
+    const abbrevIndex = headers.indexOf('略称');
+
+    if (nameIndex === -1) {
+      return {};
+    }
+
+    const abbreviationMap = {};
+
+    for (let i = 1; i < values.length; i++) {
+      const productName = values[i][nameIndex];
+      const abbreviation = abbrevIndex !== -1 ? values[i][abbrevIndex] : '';
+
+      if (productName) {
+        // 略称がなければ商品名をそのまま使用
+        abbreviationMap[productName] = abbreviation || productName;
+      }
+    }
+
+    return abbreviationMap;
+
+  } catch (error) {
+    return {};
+  }
 }
 
 /**
@@ -674,17 +724,19 @@ function getSalesDashboardData(targetMonth) {
       targetMonth = Utilities.formatDate(new Date(), 'JST', 'yyyy-MM');
     }
 
+    // 商品略称マッピング取得
+    const abbreviationMap = getProductAbbreviationMap();
+
     // 月次集計データ取得
     let aggregationData = getAllRecords('月次集計');
+
     if (!aggregationData || aggregationData.length === 0) {
       // データがなければ集計実行
-      Logger.log('月次集計シートがないため、集計を実行します');
       aggregateMonthlySales();
-      // 少し待ってから再取得
-      Utilities.sleep(1000);
+      Utilities.sleep(2000);
       aggregationData = getAllRecords('月次集計');
+
       if (!aggregationData || aggregationData.length === 0) {
-        Logger.log('集計後もデータが取得できませんでした');
         return {
           success: false,
           message: '月次集計データが取得できませんでした。runAllAnalyses()を実行してください。'
@@ -692,9 +744,21 @@ function getSalesDashboardData(targetMonth) {
       }
     }
 
-    // 対象月のデータフィルタ（数値型に変換）
+    // 対象月のデータフィルタ（数値型に変換）+ 送料・代引手数料を除外
     const monthData = aggregationData
-      .filter(d => d['年月'] === targetMonth)
+      .filter(d => {
+        // 年月が Date オブジェクトの場合は文字列に変換して比較
+        let yearMonth = d['年月'];
+        if (yearMonth instanceof Date) {
+          yearMonth = Utilities.formatDate(yearMonth, 'JST', 'yyyy-MM');
+        }
+        return yearMonth === targetMonth;
+      })
+      .filter(d => {
+        // 送料・代引手数料を除外
+        const productName = d['商品名'] || '';
+        return productName !== '送料' && productName !== '代引手数料';
+      })
       .map(d => ({
         ...d,
         '売上高': Number(d['売上高']) || 0,
@@ -717,7 +781,14 @@ function getSalesDashboardData(targetMonth) {
     // 前月データ取得（数値型に変換）
     const prevMonth = getPreviousMonth(targetMonth);
     const prevMonthData = aggregationData
-      .filter(d => d['年月'] === prevMonth)
+      .filter(d => {
+        // 年月が Date オブジェクトの場合は文字列に変換して比較
+        let yearMonth = d['年月'];
+        if (yearMonth instanceof Date) {
+          yearMonth = Utilities.formatDate(yearMonth, 'JST', 'yyyy-MM');
+        }
+        return yearMonth === prevMonth;
+      })
       .map(d => ({
         ...d,
         '売上高': Number(d['売上高']) || 0,
@@ -747,10 +818,35 @@ function getSalesDashboardData(targetMonth) {
 
     // 顧客リテンション分析データ取得
     const retentionData = getAllRecords('顧客リテンション分析');
+
     const churnRiskCustomers = retentionData
       ? retentionData.filter(d => d['セグメント'] && d['セグメント'].includes('離脱'))
         .slice(0, 10)
+        .map(d => {
+          // Date オブジェクトを文字列に変換（クライアント転送のため）
+          const customer = { ...d };
+          if (customer['最終注文日'] instanceof Date) {
+            customer['最終注文日'] = Utilities.formatDate(customer['最終注文日'], 'JST', 'yyyy-MM-dd');
+          }
+          return customer;
+        })
       : [];
+
+    // TOP20のデータからもDateオブジェクトを除外し、略称を追加
+    const cleanTop20 = top20.map(item => {
+      const cleanItem = {};
+      for (const key in item) {
+        if (item[key] instanceof Date) {
+          cleanItem[key] = Utilities.formatDate(item[key], 'JST', 'yyyy-MM-dd');
+        } else {
+          cleanItem[key] = item[key];
+        }
+      }
+      // 商品略称を追加
+      const productName = item['商品名'];
+      cleanItem['商品略称'] = abbreviationMap[productName] || productName;
+      return cleanItem;
+    });
 
     return {
       success: true,
@@ -763,13 +859,16 @@ function getSalesDashboardData(targetMonth) {
         salesGrowth: salesGrowth,
         ordersGrowth: ordersGrowth
       },
-      top20: top20,
+      top20: cleanTop20,
       categoryData: categoryData,
       churnRiskCustomers: churnRiskCustomers
     };
+
   } catch (error) {
-    Logger.log('getSalesDashboardData エラー: ' + error.toString());
-    return { success: false, message: 'エラー: ' + error.toString() };
+    return {
+      success: false,
+      message: 'エラー: ' + error.toString()
+    };
   }
 }
 
@@ -790,3 +889,146 @@ function getPreviousMonth(yearMonth) {
     return `${year}-${String(prevMonth).padStart(2, '0')}`;
   }
 }
+
+/**
+ * 年間売上推移データ取得
+ * @param {number} year - 対象年（例: 2026）
+ * @return {Object} 年間データ
+ */
+function getYearlySalesData(year) {
+  try {
+    if (!year) {
+      year = new Date().getFullYear();
+    }
+
+    // 月次集計データ取得
+    const aggregationData = getAllRecords('月次集計');
+
+    if (!aggregationData || aggregationData.length === 0) {
+      return {
+        success: false,
+        message: '月次集計データがありません'
+      };
+    }
+
+    // 12ヶ月分のデータを初期化
+    const monthlyData = {};
+    for (let month = 1; month <= 12; month++) {
+      const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+      monthlyData[yearMonth] = {
+        totalSales: 0,
+        totalQuantity: 0,
+        totalOrders: 0,
+        productCount: 0,
+        products: {}
+      };
+    }
+
+    // データを集計
+    aggregationData.forEach(d => {
+      let yearMonth = d['年月'];
+      if (yearMonth instanceof Date) {
+        yearMonth = Utilities.formatDate(yearMonth, 'JST', 'yyyy-MM');
+      }
+
+      if (!yearMonth || !yearMonth.startsWith(year.toString())) {
+        return;
+      }
+
+      const productName = d['商品名'] || '';
+
+      // 送料・代引手数料を除外
+      if (productName === '送料' || productName === '代引手数料') {
+        return;
+      }
+
+      const sales = Number(d['売上高']) || 0;
+      const quantity = Number(d['受注数合計']) || 0;
+      const orders = Number(d['受注回数']) || 0;
+
+      if (monthlyData[yearMonth]) {
+        monthlyData[yearMonth].totalSales += sales;
+        monthlyData[yearMonth].totalQuantity += quantity;
+        monthlyData[yearMonth].totalOrders += orders;
+        monthlyData[yearMonth].productCount += 1;
+
+        // 商品別データも保存
+        if (!monthlyData[yearMonth].products[productName]) {
+          monthlyData[yearMonth].products[productName] = {
+            sales: 0,
+            quantity: 0,
+            orders: 0
+          };
+        }
+        monthlyData[yearMonth].products[productName].sales += sales;
+        monthlyData[yearMonth].products[productName].quantity += quantity;
+        monthlyData[yearMonth].products[productName].orders += orders;
+      }
+    });
+
+    // 全商品リストを取得
+    const allProducts = new Set();
+    Object.values(monthlyData).forEach(month => {
+      Object.keys(month.products).forEach(product => {
+        allProducts.add(product);
+      });
+    });
+
+    return {
+      success: true,
+      year: year,
+      monthlyData: monthlyData,
+      products: Array.from(allProducts).sort()
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      message: 'エラー: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * クライアント転送用にDateオブジェクトを文字列に変換
+ * @param {Array} records - レコード配列
+ * @return {Array} Date変換済みレコード配列
+ */
+function convertDatesForClient(records) {
+  if (!records || !Array.isArray(records)) {
+    return records;
+  }
+
+  return records.map(record => {
+    const cleanRecord = {};
+    for (const key in record) {
+      if (record[key] instanceof Date) {
+        cleanRecord[key] = Utilities.formatDate(record[key], 'JST', 'yyyy-MM-dd');
+      } else {
+        cleanRecord[key] = record[key];
+      }
+    }
+    return cleanRecord;
+  });
+}
+
+/**
+ * 分析データ取得（クライアント転送用にDate変換済み）
+ * @param {string} sheetName - シート名
+ * @return {Array} Date変換済みレコード配列
+ */
+function getAnalysisRecords(sheetName) {
+  try {
+    const records = getAllRecords(sheetName);
+
+    if (!records || records.length === 0) {
+      return [];
+    }
+
+    return convertDatesForClient(records);
+
+  } catch (error) {
+    return [];
+  }
+}
+

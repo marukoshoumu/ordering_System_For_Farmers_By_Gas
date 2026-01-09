@@ -2,6 +2,7 @@
 // 売上ダッシュボード JavaScript
 
 let dashboardData = null;
+let yearlyData = null;
 
 // Google Charts読み込み
 google.charts.load('current', {'packages':['corechart']});
@@ -11,7 +12,21 @@ function initializeDashboard() {
   const now = new Date();
   const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('targetMonth').value = yearMonth;
+
+  // 年選択ドロップダウンを初期化（過去5年分）
+  const yearSelect = document.getElementById('yearSelect');
+  const currentYear = now.getFullYear();
+  for (let i = 0; i < 5; i++) {
+    const year = currentYear - i;
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year + '年';
+    if (i === 0) option.selected = true;
+    yearSelect.appendChild(option);
+  }
+
   loadDashboardData();
+  loadYearlyData();
 }
 
 function loadDashboardData() {
@@ -26,13 +41,19 @@ function loadDashboardData() {
   google.script.run
     .withSuccessHandler(function(data) {
       hideLoading();
+
+      if (!data) {
+        showToast('データ取得エラー: サーバーからの応答がありません', 'error');
+        return;
+      }
+
       if (data.success) {
         dashboardData = data;
         renderDashboard(data);
         document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ja-JP');
         showToast('データを更新しました', 'success');
       } else {
-        showToast('データ取得エラー: ' + data.message, 'error');
+        showToast('データ取得エラー: ' + (data.message || '不明なエラー'), 'error');
       }
     })
     .withFailureHandler(function(error) {
@@ -41,6 +62,23 @@ function loadDashboardData() {
     })
     .getSalesDashboardData(targetMonth);
 }
+
+// デバッグ用: pingテスト（使用しない場合はコメントアウト）
+/*
+function testServerConnection() {
+  console.log('=== Testing server connection with pingTest ===');
+  google.script.run
+    .withSuccessHandler(function(result) {
+      console.log('pingTest success:', result);
+      alert('サーバー接続成功: ' + JSON.stringify(result));
+    })
+    .withFailureHandler(function(error) {
+      console.log('pingTest failed:', error);
+      alert('サーバー接続失敗: ' + error.message);
+    })
+    .pingTest();
+}
+*/
 
 function renderDashboard(data) {
   document.getElementById('totalSales').textContent = '¥' + data.summary.totalSales.toLocaleString();
@@ -127,7 +165,7 @@ function drawTop10Chart(top20) {
 
   top10.forEach((item, index) => {
     chartData.push([
-      item['商品名'].substring(0, 15),
+      item['商品略称'] || item['商品名'].substring(0, 15),
       Number(item['売上高']) || 0,
       colors[index]
     ]);
@@ -203,21 +241,21 @@ function loadAnalysisTabs() {
     .withFailureHandler(function(error) {
       document.getElementById('retentionContent').textContent = 'エラー: ' + error.message;
     })
-    .getAllRecords('顧客リテンション分析');
+    .getAnalysisRecords('顧客リテンション分析');
 
   google.script.run
     .withSuccessHandler(renderSeasonalAnalysis)
     .withFailureHandler(function(error) {
       document.getElementById('seasonalContent').textContent = 'エラー: ' + error.message;
     })
-    .getAllRecords('季節パターン分析');
+    .getAnalysisRecords('季節パターン分析');
 
   google.script.run
     .withSuccessHandler(renderTrendsAnalysis)
     .withFailureHandler(function(error) {
       document.getElementById('trendsContent').textContent = 'エラー: ' + error.message;
     })
-    .getAllRecords('顧客傾向分析');
+    .getAnalysisRecords('顧客傾向分析');
 }
 
 function renderRetentionAnalysis(data) {
@@ -546,10 +584,330 @@ function exportToCSV() {
     ].join(','));
   });
 
-  const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  // UTF-8 BOM追加（Excel文字化け対策）
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  const blob = new Blob([bom, csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = '売上ランキング_' + dashboardData.targetMonth + '.csv';
+  link.click();
+
+  showToast('CSVをダウンロードしました', 'success');
+}
+
+// 年間推移データ読み込み
+function loadYearlyData() {
+  const year = document.getElementById('yearSelect').value;
+  if (!year) {
+    return;
+  }
+
+  showLoading('年間データ読み込み中...');
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+
+      if (!data || !data.success) {
+        showToast('年間データ取得エラー: ' + (data ? data.message : '不明なエラー'), 'error');
+        return;
+      }
+
+      yearlyData = data;
+
+      // 商品セレクトボックスを更新
+      const productSelect = document.getElementById('productSelect');
+      productSelect.innerHTML = '';
+
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = '全商品合計';
+      productSelect.appendChild(defaultOption);
+
+      if (data.products && data.products.length > 0) {
+        data.products.forEach(product => {
+          const option = document.createElement('option');
+          option.value = product;
+          option.textContent = product;
+          productSelect.appendChild(option);
+        });
+      }
+
+      // グラフと表を描画
+      drawYearlyChart(data.monthlyData, '');
+      renderYearlyTable(data.year, data.monthlyData);
+
+      showToast('年間データを読み込みました', 'success');
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('エラー: ' + error.message, 'error');
+    })
+    .getYearlySalesData(Number(year));
+}
+
+// 年間推移グラフ描画（12ヶ月棒グラフ）
+function drawYearlyChart(monthlyData, selectedProduct) {
+  const chartData = [['月', '売上高', { role: 'style' }]];
+
+  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+  const year = document.getElementById('yearSelect').value;
+
+  months.forEach(month => {
+    const yearMonth = year + '-' + month;
+    const monthData = monthlyData[yearMonth];
+
+    let sales = 0;
+    if (monthData) {
+      if (selectedProduct === '' || !selectedProduct) {
+        // 全商品合計
+        sales = monthData.totalSales || 0;
+      } else {
+        // 特定商品
+        sales = (monthData.products[selectedProduct] && monthData.products[selectedProduct].sales) || 0;
+      }
+    }
+
+    chartData.push([
+      Number(month) + '月',
+      sales,
+      '#667eea'
+    ]);
+  });
+
+  const data = google.visualization.arrayToDataTable(chartData);
+
+  const options = {
+    chartArea: {width: '80%', height: '70%'},
+    hAxis: {
+      title: '月'
+    },
+    vAxis: {
+      title: '売上高 (円)',
+      format: '¥#,###'
+    },
+    legend: 'none',
+    bars: 'vertical',
+    bar: { groupWidth: '70%' }
+  };
+
+  const chart = new google.visualization.ColumnChart(document.getElementById('yearlyChart'));
+  chart.draw(data, options);
+}
+
+// 商品別年間推移グラフ更新
+function updateProductYearlyChart() {
+  if (!yearlyData) {
+    showToast('年間データがありません', 'warning');
+    return;
+  }
+
+  const selectedProduct = document.getElementById('productSelect').value;
+  drawYearlyChart(yearlyData.monthlyData, selectedProduct);
+
+  // 表も再描画
+  renderYearlyTable(yearlyData.year, yearlyData.monthlyData, selectedProduct);
+}
+
+// 年間推移テーブル描画（前年同月比付き）
+function renderYearlyTable(year, monthlyData, selectedProduct) {
+  const tbody = document.getElementById('yearlyTableBody');
+  tbody.innerHTML = '';
+
+  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+  // 前年同月データを取得するために前年のデータを要求
+  const previousYear = Number(year) - 1;
+
+  google.script.run
+    .withSuccessHandler(function(previousData) {
+      const previousMonthlyData = (previousData && previousData.success) ? previousData.monthlyData : null;
+
+      months.forEach(month => {
+        const yearMonth = year + '-' + month;
+        const monthData = monthlyData[yearMonth];
+
+        let sales = 0;
+        let orders = 0;
+        let quantity = 0;
+
+        if (monthData) {
+          if (!selectedProduct || selectedProduct === '') {
+            // 全商品合計
+            sales = monthData.totalSales || 0;
+            orders = monthData.totalOrders || 0;
+            quantity = monthData.totalQuantity || 0;
+          } else {
+            // 特定商品
+            const productData = monthData.products[selectedProduct];
+            if (productData) {
+              sales = productData.sales || 0;
+              orders = productData.orders || 0;
+              quantity = productData.quantity || 0;
+            }
+          }
+        }
+
+        // 前年同月比計算（DOM要素として作成）
+        let yoyElement = null;
+        if (previousMonthlyData) {
+          const prevYearMonth = previousYear + '-' + month;
+          const prevMonthData = previousMonthlyData[prevYearMonth];
+
+          if (prevMonthData) {
+            let prevSales = 0;
+            if (!selectedProduct || selectedProduct === '') {
+              prevSales = prevMonthData.totalSales || 0;
+            } else {
+              const prevProductData = prevMonthData.products[selectedProduct];
+              if (prevProductData) {
+                prevSales = prevProductData.sales || 0;
+              }
+            }
+
+            if (prevSales > 0) {
+              const growthPercent = ((sales - prevSales) / prevSales * 100).toFixed(1);
+              const icon = growthPercent >= 0 ? '↗' : '↘';
+              const colorClass = growthPercent >= 0 ? 'text-success' : 'text-danger';
+
+              yoyElement = document.createElement('span');
+              yoyElement.className = colorClass;
+              yoyElement.textContent = icon + ' ' + growthPercent + '%';
+            }
+          }
+        }
+
+        const row = tbody.insertRow();
+
+        const monthCell = row.insertCell();
+        monthCell.textContent = Number(month) + '月';
+
+        const salesCell = row.insertCell();
+        salesCell.className = 'text-end';
+        salesCell.textContent = '¥' + sales.toLocaleString();
+
+        const ordersCell = row.insertCell();
+        ordersCell.className = 'text-end';
+        ordersCell.textContent = orders.toLocaleString() + '件';
+
+        const quantityCell = row.insertCell();
+        quantityCell.className = 'text-end';
+        quantityCell.textContent = quantity.toLocaleString() + '個';
+
+        const yoyCell = row.insertCell();
+        yoyCell.className = 'text-end';
+        if (yoyElement) {
+          yoyCell.appendChild(yoyElement);
+        } else {
+          yoyCell.textContent = '-';
+        }
+      });
+    })
+    .withFailureHandler(function(error) {
+      // 前年データ取得失敗時も表示は続行（前年同月比は'-'で表示）
+      months.forEach(month => {
+        const yearMonth = year + '-' + month;
+        const monthData = monthlyData[yearMonth];
+
+        let sales = 0;
+        let orders = 0;
+        let quantity = 0;
+
+        if (monthData) {
+          if (!selectedProduct || selectedProduct === '') {
+            sales = monthData.totalSales || 0;
+            orders = monthData.totalOrders || 0;
+            quantity = monthData.totalQuantity || 0;
+          } else {
+            const productData = monthData.products[selectedProduct];
+            if (productData) {
+              sales = productData.sales || 0;
+              orders = productData.orders || 0;
+              quantity = productData.quantity || 0;
+            }
+          }
+        }
+
+        const row = tbody.insertRow();
+
+        const monthCell = row.insertCell();
+        monthCell.textContent = Number(month) + '月';
+
+        const salesCell = row.insertCell();
+        salesCell.className = 'text-end';
+        salesCell.textContent = '¥' + sales.toLocaleString();
+
+        const ordersCell = row.insertCell();
+        ordersCell.className = 'text-end';
+        ordersCell.textContent = orders.toLocaleString() + '件';
+
+        const quantityCell = row.insertCell();
+        quantityCell.className = 'text-end';
+        quantityCell.textContent = quantity.toLocaleString() + '個';
+
+        const yoyCell = row.insertCell();
+        yoyCell.className = 'text-end';
+        yoyCell.textContent = '-';
+      });
+    })
+    .getYearlySalesData(previousYear);
+}
+
+// 年間データCSV出力
+function exportYearlyCSV() {
+  if (!yearlyData) {
+    showToast('年間データがありません', 'warning');
+    return;
+  }
+
+  const selectedProduct = document.getElementById('productSelect').value;
+  const year = yearlyData.year;
+  const monthlyData = yearlyData.monthlyData;
+
+  const csv = ['年月,売上高,受注件数,販売数量'];
+  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+  months.forEach(month => {
+    const yearMonth = year + '-' + month;
+    const monthData = monthlyData[yearMonth];
+
+    let sales = 0;
+    let orders = 0;
+    let quantity = 0;
+
+    if (monthData) {
+      if (!selectedProduct || selectedProduct === '') {
+        sales = monthData.totalSales || 0;
+        orders = monthData.totalOrders || 0;
+        quantity = monthData.totalQuantity || 0;
+      } else {
+        const productData = monthData.products[selectedProduct];
+        if (productData) {
+          sales = productData.sales || 0;
+          orders = productData.orders || 0;
+          quantity = productData.quantity || 0;
+        }
+      }
+    }
+
+    csv.push([
+      yearMonth,
+      sales,
+      orders,
+      quantity
+    ].join(','));
+  });
+
+  const filename = selectedProduct
+    ? '年間売上推移_' + year + '_' + selectedProduct + '.csv'
+    : '年間売上推移_' + year + '_全商品.csv';
+
+  // UTF-8 BOM追加（Excel文字化け対策）
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  const blob = new Blob([bom, csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
   link.click();
 
   showToast('CSVをダウンロードしました', 'success');
