@@ -94,7 +94,7 @@ function renderDashboard(data) {
 function drawCategoryChart(categoryData) {
   const chartData = [['商品分類', '売上高']];
   Object.keys(categoryData).forEach(category => {
-    chartData.push([category, categoryData[category].sales]);
+    chartData.push([category, Number(categoryData[category].sales) || 0]);
   });
 
   const data = google.visualization.arrayToDataTable(chartData);
@@ -128,7 +128,7 @@ function drawTop10Chart(top20) {
   top10.forEach((item, index) => {
     chartData.push([
       item['商品名'].substring(0, 15),
-      item['売上高'] || 0,
+      Number(item['売上高']) || 0,
       colors[index]
     ]);
   });
@@ -185,15 +185,15 @@ function renderRankingTable(top20) {
 
     const salesCell = row.insertCell();
     salesCell.className = 'text-end';
-    salesCell.textContent = '¥' + (item['売上高'] || 0).toLocaleString();
+    salesCell.textContent = '¥' + (Number(item['売上高']) || 0).toLocaleString();
 
     const quantityCell = row.insertCell();
     quantityCell.className = 'text-end';
-    quantityCell.textContent = (item['受注数合計'] || 0).toLocaleString();
+    quantityCell.textContent = (Number(item['受注数合計']) || 0).toLocaleString();
 
     const ordersCell = row.insertCell();
     ordersCell.className = 'text-end';
-    ordersCell.textContent = (item['受注回数'] || 0).toLocaleString();
+    ordersCell.textContent = (Number(item['受注回数']) || 0).toLocaleString();
   });
 }
 

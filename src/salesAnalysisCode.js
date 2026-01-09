@@ -675,33 +675,56 @@ function getSalesDashboardData(targetMonth) {
     }
 
     // 月次集計データ取得
-    const aggregationData = getAllRecords('月次集計');
+    let aggregationData = getAllRecords('月次集計');
     if (!aggregationData || aggregationData.length === 0) {
       // データがなければ集計実行
+      Logger.log('月次集計シートがないため、集計を実行します');
       aggregateMonthlySales();
-      return getSalesDashboardData(targetMonth);
+      // 少し待ってから再取得
+      Utilities.sleep(1000);
+      aggregationData = getAllRecords('月次集計');
+      if (!aggregationData || aggregationData.length === 0) {
+        Logger.log('集計後もデータが取得できませんでした');
+        return {
+          success: false,
+          message: '月次集計データが取得できませんでした。runAllAnalyses()を実行してください。'
+        };
+      }
     }
 
-    // 対象月のデータフィルタ
-    const monthData = aggregationData.filter(d => d['年月'] === targetMonth);
+    // 対象月のデータフィルタ（数値型に変換）
+    const monthData = aggregationData
+      .filter(d => d['年月'] === targetMonth)
+      .map(d => ({
+        ...d,
+        '売上高': Number(d['売上高']) || 0,
+        '受注数合計': Number(d['受注数合計']) || 0,
+        '受注回数': Number(d['受注回数']) || 0
+      }));
 
     // 売上順にソート
-    monthData.sort((a, b) => (b['売上高'] || 0) - (a['売上高'] || 0));
+    monthData.sort((a, b) => b['売上高'] - a['売上高']);
 
     // TOP20取得
     const top20 = monthData.slice(0, 20);
 
     // サマリー計算
-    const totalSales = monthData.reduce((sum, d) => sum + (d['売上高'] || 0), 0);
-    const totalQuantity = monthData.reduce((sum, d) => sum + (d['受注数合計'] || 0), 0);
-    const totalOrders = monthData.reduce((sum, d) => sum + (d['受注回数'] || 0), 0);
+    const totalSales = monthData.reduce((sum, d) => sum + d['売上高'], 0);
+    const totalQuantity = monthData.reduce((sum, d) => sum + d['受注数合計'], 0);
+    const totalOrders = monthData.reduce((sum, d) => sum + d['受注回数'], 0);
     const productCount = monthData.length;
 
-    // 前月データ取得
+    // 前月データ取得（数値型に変換）
     const prevMonth = getPreviousMonth(targetMonth);
-    const prevMonthData = aggregationData.filter(d => d['年月'] === prevMonth);
-    const prevTotalSales = prevMonthData.reduce((sum, d) => sum + (d['売上高'] || 0), 0);
-    const prevTotalOrders = prevMonthData.reduce((sum, d) => sum + (d['受注回数'] || 0), 0);
+    const prevMonthData = aggregationData
+      .filter(d => d['年月'] === prevMonth)
+      .map(d => ({
+        ...d,
+        '売上高': Number(d['売上高']) || 0,
+        '受注回数': Number(d['受注回数']) || 0
+      }));
+    const prevTotalSales = prevMonthData.reduce((sum, d) => sum + d['売上高'], 0);
+    const prevTotalOrders = prevMonthData.reduce((sum, d) => sum + d['受注回数'], 0);
 
     // 前月比計算
     const salesGrowth = prevTotalSales > 0
