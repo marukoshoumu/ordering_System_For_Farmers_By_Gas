@@ -1931,6 +1931,21 @@ function createOrder(e) {
   if (tempOrderId) {
     deleteTempOrder(tempOrderId);
   }
+
+  // 自動学習: 発送先名と顧客名の関係をマッピングシートに記録
+  try {
+    const shippingToName = e.parameter.shippingToName || '';
+    const customerName = e.parameter.customerName || '';
+
+    if (shippingToName && customerName) {
+      // マッピングシートに記録（既存の場合は信頼度を更新）
+      recordShippingMapping(shippingToName, shippingToName, customerName);
+      Logger.log(`自動学習完了: ${shippingToName} → ${customerName}`);
+    }
+  } catch (error) {
+    // 学習処理のエラーは受注処理に影響させない
+    Logger.log('自動学習エラー（処理続行）: ' + error.message);
+  }
 }
 // ヤマトCSV登録
 function addRecordYamato(sheetName, records, e, deliveryId) {
