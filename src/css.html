@@ -574,13 +574,109 @@
     color: var(--text-secondary); 
     min-width: 80px; 
   }
-  .master-data-info { 
-    background: #e7f3ff; 
-    border: 1px solid #b3d7ff; 
-    border-radius: var(--radius); 
-    padding: var(--space-2) var(--space-3); 
-    margin-top: var(--space-2); 
-    font-size: 0.8rem; 
+  .master-data-info {
+    background: #e7f3ff;
+    border: 1px solid #b3d7ff;
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    margin-top: var(--space-2);
+    font-size: 0.8rem;
+  }
+  /* 🤖 AI推定候補スタイル (Phase 4: 新規追加) */
+  .ai-suggestion-info {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e8f5e9 100%);
+    border: 2px solid #4285f4;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: var(--space-2);
+    font-size: 0.85rem;
+  }
+  .ai-suggestion-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #b3d7ff;
+    color: #1565c0;
+  }
+  .ai-suggestion-primary {
+    background: #e8f5e9;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .suggestion-customer-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2e7d32;
+    margin-bottom: 4px;
+  }
+  .suggestion-confidence {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  .btn-apply-suggestion {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  }
+  .btn-apply-suggestion:hover {
+    background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    transform: translateY(-1px);
+  }
+  .btn-apply-suggestion:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(76, 175, 80, 0.3);
+  }
+  .ai-suggestion-alternatives {
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+  }
+  .alternatives-label {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .alternatives-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .alternatives-list li {
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alt-customer-name {
+    font-weight: 500;
+    color: #424242;
+  }
+  .alt-confidence {
+    font-size: 0.75rem;
+    color: #999;
+  }
+  .btn-apply-alt {
+    background: #f5f5f5;
+    color: #424242;
+    border: 1px solid #ddd;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-apply-alt:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
   }
   .source-select-group { 
     display: flex; 

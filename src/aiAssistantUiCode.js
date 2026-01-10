@@ -982,6 +982,23 @@ function enhanceWithMasterData(result, customerList, shippingToList) {
     }
   }
 
+  // 🤖 顧客推定（Phase 4: 新規追加）
+  // 顧客がnullまたは新規顧客で、発送先情報がある場合に推定を試みる
+  if ((!result.customer || result.customer.isNewCustomer) && result.shippingTo) {
+    try {
+      const shippingToName = result.shippingTo.rawCompanyName || result.shippingTo.rawPersonName || '';
+      if (shippingToName) {
+        const estimation = estimateCustomerFromShippingTo(shippingToName);
+        if (estimation && estimation.customer) {
+          result.customerEstimation = estimation;
+          Logger.log('顧客推定成功: ' + shippingToName + ' → ' + estimation.customer + ' (' + estimation.confidence + '%)');
+        }
+      }
+    } catch (error) {
+      Logger.log('顧客推定エラー（処理続行）: ' + error.message);
+    }
+  }
+
   // 発送先照合
   if (result.shippingTo) {
     const shippingToMatch = findBestMatch(result.shippingTo, shippingToList, 'shippingTo');

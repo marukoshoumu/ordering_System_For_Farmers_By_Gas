@@ -676,8 +676,192 @@
         selectDiv.style.display = 'none';
         useCustomerMaster = false;
       }
+
+      // 🤖 AI推定候補の表示（Phase 4: 新規追加）
+      displayCustomerSuggestion();
     }
-    
+
+    /**
+     * 顧客推定候補を表示（XSS安全な実装）
+     */
+    function displayCustomerSuggestion() {
+      const suggestionDiv = document.getElementById('aiResultCustomerSuggestion');
+
+      // 推定結果がない場合は非表示
+      if (!aiAnalysisResult || !aiAnalysisResult.customerEstimation || !aiAnalysisResult.customerEstimation.customer) {
+        suggestionDiv.style.display = 'none';
+        return;
+      }
+
+      const estimation = aiAnalysisResult.customerEstimation;
+      const confidence = estimation.confidence || 0;
+      const isHighConfidence = confidence >= 80;
+
+      // コンテナをクリア
+      suggestionDiv.innerHTML = '';
+      suggestionDiv.style.display = 'block';
+
+      // ヘッダー作成
+      const header = document.createElement('div');
+      header.className = 'ai-suggestion-header';
+      const headerText = document.createElement('strong');
+      headerText.textContent = isHighConfidence ? '🤖 推奨候補（自動学習）' : '🤖 候補（自動学習）';
+      header.appendChild(headerText);
+      suggestionDiv.appendChild(header);
+
+      // 主要候補エリア
+      const primaryDiv = document.createElement('div');
+      primaryDiv.className = 'ai-suggestion-primary';
+
+      // 顧客名
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'suggestion-customer-name';
+      nameDiv.textContent = estimation.customer;
+      primaryDiv.appendChild(nameDiv);
+
+      // 信頼度とソース
+      const confidenceDiv = document.createElement('div');
+      confidenceDiv.className = 'suggestion-confidence';
+      let confidenceText = '信頼度: ' + confidence + '%';
+      if (estimation.sources && estimation.sources.length > 0) {
+        const sourceLabels = {
+          'mapping': 'マッピング学習',
+          'order_history': '受注履歴'
+        };
+        const sourceText = estimation.sources.map(function(s) {
+          return sourceLabels[s] || s;
+        }).join(', ');
+        confidenceText += ' (' + sourceText + ')';
+      }
+      confidenceDiv.textContent = confidenceText;
+      primaryDiv.appendChild(confidenceDiv);
+
+      // 適用ボタン
+      const applyBtn = document.createElement('button');
+      applyBtn.type = 'button';
+      applyBtn.className = 'btn-apply-suggestion';
+      applyBtn.textContent = '✅ この候補を適用';
+      applyBtn.onclick = function() {
+        applyCustomerSuggestion(estimation.customer);
+      };
+      primaryDiv.appendChild(applyBtn);
+
+      suggestionDiv.appendChild(primaryDiv);
+
+      // 代替候補（あれば）
+      if (estimation.alternatives && estimation.alternatives.length > 0) {
+        const altDiv = document.createElement('div');
+        altDiv.className = 'ai-suggestion-alternatives';
+
+        const altLabel = document.createElement('div');
+        altLabel.className = 'alternatives-label';
+        altLabel.textContent = '他の候補:';
+        altDiv.appendChild(altLabel);
+
+        const altList = document.createElement('ul');
+        altList.className = 'alternatives-list';
+
+        estimation.alternatives.forEach(function(alt) {
+          const li = document.createElement('li');
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'alt-customer-name';
+          nameSpan.textContent = alt.customer;
+          li.appendChild(nameSpan);
+
+          const confSpan = document.createElement('span');
+          confSpan.className = 'alt-confidence';
+          confSpan.textContent = ' (' + alt.confidence + '%) ';
+          li.appendChild(confSpan);
+
+          const altBtn = document.createElement('button');
+          altBtn.type = 'button';
+          altBtn.className = 'btn-apply-alt';
+          altBtn.textContent = '適用';
+          altBtn.onclick = function() {
+            applyCustomerSuggestion(alt.customer);
+          };
+          li.appendChild(altBtn);
+
+          altList.appendChild(li);
+        });
+
+        altDiv.appendChild(altList);
+        suggestionDiv.appendChild(altDiv);
+      }
+    }
+
+    /**
+     * 顧客推定候補を適用（1クリック適用機能）
+     * @param {string} customerName - 適用する顧客名
+     */
+    function applyCustomerSuggestion(customerName) {
+      if (!customerName) {
+        showToast('顧客名が指定されていません', 'error');
+        return;
+      }
+
+      // ローディング表示
+      showLoading('顧客情報を取得中...');
+
+      // サーバーサイドから顧客情報を取得
+      google.script.run
+        .withSuccessHandler(function(customerData) {
+          hideLoading();
+
+          if (!customerData) {
+            showToast('顧客情報が見つかりませんでした: ' + customerName, 'error');
+            return;
+          }
+
+          // manualCustomerSelectionに保存
+          manualCustomerSelection = {
+            displayName: customerData.displayName || customerName,
+            companyName: customerData.companyName || '',
+            personName: customerData.personName || '',
+            zipcode: customerData.zipcode || '',
+            address: customerData.address || '',
+            tel: customerData.tel || '',
+            fax: customerData.fax || '',
+            email: customerData.email || '',
+            source: 'ai_suggestion' // ソースを識別
+          };
+
+          console.log('AI候補から選択した顧客データを保存:', manualCustomerSelection);
+
+          // フォームに値を入力
+          const companyName = customerData.companyName || '';
+          const personName = customerData.personName || '';
+
+          if (companyName) {
+            document.querySelector('input[id="customerName"]').value = companyName + '　' + personName;
+          } else {
+            document.querySelector('input[id="customerName"]').value = personName;
+          }
+
+          document.querySelector('input[id="customerZipcode"]').value = customerData.zipcode || '';
+          document.querySelector('input[id="customerAddress"]').value = customerData.address || '';
+          document.querySelector('input[id="customerTel"]').value = customerData.tel || '';
+
+          // AI解析結果の表示を更新
+          if (aiAnalysisResult && aiAnalysisResult.customer) {
+            displayCustomer(aiAnalysisResult.customer);
+          }
+
+          // 成功メッセージ
+          showToast('顧客情報を適用しました: ' + customerName, 'success');
+
+          // AIアシスタントを閉じる（オプション）
+          // toggleAIAssistant();
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          console.error('顧客情報の取得に失敗:', error);
+          showToast('顧客情報の取得に失敗しました', 'error');
+        })
+        .getCustomerByDisplayName(customerName);
+    }
+
     /**
      * 編集可能な商品リスト表示
      */

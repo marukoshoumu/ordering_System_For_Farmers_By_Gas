@@ -1035,6 +1035,61 @@ function getCustomerByShippingTo(shippingToName) {
 }
 
 /**
+ * 顧客名（表示名）で顧客情報を取得（AI推定候補の適用用）
+ * @param {string} displayName - 顧客の表示名または会社名
+ * @returns {Object|null} - 顧客情報オブジェクト
+ */
+function getCustomerByDisplayName(displayName) {
+  if (!displayName) {
+    return null;
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('顧客情報');
+
+  if (!sheet) {
+    Logger.log('顧客情報シートが存在しません');
+    return null;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('顧客情報データが存在しません');
+    return null;
+  }
+
+  const headers = data[0];
+  const searchName = displayName.trim();
+
+  // 表示名、会社名、氏名のいずれかで検索
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const rowDisplayName = row[headers.indexOf('表示名')] || '';
+    const rowCompanyName = row[headers.indexOf('会社名')] || '';
+    const rowPersonName = row[headers.indexOf('氏名')] || '';
+
+    if (String(rowDisplayName).trim() === searchName ||
+        String(rowCompanyName).trim() === searchName ||
+        (String(rowCompanyName).trim() + ' ' + String(rowPersonName).trim()).trim() === searchName) {
+
+      return {
+        displayName: rowDisplayName,
+        companyName: rowCompanyName,
+        personName: rowPersonName,
+        zipcode: row[headers.indexOf('郵便番号')] || '',
+        address: (row[headers.indexOf('住所１')] || '') + (row[headers.indexOf('住所２')] || ''),
+        tel: row[headers.indexOf('TEL')] || '',
+        fax: row[headers.indexOf('FAX')] || '',
+        email: row[headers.indexOf('メールアドレス')] || ''
+      };
+    }
+  }
+
+  Logger.log('顧客が見つかりませんでした: ' + displayName);
+  return null;
+}
+
+/**
  * 電話受注の仮受注を登録（要確認フラグ付き）
  * @param {Object} orderData - 受注データ
  * @returns {string} - JSON形式の結果
