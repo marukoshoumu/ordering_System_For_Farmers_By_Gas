@@ -20,6 +20,12 @@
       <div class="text-center mt-2">
         <button type="submit" class="btn btn-outline-secondary me-3" name="shipping" value="true">続けて受注をする</button>
       </div>
+      <div class="text-center mt-2">
+        <button type="submit" class="btn btn-outline-primary me-3" name="orderList" value="true">受注一覧を見る</button>
+      </div>
+      <div class="text-center mt-2">
+        <button type="submit" class="btn btn-outline-info" name="createShippingSlips" value="true">送り状作成画面へ</button>
+      </div>
     </form>
   </div>
   <?!= HtmlService.createHtmlOutputFromFile('keyCheck').getContent(); ?>
