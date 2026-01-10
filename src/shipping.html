@@ -387,6 +387,7 @@
     var oricoolCls = $('select[id="coolCls"]').html();
     var oricargo1 = $('select[id="cargo1"]').html();
     var oricargo2 = $('select[id="cargo2"]').html();
+    var oricargo3 = $('select[id="cargo3"]').html();
     function deliveryMethodChange() {
         var $deliveryMethod = $('select[id="deliveryMethod"]');
         var $deliveryTime = $('select[id="deliveryTime"]');
@@ -394,6 +395,7 @@
         var $coolCls = $('select[id="coolCls"]');
         var $cargo1 = $('select[id="cargo1"]');
         var $cargo2 = $('select[id="cargo2"]');
+        var $cargo3 = $('select[id="cargo3"]');
         var val1 = $deliveryMethod.val();
         $deliveryTime.html(orideliveryTime).find('option').each(function () {
             var val2 = $(this).data('val');
@@ -425,6 +427,51 @@
                 $(this).not(':first-child').remove();
             }
         })
+        $cargo3.html(oricargo3).find('option').each(function () {
+            var val2 = $(this).data('val');
+            if (val1 && val1 != val2) {
+                $(this).not(':first-child').remove();
+            }
+        })
+
+        // 佐川の場合、荷扱い３を表示
+        if (val1 && val1.includes('佐川')) {
+            $('#cargo3Container').show();
+            // 荷扱い１に「指定日配達サービス」を自動設定
+            if (!$cargo1.val()) {
+                $cargo1.val('005:指定日配達サービス');
+            }
+        } else {
+            $('#cargo3Container').hide();
+            $cargo3.val('');
+        }
+
+        // 自動設定ロジックを呼び出し
+        updateCargoByConditions();
+    }
+
+    // 納品方法・送り状種別・クール区分に応じて荷扱いを自動設定
+    function updateCargoByConditions() {
+        var deliveryMethod = $('select[id="deliveryMethod"]').val();
+        var invoiceType = $('select[id="invoiceType"]').val();
+        var coolCls = $('select[id="coolCls"]').val();
+
+        // 佐川の場合のみ処理
+        if (deliveryMethod && deliveryMethod.includes('佐川')) {
+            // 荷扱い２：送り状種別が着払いの場合、eコレクトを自動設定
+            if (invoiceType && invoiceType.includes('着払')) {
+                $('select[id="cargo2"]').val('008:ｅコレクト（現金）');
+            }
+
+            // 荷扱い３：クール区分が冷蔵/冷凍の場合、クール便を自動設定
+            if (coolCls) {
+                if (coolCls.includes('002:冷蔵')) {
+                    $('select[id="cargo3"]').val('001:冷蔵');
+                } else if (coolCls.includes('003:冷凍')) {
+                    $('select[id="cargo3"]').val('002:冷凍');
+                }
+            }
+        }
     }
     function babaChange() {
         $('button[id="babaBtn"]').text('反映中..');
@@ -905,6 +952,17 @@
             });
         });
     });
+
+    // 送り状種別とクール区分のchangeイベント
+    $(function () {
+        $('select[id="invoiceType"]').on('change', function() {
+            updateCargoByConditions();
+        });
+        $('select[id="coolCls"]').on('change', function() {
+            updateCargoByConditions();
+        });
+    });
+
     function shippingToSearch() {
         if (!$('input[id="shippingToSearchKeyDg"]').val()) {
             showWarningToast('キーワードが入力されていません。');
@@ -1063,6 +1121,7 @@
             $('select[id="coolCls"]').val(res[0]['クール区分']);
             $('select[id="cargo1"]').val(res[0]['荷扱い１']);
             $('select[id="cargo2"]').val(res[0]['荷扱い２']);
+            $('select[id="cargo3"]').val(res[0]['荷扱い３']);
             $('input[id="cashOnDelivery"]').val(res[0]['代引総額']);
             $('input[id="cashOnDeliTax"]').val(res[0]['代引内税']);
             $('input[id="copiePrint"]').val(res[0]['発行枚数']);

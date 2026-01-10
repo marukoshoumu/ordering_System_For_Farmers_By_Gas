@@ -150,6 +150,7 @@ function getshippingHTML(e, alert = '') {
     e.parameter.coolCls = editData.coolCls;
     e.parameter.cargo1 = editData.cargo1;
     e.parameter.cargo2 = editData.cargo2;
+    e.parameter.cargo3 = editData.cargo3;
     e.parameter.cashOnDelivery = editData.cashOnDelivery;
     e.parameter.cashOnDeliTax = editData.cashOnDeliTax;
     e.parameter.copiePrint = editData.copiePrint;
@@ -745,6 +746,25 @@ function getshippingHTML(e, alert = '') {
   html += `<option value=""></option>`;
   for (const cargo of cargos) {
     if (e.parameter.cargo2 == cargo['種別値']) {
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" selected>${cargo['種別']}</option>`;
+    } else {
+      html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" >${cargo['種別']}</option>`;
+    }
+  }
+  html += `</select>`;
+  html += `  </div>`;
+  html += `</div>`;
+
+  // 荷扱い３（佐川の場合のみ表示）
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center" id="cargo3Container" style="display:none;">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="cargo3" class="col-form-label">荷扱い３</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `<select class="form-select" id="cargo3" name="cargo3" >`;
+  html += `<option value=""></option>`;
+  for (const cargo of cargos) {
+    if (e.parameter.cargo3 == cargo['種別値']) {
       html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" selected>${cargo['種別']}</option>`;
     } else {
       html += `<option value="${cargo['種別値']}" data-val="${cargo['納品方法']}" >${cargo['種別']}</option>`;
@@ -1500,9 +1520,10 @@ function getShippingComfirmHTML(e) {
   html += `<input type="hidden" name="invoiceType" value="${e.parameter.invoiceType || ''}">`;
   html += `<input type="hidden" name="coolCls" value="${e.parameter.coolCls || ''}">`;
 
-  // 荷扱い１・２の表示名取得
+  // 荷扱い１・２・３の表示名取得
   let cargo1Display = '-';
   let cargo2Display = '-';
+  let cargo3Display = '-';
   for (const c of cargos) {
     if (c['種別値'] == e.parameter.cargo1) {
       cargo1Display = c['種別'];
@@ -1510,8 +1531,11 @@ function getShippingComfirmHTML(e) {
     if (c['種別値'] == e.parameter.cargo2) {
       cargo2Display = c['種別'];
     }
+    if (c['種別値'] == e.parameter.cargo3) {
+      cargo3Display = c['種別'];
+    }
   }
-  
+
   html += `<div class="confirm-row">`;
   html += `  <div class="confirm-item">`;
   html += `    <span class="confirm-item-label">荷扱い１</span>`;
@@ -1521,9 +1545,16 @@ function getShippingComfirmHTML(e) {
   html += `    <span class="confirm-item-label">荷扱い２</span>`;
   html += `    <span class="confirm-item-value">${cargo2Display}</span>`;
   html += `  </div>`;
+  if (e.parameter.cargo3) {
+    html += `  <div class="confirm-item">`;
+    html += `    <span class="confirm-item-label">荷扱い３</span>`;
+    html += `    <span class="confirm-item-value">${cargo3Display}</span>`;
+    html += `  </div>`;
+  }
   html += `</div>`;
   html += `<input type="hidden" name="cargo1" value="${e.parameter.cargo1 || ''}">`;
   html += `<input type="hidden" name="cargo2" value="${e.parameter.cargo2 || ''}">`;
+  html += `<input type="hidden" name="cargo3" value="${e.parameter.cargo3 || ''}">`;
 
   // 代引総額・代引内税
   if (e.parameter.cashOnDelivery || e.parameter.cashOnDeliTax) {
@@ -1813,12 +1844,14 @@ function createOrder(e) {
         record['クール区分'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[1] : "";
         record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[1] : "";
         record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[1] : "";
+        record['荷扱い３'] = e.parameter.cargo3 ? e.parameter.cargo3.split(':')[1] : "";
         record['代引総額'] = e.parameter.cashOnDelivery;
         record['代引内税'] = e.parameter.cashOnDeliTax;
         record['発行枚数'] = e.parameter.copiePrint;
         record['送り状備考欄'] = e.parameter.csvmemo;
         record['納品書備考欄'] = e.parameter.deliveryMemo;
         record['メモ'] = e.parameter.memo;
+        record['出荷済'] = "";  // デフォルトは未出荷
         record['商品分類'] = bunruiVal;
         record['商品名'] = productVal;
         record['受注数'] = count;
@@ -1861,12 +1894,14 @@ function createOrder(e) {
           record['クール区分'],
           record['荷扱い１'],
           record['荷扱い２'],
+          record['荷扱い３'],
           record['代引総額'],
           record['代引内税'],
           record['発行枚数'],
           record['送り状備考欄'],
           record['納品書備考欄'],
           record['メモ'],
+          record['出荷済'],
           record['小計']
         ];
         records.push(addRecord);
@@ -1936,6 +1971,7 @@ function addRecordYamato(sheetName, records, e, deliveryId) {
   record['品名２'] = "";
   record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
   record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
+  record['荷扱い３'] = e.parameter.cargo3 ? e.parameter.cargo3.split(':')[0] : "";
   record['記事'] = records[0][38];
   record['コレクト代金引換額（税込）'] = records[0][35];
   record['コレクト内消費税額等'] = records[0][36];
@@ -2077,7 +2113,7 @@ function addRecordSagawa(sheetName, records, e, deliveryId) {
   record['保険金額'] = "";
   record['指定シール１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
   record['指定シール２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
-  record['指定シール３'] = "";
+  record['指定シール３'] = e.parameter.cargo3 ? e.parameter.cargo3.split(':')[0] : "";
   record['営業所受取'] = "";
   record['SRC区分'] = "";
   record['営業所受取営業所コード'] = "";

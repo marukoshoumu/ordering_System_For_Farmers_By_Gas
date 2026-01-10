@@ -905,7 +905,7 @@
         <!-- 送り状種別 -->
         <div class="mb-2">
           <label class="form-label small mb-1">送り状種別</label>
-          <select class="form-select" id="invoiceTypeSelect">
+          <select class="form-select" id="invoiceTypeSelect" onchange="updateCargoByConditions()">
             <option value="">指定なし</option>
           </select>
         </div>
@@ -913,7 +913,7 @@
         <!-- クール区分 -->
         <div class="mb-2">
           <label class="form-label small mb-1">クール区分</label>
-          <select class="form-select" id="coolClsSelect">
+          <select class="form-select" id="coolClsSelect" onchange="updateCargoByConditions()">
             <option value="">指定なし</option>
           </select>
         </div>
@@ -933,8 +933,16 @@
             <option value="">指定なし</option>
           </select>
         </div>
+
+        <!-- 荷扱い３（佐川の場合のみ表示） -->
+        <div class="mb-2" id="cargo3Container" style="display:none;">
+          <label class="form-label small mb-1">荷扱い３</label>
+          <select class="form-select" id="cargo3Select">
+            <option value="">指定なし</option>
+          </select>
+        </div>
       </div>
-      
+
       <!-- 帳票・同梱物チェックリスト -->
       <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📋 帳票・同梱物</label>
@@ -1053,6 +1061,10 @@
           <div class="col-6">
             <div class="text-muted" style="font-size: 0.75rem;">荷扱い2</div>
             <div class="fw-bold" id="confirmCargo2">-</div>
+          </div>
+          <div class="col-6" id="confirmCargo3Area" style="display: none;">
+            <div class="text-muted" style="font-size: 0.75rem;">荷扱い3</div>
+            <div class="fw-bold" id="confirmCargo3">-</div>
           </div>
         </div>
       </div>
@@ -1219,6 +1231,7 @@
     let originalCoolClsOptions = '';
     let originalCargo1Options = '';
     let originalCargo2Options = '';
+    let originalCargo3Options = '';
     
     function saveOriginalOptions() {
       // 配達時間帯
@@ -1290,6 +1303,20 @@
         });
       }
       originalCargo2Options = cargo2Select.innerHTML;
+
+      // 荷扱い３
+      const cargo3Select = document.getElementById('cargo3Select');
+      cargo3Select.innerHTML = '<option value="">指定なし</option>';
+      if (masterData.cargos) {
+        masterData.cargos.forEach(function(item) {
+          const option = document.createElement('option');
+          option.value = item['種別値'] || '';
+          option.textContent = item['種別'] || '指定なし';
+          option.dataset.val = item['納品方法'] || '';
+          cargo3Select.appendChild(option);
+        });
+      }
+      originalCargo3Options = cargo3Select.innerHTML;
     }
     
     // 発送元情報（内部保持用）
@@ -1370,40 +1397,61 @@
     // 納品方法が変更されたとき
     function onDeliveryMethodChange() {
       const selectedMethod = document.getElementById('deliveryMethodSelect').value;
-      
+
       // 配達時間帯をフィルタリング
       filterSelectByDeliveryMethod('deliveryTimeSelect', originalDeliveryTimeOptions, selectedMethod);
-      
+
       // 送り状種別をフィルタリング
       filterSelectByDeliveryMethod('invoiceTypeSelect', originalInvoiceTypeOptions, selectedMethod);
-      
+
       // クール区分をフィルタリング
       filterSelectByDeliveryMethod('coolClsSelect', originalCoolClsOptions, selectedMethod);
-      
+
       // 荷扱い１をフィルタリング
       filterSelectByDeliveryMethod('cargo1Select', originalCargo1Options, selectedMethod);
-      
+
       // 荷扱い２をフィルタリング
       filterSelectByDeliveryMethod('cargo2Select', originalCargo2Options, selectedMethod);
+
+      // 荷扱い３をフィルタリング
+      filterSelectByDeliveryMethod('cargo3Select', originalCargo3Options, selectedMethod);
+
+      // 佐川の場合、荷扱い３を表示し、荷扱い１を自動設定
+      const cargo3Container = document.getElementById('cargo3Container');
+      const cargo1Select = document.getElementById('cargo1Select');
+
+      if (selectedMethod && selectedMethod.includes('佐川')) {
+        cargo3Container.style.display = 'block';
+        // 荷扱い１が未選択の場合、指定日配達サービスを自動設定
+        if (!cargo1Select.value) {
+          cargo1Select.value = '005:指定日配達サービス';
+        }
+      } else {
+        cargo3Container.style.display = 'none';
+        document.getElementById('cargo3Select').value = '';
+      }
+
+      // 条件に応じた自動設定を実行
+      updateCargoByConditions();
     }
     
     // 納品方法に基づいてセレクトボックスをフィルタリング
     function filterSelectByDeliveryMethod(selectId, originalHtml, deliveryMethod) {
       const select = document.getElementById(selectId);
       select.innerHTML = originalHtml;
-      
+
       // 納品方法が選択されていれば、一致しないオプションを削除
       if (deliveryMethod) {
         Array.from(select.options).forEach(function(option, index) {
           // 最初の「指定なし」オプションは常に残す
           if (index === 0) return;
-          
+
           const optionMethod = option.dataset.val;
           if (optionMethod && optionMethod !== deliveryMethod) {
             option.remove();
           }
         });
-        
+
         // 再度ループ（削除でインデックスがずれるため）
         const toRemove = [];
         Array.from(select.options).forEach(function(option, index) {
@@ -1414,6 +1462,32 @@
           }
         });
         toRemove.forEach(function(opt) { opt.remove(); });
+      }
+    }
+
+    // 条件に応じて荷扱いを自動設定
+    function updateCargoByConditions() {
+      const deliveryMethod = document.getElementById('deliveryMethodSelect').value;
+      const invoiceType = document.getElementById('invoiceTypeSelect').value;
+      const coolCls = document.getElementById('coolClsSelect').value;
+      const cargo2Select = document.getElementById('cargo2Select');
+      const cargo3Select = document.getElementById('cargo3Select');
+
+      // 佐川の場合のみ処理
+      if (deliveryMethod && deliveryMethod.includes('佐川')) {
+        // 着払いの場合、荷扱い２にeコレクトを自動設定
+        if (invoiceType && invoiceType.includes('着払')) {
+          cargo2Select.value = '008:ｅコレクト（現金）';
+        }
+
+        // クール区分に応じて荷扱い３を自動設定
+        if (coolCls) {
+          if (coolCls.includes('002')) {  // 冷蔵
+            cargo3Select.value = '001:冷蔵';
+          } else if (coolCls.includes('003')) {  // 冷凍
+            cargo3Select.value = '002:冷凍';
+          }
+        }
       }
     }
     
@@ -2190,10 +2264,21 @@
         invoiceTypeSelect.options[invoiceTypeSelect.selectedIndex]?.text || '指定なし';
       document.getElementById('confirmCoolCls').textContent = 
         coolClsSelect.options[coolClsSelect.selectedIndex]?.text || '指定なし';
-      document.getElementById('confirmCargo1').textContent = 
+      document.getElementById('confirmCargo1').textContent =
         cargo1Select.options[cargo1Select.selectedIndex]?.text || '指定なし';
-      document.getElementById('confirmCargo2').textContent = 
+      document.getElementById('confirmCargo2').textContent =
         cargo2Select.options[cargo2Select.selectedIndex]?.text || '指定なし';
+
+      // 荷扱い３（佐川の場合のみ表示）
+      const cargo3Select = document.getElementById('cargo3Select');
+      const confirmCargo3Area = document.getElementById('confirmCargo3Area');
+      if (deliveryMethodSelect.value && deliveryMethodSelect.value.includes('佐川') && cargo3Select.value) {
+        document.getElementById('confirmCargo3').textContent =
+          cargo3Select.options[cargo3Select.selectedIndex]?.text || '指定なし';
+        confirmCargo3Area.style.display = 'block';
+      } else {
+        confirmCargo3Area.style.display = 'none';
+      }
       
       // チェックリスト表示
       const checklistItems = [];
@@ -2379,7 +2464,12 @@
       const cargo2Val = cargo2Select.value || '';
       const cargo2Text = cargo2Select.options[cargo2Select.selectedIndex]?.text || '';
       const cargo2 = cargo2Val ? cargo2Val + ':' + cargo2Text : '';
-      
+
+      const cargo3Select = document.getElementById('cargo3Select');
+      const cargo3Val = cargo3Select.value || '';
+      const cargo3Text = cargo3Select.options[cargo3Select.selectedIndex]?.text || '';
+      const cargo3 = cargo3Val ? cargo3Val + ':' + cargo3Text : '';
+
       addHiddenField(form, 'deliveryMethod', deliveryMethod);
       addHiddenField(form, 'deliveryTime', deliveryTime);
       
@@ -2416,6 +2506,7 @@
       addHiddenField(form, 'coolCls', coolCls);
       addHiddenField(form, 'cargo1', cargo1);
       addHiddenField(form, 'cargo2', cargo2);
+      addHiddenField(form, 'cargo3', cargo3);
       
       // チェックリスト（チェックされた項目のみ送信）
       const checklistItems = [];
