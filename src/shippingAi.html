@@ -641,9 +641,13 @@
 
       if (manualCustomerSelection) {
         manualDiv.style.display = 'block';
-        const sourceType = manualCustomerSelection.source === 'manual_registration' ? '新規登録' : '検索';
+        const sourceType = manualCustomerSelection.source === 'manual_registration' ? '新規登録' :
+                           manualCustomerSelection.source === 'ai_suggestion' ? 'AI推定' : '検索';
+        // 受注画面では常に「会社名 氏名」形式で表示（displayNameは使わない）
+        const customerName = [manualCustomerSelection.companyName, manualCustomerSelection.personName]
+          .filter(Boolean).join('　');
         manualDiv.innerHTML = '<strong>✋ 手動選択（' + sourceType + '）</strong><br>' +
-          (manualCustomerSelection.displayName || [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join(' ')) +
+          customerName +
           '<br>TEL: ' + (manualCustomerSelection.tel || '-') +
           '<br>〒' + (manualCustomerSelection.zipcode || '-') + ' ' + (manualCustomerSelection.address || '-');
       } else {
@@ -1153,8 +1157,9 @@
       // 顧客の適用（優先順位: 手動選択 > マスタ > AI読み取り）
       if (manualCustomerSelection) {
         console.log('手動選択した顧客データを適用:', manualCustomerSelection);
-        const name = manualCustomerSelection.displayName ||
-                     [manualCustomerSelection.companyName, manualCustomerSelection.personName].filter(Boolean).join('　');
+        // 受注画面では常に「会社名 氏名」形式で表示（displayNameは使わない）
+        const name = [manualCustomerSelection.companyName, manualCustomerSelection.personName]
+          .filter(Boolean).join('　');
         setFormValue('customerName', name);
         setFormValue('customerZipcode', manualCustomerSelection.zipcode || '');
         setFormValue('customerAddress', manualCustomerSelection.address || '');

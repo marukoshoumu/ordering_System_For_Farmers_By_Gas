@@ -428,3 +428,146 @@ function initializeShippingMappingSystem() {
   Logger.log('発送先マッピングシステムの初期化が完了しました');
   return { success: true, sheetName: sheet.getName() };
 }
+
+/**
+ * 初回移行: 既存の受注データから発送先マッピングを一括生成
+ *
+ * 【使用方法】
+ * 1. GASエディタでこの関数を選択
+ * 2. 実行ボタンをクリック
+ * 3. 完了メッセージを確認
+ *
+ * 【処理内容】
+ * - 受注シートの全データをスキャン
+ * - 発送先名と顧客名の組み合わせをマッピングシートに記録
+ * - 同じ組み合わせが複数回出現する場合は信頼度をカウント
+ * - 既存のマッピングデータは保持され、新規データのみ追加
+ *
+ * @returns {Object} - 処理結果 {success, recordsProcessed, mappingsCreated, message}
+ */
+function migrateExistingOrdersToMapping() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const orderSheet = ss.getSheetByName('受注');
+
+    if (!orderSheet) {
+      return {
+        success: false,
+        error: '受注シートが見つかりません'
+      };
+    }
+
+    // マッピングシートを取得（なければ作成）
+    let mappingSheet = ss.getSheetByName('発送先マッピング');
+    if (!mappingSheet) {
+      mappingSheet = createShippingMappingSheet();
+      Logger.log('発送先マッピングシートを新規作成しました');
+    }
+
+    const orderData = orderSheet.getDataRange().getValues();
+    if (orderData.length <= 1) {
+      return {
+        success: false,
+        error: '受注データが存在しません'
+      };
+    }
+
+    const headers = orderData[0];
+    const shippingToCol = headers.indexOf('発送先名');
+    const customerCol = headers.indexOf('顧客名');
+
+    if (shippingToCol === -1 || customerCol === -1) {
+      return {
+        success: false,
+        error: '必要な列（発送先名、顧客名）が見つかりません'
+      };
+    }
+
+    // 発送先→顧客の組み合わせを集計
+    // Key: "発送先名|顧客名", Value: {shippingTo, customer, count}
+    const mappingMap = new Map();
+
+    let recordsProcessed = 0;
+    for (let i = 1; i < orderData.length; i++) {
+      const shippingTo = orderData[i][shippingToCol];
+      const customer = orderData[i][customerCol];
+
+      if (!shippingTo || !customer) continue;
+
+      const shippingToName = String(shippingTo).trim();
+      const customerName = String(customer).trim();
+
+      if (!shippingToName || !customerName) continue;
+
+      const key = `${shippingToName}|${customerName}`;
+
+      if (!mappingMap.has(key)) {
+        mappingMap.set(key, {
+          shippingTo: shippingToName,
+          customer: customerName,
+          count: 0
+        });
+      }
+
+      mappingMap.get(key).count++;
+      recordsProcessed++;
+    }
+
+    // 既存のマッピングデータを取得（重複チェック用）
+    const existingData = mappingSheet.getDataRange().getValues();
+    const existingKeys = new Set();
+
+    for (let i = 1; i < existingData.length; i++) {
+      const aiName = existingData[i][0] || '';
+      const masterName = existingData[i][1] || '';
+      const customer = existingData[i][2] || '';
+
+      if (aiName && customer) {
+        existingKeys.add(`${aiName}|${customer}`);
+      }
+      if (masterName && customer) {
+        existingKeys.add(`${masterName}|${customer}`);
+      }
+    }
+
+    // マッピングシートに一括追加（既存データを除く）
+    const newMappings = [];
+    mappingMap.forEach((value, key) => {
+      // 既存データにない組み合わせのみ追加
+      if (!existingKeys.has(key)) {
+        newMappings.push([
+          value.shippingTo,  // AI認識名（受注データの発送先名）
+          value.shippingTo,  // マスタ名（受注データの発送先名）
+          value.customer,    // 顧客名
+          value.count,       // 信頼度（出現回数）
+          new Date()         // 最終使用日
+        ]);
+      }
+    });
+
+    if (newMappings.length > 0) {
+      // データを追加（ヘッダー行の次の行から）
+      const lastRow = mappingSheet.getLastRow();
+      mappingSheet.getRange(lastRow + 1, 1, newMappings.length, 5).setValues(newMappings);
+
+      Logger.log(`初回移行完了: ${newMappings.length}件のマッピングを追加しました`);
+    } else {
+      Logger.log('初回移行: 新規追加するマッピングはありませんでした（すべて既存データ）');
+    }
+
+    return {
+      success: true,
+      recordsProcessed: recordsProcessed,
+      uniqueCombinations: mappingMap.size,
+      mappingsCreated: newMappings.length,
+      message: `${recordsProcessed}件の受注レコードを処理し、${newMappings.length}件の新規マッピングを作成しました`
+    };
+
+  } catch (error) {
+    Logger.log('初回移行エラー: ' + error.toString());
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
