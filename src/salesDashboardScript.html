@@ -125,6 +125,7 @@ function renderDashboard(data) {
 
   drawCategoryChart(data.categoryData);
   drawTop10Chart(data.top20);
+  drawCustomerTop10Chart(data.customerTop10);
   renderRankingTable(data.top20);
   loadAnalysisTabs();
 }
@@ -187,6 +188,57 @@ function drawTop10Chart(top20) {
   };
 
   const chart = new google.visualization.BarChart(document.getElementById('top10Chart'));
+  chart.draw(data, options);
+}
+
+function drawCustomerTop10Chart(customerTop10) {
+  if (!customerTop10 || customerTop10.length === 0) {
+    const container = document.getElementById('customerTop10Chart');
+    container.innerHTML = '';
+
+    const message = document.createElement('p');
+    message.className = 'text-center text-muted';
+    message.textContent = 'データがありません';
+
+    container.appendChild(message);
+    return;
+  }
+
+  const chartData = [['顧客名', '売上高', { role: 'style' }]];
+
+  const colors = [
+    '#ffd700', '#c0c0c0', '#cd7f32',
+    '#667eea', '#764ba2', '#f093fb',
+    '#4facfe', '#43e97b', '#fa709a', '#ff6b6b'
+  ];
+
+  customerTop10.forEach((customer, index) => {
+    const customerName = customer['顧客名'] || '不明';
+    const displayName = customerName.length > 15 ? customerName.substring(0, 15) + '...' : customerName;
+
+    chartData.push([
+      displayName,
+      Number(customer['売上高']) || 0,
+      colors[index % colors.length]
+    ]);
+  });
+
+  const data = google.visualization.arrayToDataTable(chartData);
+
+  const options = {
+    chartArea: {width: '70%', height: '80%'},
+    hAxis: {
+      title: '売上高 (円)',
+      format: '¥#,###'
+    },
+    vAxis: {
+      title: '顧客名'
+    },
+    legend: 'none',
+    bars: 'horizontal'
+  };
+
+  const chart = new google.visualization.BarChart(document.getElementById('customerTop10Chart'));
   chart.draw(data, options);
 }
 

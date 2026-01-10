@@ -816,6 +816,70 @@ function getSalesDashboardData(targetMonth) {
       categoryData[category].quantity += (d['受注数合計'] || 0);
     });
 
+    // 顧客別売上TOP10集計（受注シートから直接集計）
+    const orderRecords = getAllRecords('受注');
+    const customerSales = {};
+
+    orderRecords.forEach(order => {
+      // 受注日が対象月に該当するかチェック
+      const orderDate = order['受注日'];
+      if (!orderDate) return;
+
+      let orderYearMonth = '';
+      if (orderDate instanceof Date) {
+        orderYearMonth = Utilities.formatDate(orderDate, 'JST', 'yyyy-MM');
+      } else if (typeof orderDate === 'string') {
+        // 文字列の場合、yyyy/MM/dd または yyyy-MM-dd 形式をパース
+        const dateStr = orderDate.toString();
+
+        // yyyy/MM/dd形式の場合
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length >= 2) {
+            orderYearMonth = parts[0] + '-' + parts[1].padStart(2, '0');
+          }
+        }
+        // yyyy-MM-dd形式の場合
+        else if (dateStr.includes('-') && dateStr.length >= 7) {
+          orderYearMonth = dateStr.substring(0, 7);
+        }
+      }
+
+      if (orderYearMonth !== targetMonth) return;
+
+      // 顧客名と商品名を取得（前後の空白を削除）
+      const customerName = (order['顧客名'] || '不明').trim();
+      const productName = (order['商品名'] || '').trim();
+
+      // 受注数と販売価格から売上計算
+      const quantity = Number(order['受注数']) || 0;
+      const price = Number(order['販売価格']) || 0;
+      const sales = quantity * price;
+
+      // 送料・代引手数料除外
+      if (productName === '送料' || productName === '代引手数料') {
+        return;
+      }
+
+      if (!customerSales[customerName]) {
+        customerSales[customerName] = {
+          '顧客名': customerName,
+          '売上高': 0,
+          '受注回数': 0,
+          '購入数量': 0
+        };
+      }
+
+      customerSales[customerName]['売上高'] += sales;
+      customerSales[customerName]['受注回数'] += 1;
+      customerSales[customerName]['購入数量'] += quantity;
+    });
+
+    // 顧客別売上を配列化してソート
+    const customerTop10 = Object.values(customerSales)
+      .sort((a, b) => b['売上高'] - a['売上高'])
+      .slice(0, 10);
+
     // 顧客リテンション分析データ取得
     const retentionData = getAllRecords('顧客リテンション分析');
 
@@ -860,6 +924,7 @@ function getSalesDashboardData(targetMonth) {
         ordersGrowth: ordersGrowth
       },
       top20: cleanTop20,
+      customerTop10: customerTop10,
       categoryData: categoryData,
       churnRiskCustomers: churnRiskCustomers
     };
