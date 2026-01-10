@@ -11,7 +11,7 @@
   機能:
   - シート「受注」の情報を一覧表示
   - 検索条件: 期間（今週/来週/今月/来月/期間指定）、発送先、顧客
-  - 表示項目: 受注日、発送先名、顧客名、発送日、納品日、品名
+  - 表示項目: 受注日、発送先名、発送日、納品日、品名
   - 行クリックで全項目を詳細モーダルで表示
 -->
 
@@ -634,6 +634,10 @@
         <div class="filter-group">
           <span class="filter-label">期間：</span>
           <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
+            <label class="btn btn-outline-primary" for="periodToday">今日</label>
+            <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
+            <label class="btn btn-outline-primary" for="periodTomorrow">明日</label>
             <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
             <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
             <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
@@ -646,6 +650,8 @@
             <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
             <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
             <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
+            <input type="radio" class="btn-check" name="period" id="periodNone" value="none">
+            <label class="btn btn-outline-warning" for="periodNone">指定なし</label>
           </div>
         </div>
       </div>
@@ -704,7 +710,6 @@
               <tr>
                 <th class="col-date">発送日</th>
                 <th class="col-date">納品日</th>
-                <th class="col-name">顧客名</th>
                 <th class="col-name">発送先名</th>
                 <th class="col-product">商品名</th>
                 <th class="col-quantity">個数</th>
@@ -1024,6 +1029,20 @@
     let dateFrom, dateTo;
     
     switch (period) {
+      case 'today':
+        // 今日：今日のみ
+        dateFrom = formatDate(today);
+        dateTo = formatDate(today);
+        break;
+
+      case 'tomorrow':
+        // 明日：明日のみ
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        dateFrom = formatDate(tomorrow);
+        dateTo = formatDate(tomorrow);
+        break;
+
       case 'thisWeek':
         // 今週：今日から7日間（今日〜6日後）
         dateFrom = formatDate(today);
@@ -1064,6 +1083,17 @@
         // 期間指定
         dateFrom = document.getElementById('dateFrom').value;
         dateTo = document.getElementById('dateTo').value;
+        break;
+
+      case 'none':
+        // 指定なし：全期間
+        if (!confirm('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？')) {
+          // キャンセルされた場合は今週に戻す
+          document.getElementById('periodThisWeek').checked = true;
+          return getDateRange(); // 再帰呼び出しで今週の日付を返す
+        }
+        dateFrom = '';
+        dateTo = '';
         break;
     }
     
@@ -1140,9 +1170,6 @@
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.shippingDate)}</td>
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.deliveryDate)}</td>
             <td class="col-name" rowspan="${itemCount}">
-              <div class="cell-text" data-tooltip="${escapeHtml(order.customerName)}">${escapeHtml(order.customerName)}</div>
-            </td>
-            <td class="col-name" rowspan="${itemCount}">
               <div class="cell-text" data-tooltip="${escapeHtml(order.destinationName)}">${escapeHtml(order.destinationName)}</div>
             </td>
           `;
@@ -1205,13 +1232,6 @@
               <span class="date-value">${formatDisplayDate(order.deliveryDate)}</span>
             </div>
             <span class="order-card-quantity">${itemCount}点</span>
-          </div>
-          <div class="order-card-row">
-            <span class="order-card-icon"><i class="bi bi-person"></i></span>
-            <div class="order-card-value">
-              <div class="order-card-label">顧客</div>
-              ${escapeHtml(order.customerName)}
-            </div>
           </div>
           <div class="order-card-row">
             <span class="order-card-icon"><i class="bi bi-geo-alt"></i></span>
