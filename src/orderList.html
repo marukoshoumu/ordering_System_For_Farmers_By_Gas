@@ -610,6 +610,31 @@
         display: none;
       }
     }
+
+    /* 出荷済・予定日超過のスタイル */
+    .shipped-row {
+      background-color: #f8f9fa;
+      opacity: 0.7;
+    }
+
+    .overdue-row {
+      background-color: #ffe6e6 !important;
+      color: #dc3545;
+    }
+
+    .overdue-row:hover {
+      background-color: #ffcccc !important;
+    }
+
+    .col-shipped {
+      width: 80px;
+      text-align: center;
+    }
+
+    .shipped-checkbox {
+      cursor: pointer;
+      transform: scale(1.2);
+    }
   </style>
 </head>
 <body>
@@ -676,7 +701,7 @@
         </div>
       </div>
 
-      <!-- 2行目：発送先・顧客・検索ボタン -->
+      <!-- 2行目：発送先・顧客 -->
       <div class="filter-row">
         <div class="filter-group">
           <span class="filter-label">発送先：</span>
@@ -689,6 +714,23 @@
           <button type="button" class="btn btn-outline-secondary btn-sm" id="customerBtn" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
             <i class="bi bi-search me-1"></i>指定なし
           </button>
+        </div>
+      </div>
+
+      <!-- 3行目：出荷状態・検索ボタン -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">出荷状態：</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="shippingStatus" id="statusAll" value="all" checked>
+            <label class="btn btn-outline-secondary" for="statusAll">全て</label>
+            <input type="radio" class="btn-check" name="shippingStatus" id="statusNotShipped" value="notShipped">
+            <label class="btn btn-outline-secondary" for="statusNotShipped">未出荷</label>
+            <input type="radio" class="btn-check" name="shippingStatus" id="statusShipped" value="shipped">
+            <label class="btn btn-outline-secondary" for="statusShipped">出荷済</label>
+            <input type="radio" class="btn-check" name="shippingStatus" id="statusOverdue" value="overdue">
+            <label class="btn btn-outline-danger" for="statusOverdue">予定日超過</label>
+          </div>
         </div>
         <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
           <i class="bi bi-search me-1"></i>検索
@@ -713,6 +755,7 @@
                 <th class="col-name">発送先名</th>
                 <th class="col-product">商品名</th>
                 <th class="col-quantity">個数</th>
+                <th class="col-shipped">出荷済</th>
                 <? if (userRole !== 'viewer') { ?>
                 <th class="col-action">操作</th>
                 <? } ?>
@@ -878,7 +921,41 @@
     if (isNaN(d.getTime())) return '-';
     return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
   }
-  
+
+  // 過去の日付かどうか判定
+  function isPastDate(dateString) {
+    if (!dateString) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+    return targetDate < today;
+  }
+
+  // 出荷済ステータスを更新
+  function updateShippedStatus(orderId, isChecked) {
+    const shippedValue = isChecked ? '○' : '';
+
+    showLoading('更新中...');
+    google.script.run
+      .withSuccessHandler(function() {
+        hideLoading();
+        // データを再描画
+        const orderIndex = orderData.findIndex(o => o.orderId === orderId);
+        if (orderIndex >= 0) {
+          orderData[orderIndex].shipped = shippedValue;
+          renderTable();
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        alert('更新エラー: ' + error.message);
+        // チェックボックスを元に戻す
+        executeSearch();
+      })
+      .updateOrderShippedStatus(orderId, shippedValue);
+  }
+
   // イベントリスナー設定
   function setupEventListeners() {
     // 期間ラジオボタン
@@ -1103,14 +1180,19 @@
   // 検索実行
   function executeSearch() {
     const { dateFrom, dateTo } = getDateRange();
-    
+
+    // 出荷状態フィルター取得
+    const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
+    const shippingStatus = shippingStatusElement ? shippingStatusElement.value : 'all';
+
     const params = {
       dateFrom: dateFrom,
       dateTo: dateTo,
       destination: selectedDestination || '',
-      customer: selectedCustomer || ''
+      customer: selectedCustomer || '',
+      shippingStatus: shippingStatus
     };
-    
+
     showLoading('検索中...');
     document.getElementById('emptyState').style.display = 'none';
     
@@ -1159,10 +1241,21 @@
       const itemCount = order.items ? order.items.length : 0;
       if (itemCount === 0) return;  // 商品がない場合はスキップ
 
+      // 出荷済フラグ
+      const isShipped = order.shipped === '○' || order.shipped === true;
+
+      // 予定日超過判定（発送日が過去かつ未出荷）
+      const isOverdue = !isShipped && isPastDate(order.shippingDate);
+
+      // 行のクラス
+      let rowClass = '';
+      if (isShipped) rowClass = 'shipped-row';
+      if (isOverdue) rowClass = 'overdue-row';
+
       // 商品ごとに行を生成
       order.items.forEach((item, index) => {
         const isFirstRow = index === 0;
-        tableRows += `<tr onclick="showOrderDetail('${escapeHtml(order.orderId)}')">`;
+        tableRows += `<tr class="${rowClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">`;
 
         // 最初の行のみ共通情報を表示（rowspanで結合）
         if (isFirstRow) {
@@ -1183,8 +1276,17 @@
           <td class="col-quantity">${item.quantity}点</td>
         `;
 
-        // 最初の行のみ操作ボタンと受注日を表示（rowspanで結合）
+        // 最初の行のみ出荷済チェックボックスを表示
         if (isFirstRow) {
+          tableRows += `
+            <td class="col-shipped" rowspan="${itemCount}" onclick="event.stopPropagation();">
+              <input type="checkbox" class="form-check-input shipped-checkbox"
+                     ${isShipped ? 'checked' : ''}
+                     onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
+                     title="出荷済にチェック">
+            </td>
+          `;
+
           // viewerの場合はボタンを表示しない
           if (userRole !== 'viewer') {
             tableRows += `
@@ -1214,6 +1316,17 @@
       const itemCount = order.items ? order.items.length : 0;
       if (itemCount === 0) return;  // 商品がない場合はスキップ
 
+      // 出荷済フラグ
+      const isShipped = order.shipped === '○' || order.shipped === true;
+
+      // 予定日超過判定（発送日が過去かつ未出荷）
+      const isOverdue = !isShipped && isPastDate(order.shippingDate);
+
+      // カードのクラス
+      let cardClass = 'order-card';
+      if (isShipped) cardClass += ' shipped-row';
+      if (isOverdue) cardClass += ' overdue-row';
+
       // 商品リストを生成
       const itemsHtml = order.items.map(item =>
         `<div style="padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
@@ -1222,7 +1335,7 @@
       ).join('');
 
       cardsHtml += `
-        <div class="order-card" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
+        <div class="${cardClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
           <div class="order-card-header">
             <div class="order-card-dates">
               <span class="date-label">発送</span>
@@ -1245,6 +1358,16 @@
             <div class="order-card-value">
               <div class="order-card-label">商品</div>
               ${itemsHtml}
+            </div>
+          </div>
+          <div class="order-card-row" onclick="event.stopPropagation();">
+            <span class="order-card-icon"><i class="bi bi-check2-square"></i></span>
+            <div class="order-card-value" style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" class="form-check-input shipped-checkbox"
+                     ${isShipped ? 'checked' : ''}
+                     onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
+                     title="出荷済にチェック">
+              <span style="font-size: 0.875rem; color: #666;">出荷済</span>
             </div>
           </div>
           ${userRole !== 'viewer' ? `

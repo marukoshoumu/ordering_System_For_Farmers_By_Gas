@@ -23,12 +23,14 @@ function getOrderListData(params) {
   const quantityCol = getColIndex('受注数');
   const priceCol = getColIndex('販売価格');
   const bunruiCol = getColIndex('商品分類');
+  const shippedCol = getColIndex('出荷済');
   
   // パラメータ
   const startDate = params.dateFrom ? new Date(params.dateFrom) : null;
   const endDate = params.dateTo ? new Date(params.dateTo) : null;
   const searchDestination = params.destination || '';
   const searchCustomer = params.customer || '';
+  const shippingStatus = params.shippingStatus || 'all';
   
   // endDateは終日を含むように調整
   if (endDate) {
@@ -78,6 +80,7 @@ function getOrderListData(params) {
         deliveryDate: row[deliveryDateCol],
         customerName: customerName,
         destinationName: shippingToName,   // HTML側の名前に合わせる
+        shipped: row[shippedCol] || '',  // 出荷済フラグ
         items: [],  // 商品ごとの配列
         totalAmount: 0
       });
@@ -102,6 +105,27 @@ function getOrderListData(params) {
   
   // Mapを配列に変換
   let orders = Array.from(orderMap.values());
+
+  // 出荷状態でフィルタリング
+  if (shippingStatus !== 'all') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    orders = orders.filter(order => {
+      const isShipped = order.shipped === '○' || order.shipped === true;
+      const shippingDate = order.shippingDateRaw ? new Date(order.shippingDateRaw) : null;
+      const isOverdue = !isShipped && shippingDate && shippingDate < today;
+
+      if (shippingStatus === 'shipped') {
+        return isShipped;
+      } else if (shippingStatus === 'notShipped') {
+        return !isShipped;
+      } else if (shippingStatus === 'overdue') {
+        return isOverdue;
+      }
+      return true;
+    });
+  }
   
   // ソート：発送日昇順 → 顧客名順
   orders.sort((a, b) => {
@@ -122,6 +146,7 @@ function getOrderListData(params) {
       deliveryDate: formatDateForDisplay(order.deliveryDate),
       customerName: order.customerName,
       destinationName: order.destinationName,
+      shipped: order.shipped,  // 出荷済フラグ
       items: order.items,  // 商品配列をそのまま渡す
       totalAmount: order.totalAmount
     };
@@ -234,7 +259,7 @@ function searchCustomer(keyword) {
     
     const name = display || [company, person].filter(Boolean).join('　');
     const searchTarget = (name + address + tel).toLowerCase();
-    
+
     if (searchTarget.includes(keywordLower)) {
       results.push({
         name: name,
@@ -243,6 +268,42 @@ function searchCustomer(keyword) {
       });
     }
   }
-  
+
   return results;
+}
+
+/**
+ * 受注の出荷済ステータスを更新
+ * @param {string} orderId - 受注ID
+ * @param {string} shippedValue - 出荷済の値（'○' or ''）
+ * @returns {Object} - 更新結果
+ */
+function updateOrderShippedStatus(orderId, shippedValue) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // 列インデックスを取得
+  const orderIdCol = headers.indexOf('受注ID');
+  const shippedCol = headers.indexOf('出荷済');
+
+  if (orderIdCol === -1 || shippedCol === -1) {
+    throw new Error('必要な列が見つかりません');
+  }
+
+  // 該当する受注IDの全行を更新
+  let updatedCount = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][orderIdCol] === orderId) {
+      sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
+      updatedCount++;
+    }
+  }
+
+  if (updatedCount === 0) {
+    throw new Error('該当する受注IDが見つかりません: ' + orderId);
+  }
+
+  return { success: true, updatedRows: updatedCount };
 }
