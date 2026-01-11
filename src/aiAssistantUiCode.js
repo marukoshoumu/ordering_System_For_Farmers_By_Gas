@@ -77,10 +77,11 @@ function getProductMasterForUI() {
  * 商品マッピングを登録（UIから呼び出し）
  * @param {string} originalText - 原文の商品表記
  * @param {string} productName - マッピング先の商品名（マスタ）
- * @param {string} customerName - 顧客名（任意）
+ * @param {string} shippingToName - 発送先名（優先）
+ * @param {string} customerName - 顧客名（後方互換用）
  * @param {string} spec - 規格情報（任意）
  */
-function registerProductMapping(originalText, productName, customerName, spec) {
+function registerProductMapping(originalText, productName, shippingToName, customerName, spec) {
   try {
     if (!originalText || !productName) {
       return { success: false, error: '原文と商品名は必須です' };
@@ -89,47 +90,77 @@ function registerProductMapping(originalText, productName, customerName, spec) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('商品マッピング');
     
-    // シートがなければ作成
+    // シートがなければ作成（新カラム構成）
     if (!sheet) {
       sheet = ss.insertSheet('商品マッピング');
       sheet.appendRow([
-        '顧客表記', '商品名', '商品分類', '規格', '顧客名', 
+        '顧客表記', '商品名', '商品分類', '規格', '発送先名', '顧客名', 
         '登録日', '使用回数', '最終使用日', '登録者', '備考'
       ]);
-      sheet.getRange(1, 1, 1, 10).setBackground('#4a90d9').setFontColor('#ffffff').setFontWeight('bold');
+      sheet.getRange(1, 1, 1, 11).setBackground('#4a90d9').setFontColor('#ffffff').setFontWeight('bold');
       sheet.setFrozenRows(1);
     }
+    
+    // カラム構成を確認（旧形式の場合は発送先名カラムを追加）
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const hasShippingToColumn = headers.includes('発送先名');
+    if (!hasShippingToColumn && headers.length >= 5) {
+      // 旧形式: 顧客名の前に発送先名カラムを挿入
+      sheet.insertColumnAfter(4);
+      sheet.getRange(1, 5).setValue('発送先名').setBackground('#4a90d9').setFontColor('#ffffff').setFontWeight('bold');
+    }
+    
+    // カラムインデックスを動的に取得
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const colIdx = {
+      originalText: 0,
+      productName: 1,
+      category: 2,
+      spec: 3,
+      shippingTo: currentHeaders.indexOf('発送先名'),
+      customer: currentHeaders.indexOf('顧客名'),
+      regDate: currentHeaders.indexOf('登録日'),
+      usageCount: currentHeaders.indexOf('使用回数'),
+      lastUsed: currentHeaders.indexOf('最終使用日'),
+      registrant: currentHeaders.indexOf('登録者'),
+      memo: currentHeaders.indexOf('備考')
+    };
     
     // 既存マッピングを確認
     const data = sheet.getDataRange().getValues();
     const normalizedOriginal = normalizeForMapping(originalText);
+    const normalizedShippingTo = shippingToName ? normalizeForMapping(shippingToName) : '';
     const normalizedCustomer = customerName ? normalizeForMapping(customerName) : '';
     
     for (let i = 1; i < data.length; i++) {
-      const existingOriginal = normalizeForMapping(data[i][0] || '');
-      const existingCustomer = normalizeForMapping(data[i][4] || '');
+      const existingOriginal = normalizeForMapping(data[i][colIdx.originalText] || '');
+      const existingShippingTo = colIdx.shippingTo >= 0 ? normalizeForMapping(data[i][colIdx.shippingTo] || '') : '';
+      const existingCustomer = colIdx.customer >= 0 ? normalizeForMapping(data[i][colIdx.customer] || '') : '';
       
-      // 同じ表記の場合は更新
-      if (existingOriginal === normalizedOriginal && 
-          (!normalizedCustomer || existingCustomer === normalizedCustomer || !existingCustomer)) {
+      // 同じ表記 + 発送先名一致の場合は更新
+      const shippingToMatch = normalizedShippingTo && existingShippingTo === normalizedShippingTo;
+      const customerMatch = !normalizedShippingTo && normalizedCustomer && existingCustomer === normalizedCustomer;
+      const noSpecificMatch = !normalizedShippingTo && !normalizedCustomer && !existingShippingTo && !existingCustomer;
+      
+      if (existingOriginal === normalizedOriginal && (shippingToMatch || customerMatch || noSpecificMatch)) {
         // 商品名を更新（修正された場合）
-        if (data[i][1] !== productName) {
-          sheet.getRange(i + 1, 2).setValue(productName);
+        if (data[i][colIdx.productName] !== productName) {
+          sheet.getRange(i + 1, colIdx.productName + 1).setValue(productName);
           // 商品分類も更新
           const products = getAllRecords('商品');
           const matchedProduct = products.find(p => p['商品名'] === productName);
           if (matchedProduct) {
-            sheet.getRange(i + 1, 3).setValue(matchedProduct['商品分類'] || '');
+            sheet.getRange(i + 1, colIdx.category + 1).setValue(matchedProduct['商品分類'] || '');
           }
         }
         // 規格を更新
-        if (spec && data[i][3] !== spec) {
-          sheet.getRange(i + 1, 4).setValue(spec);
+        if (spec && data[i][colIdx.spec] !== spec) {
+          sheet.getRange(i + 1, colIdx.spec + 1).setValue(spec);
         }
         // 使用回数をインクリメント
-        const currentCount = data[i][6] || 0;
-        sheet.getRange(i + 1, 7).setValue(currentCount + 1);
-        sheet.getRange(i + 1, 8).setValue(new Date());
+        const currentCount = colIdx.usageCount >= 0 ? (data[i][colIdx.usageCount] || 0) : 0;
+        if (colIdx.usageCount >= 0) sheet.getRange(i + 1, colIdx.usageCount + 1).setValue(currentCount + 1);
+        if (colIdx.lastUsed >= 0) sheet.getRange(i + 1, colIdx.lastUsed + 1).setValue(new Date());
         
         return { 
           success: true, 
@@ -147,12 +178,14 @@ function registerProductMapping(originalText, productName, customerName, spec) {
       category = matchedProduct['商品分類'] || '';
     }
     
+    // 新カラム構成で登録
     const newRow = [
       originalText,
       productName,
       category,
       spec || '',
-      customerName || '',
+      shippingToName || '',  // 発送先名
+      customerName || '',     // 顧客名（後方互換）
       new Date(),
       1,
       new Date(),
@@ -174,6 +207,121 @@ function registerProductMapping(originalText, productName, customerName, spec) {
   }
 }
 
+// ====================================
+// 顧客マスタ FAX番号更新
+// ====================================
+
+/**
+ * 顧客マスタのFAX番号を更新
+ * @param {string} customerDisplayName - 顧客の表示名（会社名＋氏名 or displayName）
+ * @param {string} customerCompanyName - 顧客の会社名
+ * @param {string} customerPersonName - 顧客の氏名
+ * @param {string} faxNumber - 登録するFAX番号
+ * @returns {Object} - 処理結果
+ */
+function updateCustomerFax(customerDisplayName, customerCompanyName, customerPersonName, faxNumber) {
+  try {
+    if (!faxNumber) {
+      return { success: false, error: 'FAX番号が指定されていません' };
+    }
+
+    // 正規化
+    const normalizedFax = String(faxNumber).replace(/[-ー−‐\s]/g, '');
+    if (!/^\d{10,11}$/.test(normalizedFax)) {
+      return { success: false, error: 'FAX番号の形式が正しくありません' };
+    }
+
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (!masterSpreadsheetId) {
+      return { success: false, error: 'MASTER_SPREADSHEET_ID が未設定です' };
+    }
+
+    const ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    const sheet = ss.getSheetByName('顧客情報');
+    if (!sheet) {
+      return { success: false, error: '顧客情報シートが見つかりません' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    // 列インデックスを取得
+    const displayNameCol = headers.indexOf('表示名');
+    const companyNameCol = headers.indexOf('会社名');
+    const personNameCol = headers.indexOf('氏名');
+    const faxCol = headers.indexOf('FAX');
+
+    if (faxCol === -1) {
+      return { success: false, error: 'FAX列が見つかりません' };
+    }
+
+    // 顧客を検索（会社名＋氏名 or 表示名で照合）
+    let foundRow = -1;
+    for (let i = 1; i < data.length; i++) {
+      const rowDisplayName = data[i][displayNameCol] || '';
+      const rowCompanyName = data[i][companyNameCol] || '';
+      const rowPersonName = data[i][personNameCol] || '';
+
+      // 会社名＋氏名で照合
+      if (customerCompanyName && customerCompanyName === rowCompanyName) {
+        if (!customerPersonName || customerPersonName === rowPersonName) {
+          foundRow = i + 1; // 1-indexed for GAS
+          break;
+        }
+      }
+      // 表示名で照合
+      if (customerDisplayName && customerDisplayName === rowDisplayName) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+
+    if (foundRow === -1) {
+      return { success: false, error: '該当する顧客が見つかりません' };
+    }
+
+    // 既存のFAX番号を確認
+    const existingFax = data[foundRow - 1][faxCol] || '';
+    if (existingFax) {
+      return { 
+        success: false, 
+        error: '既にFAX番号が登録されています: ' + existingFax,
+        existingFax: existingFax
+      };
+    }
+
+    // FAX番号を更新
+    sheet.getRange(foundRow, faxCol + 1).setValue(normalizedFax);
+
+    // バックアップシートも更新
+    const bkSheet = ss.getSheetByName('顧客情報BK');
+    if (bkSheet) {
+      const bkData = bkSheet.getDataRange().getValues();
+      for (let i = 1; i < bkData.length; i++) {
+        const rowCompanyName = bkData[i][companyNameCol] || '';
+        const rowPersonName = bkData[i][personNameCol] || '';
+        if (customerCompanyName && customerCompanyName === rowCompanyName) {
+          if (!customerPersonName || customerPersonName === rowPersonName) {
+            bkSheet.getRange(i + 1, faxCol + 1).setValue(normalizedFax);
+            break;
+          }
+        }
+      }
+    }
+
+    Logger.log(`顧客FAX番号を更新: ${customerCompanyName || customerDisplayName} → ${normalizedFax}`);
+    return { 
+      success: true, 
+      message: 'FAX番号を登録しました',
+      faxNumber: normalizedFax
+    };
+
+  } catch (error) {
+    Logger.log('Error in updateCustomerFax: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * 複数の商品マッピングを一括登録
  */
@@ -184,7 +332,8 @@ function registerProductMappingBulk(mappings) {
     const result = registerProductMapping(
       mapping.originalText,
       mapping.productName,
-      mapping.customerName,
+      mapping.shippingToName || '',  // 発送先名優先
+      mapping.customerName || '',     // 顧客名（後方互換）
       mapping.spec
     );
     results.push({
@@ -213,16 +362,32 @@ function normalizeForMapping(str) {
 
 /**
  * 既存マッピングから商品を検索
+ * @param {string} originalText - 原文の商品表記
+ * @param {string} shippingToName - 発送先名（優先）
+ * @param {string} customerName - 顧客名（後方互換）
  */
-function findProductFromMapping(originalText, customerName) {
+function findProductFromMapping(originalText, shippingToName, customerName) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('商品マッピング');
     
     if (!sheet) return null;
     
+    // カラムインデックスを動的に取得
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const colIdx = {
+      originalText: 0,
+      productName: 1,
+      category: 2,
+      spec: 3,
+      shippingTo: headers.indexOf('発送先名'),
+      customer: headers.indexOf('顧客名'),
+      usageCount: headers.indexOf('使用回数')
+    };
+    
     const data = sheet.getDataRange().getValues();
     const normalizedOriginal = normalizeForMapping(originalText);
+    const normalizedShippingTo = shippingToName ? normalizeForMapping(shippingToName) : '';
     const normalizedCustomer = customerName ? normalizeForMapping(customerName) : '';
     
     let bestMatch = null;
@@ -230,19 +395,24 @@ function findProductFromMapping(originalText, customerName) {
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const mappingOriginal = normalizeForMapping(row[0] || '');
-      const mappingProduct = row[1];
-      const mappingCategory = row[2];
-      const mappingSpec = row[3];
-      const mappingCustomer = normalizeForMapping(row[4] || '');
-      const usageCount = row[6] || 0;
+      const mappingOriginal = normalizeForMapping(row[colIdx.originalText] || '');
+      const mappingProduct = row[colIdx.productName];
+      const mappingCategory = row[colIdx.category];
+      const mappingSpec = row[colIdx.spec];
+      const mappingShippingTo = colIdx.shippingTo >= 0 ? normalizeForMapping(row[colIdx.shippingTo] || '') : '';
+      const mappingCustomer = colIdx.customer >= 0 ? normalizeForMapping(row[colIdx.customer] || '') : '';
+      const usageCount = colIdx.usageCount >= 0 ? (row[colIdx.usageCount] || 0) : 0;
       
       // 完全一致
       if (mappingOriginal === normalizedOriginal) {
         let score = 100;
         
-        // 顧客一致でボーナス
-        if (normalizedCustomer && mappingCustomer === normalizedCustomer) {
+        // 発送先一致で最大ボーナス（優先）
+        if (normalizedShippingTo && mappingShippingTo === normalizedShippingTo) {
+          score += 70;
+        }
+        // 顧客一致でボーナス（後方互換）
+        else if (normalizedCustomer && mappingCustomer === normalizedCustomer) {
           score += 50;
         }
         
@@ -255,6 +425,7 @@ function findProductFromMapping(originalText, customerName) {
             productName: mappingProduct,
             category: mappingCategory,
             spec: mappingSpec,
+            shippingToSpecific: !!mappingShippingTo,
             customerSpecific: !!mappingCustomer,
             usageCount: usageCount,
             matchType: 'exact',
@@ -266,7 +437,9 @@ function findProductFromMapping(originalText, customerName) {
       else if (mappingOriginal.includes(normalizedOriginal) || normalizedOriginal.includes(mappingOriginal)) {
         let score = 50;
         
-        if (normalizedCustomer && mappingCustomer === normalizedCustomer) {
+        if (normalizedShippingTo && mappingShippingTo === normalizedShippingTo) {
+          score += 40;
+        } else if (normalizedCustomer && mappingCustomer === normalizedCustomer) {
           score += 30;
         }
         
@@ -278,6 +451,7 @@ function findProductFromMapping(originalText, customerName) {
             productName: mappingProduct,
             category: mappingCategory,
             spec: mappingSpec,
+            shippingToSpecific: !!mappingShippingTo,
             customerSpecific: !!mappingCustomer,
             usageCount: usageCount,
             matchType: 'partial',
@@ -312,8 +486,13 @@ function analyzeOrderText(text) {
     // マスタデータで補完
     const enhancedResult = enhanceWithMasterData(parsedResult, customerList, shippingToList);
     
+    // 発送先名と顧客名を取得（発送先優先）
+    const shippingToName = enhancedResult.shippingTo?.rawCompanyName || 
+                           enhancedResult.shippingTo?.masterData?.companyName || '';
+    const customerName = enhancedResult.customer?.rawCompanyName || '';
+    
     // 商品マッピングで補完
-    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, enhancedResult.customer?.rawCompanyName);
+    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, shippingToName, customerName);
     
     // 価格情報を追加
     enhancedResult.items = addPriceToItems(enhancedResult.items, productList);
@@ -333,7 +512,7 @@ function analyzeOrderFileBase64(base64Data, mimeType, fileName) {
     Logger.log('Analyzing uploaded file: ' + fileName + ' (' + mimeType + ')');
     
     const { productList, customerList, shippingToList, mappingList } = getMasterData();
-    const prompt = buildPDFAnalysisPrompt(productList, mappingList);
+    const prompt = buildPDFAnalysisPrompt(productList, mappingList, customerList, shippingToList);
     
     const parts = [
       { text: prompt },
@@ -346,8 +525,13 @@ function analyzeOrderFileBase64(base64Data, mimeType, fileName) {
     // マスタデータで補完
     const enhancedResult = enhanceWithMasterData(parsedResult, customerList, shippingToList);
     
+    // 発送先名と顧客名を取得（発送先優先）
+    const shippingToName = enhancedResult.shippingTo?.rawCompanyName || 
+                           enhancedResult.shippingTo?.masterData?.companyName || '';
+    const customerName = enhancedResult.customer?.rawCompanyName || '';
+    
     // 商品マッピングで補完
-    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, enhancedResult.customer?.rawCompanyName);
+    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, shippingToName, customerName);
     
     // 価格情報を追加
     enhancedResult.items = addPriceToItems(enhancedResult.items, productList);
@@ -396,21 +580,25 @@ function addPriceToItems(items, productList) {
 
 /**
  * 商品リストをマッピングで補完
+ * @param {Array} items - 商品リスト
+ * @param {string} shippingToName - 発送先名（優先）
+ * @param {string} customerName - 顧客名（後方互換）
  */
-function enhanceItemsWithMapping(items, customerName) {
+function enhanceItemsWithMapping(items, shippingToName, customerName) {
   if (!items || !Array.isArray(items)) return items;
   
   return items.map(item => {
     // 既にマッピング情報があればスキップ
     if (item.mappingMatch) return item;
     
-    const mapping = findProductFromMapping(item.originalText, customerName);
+    const mapping = findProductFromMapping(item.originalText, shippingToName, customerName);
     
     if (mapping) {
       item.mappingMatch = {
         found: true,
         matchType: mapping.matchType,
         usageCount: mapping.usageCount,
+        shippingToSpecific: mapping.shippingToSpecific,
         customerSpecific: mapping.customerSpecific,
         rowIndex: mapping.rowIndex
       };
@@ -466,7 +654,8 @@ function getMasterData() {
       productName: m['商品名'],
       category: m['商品分類'],
       spec: m['規格'],
-      customerName: m['顧客名']
+      shippingToName: m['発送先名'] || '',  // 発送先名優先
+      customerName: m['顧客名'] || ''            // 後方互換
     }));
   } catch (e) {
     Logger.log('商品マッピングシートなし（初回は自動作成されます）');
@@ -514,7 +703,129 @@ function getMasterData() {
 // プロンプト構築
 // ====================================
 
-function buildPDFAnalysisPrompt(productList, mappingList) {
+/**
+ * 発送先別マッピングセクションを構築
+ * テキスト内の発送先名を検出し、その発送先のマッピングを優先表示
+ * @param {Array} mappingList - マッピング一覧
+ * @param {string} text - 解析対象テキスト（オプション）
+ * @param {Array} customerList - 顧客一覧（後方互換用）
+ * @param {Array} shippingToList - 発送先一覧（オプション）
+ * @returns {string} プロンプト用のマッピングセクション
+ */
+function buildCustomerMappingSection(mappingList, text, customerList, shippingToList) {
+  if (!mappingList || mappingList.length === 0) {
+    return '';
+  }
+
+  // 発送先別・顧客別にマッピングをグループ化
+  const mappingByShippingTo = {};
+  const mappingByCustomer = {};
+  const generalMappings = [];
+
+  mappingList.forEach(m => {
+    // 発送先名優先
+    if (m.shippingToName && m.shippingToName.trim()) {
+      if (!mappingByShippingTo[m.shippingToName]) {
+        mappingByShippingTo[m.shippingToName] = [];
+      }
+      mappingByShippingTo[m.shippingToName].push(m);
+    }
+    // 顧客名（後方互換）
+    else if (m.customerName && m.customerName.trim()) {
+      if (!mappingByCustomer[m.customerName]) {
+        mappingByCustomer[m.customerName] = [];
+      }
+      mappingByCustomer[m.customerName].push(m);
+    }
+    // 汎用
+    else {
+      generalMappings.push(m);
+    }
+  });
+
+  // テキストから発送先候補を検出（優先表示用）
+  let priorityShippingTos = [];
+  if (text && shippingToList) {
+    shippingToList.forEach(s => {
+      const names = [s.companyName, s.personName].filter(n => n);
+      names.forEach(name => {
+        if (name && text.includes(name) && mappingByShippingTo[name]) {
+          if (!priorityShippingTos.includes(name)) {
+            priorityShippingTos.push(name);
+          }
+        }
+      });
+    });
+  }
+
+  // 顧客候補も検出（後方互換）
+  let priorityCustomers = [];
+  if (text && customerList) {
+    customerList.forEach(c => {
+      const names = [c.companyName, c.displayName, c.personName].filter(n => n);
+      names.forEach(name => {
+        if (name && text.includes(name) && mappingByCustomer[name]) {
+          if (!priorityCustomers.includes(name)) {
+            priorityCustomers.push(name);
+          }
+        }
+      });
+    });
+  }
+
+  let mappingText = '\n═══════════════════════════════════════════════════════════\n';
+  mappingText += '【学習済みマッピング】※過去に登録した表記ゆれ\n';
+  mappingText += '═══════════════════════════════════════════════════════════\n';
+
+  // 優先発送先のマッピングを先に表示
+  if (priorityShippingTos.length > 0) {
+    mappingText += '\n★ この発送先で過去に使用されたマッピング ★\n';
+    priorityShippingTos.forEach(shippingToName => {
+      mappingText += `\n【${shippingToName}】\n`;
+      mappingByShippingTo[shippingToName].slice(0, 20).forEach(m => {
+        mappingText += `  「${m.variant}」→「${m.productName}」\n`;
+      });
+    });
+    mappingText += '\n---\n';
+  }
+
+  // 顧客別マッピング（後方互換）
+  if (priorityCustomers.length > 0) {
+    mappingText += '\n【顧客別マッピング】\n';
+    priorityCustomers.forEach(customerName => {
+      mappingText += `\n【${customerName}】\n`;
+      mappingByCustomer[customerName].slice(0, 10).forEach(m => {
+        mappingText += `  「${m.variant}」→「${m.productName}」\n`;
+      });
+    });
+  }
+
+  // 発送先名付きのマッピング（優先発送先以外）
+  const otherShippingTos = Object.keys(mappingByShippingTo)
+    .filter(name => !priorityShippingTos.includes(name));
+  
+  if (otherShippingTos.length > 0) {
+    mappingText += '\n【発送先別マッピング】\n';
+    otherShippingTos.slice(0, 10).forEach(shippingToName => {
+      mappingText += `  ${shippingToName}: `;
+      const items = mappingByShippingTo[shippingToName].slice(0, 5)
+        .map(m => `「${m.variant}」→「${m.productName}」`);
+      mappingText += items.join('、') + '\n';
+    });
+  }
+
+  // 汎用マッピング（発送先名・顧客名なし）
+  if (generalMappings.length > 0) {
+    mappingText += '\n【共通マッピング】\n';
+    generalMappings.slice(0, 30).forEach(m => {
+      mappingText += `「${m.variant}」→「${m.productName}」\n`;
+    });
+  }
+
+  return mappingText;
+}
+
+function buildPDFAnalysisPrompt(productList, mappingList, customerList, shippingToList) {
   // 商品マスタをカテゴリ別に整理
   const productsByCategory = {};
   productList.forEach(p => {
@@ -531,16 +842,8 @@ function buildPDFAnalysisPrompt(productList, mappingList) {
     productMasterText += '\n\n';
   }
 
-  // 学習済みマッピングがあれば追加
-  let mappingText = '';
-  if (mappingList && mappingList.length > 0) {
-    mappingText = '\n═══════════════════════════════════════════════════════════\n';
-    mappingText += '【学習済みマッピング】※過去に登録した表記ゆれ\n';
-    mappingText += '═══════════════════════════════════════════════════════════\n';
-    mappingList.slice(0, 50).forEach(m => {
-      mappingText += `「${m.variant}」→「${m.productName}」\n`;
-    });
-  }
+  // 発送先別マッピングセクションを構築
+  const mappingText = buildCustomerMappingSection(mappingList, null, customerList, shippingToList);
 
   // 自社名を取得
   const companyName = getCompanyDisplayName();
@@ -688,14 +991,8 @@ function buildTextAnalysisPrompt(text, productList, mappingList, customerList, s
     productMasterText += '\n\n';
   }
 
-  // 学習済みマッピングがあれば追加
-  let mappingText = '';
-  if (mappingList && mappingList.length > 0) {
-    mappingText = '\n【学習済みマッピング】\n';
-    mappingList.slice(0, 50).forEach(m => {
-      mappingText += `「${m.variant}」→「${m.productName}」\n`;
-    });
-  }
+  // 発送先別マッピングセクションを構築（テキスト内の発送先名を検出して優先表示）
+  const mappingText = buildCustomerMappingSection(mappingList, text, customerList, shippingToList);
 
   // 自社名を取得
   const companyName = getCompanyDisplayName();
@@ -982,9 +1279,10 @@ function enhanceWithMasterData(result, customerList, shippingToList) {
     }
   }
 
-  // 🤖 顧客推定（Phase 4: 新規追加）
-  // 顧客がnullまたは新規顧客で、発送先情報がある場合に推定を試みる
-  if ((!result.customer || result.customer.isNewCustomer) && result.shippingTo) {
+  // 🤖 顧客推定（Phase 4: 常に実行するように変更）
+  // 発送先情報がある場合、発送先→顧客マッピングから顧客を推定
+  // LLMが特定した顧客と比較して、矛盾があればアラートを出す
+  if (result.shippingTo) {
     try {
       const shippingToName = result.shippingTo.rawCompanyName || result.shippingTo.rawPersonName || '';
       if (shippingToName) {
@@ -992,6 +1290,32 @@ function enhanceWithMasterData(result, customerList, shippingToList) {
         if (estimation && estimation.customer) {
           result.customerEstimation = estimation;
           Logger.log('顧客推定成功: ' + shippingToName + ' → ' + estimation.customer + ' (' + estimation.confidence + '%)');
+          
+          // LLMが特定した顧客と発送先マッピングからの推定を比較
+          if (result.customer && result.customer.masterData) {
+            const llmCustomer = normalizeString(result.customer.masterData.companyName || result.customer.masterData.displayName || '');
+            const estimatedCustomer = normalizeString(estimation.customer);
+            
+            // 顧客名が異なる場合は警告（発送先マッピングの方が信頼性高い可能性）
+            if (llmCustomer && estimatedCustomer && llmCustomer !== estimatedCustomer) {
+              // 発送先マッピングの信頼度が高い場合（70%以上）
+              if (estimation.confidence >= 70) {
+                result.alerts.push(`⚠️ 発送先「${shippingToName}」の過去の取引先は「${estimation.customer}」です（現在の顧客: ${result.customer.masterData.companyName || result.customer.masterData.displayName}）`);
+                result.customerConflict = {
+                  llmCustomer: result.customer.masterData.companyName || result.customer.masterData.displayName,
+                  estimatedCustomer: estimation.customer,
+                  estimationConfidence: estimation.confidence
+                };
+              }
+            }
+          }
+          
+          // 顧客がnullまたは新規の場合は推定結果を提案
+          if (!result.customer || result.customer.isNewCustomer) {
+            if (estimation.confidence >= 50) {
+              result.alerts.push(`💡 発送先「${shippingToName}」から顧客「${estimation.customer}」を推定しました（信頼度: ${estimation.confidence}%）`);
+            }
+          }
         }
       }
     } catch (error) {
@@ -1024,6 +1348,23 @@ function enhanceWithMasterData(result, customerList, shippingToList) {
       result.alerts.push('⚠️ 新規発送先の可能性があります');
     }
   }
+  
+  // 🏠 発送先がない場合は顧客を発送先として使用（依頼先=発送先のパターン）
+  if (!result.shippingTo && result.customer && result.customer.masterData) {
+    result.shippingTo = {
+      rawCompanyName: result.customer.masterData.companyName || result.customer.rawCompanyName,
+      rawPersonName: result.customer.masterData.personName || result.customer.rawPersonName,
+      rawZipcode: result.customer.masterData.zipcode,
+      rawAddress: result.customer.masterData.address,
+      rawTel: result.customer.masterData.tel || result.customer.rawTel,
+      masterMatch: 'customer_fallback',
+      matchedBy: '顧客情報から設定',
+      isNewShippingTo: false,
+      isCustomerFallback: true
+    };
+    result.alerts.push('📍 発送先が指定されていないため、依頼先（顧客）を発送先として設定しました');
+    Logger.log('発送先フォールバック: 顧客情報を発送先に使用');
+  }
 
   return normalizeResult(result);
 }
@@ -1032,8 +1373,9 @@ function findBestMatch(rawData, masterList, type) {
   const rawCompany = normalizeString(rawData.rawCompanyName || '');
   const rawPerson = normalizeString(rawData.rawPersonName || '');
   const rawTel = normalizeTel(rawData.rawTel || '');
-  const rawZipcode = normalizeZipcode(rawData.rawZipcode || '');
   const rawFax = normalizeTel(rawData.rawFax || '');
+  const rawZipcode = normalizeZipcode(rawData.rawZipcode || '');
+  const rawAddress = normalizeString(rawData.rawAddress || '');
 
   // 自社名と「御中」「様」付きを除外リストに追加
   const companyName = getCompanyDisplayName();
@@ -1060,9 +1402,10 @@ function findBestMatch(rawData, masterList, type) {
 
     const masterPerson = normalizeString(master.personName || '');
     const masterTel = normalizeTel(master.tel || '');
-    const masterZipcode = normalizeZipcode(master.zipcode || '');
     const masterFax = normalizeTel(master.fax || '');
     const masterDisplayName = normalizeString(master.displayName || '');
+    const masterZipcode = normalizeZipcode(master.zipcode || '');
+    const masterAddress = normalizeString((master.address1 || '') + (master.address2 || ''));
 
     // 電話番号一致（高信頼度）
     if (rawTel && masterTel && rawTel === masterTel) {
@@ -1076,12 +1419,6 @@ function findBestMatch(rawData, masterList, type) {
       matchedBy.push('FAX');
     }
 
-    // 郵便番号一致
-    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
-      score += 50;
-      matchedBy.push('郵便番号');
-    }
-
     // 会社名一致
     if (rawCompany && masterCompany) {
       if (rawCompany === masterCompany) {
@@ -1091,6 +1428,23 @@ function findBestMatch(rawData, masterList, type) {
         score += 40;
         matchedBy.push('会社名(部分)');
       }
+    }
+    
+    // 🆕 宛名とマスタ会社名の照合（FAXでは宛名が実際の会社名であることが多い）
+    if (rawPerson && masterCompany && !matchedBy.includes('会社名') && !matchedBy.includes('会社名(部分)')) {
+      if (rawPerson === masterCompany) {
+        score += 75;
+        matchedBy.push('宛名→会社名');
+      } else if (rawPerson.includes(masterCompany) || masterCompany.includes(rawPerson)) {
+        score += 35;
+        matchedBy.push('宛名→会社名(部分)');
+      }
+    }
+    
+    // 🆕 会社名がマスタの住所に含まれている（川崎青果プロセスセンターのケース）
+    if (rawCompany && masterAddress && masterAddress.includes(rawCompany)) {
+      score += 30;
+      matchedBy.push('会社名→住所');
     }
 
     // 表示名一致
@@ -1107,6 +1461,23 @@ function findBestMatch(rawData, masterList, type) {
       } else if (rawPerson.includes(masterPerson) || masterPerson.includes(rawPerson)) {
         score += 30;
         matchedBy.push('氏名(部分)');
+      }
+    }
+    
+    // 🆕 郵便番号一致（高信頼度）
+    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
+      score += 70;
+      matchedBy.push('郵便番号');
+    }
+    
+    // 🆕 住所一致・部分一致
+    if (rawAddress && masterAddress) {
+      if (rawAddress === masterAddress) {
+        score += 60;
+        matchedBy.push('住所');
+      } else if (rawAddress.includes(masterAddress) || masterAddress.includes(rawAddress)) {
+        score += 35;
+        matchedBy.push('住所(部分)');
       }
     }
 
@@ -1320,8 +1691,13 @@ function analyzeOrderTextById(spreadsheetId, text) {
     // マスタデータで補完
     const enhancedResult = enhanceWithMasterData(parsedResult, customerList, shippingToList);
     
+    // 発送先名と顧客名を取得（発送先優先）
+    const shippingToName = enhancedResult.shippingTo?.rawCompanyName || 
+                           enhancedResult.shippingTo?.masterData?.companyName || '';
+    const customerName = enhancedResult.customer?.rawCompanyName || '';
+    
     // 商品マッピングで補完
-    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, enhancedResult.customer?.rawCompanyName);
+    enhancedResult.items = enhanceItemsWithMapping(enhancedResult.items, shippingToName, customerName);
     
     // 価格情報を追加
     enhancedResult.items = addPriceToItems(enhancedResult.items, productList);
@@ -1329,6 +1705,159 @@ function analyzeOrderTextById(spreadsheetId, text) {
     return enhancedResult;
   } catch (error) {
     Logger.log('Error in analyzeOrderTextById: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// ====================================
+// 移行関数
+// ====================================
+
+/**
+ * 商品マッピングの移行：発送先名カラムを追加
+ * 既存のシートに「発送先名」カラムがなければ追加する
+ * 
+ * 使用方法：GASエディタで migrateProductMappingAddShippingToColumn() を実行
+ */
+function migrateProductMappingAddShippingToColumn() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('商品マッピング');
+    
+    if (!sheet) {
+      Logger.log('商品マッピングシートが存在しません');
+      return { success: false, message: '商品マッピングシートが存在しません' };
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    // 既に発送先名カラムがあるか確認
+    if (headers.includes('発送先名')) {
+      Logger.log('発送先名カラムは既に存在します');
+      return { success: true, message: '発送先名カラムは既に存在します', migrated: false };
+    }
+    
+    // 顧客名カラムの位置を確認
+    const customerColIndex = headers.indexOf('顧客名');
+    if (customerColIndex === -1) {
+      Logger.log('顧客名カラムが見つかりません');
+      return { success: false, message: '顧客名カラムが見つかりません' };
+    }
+    
+    // 顧客名の前に発送先名カラムを挿入
+    sheet.insertColumnBefore(customerColIndex + 1);
+    sheet.getRange(1, customerColIndex + 1)
+      .setValue('発送先名')
+      .setBackground('#4a90d9')
+      .setFontColor('#ffffff')
+      .setFontWeight('bold');
+    
+    Logger.log('発送先名カラムを追加しました（列 ' + (customerColIndex + 1) + '）');
+    
+    return { 
+      success: true, 
+      message: '発送先名カラムを追加しました', 
+      migrated: true,
+      newColumnIndex: customerColIndex + 1
+    };
+    
+  } catch (error) {
+    Logger.log('Error in migrateProductMappingAddShippingToColumn: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 商品マッピングの移行：顧客名を発送先名にコピー
+ * 発送先マッピングを参照して、顧客名→発送先名の変換を試みる
+ * 
+ * 使用方法：GASエディタで migrateCustomerToShippingTo() を実行
+ */
+function migrateCustomerToShippingTo() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('商品マッピング');
+    
+    if (!sheet) {
+      return { success: false, message: '商品マッピングシートが存在しません' };
+    }
+    
+    // まず発送先名カラムを追加
+    const addResult = migrateProductMappingAddShippingToColumn();
+    if (!addResult.success) {
+      return addResult;
+    }
+    
+    // 発送先マッピングを取得
+    const shippingMappingSheet = ss.getSheetByName('発送先マッピング');
+    const shippingMappings = {};
+    
+    if (shippingMappingSheet) {
+      const mappingData = shippingMappingSheet.getDataRange().getValues();
+      const mappingHeaders = mappingData[0];
+      const shippingColIdx = mappingHeaders.indexOf('発送先会社名');
+      const customerColIdx = mappingHeaders.indexOf('顧客名');
+      
+      if (shippingColIdx >= 0 && customerColIdx >= 0) {
+        for (let i = 1; i < mappingData.length; i++) {
+          const customerName = mappingData[i][customerColIdx];
+          const shippingToName = mappingData[i][shippingColIdx];
+          if (customerName && shippingToName) {
+            // 顧客名→発送先名の配列を作成
+            if (!shippingMappings[customerName]) {
+              shippingMappings[customerName] = [];
+            }
+            shippingMappings[customerName].push(shippingToName);
+          }
+        }
+      }
+    }
+    
+    // 商品マッピングを更新
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const shippingToColIdx = headers.indexOf('発送先名');
+    const customerColIdx = headers.indexOf('顧客名');
+    
+    let migratedCount = 0;
+    let skippedCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const existingShippingTo = data[i][shippingToColIdx];
+      const customerName = data[i][customerColIdx];
+      
+      // 既に発送先名がある場合はスキップ
+      if (existingShippingTo) {
+        skippedCount++;
+        continue;
+      }
+      
+      // 顧客名から発送先名を推測
+      if (customerName && shippingMappings[customerName]) {
+        // 発送先が1つだけの場合のみ自動マッピング
+        if (shippingMappings[customerName].length === 1) {
+          sheet.getRange(i + 1, shippingToColIdx + 1).setValue(shippingMappings[customerName][0]);
+          migratedCount++;
+        } else {
+          // 複数発送先がある場合は手動確認が必要
+          skippedCount++;
+        }
+      } else {
+        skippedCount++;
+      }
+    }
+    
+    Logger.log(`移行完了: ${migratedCount}件を発送先名に変換, ${skippedCount}件はスキップ`);
+    
+    return {
+      success: true,
+      message: `移行完了: ${migratedCount}件を発送先名に変換, ${skippedCount}件はスキップ（手動確認が必要）`,
+      migratedCount,
+      skippedCount
+    };
+    
+  } catch (error) {
+    Logger.log('Error in migrateCustomerToShippingTo: ' + error.message);
     return { success: false, error: error.message };
   }
 }
