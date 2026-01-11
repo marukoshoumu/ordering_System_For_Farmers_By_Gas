@@ -582,6 +582,59 @@
     margin-top: var(--space-2);
     font-size: 0.8rem;
   }
+  /* 📠 FAX番号登録促進スタイル */
+  .fax-registration-prompt {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border: 2px solid #ff9800;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: var(--space-2);
+    font-size: 0.85rem;
+  }
+  .fax-registration-prompt .fax-header {
+    font-weight: 600;
+    color: #e65100;
+    margin-bottom: 8px;
+  }
+  .fax-registration-prompt .fax-number {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #bf360c;
+    margin-bottom: 8px;
+    font-family: monospace;
+  }
+  .fax-registration-prompt .fax-description {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  .btn-register-fax {
+    background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+  }
+  .btn-register-fax:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
+    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+    transform: translateY(-1px);
+  }
+  .btn-register-fax:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(255, 152, 0, 0.3);
+  }
+  .btn-register-fax:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
   /* 🤖 AI推定候補スタイル (Phase 4: 新規追加) */
   .ai-suggestion-info {
     background: linear-gradient(135deg, #f0f8ff 0%, #e8f5e9 100%);
