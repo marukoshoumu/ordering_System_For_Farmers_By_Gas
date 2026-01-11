@@ -35,7 +35,7 @@ function getMasterDataCached() {
     }
     
     // キャッシュがなければ取得
-    const shippingFromRecords = getAllRecords('発送元') || [];
+    const shippingFromRecords = getAllRecords('発送元情報') || [];
     const shippingFromList = shippingFromRecords.map(function(r) {
       return {
         name: r['発送元名'] || r['名前'] || '',
