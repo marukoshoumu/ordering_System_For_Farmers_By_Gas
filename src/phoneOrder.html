@@ -1475,18 +1475,18 @@
 
       // 佐川の場合のみ処理
       if (deliveryMethod && deliveryMethod.includes('佐川')) {
-        // 着払いの場合、荷扱い２にeコレクトを自動設定
-        if (invoiceType && invoiceType.includes('着払')) {
-          cargo2Select.value = '008:ｅコレクト（現金）';
-        }
-
-        // クール区分に応じて荷扱い３を自動設定
+        // クール区分に応じて荷扱い２を自動設定
         if (coolCls) {
           if (coolCls.includes('002')) {  // 冷蔵
-            cargo3Select.value = '001:冷蔵';
+            cargo2Select.value = '001:冷蔵';
           } else if (coolCls.includes('003')) {  // 冷凍
-            cargo3Select.value = '002:冷凍';
+            cargo2Select.value = '002:冷凍';
           }
+        }
+
+        // 着払いの場合、荷扱い３にeコレクトを自動設定
+        if (invoiceType && invoiceType.includes('着払')) {
+          cargo3Select.value = '008:ｅコレクト（現金）';
         }
       }
     }
