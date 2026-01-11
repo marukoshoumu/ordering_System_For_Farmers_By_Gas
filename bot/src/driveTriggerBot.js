@@ -331,6 +331,8 @@ function getMasterDataForTrigger() {
       const variantIdx = mappingHeaders.indexOf('顧客表記');
       const prodNameIdx = mappingHeaders.indexOf('商品名');
       const catIdx = mappingHeaders.indexOf('商品分類');
+      const shippingToIdx = mappingHeaders.indexOf('発送先名');
+      const customerIdx = mappingHeaders.indexOf('顧客名');
 
       for (let i = 1; i < mappingData.length; i++) {
         const row = mappingData[i];
@@ -338,7 +340,9 @@ function getMasterDataForTrigger() {
           mappingList.push({
             variant: row[variantIdx],
             productName: row[prodNameIdx],
-            category: row[catIdx]
+            category: row[catIdx],
+            shippingToName: shippingToIdx >= 0 ? (row[shippingToIdx] || '') : '',
+            customerName: customerIdx >= 0 ? (row[customerIdx] || '') : ''
           });
         }
       }
@@ -405,10 +409,86 @@ function getMasterDataForTrigger() {
 }
 
 /**
+ * 発送先別マッピングセクションを構築
+ * @param {Array} mappingList - マッピング一覧
+ * @param {Array} shippingToList - 発送先一覧
+ * @returns {string} プロンプト用のマッピングセクション
+ */
+function buildCustomerMappingSection(mappingList, shippingToList) {
+  if (!mappingList || mappingList.length === 0) {
+    return '';
+  }
+
+  // 発送先別・顧客別にマッピングをグループ化
+  const mappingByShippingTo = {};
+  const mappingByCustomer = {};
+  const generalMappings = [];
+
+  mappingList.forEach(m => {
+    // 発送先名優先
+    if (m.shippingToName && m.shippingToName.trim()) {
+      if (!mappingByShippingTo[m.shippingToName]) {
+        mappingByShippingTo[m.shippingToName] = [];
+      }
+      mappingByShippingTo[m.shippingToName].push(m);
+    }
+    // 顧客名（後方互換）
+    else if (m.customerName && m.customerName.trim()) {
+      if (!mappingByCustomer[m.customerName]) {
+        mappingByCustomer[m.customerName] = [];
+      }
+      mappingByCustomer[m.customerName].push(m);
+    }
+    // 汎用
+    else {
+      generalMappings.push(m);
+    }
+  });
+
+  let mappingText = '\n═══════════════════════════════════════════════════════════\n';
+  mappingText += '【学習済みマッピング】※過去に登録した表記ゆれ\n';
+  mappingText += '═══════════════════════════════════════════════════════════\n';
+
+  // 発送先名付きのマッピング（優先）
+  const shippingToNames = Object.keys(mappingByShippingTo);
+  if (shippingToNames.length > 0) {
+    mappingText += '\n【発送先別マッピング】★この発送先のFAXを解析する際は優先的に使用★\n';
+    shippingToNames.slice(0, 15).forEach(shippingToName => {
+      mappingText += `\n【${shippingToName}】\n`;
+      mappingByShippingTo[shippingToName].slice(0, 15).forEach(m => {
+        mappingText += `  「${m.variant}」→「${m.productName}」\n`;
+      });
+    });
+  }
+
+  // 顧客名付きのマッピング（後方互換）
+  const customerNames = Object.keys(mappingByCustomer);
+  if (customerNames.length > 0) {
+    mappingText += '\n【顧客別マッピング】\n';
+    customerNames.slice(0, 10).forEach(customerName => {
+      mappingText += `  ${customerName}: `;
+      const items = mappingByCustomer[customerName].slice(0, 5)
+        .map(m => `「${m.variant}」→「${m.productName}」`);
+      mappingText += items.join('、') + '\n';
+    });
+  }
+
+  // 汎用マッピング（発送先名・顧客名なし）
+  if (generalMappings.length > 0) {
+    mappingText += '\n【共通マッピング】\n';
+    generalMappings.slice(0, 30).forEach(m => {
+      mappingText += `「${m.variant}」→「${m.productName}」\n`;
+    });
+  }
+
+  return mappingText;
+}
+
+/**
  * トリガー用の詳細プロンプトを構築
  */
 function buildTriggerAnalysisPrompt(masterData) {
-  const { productList, mappingList } = masterData;
+  const { productList, mappingList, customerList, shippingToList } = masterData;
 
   // 商品マスタをカテゴリ別に整理
   const productsByCategory = {};
@@ -426,16 +506,8 @@ function buildTriggerAnalysisPrompt(masterData) {
     productMasterText += '\n\n';
   }
 
-  // 学習済みマッピング
-  let mappingText = '';
-  if (mappingList && mappingList.length > 0) {
-    mappingText = '\n═══════════════════════════════════════════════════════════\n';
-    mappingText += '【学習済みマッピング】※過去に登録した表記ゆれ\n';
-    mappingText += '═══════════════════════════════════════════════════════════\n';
-    mappingList.slice(0, 50).forEach(m => {
-      mappingText += `「${m.variant}」→「${m.productName}」\n`;
-    });
-  }
+  // 発送先別マッピングセクションを構築
+  const mappingText = buildCustomerMappingSection(mappingList, shippingToList);
 
   // 自社名を取得
   const companyName = getCompanyDisplayName();
@@ -630,7 +702,6 @@ function findBestCustomerMatch(rawCustomer, customerList) {
   const rawPerson = normalizeStringForMatch(rawCustomer.rawPersonName || '');
   const rawTel = normalizeTelForMatch(rawCustomer.rawTel || '');
   const rawFax = normalizeTelForMatch(rawCustomer.rawFax || '');
-  const rawZipcode = normalizeZipcodeForMatch(rawCustomer.rawZipcode || '');
 
   // 自社名と「御中」「様」付きを除外リストに追加
   const companyName = getCompanyDisplayName();
@@ -658,7 +729,6 @@ function findBestCustomerMatch(rawCustomer, customerList) {
     const masterPerson = normalizeStringForMatch(master.personName || '');
     const masterTel = normalizeTelForMatch(master.tel || '');
     const masterFax = normalizeTelForMatch(master.fax || '');
-    const masterZipcode = normalizeZipcodeForMatch(master.zipcode || '');
     const masterDisplayName = normalizeStringForMatch(master.displayName || '');
 
     // 電話番号一致（高信頼度）
@@ -673,12 +743,6 @@ function findBestCustomerMatch(rawCustomer, customerList) {
       matchedBy.push('FAX');
     }
 
-    // 郵便番号一致
-    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
-      score += 50;
-      matchedBy.push('郵便番号');
-    }
-
     // 会社名一致
     if (rawCompany && masterCompany) {
       if (rawCompany === masterCompany) {
@@ -687,6 +751,17 @@ function findBestCustomerMatch(rawCustomer, customerList) {
       } else if (rawCompany.includes(masterCompany) || masterCompany.includes(rawCompany)) {
         score += 40;
         matchedBy.push('会社名(部分)');
+      }
+    }
+    
+    // 🆕 宛名とマスタ会社名の照合（FAXでは宛名が実際の会社名であることが多い）
+    if (rawPerson && masterCompany && !matchedBy.includes('会社名') && !matchedBy.includes('会社名(部分)')) {
+      if (rawPerson === masterCompany) {
+        score += 75;
+        matchedBy.push('宛名→会社名');
+      } else if (rawPerson.includes(masterCompany) || masterCompany.includes(rawPerson)) {
+        score += 35;
+        matchedBy.push('宛名→会社名(部分)');
       }
     }
 
@@ -730,8 +805,9 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
   const rawCompany = normalizeStringForMatch(rawShippingTo.rawCompanyName || '');
   const rawPerson = normalizeStringForMatch(rawShippingTo.rawPersonName || '');
   const rawTel = normalizeTelForMatch(rawShippingTo.rawTel || '');
-  const rawZipcode = normalizeZipcodeForMatch(rawShippingTo.rawZipcode || '');
   const rawFax = normalizeTelForMatch(rawShippingTo.rawFax || '');
+  const rawZipcode = normalizeZipcodeForMatch(rawShippingTo.rawZipcode || '');
+  const rawAddress = normalizeStringForMatch(rawShippingTo.rawAddress || '');
 
   let bestMatch = { match: 'none', score: 0, matchedBy: '' };
 
@@ -742,20 +818,15 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
     const masterCompany = normalizeStringForMatch(master.companyName || '');
     const masterPerson = normalizeStringForMatch(master.personName || '');
     const masterTel = normalizeTelForMatch(master.tel || '');
-    const masterZipcode = normalizeZipcodeForMatch(master.zipcode || '');
     const masterFax = normalizeTelForMatch(master.fax || '');
     const masterDisplayName = normalizeStringForMatch(master.displayName || '');
+    const masterZipcode = normalizeZipcodeForMatch(master.zipcode || '');
+    const masterAddress = normalizeStringForMatch((master.address1 || '') + (master.address2 || ''));
 
     // 電話番号一致
     if (rawTel && masterTel && rawTel === masterTel) {
       score += 100;
       matchedBy.push('電話番号');
-    }
-
-    // 郵便番号一致
-    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
-      score += 50;
-      matchedBy.push('郵便番号');
     }
 
     // FAX番号一致
@@ -774,6 +845,23 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
         matchedBy.push('会社名(部分)');
       }
     }
+    
+    // 🆕 宛名とマスタ会社名の照合（FAXでは宛名が実際の会社名であることが多い）
+    if (rawPerson && masterCompany && !matchedBy.includes('会社名') && !matchedBy.includes('会社名(部分)')) {
+      if (rawPerson === masterCompany) {
+        score += 75;
+        matchedBy.push('宛名→会社名');
+      } else if (rawPerson.includes(masterCompany) || masterCompany.includes(rawPerson)) {
+        score += 35;
+        matchedBy.push('宛名→会社名(部分)');
+      }
+    }
+    
+    // 🆕 会社名がマスタの住所に含まれている（川崎青果プロセスセンターのケース）
+    if (rawCompany && masterAddress && masterAddress.includes(rawCompany)) {
+      score += 30;
+      matchedBy.push('会社名→住所');
+    }
 
     // 表示名一致
     if (rawCompany && masterDisplayName && rawCompany === masterDisplayName) {
@@ -791,6 +879,23 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
         matchedBy.push('氏名(部分)');
       }
     }
+    
+    // 🆕 郵便番号一致（高信頼度）
+    if (rawZipcode && masterZipcode && rawZipcode === masterZipcode) {
+      score += 70;
+      matchedBy.push('郵便番号');
+    }
+    
+    // 🆕 住所一致・部分一致
+    if (rawAddress && masterAddress) {
+      if (rawAddress === masterAddress) {
+        score += 60;
+        matchedBy.push('住所');
+      } else if (rawAddress.includes(masterAddress) || masterAddress.includes(rawAddress)) {
+        score += 35;
+        matchedBy.push('住所(部分)');
+      }
+    }
 
     if (score > bestMatch.score) {
       bestMatch = {
@@ -806,6 +911,15 @@ function findBestShippingToMatch(rawShippingTo, shippingToList) {
   }
 
   return bestMatch;
+}
+
+/**
+ * 郵便番号正規化（照合用）
+ */
+function normalizeZipcodeForMatch(zipcode) {
+  if (!zipcode) return '';
+  const normalized = String(zipcode).replace(/[^0-9]/g, '');
+  return normalized.length === 7 ? normalized : '';
 }
 
 /**
