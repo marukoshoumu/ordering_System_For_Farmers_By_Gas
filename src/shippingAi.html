@@ -489,6 +489,10 @@
       const btn = document.getElementById('aiAnalyzeBtn');
       btn.classList.add('loading');
       btn.disabled = true;
+      
+      // 前の解析結果をクリア（UIステートのリセット）
+      resetAnalysisState();
+      
       if (currentTab === 'text') {
         const text = document.getElementById('aiInputText').value.trim();
         if (!text) { showWarningToast('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
@@ -497,6 +501,39 @@
         if (!selectedFile || !selectedFileBase64) { showWarningToast('ファイルを選択してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
         google.script.run.withSuccessHandler(handleAnalysisSuccess).withFailureHandler(handleAnalysisError).analyzeOrderFileBase64(selectedFileBase64, selectedFile.type, selectedFile.name);
       }
+    }
+    
+    /**
+     * 解析ステートをリセット
+     */
+    function resetAnalysisState() {
+      aiAnalysisResult = null;
+      useShippingToMaster = false;
+      useCustomerMaster = false;
+      itemEdits = {};
+      manualShippingToSelection = null;
+      manualCustomerSelection = null;
+      
+      // UIもクリア（但し入力テキストやファイルは保持）
+      document.getElementById('aiResultArea').classList.remove('show');
+      
+      // 発送先セクションをクリア
+      document.getElementById('shippingToMatchBadge').innerHTML = '';
+      document.getElementById('aiResultShippingToRaw').innerHTML = '';
+      document.getElementById('aiResultShippingToMaster').style.display = 'none';
+      document.getElementById('aiResultShippingToManual').style.display = 'none';
+      document.getElementById('shippingToSourceSelect').style.display = 'none';
+      
+      // 顧客セクションをクリア
+      document.getElementById('customerMatchBadge').innerHTML = '';
+      document.getElementById('aiResultCustomerRaw').innerHTML = '';
+      document.getElementById('aiResultCustomerMaster').style.display = 'none';
+      document.getElementById('aiResultCustomerManual').style.display = 'none';
+      document.getElementById('customerSourceSelect').style.display = 'none';
+      
+      // 顧客推定候補をクリア
+      const suggestionDiv = document.getElementById('customerSuggestionArea');
+      if (suggestionDiv) suggestionDiv.style.display = 'none';
     }
     
     /**
@@ -538,6 +575,10 @@
       document.getElementById('aiResultDeliveryTime').textContent = result.deliveryTime || '指定なし';
       displayShippingTo(result.shippingTo);
       displayCustomer(result.customer);
+      
+      // 🤖 顧客推定候補を表示（顧客がnullでも表示するため、ここで呼び出し）
+      displayCustomerSuggestion();
+      
       displayItemsEditable(result.items, result.unknownItems);
       if (result.memo) {
         document.getElementById('memoSection').style.display = 'block';
@@ -562,10 +603,26 @@
      * 発送先データ表示
      */
     function displayShippingTo(st) {
-      if (!st) return;
       const badge = document.getElementById('shippingToMatchBadge');
+      const masterDiv = document.getElementById('aiResultShippingToMaster');
+      const manualDiv = document.getElementById('aiResultShippingToManual');
+      const selectDiv = document.getElementById('shippingToSourceSelect');
+      
+      // 発送先がnullの場合は空表示にしてリターン
+      if (!st) {
+        badge.innerHTML = '';
+        document.getElementById('aiResultShippingToRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>-</div><div class="row"><span class="label">宛名：</span>-</div><div class="row"><span class="label">〒：</span>-</div><div class="row"><span class="label">住所：</span>-</div><div class="row"><span class="label">TEL：</span>-</div>';
+        masterDiv.style.display = 'none';
+        manualDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useShippingToMaster = false;
+        return;
+      }
+      
       if (st.isNewShippingTo) {
         badge.innerHTML = '<span class="new-badge">新規</span>';
+      } else if (st.isCustomerFallback) {
+        badge.innerHTML = '<span class="master-match-badge master-match-partial">📍 依頼先から設定</span>';
       } else if (st.masterMatch === 'exact') {
         badge.innerHTML = '<span class="master-match-badge master-match-exact">✅ 一致</span>';
       } else if (st.masterMatch === 'partial') {
@@ -574,10 +631,6 @@
         badge.innerHTML = '';
       }
       document.getElementById('aiResultShippingToRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (st.rawCompanyName || '-') + '</div><div class="row"><span class="label">宛名：</span>' + (st.rawPersonName || '-') + '</div><div class="row"><span class="label">〒：</span>' + (st.rawZipcode || '-') + '</div><div class="row"><span class="label">住所：</span>' + (st.rawAddress || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (st.rawTel || '-') + '</div>';
-
-      const masterDiv = document.getElementById('aiResultShippingToMaster');
-      const manualDiv = document.getElementById('aiResultShippingToManual');
-      const selectDiv = document.getElementById('shippingToSourceSelect');
 
       if (manualShippingToSelection) {
         manualDiv.style.display = 'block';
@@ -622,8 +675,24 @@
      * 顧客データ表示
      */
     function displayCustomer(cust) {
-      if (!cust) return;
       const badge = document.getElementById('customerMatchBadge');
+      const masterDiv = document.getElementById('aiResultCustomerMaster');
+      const manualDiv = document.getElementById('aiResultCustomerManual');
+      const selectDiv = document.getElementById('customerSourceSelect');
+      
+      // 顧客がnullの場合は空表示にしてリターン
+      if (!cust) {
+        badge.innerHTML = '';
+        document.getElementById('aiResultCustomerRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>-</div>' +
+          '<div class="row"><span class="label">担当：</span>-</div>' +
+          '<div class="row"><span class="label">TEL：</span>-</div>';
+        masterDiv.style.display = 'none';
+        manualDiv.style.display = 'none';
+        selectDiv.style.display = 'none';
+        useCustomerMaster = false;
+        return;
+      }
+      
       if (cust.isNewCustomer) {
         badge.innerHTML = '<span class="new-badge">新規</span>';
       } else if (cust.masterMatch === 'exact') {
@@ -633,11 +702,14 @@
       } else {
         badge.innerHTML = '';
       }
-      document.getElementById('aiResultCustomerRaw').innerHTML = '<div class="row"><span class="label">会社名：</span>' + (cust.rawCompanyName || '-') + '</div><div class="row"><span class="label">担当：</span>' + (cust.rawPersonName || '-') + '</div><div class="row"><span class="label">TEL：</span>' + (cust.rawTel || '-') + '</div>';
-
-      const masterDiv = document.getElementById('aiResultCustomerMaster');
-      const manualDiv = document.getElementById('aiResultCustomerManual');
-      const selectDiv = document.getElementById('customerSourceSelect');
+      // FAX番号も表示に追加
+      let rawHtml = '<div class="row"><span class="label">会社名：</span>' + (cust.rawCompanyName || '-') + '</div>' +
+        '<div class="row"><span class="label">担当：</span>' + (cust.rawPersonName || '-') + '</div>' +
+        '<div class="row"><span class="label">TEL：</span>' + (cust.rawTel || '-') + '</div>';
+      if (cust.rawFax) {
+        rawHtml += '<div class="row"><span class="label">FAX：</span>' + cust.rawFax + '</div>';
+      }
+      document.getElementById('aiResultCustomerRaw').innerHTML = rawHtml;
 
       if (manualCustomerSelection) {
         manualDiv.style.display = 'block';
@@ -681,8 +753,138 @@
         useCustomerMaster = false;
       }
 
-      // 🤖 AI推定候補の表示（Phase 4: 新規追加）
-      displayCustomerSuggestion();
+      // 📠 FAX番号登録促進の表示
+      displayFaxRegistrationPrompt(cust);
+      
+      // 🤖 AI推定候補の表示は displayAnalysisResult() で呼び出すため、ここでは不要
+    }
+
+    /**
+     * FAX番号登録促進を表示
+     * - AIがFAX番号を検出した
+     * - マスタに顧客がマッチした（exact または partial）
+     * - マスタの顧客にはFAX番号が未登録
+     */
+    function displayFaxRegistrationPrompt(cust) {
+      const promptDiv = document.getElementById('faxRegistrationPrompt');
+      if (!promptDiv) return;
+
+      // 条件チェック
+      const hasRawFax = cust.rawFax && sanitizeTel(cust.rawFax).length >= 10;
+      const hasCustomerMatch = cust.masterMatch === 'exact' || cust.masterMatch === 'partial';
+      const hasMasterData = cust.masterData;
+      const masterHasNoFax = hasMasterData && !cust.masterData.fax;
+
+      // 手動選択時も対応
+      let targetCustomer = null;
+      if (manualCustomerSelection && !manualCustomerSelection.fax && hasRawFax) {
+        targetCustomer = manualCustomerSelection;
+      } else if (hasRawFax && hasCustomerMatch && masterHasNoFax) {
+        targetCustomer = cust.masterData;
+      }
+
+      if (!targetCustomer) {
+        promptDiv.style.display = 'none';
+        return;
+      }
+
+      // 表示
+      promptDiv.style.display = 'block';
+      const customerName = targetCustomer.displayName || 
+        [targetCustomer.companyName, targetCustomer.personName].filter(Boolean).join('　');
+      
+      promptDiv.innerHTML = 
+        '<div class="fax-header">📠 FAX番号の登録</div>' +
+        '<div class="fax-number">' + escapeHtml(cust.rawFax) + '</div>' +
+        '<div class="fax-description">' +
+          '「' + escapeHtml(customerName) + '」のマスタにFAX番号が未登録です。<br>' +
+          'この番号を登録すると、次回から自動でマッチングできます。' +
+        '</div>' +
+        '<button type="button" class="btn-register-fax" onclick="registerCustomerFax()">' +
+          '✅ この顧客にFAX番号を登録' +
+        '</button>';
+    }
+
+    /**
+     * 顧客マスタにFAX番号を登録
+     */
+    function registerCustomerFax() {
+      const cust = aiAnalysisResult?.customer;
+      if (!cust || !cust.rawFax) {
+        showWarningToast('FAX番号がありません');
+        return;
+      }
+
+      // 登録対象の顧客を特定
+      let targetCustomer = null;
+      if (manualCustomerSelection) {
+        targetCustomer = manualCustomerSelection;
+      } else if (cust.masterData) {
+        targetCustomer = cust.masterData;
+      }
+
+      if (!targetCustomer) {
+        showWarningToast('登録対象の顧客が特定できません');
+        return;
+      }
+
+      const customerDisplayName = targetCustomer.displayName || '';
+      const customerCompanyName = targetCustomer.companyName || '';
+      const customerPersonName = targetCustomer.personName || '';
+      const faxNumber = cust.rawFax;
+
+      // ボタンを無効化
+      const btn = document.querySelector('.btn-register-fax');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '登録中...';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showSuccessToast('FAX番号を登録しました: ' + result.faxNumber);
+            // 登録成功したらプロンプトを非表示に
+            const promptDiv = document.getElementById('faxRegistrationPrompt');
+            if (promptDiv) {
+              promptDiv.style.display = 'none';
+            }
+            // マスタデータを更新
+            if (cust.masterData) {
+              cust.masterData.fax = result.faxNumber;
+            }
+            if (manualCustomerSelection) {
+              manualCustomerSelection.fax = result.faxNumber;
+            }
+          } else {
+            showWarningToast('登録失敗: ' + result.error);
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = '✅ この顧客にFAX番号を登録';
+            }
+          }
+        })
+        .withFailureHandler(function(error) {
+          showWarningToast('エラー: ' + error.message);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '✅ この顧客にFAX番号を登録';
+          }
+        })
+        .updateCustomerFax(customerDisplayName, customerCompanyName, customerPersonName, faxNumber);
+    }
+
+    /**
+     * HTMLエスケープ
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     /**
@@ -1119,12 +1321,22 @@
     function applyAIResult() {
       if (!aiAnalysisResult) { showWarningToast('解析結果がありません'); return; }
       
-      const mappingsToLearn = [];
+      // 発送先名を優先的に取得（マッピング学習用）
+      const shippingToName = aiAnalysisResult.shippingTo?.masterData?.companyName || 
+                             aiAnalysisResult.shippingTo?.rawCompanyName || '';
       const customerName = aiAnalysisResult.customer?.rawCompanyName || '';
+      
+      const mappingsToLearn = [];
       Object.keys(itemEdits).forEach(index => {
         const edit = itemEdits[index];
         if (edit.learn && edit.originalText && edit.productName) {
-          mappingsToLearn.push({ originalText: edit.originalText, productName: edit.productName, customerName: customerName, spec: edit.spec || '' });
+          mappingsToLearn.push({ 
+            originalText: edit.originalText, 
+            productName: edit.productName, 
+            shippingToName: shippingToName,  // 発送先名優先
+            customerName: customerName,       // 後方互換
+            spec: edit.spec || '' 
+          });
         }
       });
       
