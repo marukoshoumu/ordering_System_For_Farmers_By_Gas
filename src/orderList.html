@@ -17,6 +17,7 @@
 
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <base target="_top">
@@ -42,7 +43,7 @@
     .card {
       border: none;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .card-header {
@@ -205,7 +206,7 @@
       white-space: normal;
       max-width: 300px;
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       line-height: 1.4;
     }
 
@@ -220,14 +221,14 @@
       border-radius: 10px;
       padding: 14px;
       margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       cursor: pointer;
       transition: background 0.2s, box-shadow 0.2s;
     }
 
     .order-card:hover {
       background: #f8f9fa;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .order-card-header {
@@ -601,6 +602,7 @@
     }
 
     @media (min-width: 769px) {
+
       /* PCではテーブル表示、カード非表示 */
       .pc-table {
         display: block;
@@ -613,17 +615,23 @@
 
     /* 出荷済・予定日超過のスタイル */
     .shipped-row {
-      background-color: #f8f9fa;
-      opacity: 0.7;
+      background-color: #e8f5e9 !important;
+      border-left: 4px solid #4caf50;
+      opacity: 0.85;
+    }
+
+    .shipped-row:hover {
+      background-color: #c8e6c9 !important;
     }
 
     .overdue-row {
-      background-color: #ffe6e6 !important;
-      color: #dc3545;
+      background-color: #ffebee !important;
+      border-left: 4px solid #f44336;
+      color: #c62828;
     }
 
     .overdue-row:hover {
-      background-color: #ffcccc !important;
+      background-color: #ffcdd2 !important;
     }
 
     .col-shipped {
@@ -635,667 +643,922 @@
       cursor: pointer;
       transform: scale(1.2);
     }
+
+    /* チェックボックスのホバー/フォーカス視認性向上 */
+    .shipped-checkbox:hover {
+      transform: scale(1.4);
+      box-shadow: 0 0 8px rgba(13, 110, 253, 0.6);
+      outline: 2px solid #0d6efd;
+      outline-offset: 2px;
+    }
+
+    .shipped-checkbox:focus {
+      transform: scale(1.4);
+      box-shadow: 0 0 12px rgba(13, 110, 253, 0.8);
+      outline: 3px solid #0d6efd;
+      outline-offset: 2px;
+    }
+
+    /* 一括選択用チェックボックス列 */
+    .col-select {
+      width: 40px;
+      text-align: center;
+    }
+
+    .select-checkbox {
+      cursor: pointer;
+      transform: scale(1.2);
+    }
+
+    .select-checkbox:hover {
+      transform: scale(1.4);
+      box-shadow: 0 0 8px rgba(25, 135, 84, 0.6);
+      outline: 2px solid #198754;
+      outline-offset: 2px;
+    }
+
+    .select-checkbox:focus {
+      transform: scale(1.4);
+      box-shadow: 0 0 12px rgba(25, 135, 84, 0.8);
+      outline: 3px solid #198754;
+      outline-offset: 2px;
+    }
+
+    /* キャンセル済み行のスタイル */
+    .cancelled-row {
+      background-color: #fff3e0 !important;
+      border-left: 4px solid #ff9800;
+      opacity: 0.75;
+      text-decoration: line-through;
+      color: #6c757d;
+    }
+
+    .cancelled-row:hover {
+      background-color: #ffe0b2 !important;
+    }
+
+    /* 一括操作ボタンエリア */
+    .bulk-action-area {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .bulk-action-area .selected-count {
+      font-size: 0.875rem;
+      color: #666;
+      margin-right: 8px;
+    }
+
+    /* キャンセル解除ボタンのスタイル強化 */
+    .btn-outline-info {
+      border-color: #0dcaf0 !important;
+      color: #0dcaf0 !important;
+      background-color: rgba(13, 202, 240, 0.1) !important;
+    }
+
+    .btn-outline-info:hover {
+      background-color: #0dcaf0 !important;
+      color: white !important;
+    }
+
+    /* フィルターセクションのボタン強化 */
+    .filter-section .btn-group {
+      gap: 6px;
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .filter-section .btn-group>.btn {
+      border: 2px solid !important;
+      border-radius: 6px !important;
+      flex: none !important;
+      margin-left: 0 !important;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .filter-section .btn-outline-primary {
+      border-color: #0d6efd !important;
+      color: #0d6efd !important;
+    }
+
+    .filter-section .btn-outline-secondary {
+      border-color: #6c757d !important;
+      color: #6c757d !important;
+    }
+
+    .filter-section .btn-outline-danger {
+      border-color: #dc3545 !important;
+      color: #dc3545 !important;
+    }
+
+    .filter-section .btn-outline-warning {
+      border-color: #ffc107 !important;
+      color: #ffc107 !important;
+    }
+
+    /* ホバー時の背景色設定 */
+    .filter-section .btn-outline-primary:hover {
+      background-color: #0d6efd !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-outline-secondary:hover {
+      background-color: #6c757d !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-outline-danger:hover {
+      background-color: #dc3545 !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-outline-warning:hover {
+      background-color: #ffc107 !important;
+      color: #212529 !important;
+    }
+
+    /* チェック（選択）時の背景色設定 */
+    .filter-section .btn-check:checked+.btn-outline-primary {
+      background-color: #0d6efd !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-check:checked+.btn-outline-secondary {
+      background-color: #6c757d !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-check:checked+.btn-outline-danger {
+      background-color: #dc3545 !important;
+      color: #fff !important;
+    }
+
+    .filter-section .btn-check:checked+.btn-outline-warning {
+      background-color: #ffc107 !important;
+      color: #212529 !important;
+    }
+
+    /* 出荷状態ラジオボタンのチェック時スタイル強化 */
+    .btn-check:checked+.btn-outline-secondary {
+      background-color: #6c757d !important;
+      color: white !important;
+      border-color: #6c757d !important;
+    }
+
+    .btn-check:checked+.btn-outline-danger {
+      background-color: #dc3545 !important;
+      color: white !important;
+      border-color: #dc3545 !important;
+    }
+
+    .btn-check:checked+.btn-outline-warning {
+      background-color: #ffc107 !important;
+      color: #212529 !important;
+      border-color: #ffc107 !important;
+    }
+
+    /* 選択済み行のハイライト */
+    .selected-row {
+      background-color: #cfe2ff !important;
+      border-left: 4px solid #0d6efd;
+    }
+
+    .selected-row:hover {
+      background-color: #b6d4fe !important;
+    }
+
+    /* スマホカードの選択状態 */
+    .order-card.selected-row {
+      background-color: #cfe2ff !important;
+      border-left: 4px solid #0d6efd;
+      box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+    }
+
+    /* テーブルヘッダーの視認性向上 */
+    .order-table thead th {
+      background: #343a40 !important;
+      color: white !important;
+      border-bottom: 3px solid #23272b !important;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .order-table thead th .form-check-input {
+      border-color: white;
+    }
   </style>
 </head>
+
 <body>
 
-<div class="main-container">
-  <div class="card">
-    <!-- ヘッダー -->
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h1><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
-      <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-        <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
-        <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-          <i class="bi bi-house"></i> ホーム
-        </button>
-      </form>
-    </div>
-
-    <!-- フィルター -->
-    <div class="filter-section">
-      <!-- 1行目：期間 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">期間：</span>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
-            <label class="btn btn-outline-primary" for="periodToday">今日</label>
-            <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
-            <label class="btn btn-outline-primary" for="periodTomorrow">明日</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
-            <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
-            <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
-            <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
-            <input type="radio" class="btn-check" name="period" id="periodLastMonth" value="lastMonth">
-            <label class="btn btn-outline-primary" for="periodLastMonth">先月</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
-            <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
-            <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
-            <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
-            <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
-            <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
-            <input type="radio" class="btn-check" name="period" id="periodNone" value="none">
-            <label class="btn btn-outline-warning" for="periodNone">指定なし</label>
-          </div>
-        </div>
+  <div class="main-container">
+    <div class="card">
+      <!-- ヘッダー -->
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h1><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
+        <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+          <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
+          <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
+            <i class="bi bi-house"></i> ホーム
+          </button>
+        </form>
       </div>
 
-      <!-- 期間指定の日付範囲（別行で表示） -->
-      <div id="customDateRangeRow" style="display: none;">
+      <!-- フィルター -->
+      <div class="filter-section">
+        <!-- 1行目：期間 -->
         <div class="filter-row">
           <div class="filter-group">
-            <span class="filter-label"></span>
-            <div class="custom-date-inputs">
-              <input type="date" class="form-control form-control-sm" id="dateFrom">
-              <span class="date-separator">〜</span>
-              <input type="date" class="form-control form-control-sm" id="dateTo">
+            <span class="filter-label">期間：</span>
+            <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
+              <label class="btn btn-outline-primary" for="periodToday">今日</label>
+              <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
+              <label class="btn btn-outline-primary" for="periodTomorrow">明日</label>
+              <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
+              <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
+              <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
+              <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
+              <input type="radio" class="btn-check" name="period" id="periodLastMonth" value="lastMonth">
+              <label class="btn btn-outline-primary" for="periodLastMonth">先月</label>
+              <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
+              <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
+              <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
+              <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
+              <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
+              <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
+              <input type="radio" class="btn-check" name="period" id="periodNone" value="none">
+              <label class="btn btn-outline-warning" for="periodNone">指定なし</label>
             </div>
           </div>
         </div>
+
+        <!-- 期間指定の日付範囲（別行で表示） -->
+        <div id="customDateRangeRow" style="display: none;">
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label"></span>
+              <div class="custom-date-inputs">
+                <input type="date" class="form-control form-control-sm" id="dateFrom">
+                <span class="date-separator">〜</span>
+                <input type="date" class="form-control form-control-sm" id="dateTo">
+              </div>
+            </div>
+          </div>
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label"></span>
+              <span class="text-muted" style="font-size: 0.8rem;">※最大1ヶ月まで指定可能です</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2行目：発送先・顧客 -->
         <div class="filter-row">
           <div class="filter-group">
-            <span class="filter-label"></span>
-            <span class="text-muted" style="font-size: 0.8rem;">※最大1ヶ月まで指定可能です</span>
+            <span class="filter-label">発送先：</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="destinationBtn" data-bs-toggle="modal"
+              data-bs-target="#destinationSearchModal">
+              <i class="bi bi-search me-1"></i>指定なし
+            </button>
           </div>
+          <div class="filter-group">
+            <span class="filter-label">顧客：</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="customerBtn" data-bs-toggle="modal"
+              data-bs-target="#customerSearchModal">
+              <i class="bi bi-search me-1"></i>指定なし
+            </button>
+          </div>
+        </div>
+
+        <!-- 3行目：出荷状態・検索ボタン -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">出荷状態：</span>
+            <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusAll" value="all" checked>
+              <label class="btn btn-outline-secondary" for="statusAll">全て</label>
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusNotShipped" value="notShipped">
+              <label class="btn btn-outline-secondary" for="statusNotShipped">未出荷</label>
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusShipped" value="shipped">
+              <label class="btn btn-outline-secondary" for="statusShipped">出荷済</label>
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusOverdue" value="overdue">
+              <label class="btn btn-outline-danger" for="statusOverdue">予定日超過</label>
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusCancelled" value="cancelled">
+              <label class="btn btn-outline-warning" for="statusCancelled">キャンセル済</label>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
+            <i class="bi bi-search me-1"></i>検索
+          </button>
         </div>
       </div>
 
-      <!-- 2行目：発送先・顧客 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">発送先：</span>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="destinationBtn" data-bs-toggle="modal" data-bs-target="#destinationSearchModal">
-            <i class="bi bi-search me-1"></i>指定なし
-          </button>
+      <!-- テーブル -->
+      <div class="table-section position-relative">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <div class="result-count" id="resultCount">
+            検索結果: <strong>0</strong> 件
+          </div>
+          <? if (userRole !== 'viewer') { ?>
+          <div class="bulk-action-area" id="bulkActionArea" style="display: none;">
+            <span class="selected-count" id="selectedCount">0件選択中</span>
+            <button type="button" class="btn btn-success btn-sm" onclick="bulkUpdateShipped()">
+              <i class="bi bi-check2-all me-1"></i>一括出荷済み
+            </button>
+            <button type="button" class="btn btn-warning btn-sm" onclick="bulkCancelOrders()">
+              <i class="bi bi-x-circle me-1"></i>一括キャンセル
+            </button>
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="bulkUncancelOrders()">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>キャンセル解除
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteOrders()">
+              <i class="bi bi-trash me-1"></i>一括削除
+            </button>
+          </div>
+          <? } ?>
         </div>
-        <div class="filter-group">
-          <span class="filter-label">顧客：</span>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="customerBtn" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
-            <i class="bi bi-search me-1"></i>指定なし
-          </button>
+
+        <div id="tableContainer">
+          <!-- PC用テーブル -->
+          <div class="pc-table">
+            <table class="order-table">
+              <thead>
+                <tr>
+                  <? if (userRole !== 'viewer') { ?>
+                  <th class="col-select">
+                    <input type="checkbox" class="form-check-input select-checkbox" id="selectAllCheckbox"
+                      onchange="toggleSelectAll(this.checked)" title="全選択">
+                  </th>
+                  <? } ?>
+                  <th class="col-date">発送日</th>
+                  <th class="col-date">納品日</th>
+                  <th class="col-name">発送先名</th>
+                  <th class="col-product">商品名</th>
+                  <th class="col-quantity">個数</th>
+                  <th class="col-shipped">出荷済</th>
+                  <? if (userRole !== 'viewer') { ?>
+                  <th class="col-action">操作</th>
+                  <? } ?>
+                  <th class="col-date">受注日</th>
+                </tr>
+              </thead>
+              <tbody id="orderTableBody">
+                <!-- 動的に生成 -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- スマホ用カード -->
+          <div class="order-cards" id="orderCardsContainer">
+            <!-- 動的に生成 -->
+          </div>
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <i class="bi bi-inbox"></i>
+          <p>該当するデータがありません</p>
         </div>
       </div>
 
-      <!-- 3行目：出荷状態・検索ボタン -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">出荷状態：</span>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="shippingStatus" id="statusAll" value="all" checked>
-            <label class="btn btn-outline-secondary" for="statusAll">全て</label>
-            <input type="radio" class="btn-check" name="shippingStatus" id="statusNotShipped" value="notShipped">
-            <label class="btn btn-outline-secondary" for="statusNotShipped">未出荷</label>
-            <input type="radio" class="btn-check" name="shippingStatus" id="statusShipped" value="shipped">
-            <label class="btn btn-outline-secondary" for="statusShipped">出荷済</label>
-            <input type="radio" class="btn-check" name="shippingStatus" id="statusOverdue" value="overdue">
-            <label class="btn btn-outline-danger" for="statusOverdue">予定日超過</label>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
-          <i class="bi bi-search me-1"></i>検索
+      <!-- ページング -->
+      <div class="pagination-section" id="paginationSection" style="display: none;">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn" onclick="goToPage('prev')">
+          <i class="bi bi-chevron-left"></i> 前へ
+        </button>
+        <span id="pageInfo">1 / 1</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn" onclick="goToPage('next')">
+          次へ <i class="bi bi-chevron-right"></i>
         </button>
       </div>
     </div>
+  </div>
 
-    <!-- テーブル -->
-    <div class="table-section position-relative">
-      <div class="result-count" id="resultCount">
-        検索結果: <strong>0</strong> 件
-      </div>
-
-      <div id="tableContainer">
-        <!-- PC用テーブル -->
-        <div class="pc-table">
-          <table class="order-table">
-            <thead>
-              <tr>
-                <th class="col-date">発送日</th>
-                <th class="col-date">納品日</th>
-                <th class="col-name">発送先名</th>
-                <th class="col-product">商品名</th>
-                <th class="col-quantity">個数</th>
-                <th class="col-shipped">出荷済</th>
-                <? if (userRole !== 'viewer') { ?>
-                <th class="col-action">操作</th>
-                <? } ?>
-                <th class="col-date">受注日</th>
-              </tr>
-            </thead>
-            <tbody id="orderTableBody">
-              <!-- 動的に生成 -->
-            </tbody>
-          </table>
+  <!-- 発送先検索モーダル -->
+  <div class="modal fade search-modal" id="destinationSearchModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>発送先検索</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body">
+          <div class="search-header">
+            <input type="text" class="form-control" id="destinationSearchInput" placeholder="会社名、住所、電話番号で検索...">
+          </div>
+          <div class="search-results" id="destinationSearchResults">
+            <div class="no-results">キーワードを入力して検索してください</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDestination()">クリア</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- スマホ用カード -->
-        <div class="order-cards" id="orderCardsContainer">
+  <!-- 顧客検索モーダル -->
+  <div class="modal fade search-modal" id="customerSearchModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person me-2"></i>顧客検索</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="search-header">
+            <input type="text" class="form-control" id="customerSearchInput" placeholder="会社名、担当者名、電話番号で検索...">
+          </div>
+          <div class="search-results" id="customerSearchResults">
+            <div class="no-results">キーワードを入力して検索してください</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearCustomer()">クリア</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div class="modal fade detail-modal" id="orderDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>受注詳細</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="orderDetailBody">
           <!-- 動的に生成 -->
         </div>
-      </div>
-
-      <div class="empty-state" id="emptyState" style="display: none;">
-        <i class="bi bi-inbox"></i>
-        <p>該当するデータがありません</p>
-      </div>
-    </div>
-
-    <!-- ページング -->
-    <div class="pagination-section" id="paginationSection" style="display: none;">
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn" onclick="goToPage('prev')">
-        <i class="bi bi-chevron-left"></i> 前へ
-      </button>
-      <span id="pageInfo">1 / 1</span>
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn" onclick="goToPage('next')">
-        次へ <i class="bi bi-chevron-right"></i>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- 発送先検索モーダル -->
-<div class="modal fade search-modal" id="destinationSearchModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>発送先検索</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="search-header">
-          <input type="text" class="form-control" id="destinationSearchInput" placeholder="会社名、住所、電話番号で検索...">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
+          <? if (userRole !== 'viewer') { ?>
+          <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
+            <i class="bi bi-copy me-1"></i>コピー
+          </button>
+          <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
+            <i class="bi bi-pencil me-1"></i>修正
+          </button>
+          <? } ?>
         </div>
-        <div class="search-results" id="destinationSearchResults">
-          <div class="no-results">キーワードを入力して検索してください</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDestination()">クリア</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- 顧客検索モーダル -->
-<div class="modal fade search-modal" id="customerSearchModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-person me-2"></i>顧客検索</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="search-header">
-          <input type="text" class="form-control" id="customerSearchInput" placeholder="会社名、担当者名、電話番号で検索...">
-        </div>
-        <div class="search-results" id="customerSearchResults">
-          <div class="no-results">キーワードを入力して検索してください</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearCustomer()">クリア</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
-      </div>
-    </div>
-  </div>
-</div>
+  <!-- 操作用の隠しフォーム -->
+  <form id="actionForm" method="POST" action="<?= deployURL ?>" style="display: none;">
+    <input type="hidden" name="shipping" value="true">
+    <input type="hidden" name="editOrderId" id="actionOrderIdInput" value="">
+    <input type="hidden" name="editMode" id="actionEditModeInput" value="">
+    <input type="hidden" name="actionMode" id="actionModeInput" value="">
+  </form>
 
-<!-- 詳細モーダル -->
-<div class="modal fade detail-modal" id="orderDetailModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>受注詳細</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="orderDetailBody">
-        <!-- 動的に生成 -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
-        <? if (userRole !== 'viewer') { ?>
-        <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
-          <i class="bi bi-copy me-1"></i>コピー
-        </button>
-        <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
-          <i class="bi bi-pencil me-1"></i>修正
-        </button>
-        <? } ?>
-      </div>
-    </div>
-  </div>
-</div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- 操作用の隠しフォーム -->
-<form id="actionForm" method="POST" action="<?= deployURL ?>" style="display: none;">
-  <input type="hidden" name="shipping" value="true">
-  <input type="hidden" name="editOrderId" id="actionOrderIdInput" value="">
-  <input type="hidden" name="editMode" id="actionEditModeInput" value="">
-  <input type="hidden" name="actionMode" id="actionModeInput" value="">
-</form>
+  <script>
+    // グローバル変数
+    const userRole = '<?= userRole || "admin" ?>';  // ユーザー権限
+    let selectedDestination = null;
+    let selectedCustomer = null;
+    let orderData = [];
+    let currentPage = 1;
+    const pageSize = 50;
+    let currentDetailOrderId = null;
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-  // グローバル変数
-  const userRole = '<?= userRole || "admin" ?>';  // ユーザー権限
-  let selectedDestination = null;
-  let selectedCustomer = null;
-  let orderData = [];
-  let currentPage = 1;
-  const pageSize = 50;
-  let currentDetailOrderId = null;
-
-  // 初期化
-  document.addEventListener('DOMContentLoaded', function() {
-    initializeDateInputs();
-    setupEventListeners();
-    executeSearch();
-  });
-  
-  // 日付入力の初期化
-  function initializeDateInputs() {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    document.getElementById('dateFrom').value = formatDate(firstDay);
-    document.getElementById('dateTo').value = formatDate(lastDay);
-  }
-  
-  function formatDate(date) {
-    // ローカル時間で日付文字列を生成（UTC時差の影響を避ける）
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-  
-  function formatDisplayDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '-';
-    return (d.getMonth() + 1) + '/' + d.getDate();
-  }
-  
-  function formatFullDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '-';
-    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
-  }
-
-  // 過去の日付かどうか判定
-  function isPastDate(dateString) {
-    if (!dateString) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(dateString);
-    targetDate.setHours(0, 0, 0, 0);
-    return targetDate < today;
-  }
-
-  // 出荷済ステータスを更新
-  function updateShippedStatus(orderId, isChecked) {
-    const shippedValue = isChecked ? '○' : '';
-
-    showLoading('更新中...');
-    google.script.run
-      .withSuccessHandler(function() {
-        hideLoading();
-        // データを再描画
-        const orderIndex = orderData.findIndex(o => o.orderId === orderId);
-        if (orderIndex >= 0) {
-          orderData[orderIndex].shipped = shippedValue;
-          renderTable();
-        }
-      })
-      .withFailureHandler(function(error) {
-        hideLoading();
-        alert('更新エラー: ' + error.message);
-        // チェックボックスを元に戻す
-        executeSearch();
-      })
-      .updateOrderShippedStatus(orderId, shippedValue);
-  }
-
-  // イベントリスナー設定
-  function setupEventListeners() {
-    // 期間ラジオボタン
-    document.querySelectorAll('input[name="period"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        const customRow = document.getElementById('customDateRangeRow');
-        customRow.style.display = this.value === 'custom' ? 'block' : 'none';
-      });
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function () {
+      initializeDateInputs();
+      setupEventListeners();
+      executeSearch();
     });
-    
-    // 発送先検索
-    const destInput = document.getElementById('destinationSearchInput');
-    let destTimeout;
-    destInput.addEventListener('input', function() {
-      clearTimeout(destTimeout);
-      destTimeout = setTimeout(() => searchDestinations(this.value), 300);
-    });
-    
-    // 顧客検索
-    const custInput = document.getElementById('customerSearchInput');
-    let custTimeout;
-    custInput.addEventListener('input', function() {
-      clearTimeout(custTimeout);
-      custTimeout = setTimeout(() => searchCustomers(this.value), 300);
-    });
-    
-    // モーダルが開いたときにフォーカス
-    document.getElementById('destinationSearchModal').addEventListener('shown.bs.modal', function() {
-      document.getElementById('destinationSearchInput').focus();
-    });
-    document.getElementById('customerSearchModal').addEventListener('shown.bs.modal', function() {
-      document.getElementById('customerSearchInput').focus();
-    });
-  }
-  
-  // 発送先検索
-  function searchDestinations(keyword) {
-    const container = document.getElementById('destinationSearchResults');
-    if (!keyword || keyword.length < 2) {
-      container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
-      return;
+
+    // 日付入力の初期化
+    function initializeDateInputs() {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      document.getElementById('dateFrom').value = formatDate(firstDay);
+      document.getElementById('dateTo').value = formatDate(lastDay);
     }
-    
-    container.innerHTML = '<div class="no-results">検索中...</div>';
-    
-    google.script.run
-      .withSuccessHandler(function(results) {
-        if (!results || results.length === 0) {
-          container.innerHTML = '<div class="no-results">該当する発送先がありません</div>';
-          return;
-        }
-        container.innerHTML = results.map(r => `
+
+    function formatDate(date) {
+      // ローカル時間で日付文字列を生成（UTC時差の影響を避ける）
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      return (d.getMonth() + 1) + '/' + d.getDate();
+    }
+
+    function formatFullDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+    }
+
+    // 過去の日付かどうか判定
+    function isPastDate(dateString) {
+      if (!dateString) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(dateString);
+      targetDate.setHours(0, 0, 0, 0);
+      return targetDate < today;
+    }
+
+    // 出荷済ステータスを更新
+    function updateShippedStatus(orderId, isChecked) {
+      const shippedValue = isChecked ? '○' : '';
+
+      showLoading('更新中...');
+      google.script.run
+        .withSuccessHandler(function () {
+          hideLoading();
+          // データを再描画
+          const orderIndex = orderData.findIndex(o => o.orderId === orderId);
+          if (orderIndex >= 0) {
+            orderData[orderIndex].shipped = shippedValue;
+            renderTable();
+          }
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('更新エラー: ' + error.message);
+          // チェックボックスを元に戻す
+          executeSearch();
+        })
+        .updateOrderShippedStatus(orderId, shippedValue);
+    }
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 期間ラジオボタン
+      document.querySelectorAll('input[name="period"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+          const customRow = document.getElementById('customDateRangeRow');
+          customRow.style.display = this.value === 'custom' ? 'block' : 'none';
+        });
+      });
+
+      // 発送先検索
+      const destInput = document.getElementById('destinationSearchInput');
+      let destTimeout;
+      destInput.addEventListener('input', function () {
+        clearTimeout(destTimeout);
+        destTimeout = setTimeout(() => searchDestinations(this.value), 300);
+      });
+
+      // 顧客検索
+      const custInput = document.getElementById('customerSearchInput');
+      let custTimeout;
+      custInput.addEventListener('input', function () {
+        clearTimeout(custTimeout);
+        custTimeout = setTimeout(() => searchCustomers(this.value), 300);
+      });
+
+      // モーダルが開いたときにフォーカス
+      document.getElementById('destinationSearchModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('destinationSearchInput').focus();
+      });
+      document.getElementById('customerSearchModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('customerSearchInput').focus();
+      });
+    }
+
+    // 発送先検索
+    function searchDestinations(keyword) {
+      const container = document.getElementById('destinationSearchResults');
+      if (!keyword || keyword.length < 2) {
+        container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="no-results">検索中...</div>';
+
+      google.script.run
+        .withSuccessHandler(function (results) {
+          if (!results || results.length === 0) {
+            container.innerHTML = '<div class="no-results">該当する発送先がありません</div>';
+            return;
+          }
+          container.innerHTML = results.map(r => `
           <div class="search-result-item" onclick="selectDestination('${escapeHtml(r.name)}')">
             <div class="result-main">${escapeHtml(r.name)}</div>
             <div class="result-sub">${escapeHtml(r.address || '')} ${escapeHtml(r.tel || '')}</div>
           </div>
         `).join('');
-      })
-      .withFailureHandler(function(error) {
-        container.innerHTML = '<div class="no-results">検索エラー</div>';
-      })
-      .searchShippingTo(keyword);
-  }
-  
-  // 顧客検索
-  function searchCustomers(keyword) {
-    const container = document.getElementById('customerSearchResults');
-    if (!keyword || keyword.length < 2) {
-      container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
-      return;
+        })
+        .withFailureHandler(function (error) {
+          container.innerHTML = '<div class="no-results">検索エラー</div>';
+        })
+        .searchShippingTo(keyword);
     }
-    
-    container.innerHTML = '<div class="no-results">検索中...</div>';
-    
-    google.script.run
-      .withSuccessHandler(function(results) {
-        if (!results || results.length === 0) {
-          container.innerHTML = '<div class="no-results">該当する顧客がありません</div>';
-          return;
-        }
-        container.innerHTML = results.map(r => `
+
+    // 顧客検索
+    function searchCustomers(keyword) {
+      const container = document.getElementById('customerSearchResults');
+      if (!keyword || keyword.length < 2) {
+        container.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="no-results">検索中...</div>';
+
+      google.script.run
+        .withSuccessHandler(function (results) {
+          if (!results || results.length === 0) {
+            container.innerHTML = '<div class="no-results">該当する顧客がありません</div>';
+            return;
+          }
+          container.innerHTML = results.map(r => `
           <div class="search-result-item" onclick="selectCustomer('${escapeHtml(r.name)}')">
             <div class="result-main">${escapeHtml(r.name)}</div>
             <div class="result-sub">${escapeHtml(r.address || '')} ${escapeHtml(r.tel || '')}</div>
           </div>
         `).join('');
-      })
-      .withFailureHandler(function(error) {
-        container.innerHTML = '<div class="no-results">検索エラー</div>';
-      })
-      .searchCustomer(keyword);
-  }
-  
-  function selectDestination(name) {
-    selectedDestination = name;
-    document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-geo-alt me-1"></i>' + name;
-    document.getElementById('destinationBtn').classList.remove('btn-outline-secondary');
-    document.getElementById('destinationBtn').classList.add('btn-primary');
-    bootstrap.Modal.getInstance(document.getElementById('destinationSearchModal')).hide();
-  }
-  
-  function selectCustomer(name) {
-    selectedCustomer = name;
-    document.getElementById('customerBtn').innerHTML = '<i class="bi bi-person me-1"></i>' + name;
-    document.getElementById('customerBtn').classList.remove('btn-outline-secondary');
-    document.getElementById('customerBtn').classList.add('btn-primary');
-    bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
-  }
-  
-  function clearDestination() {
-    selectedDestination = null;
-    document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
-    document.getElementById('destinationBtn').classList.remove('btn-primary');
-    document.getElementById('destinationBtn').classList.add('btn-outline-secondary');
-    document.getElementById('destinationSearchInput').value = '';
-    document.getElementById('destinationSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
-  }
-  
-  function clearCustomer() {
-    selectedCustomer = null;
-    document.getElementById('customerBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
-    document.getElementById('customerBtn').classList.remove('btn-primary');
-    document.getElementById('customerBtn').classList.add('btn-outline-secondary');
-    document.getElementById('customerSearchInput').value = '';
-    document.getElementById('customerSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
-  }
-  
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-  }
-
-  // <br>タグを許可するエスケープ関数
-  function escapeHtmlWithBr(str) {
-    if (!str) return '';
-    return escapeHtml(str).replace(/&lt;br&gt;/g, '<br>');
-  }
-  
-  // 日付範囲取得（修正版：今日起点）
-  function getDateRange() {
-    const period = document.querySelector('input[name="period"]:checked').value;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let dateFrom, dateTo;
-    
-    switch (period) {
-      case 'today':
-        // 今日：今日のみ
-        dateFrom = formatDate(today);
-        dateTo = formatDate(today);
-        break;
-
-      case 'tomorrow':
-        // 明日：明日のみ
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        dateFrom = formatDate(tomorrow);
-        dateTo = formatDate(tomorrow);
-        break;
-
-      case 'thisWeek':
-        // 今週：今日から7日間（今日〜6日後）
-        dateFrom = formatDate(today);
-        const thisWeekEnd = new Date(today);
-        thisWeekEnd.setDate(today.getDate() + 6);
-        dateTo = formatDate(thisWeekEnd);
-        break;
-
-      case 'nextWeek':
-        // 来週：7日後から7日間（7日後〜13日後）
-        const nextWeekStart = new Date(today);
-        nextWeekStart.setDate(today.getDate() + 7);
-        dateFrom = formatDate(nextWeekStart);
-        const nextWeekEnd = new Date(nextWeekStart);
-        nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
-        dateTo = formatDate(nextWeekEnd);
-        break;
-
-      case 'lastMonth':
-        // 先月：先月1日〜先月末
-        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() - 1, 1));
-        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth(), 0));
-        break;
-
-      case 'thisMonth':
-        // 今月：月初〜月末
-        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
-        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-        break;
-
-      case 'nextMonth':
-        // 来月：来月1日〜来月末
-        dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 1));
-        dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 2, 0));
-        break;
-
-      case 'custom':
-        // 期間指定
-        dateFrom = document.getElementById('dateFrom').value;
-        dateTo = document.getElementById('dateTo').value;
-        break;
-
-      case 'none':
-        // 指定なし：全期間
-        if (!confirm('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？')) {
-          // キャンセルされた場合は今週に戻す
-          document.getElementById('periodThisWeek').checked = true;
-          return getDateRange(); // 再帰呼び出しで今週の日付を返す
-        }
-        dateFrom = '';
-        dateTo = '';
-        break;
+        })
+        .withFailureHandler(function (error) {
+          container.innerHTML = '<div class="no-results">検索エラー</div>';
+        })
+        .searchCustomer(keyword);
     }
-    
-    return { dateFrom, dateTo };
-  }
-  
-  // 検索実行
-  function executeSearch() {
-    const { dateFrom, dateTo } = getDateRange();
 
-    // 出荷状態フィルター取得
-    const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
-    const shippingStatus = shippingStatusElement ? shippingStatusElement.value : 'all';
-
-    const params = {
-      dateFrom: dateFrom,
-      dateTo: dateTo,
-      destination: selectedDestination || '',
-      customer: selectedCustomer || '',
-      shippingStatus: shippingStatus
-    };
-
-    showLoading('検索中...');
-    document.getElementById('emptyState').style.display = 'none';
-    
-    google.script.run
-      .withSuccessHandler(function(result) {
-        hideLoading();
-        const data = JSON.parse(result);
-        orderData = data.orders || [];
-        currentPage = 1;
-        renderTable();
-      })
-      .withFailureHandler(function(error) {
-        hideLoading();
-        alert('データ取得エラー: ' + error.message);
-      })
-      .getOrderListData(params);
-  }
-  
-  // テーブル描画
-  function renderTable() {
-    const tbody = document.getElementById('orderTableBody');
-    const cardsContainer = document.getElementById('orderCardsContainer');
-    const totalCount = orderData.length;
-    
-    document.getElementById('resultCount').innerHTML = '検索結果: <strong>' + totalCount + '</strong> 件';
-    
-    if (totalCount === 0) {
-      tbody.innerHTML = '';
-      cardsContainer.innerHTML = '';
-      document.getElementById('emptyState').style.display = 'block';
-      document.getElementById('paginationSection').style.display = 'none';
-      return;
+    function selectDestination(name) {
+      selectedDestination = name;
+      document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-geo-alt me-1"></i>' + name;
+      document.getElementById('destinationBtn').classList.remove('btn-outline-secondary');
+      document.getElementById('destinationBtn').classList.add('btn-primary');
+      bootstrap.Modal.getInstance(document.getElementById('destinationSearchModal')).hide();
     }
-    
-    document.getElementById('emptyState').style.display = 'none';
-    
-    // ページング計算
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalCount);
-    const pageData = orderData.slice(startIndex, endIndex);
-    
-    // PC用テーブル描画（商品ごとに行を生成）
-    let tableRows = '';
-    pageData.forEach(order => {
-      const itemCount = order.items ? order.items.length : 0;
-      if (itemCount === 0) return;  // 商品がない場合はスキップ
 
-      // 出荷済フラグ
-      const isShipped = order.shipped === '○' || order.shipped === true;
+    function selectCustomer(name) {
+      selectedCustomer = name;
+      document.getElementById('customerBtn').innerHTML = '<i class="bi bi-person me-1"></i>' + name;
+      document.getElementById('customerBtn').classList.remove('btn-outline-secondary');
+      document.getElementById('customerBtn').classList.add('btn-primary');
+      bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
+    }
 
-      // 予定日超過判定（発送日が過去かつ未出荷）
-      const isOverdue = !isShipped && isPastDate(order.shippingDate);
+    function clearDestination() {
+      selectedDestination = null;
+      document.getElementById('destinationBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
+      document.getElementById('destinationBtn').classList.remove('btn-primary');
+      document.getElementById('destinationBtn').classList.add('btn-outline-secondary');
+      document.getElementById('destinationSearchInput').value = '';
+      document.getElementById('destinationSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
+    }
 
-      // 行のクラス
-      let rowClass = '';
-      if (isShipped) rowClass = 'shipped-row';
-      if (isOverdue) rowClass = 'overdue-row';
+    function clearCustomer() {
+      selectedCustomer = null;
+      document.getElementById('customerBtn').innerHTML = '<i class="bi bi-search me-1"></i>指定なし';
+      document.getElementById('customerBtn').classList.remove('btn-primary');
+      document.getElementById('customerBtn').classList.add('btn-outline-secondary');
+      document.getElementById('customerSearchInput').value = '';
+      document.getElementById('customerSearchResults').innerHTML = '<div class="no-results">キーワードを入力して検索してください</div>';
+    }
 
-      // 商品ごとに行を生成
-      order.items.forEach((item, index) => {
-        const isFirstRow = index === 0;
-        tableRows += `<tr class="${rowClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">`;
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-        // 最初の行のみ共通情報を表示（rowspanで結合）
-        if (isFirstRow) {
-          tableRows += `
+    // <br>タグを許可するエスケープ関数
+    function escapeHtmlWithBr(str) {
+      if (!str) return '';
+      return escapeHtml(str).replace(/&lt;br&gt;/g, '<br>');
+    }
+
+    // 日付範囲取得（修正版：今日起点）
+    function getDateRange() {
+      const period = document.querySelector('input[name="period"]:checked').value;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let dateFrom, dateTo;
+
+      switch (period) {
+        case 'today':
+          // 今日：今日のみ
+          dateFrom = formatDate(today);
+          dateTo = formatDate(today);
+          break;
+
+        case 'tomorrow':
+          // 明日：明日のみ
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+          dateFrom = formatDate(tomorrow);
+          dateTo = formatDate(tomorrow);
+          break;
+
+        case 'thisWeek':
+          // 今週：今日から7日間（今日〜6日後）
+          dateFrom = formatDate(today);
+          const thisWeekEnd = new Date(today);
+          thisWeekEnd.setDate(today.getDate() + 6);
+          dateTo = formatDate(thisWeekEnd);
+          break;
+
+        case 'nextWeek':
+          // 来週：7日後から7日間（7日後〜13日後）
+          const nextWeekStart = new Date(today);
+          nextWeekStart.setDate(today.getDate() + 7);
+          dateFrom = formatDate(nextWeekStart);
+          const nextWeekEnd = new Date(nextWeekStart);
+          nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+          dateTo = formatDate(nextWeekEnd);
+          break;
+
+        case 'lastMonth':
+          // 先月：先月1日〜先月末
+          dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+          dateTo = formatDate(new Date(today.getFullYear(), today.getMonth(), 0));
+          break;
+
+        case 'thisMonth':
+          // 今月：月初〜月末
+          dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+          dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+          break;
+
+        case 'nextMonth':
+          // 来月：来月1日〜来月末
+          dateFrom = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+          dateTo = formatDate(new Date(today.getFullYear(), today.getMonth() + 2, 0));
+          break;
+
+        case 'custom':
+          // 期間指定
+          dateFrom = document.getElementById('dateFrom').value;
+          dateTo = document.getElementById('dateTo').value;
+          break;
+
+        case 'none':
+          // 指定なし：全期間
+          if (!confirm('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？')) {
+            // キャンセルされた場合は今週に戻す
+            document.getElementById('periodThisWeek').checked = true;
+            return getDateRange(); // 再帰呼び出しで今週の日付を返す
+          }
+          dateFrom = '';
+          dateTo = '';
+          break;
+      }
+
+      return { dateFrom, dateTo };
+    }
+
+    // 検索実行
+    function executeSearch() {
+      const { dateFrom, dateTo } = getDateRange();
+
+      // 出荷状態フィルター取得
+      const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
+      const shippingStatus = shippingStatusElement ? shippingStatusElement.value : 'all';
+
+      const params = {
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        destination: selectedDestination || '',
+        customer: selectedCustomer || '',
+        shippingStatus: shippingStatus
+      };
+
+      showLoading('検索中...');
+      document.getElementById('emptyState').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          const data = JSON.parse(result);
+          orderData = data.orders || [];
+          currentPage = 1;
+          renderTable();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('データ取得エラー: ' + error.message);
+        })
+        .getOrderListData(params);
+    }
+
+    // テーブル描画
+    function renderTable() {
+      const tbody = document.getElementById('orderTableBody');
+      const cardsContainer = document.getElementById('orderCardsContainer');
+      const totalCount = orderData.length;
+
+      document.getElementById('resultCount').innerHTML = '検索結果: <strong>' + totalCount + '</strong> 件';
+
+      if (totalCount === 0) {
+        tbody.innerHTML = '';
+        cardsContainer.innerHTML = '';
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('paginationSection').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('emptyState').style.display = 'none';
+
+      // ページング計算
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalCount);
+      const pageData = orderData.slice(startIndex, endIndex);
+
+      // PC用テーブル描画（商品ごとに行を生成）
+      let tableRows = '';
+      pageData.forEach(order => {
+        const itemCount = order.items ? order.items.length : 0;
+        if (itemCount === 0) return;  // 商品がない場合はスキップ
+
+        // 出荷済フラグ
+        const isShipped = order.shipped === '○' || order.shipped === true;
+
+        // キャンセル済みフラグ
+        const isCancelled = order.status === 'キャンセル' || order.status === 'cancelled';
+
+        // 予定日超過判定（発送日が過去かつ未出荷かつキャンセル済みでない）
+        const isOverdue = !isShipped && !isCancelled && isPastDate(order.shippingDate);
+
+        // 行のクラス
+        let rowClass = '';
+        if (isCancelled) rowClass = 'cancelled-row';
+        else if (isShipped) rowClass = 'shipped-row';
+        else if (isOverdue) rowClass = 'overdue-row';
+
+        // 商品ごとに行を生成
+        order.items.forEach((item, index) => {
+          const isFirstRow = index === 0;
+          tableRows += `<tr class="${rowClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')" data-order-id="${escapeHtml(order.orderId)}">`;
+
+          // 最初の行のみ選択チェックボックスと共通情報を表示（rowspanで結合）
+          if (isFirstRow) {
+            // viewerでなければ選択チェックボックスを表示
+            if (userRole !== 'viewer') {
+              tableRows += `
+              <td class="col-select" rowspan="${itemCount}" onclick="event.stopPropagation();">
+                <input type="checkbox" class="form-check-input select-checkbox order-select-checkbox"
+                       data-order-id="${escapeHtml(order.orderId)}"
+                       onchange="updateSelectedCount()" title="選択">
+              </td>
+            `;
+            }
+            tableRows += `
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.shippingDate)}</td>
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.deliveryDate)}</td>
             <td class="col-name" rowspan="${itemCount}">
               <div class="cell-text" data-tooltip="${escapeHtml(order.destinationName)}">${escapeHtml(order.destinationName)}</div>
             </td>
           `;
-        }
+          }
 
-        // 各行に商品情報を表示
-        tableRows += `
+          // 各行に商品情報を表示
+          tableRows += `
           <td class="col-product">
             <div class="cell-text" data-tooltip="${escapeHtml(item.product)}">${escapeHtml(item.product)}</div>
           </td>
           <td class="col-quantity">${item.quantity}点</td>
         `;
 
-        // 最初の行のみ出荷済チェックボックスを表示
-        if (isFirstRow) {
-          tableRows += `
+          // 最初の行のみ出荷済チェックボックスを表示
+          if (isFirstRow) {
+            tableRows += `
             <td class="col-shipped" rowspan="${itemCount}" onclick="event.stopPropagation();">
               <input type="checkbox" class="form-check-input shipped-checkbox"
                      ${isShipped ? 'checked' : ''}
+                     ${isCancelled ? 'disabled' : ''}
                      onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
                      title="出荷済にチェック">
             </td>
           `;
 
-          // viewerの場合はボタンを表示しない
-          if (userRole !== 'viewer') {
-            tableRows += `
+            // viewerの場合はボタンを表示しない
+            if (userRole !== 'viewer') {
+              tableRows += `
               <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
-                <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正">
+                <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正" ${isCancelled ? 'disabled' : ''}>
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="コピー">
@@ -1303,43 +1566,55 @@
                 </button>
               </td>
             `;
-          }
-          tableRows += `
+            }
+            tableRows += `
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.orderDate)}</td>
           `;
-        }
+          }
 
-        tableRows += '</tr>';
+          tableRows += '</tr>';
+        });
       });
-    });
-    tbody.innerHTML = tableRows;
-    
-    // スマホ用カード描画（カードクリックで詳細表示）
-    let cardsHtml = '';
-    pageData.forEach(order => {
-      const itemCount = order.items ? order.items.length : 0;
-      if (itemCount === 0) return;  // 商品がない場合はスキップ
+      tbody.innerHTML = tableRows;
 
-      // 出荷済フラグ
-      const isShipped = order.shipped === '○' || order.shipped === true;
+      // スマホ用カード描画（カードクリックで詳細表示）
+      let cardsHtml = '';
+      pageData.forEach(order => {
+        const itemCount = order.items ? order.items.length : 0;
+        if (itemCount === 0) return;  // 商品がない場合はスキップ
 
-      // 予定日超過判定（発送日が過去かつ未出荷）
-      const isOverdue = !isShipped && isPastDate(order.shippingDate);
+        // 出荷済フラグ
+        const isShipped = order.shipped === '○' || order.shipped === true;
 
-      // カードのクラス
-      let cardClass = 'order-card';
-      if (isShipped) cardClass += ' shipped-row';
-      if (isOverdue) cardClass += ' overdue-row';
+        // キャンセル済みフラグ
+        const isCancelled = order.status === 'キャンセル' || order.status === 'cancelled';
 
-      // 商品リストを生成
-      const itemsHtml = order.items.map(item =>
-        `<div style="padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
+        // 予定日超過判定（発送日が過去かつ未出荷かつキャンセル済みでない）
+        const isOverdue = !isShipped && !isCancelled && isPastDate(order.shippingDate);
+
+        // カードのクラス
+        let cardClass = 'order-card';
+        if (isCancelled) cardClass += ' cancelled-row';
+        else if (isShipped) cardClass += ' shipped-row';
+        else if (isOverdue) cardClass += ' overdue-row';
+
+        // 商品リストを生成
+        const itemsHtml = order.items.map(item =>
+          `<div style="padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
           <strong>${escapeHtml(item.product)}</strong> - ${item.quantity}点
         </div>`
-      ).join('');
+        ).join('');
 
-      cardsHtml += `
-        <div class="${cardClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')">
+        cardsHtml += `
+        <div class="${cardClass}" onclick="showOrderDetail('${escapeHtml(order.orderId)}')" data-order-id="${escapeHtml(order.orderId)}">
+          ${userRole !== 'viewer' ? `
+          <div class="order-card-row" onclick="event.stopPropagation();" style="padding-bottom: 8px; border-bottom: 1px dashed #e0e0e0; margin-bottom: 8px;">
+            <input type="checkbox" class="form-check-input select-checkbox order-select-checkbox"
+                   data-order-id="${escapeHtml(order.orderId)}"
+                   onchange="updateSelectedCount()" title="選択" style="margin-right: 8px;">
+            <span style="font-size: 0.75rem; color: #999;">選択</span>
+          </div>
+          ` : ''}
           <div class="order-card-header">
             <div class="order-card-dates">
               <span class="date-label">発送</span>
@@ -1369,6 +1644,7 @@
             <div class="order-card-value" style="display: flex; align-items: center; gap: 8px;">
               <input type="checkbox" class="form-check-input shipped-checkbox"
                      ${isShipped ? 'checked' : ''}
+                     ${isCancelled ? 'disabled' : ''}
                      onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
                      title="出荷済にチェック">
               <span style="font-size: 0.875rem; color: #666;">出荷済</span>
@@ -1376,7 +1652,7 @@
           </div>
           ${userRole !== 'viewer' ? `
           <div class="order-card-buttons" onclick="event.stopPropagation();">
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')" ${isCancelled ? 'disabled' : ''}>
               <i class="bi bi-pencil me-1"></i>修正
             </button>
             <button type="button" class="btn btn-sm btn-outline-success" onclick="inheritOrder('${escapeHtml(order.orderId)}')">
@@ -1386,79 +1662,79 @@
           ` : ''}
         </div>
       `;
-    });
-    cardsContainer.innerHTML = cardsHtml;
-    
-    // ページング表示
-    if (totalPages > 1) {
-      document.getElementById('paginationSection').style.display = 'flex';
-      document.getElementById('pageInfo').textContent = currentPage + ' / ' + totalPages;
-      document.getElementById('prevBtn').disabled = currentPage <= 1;
-      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-    } else {
-      document.getElementById('paginationSection').style.display = 'none';
+      });
+      cardsContainer.innerHTML = cardsHtml;
+
+      // ページング表示
+      if (totalPages > 1) {
+        document.getElementById('paginationSection').style.display = 'flex';
+        document.getElementById('pageInfo').textContent = currentPage + ' / ' + totalPages;
+        document.getElementById('prevBtn').disabled = currentPage <= 1;
+        document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+      } else {
+        document.getElementById('paginationSection').style.display = 'none';
+      }
     }
-  }
-  
-  // ページ遷移
-  function goToPage(direction) {
-    const totalPages = Math.ceil(orderData.length / pageSize);
-    
-    if (direction === 'prev' && currentPage > 1) {
-      currentPage--;
-    } else if (direction === 'next' && currentPage < totalPages) {
-      currentPage++;
+
+    // ページ遷移
+    function goToPage(direction) {
+      const totalPages = Math.ceil(orderData.length / pageSize);
+
+      if (direction === 'prev' && currentPage > 1) {
+        currentPage--;
+      } else if (direction === 'next' && currentPage < totalPages) {
+        currentPage++;
+      }
+
+      renderTable();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    
-    renderTable();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  
-  // 詳細モーダル表示
-  function showOrderDetail(orderId) {
-    currentDetailOrderId = orderId;
-    const body = document.getElementById('orderDetailBody');
-    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">読み込み中...</p></div>';
-    
-    const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
-    modal.show();
-    
-    // GASから詳細データを取得
-    google.script.run
-      .withSuccessHandler(function(result) {
-        if (!result) {
-          body.innerHTML = '<div class="text-center py-4 text-danger">データが見つかりませんでした</div>';
-          return;
-        }
-        renderOrderDetail(result);
-      })
-      .withFailureHandler(function(error) {
-        body.innerHTML = '<div class="text-center py-4 text-danger">エラー: ' + error.message + '</div>';
-      })
-      .getOrderByOrderId(orderId);
-  }
-  
-  // 詳細モーダルの内容を描画
-  function renderOrderDetail(data) {
-    const body = document.getElementById('orderDetailBody');
-    
-    // チェックリストのバッジ生成
-    const checklistItems = ['納品書', '請求書', '領収書', 'パンフ', 'レシピ'];
-    const checklistHtml = checklistItems.map(item => {
-      const isActive = data.checklist && data.checklist[
-        item === '納品書' ? 'deliverySlip' :
-        item === '請求書' ? 'bill' :
-        item === '領収書' ? 'receipt' :
-        item === 'パンフ' ? 'pamphlet' : 'recipe'
-      ];
-      return `<span class="checklist-badge ${isActive ? 'active' : 'inactive'}">${item}</span>`;
-    }).join('');
-    
-    // 商品テーブル生成
-    let productsHtml = '';
-    let totalAmount = 0;
-    if (data.items && data.items.length > 0) {
-      productsHtml = `
+
+    // 詳細モーダル表示
+    function showOrderDetail(orderId) {
+      currentDetailOrderId = orderId;
+      const body = document.getElementById('orderDetailBody');
+      body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">読み込み中...</p></div>';
+
+      const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+      modal.show();
+
+      // GASから詳細データを取得
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (!result) {
+            body.innerHTML = '<div class="text-center py-4 text-danger">データが見つかりませんでした</div>';
+            return;
+          }
+          renderOrderDetail(result);
+        })
+        .withFailureHandler(function (error) {
+          body.innerHTML = '<div class="text-center py-4 text-danger">エラー: ' + error.message + '</div>';
+        })
+        .getOrderByOrderId(orderId);
+    }
+
+    // 詳細モーダルの内容を描画
+    function renderOrderDetail(data) {
+      const body = document.getElementById('orderDetailBody');
+
+      // チェックリストのバッジ生成
+      const checklistItems = ['納品書', '請求書', '領収書', 'パンフ', 'レシピ'];
+      const checklistHtml = checklistItems.map(item => {
+        const isActive = data.checklist && data.checklist[
+          item === '納品書' ? 'deliverySlip' :
+            item === '請求書' ? 'bill' :
+              item === '領収書' ? 'receipt' :
+                item === 'パンフ' ? 'pamphlet' : 'recipe'
+        ];
+        return `<span class="checklist-badge ${isActive ? 'active' : 'inactive'}">${item}</span>`;
+      }).join('');
+
+      // 商品テーブル生成
+      let productsHtml = '';
+      let totalAmount = 0;
+      if (data.items && data.items.length > 0) {
+        productsHtml = `
         <table class="product-detail-table">
           <thead>
             <tr>
@@ -1471,9 +1747,9 @@
           </thead>
           <tbody>
             ${data.items.map(item => {
-              const subtotal = (item.price || 0) * (item.quantity || 0);
-              totalAmount += subtotal;
-              return `
+          const subtotal = (item.price || 0) * (item.quantity || 0);
+          totalAmount += subtotal;
+          return `
                 <tr>
                   <td>${escapeHtml(item.bunrui)}</td>
                   <td>${escapeHtml(item.product)}</td>
@@ -1482,7 +1758,7 @@
                   <td class="text-end">¥${subtotal.toLocaleString()}</td>
                 </tr>
               `;
-            }).join('')}
+        }).join('')}
           </tbody>
           <tfoot>
             <tr>
@@ -1492,11 +1768,11 @@
           </tfoot>
         </table>
       `;
-    } else {
-      productsHtml = '<p class="text-muted">商品情報がありません</p>';
-    }
-    
-    body.innerHTML = `
+      } else {
+        productsHtml = '<p class="text-muted">商品情報がありません</p>';
+      }
+
+      body.innerHTML = `
       <!-- 基本情報 -->
       <div class="detail-section">
         <div class="detail-section-header">
@@ -1704,48 +1980,240 @@
         </div>
       </div>
     `;
-  }
-  
-  // 詳細モーダルから修正
-  function editFromDetail() {
-    if (currentDetailOrderId) {
-      bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
-      editOrder(currentDetailOrderId);
     }
-  }
-  
-  // 詳細モーダルから引継
-  function inheritFromDetail() {
-    if (currentDetailOrderId) {
-      bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
-      inheritOrder(currentDetailOrderId);
-    }
-  }
 
-  // 修正画面へ遷移
-  function editOrder(orderId) {
-    if (!orderId) {
-      alert('受注IDが取得できませんでした');
-      return;
+    // 詳細モーダルから修正
+    function editFromDetail() {
+      if (currentDetailOrderId) {
+        bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
+        editOrder(currentDetailOrderId);
+      }
     }
-    document.getElementById('actionOrderIdInput').value = orderId;
-    document.getElementById('actionEditModeInput').value = 'true';
-    document.getElementById('actionModeInput').value = 'edit';
-    document.getElementById('actionForm').submit();
-  }
-  
-  // 引継画面へ遷移
-  function inheritOrder(orderId) {
-    if (!orderId) {
-      alert('受注IDが取得できませんでした');
-      return;
+
+    // 詳細モーダルから引継
+    function inheritFromDetail() {
+      if (currentDetailOrderId) {
+        bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
+        inheritOrder(currentDetailOrderId);
+      }
     }
-    document.getElementById('actionOrderIdInput').value = orderId;
-    document.getElementById('actionEditModeInput').value = 'false';
-    document.getElementById('actionModeInput').value = 'inherit';
-    document.getElementById('actionForm').submit();
-  }
-</script>
+
+    // 修正画面へ遷移
+    function editOrder(orderId) {
+      if (!orderId) {
+        alert('受注IDが取得できませんでした');
+        return;
+      }
+      document.getElementById('actionOrderIdInput').value = orderId;
+      document.getElementById('actionEditModeInput').value = 'true';
+      document.getElementById('actionModeInput').value = 'edit';
+      document.getElementById('actionForm').submit();
+    }
+
+    // 引継画面へ遷移
+    function inheritOrder(orderId) {
+      if (!orderId) {
+        alert('受注IDが取得できませんでした');
+        return;
+      }
+      document.getElementById('actionOrderIdInput').value = orderId;
+      document.getElementById('actionEditModeInput').value = 'false';
+      document.getElementById('actionModeInput').value = 'inherit';
+      document.getElementById('actionForm').submit();
+    }
+
+    // ========================================
+    // 一括操作関連
+    // ========================================
+
+    // 選択件数を更新
+    function updateSelectedCount() {
+      const checkboxes = document.querySelectorAll('.order-select-checkbox:checked');
+      const count = checkboxes.length;
+      const bulkArea = document.getElementById('bulkActionArea');
+      const countSpan = document.getElementById('selectedCount');
+
+      if (count > 0) {
+        bulkArea.style.display = 'flex';
+        countSpan.textContent = count + '件選択中';
+      } else {
+        bulkArea.style.display = 'none';
+      }
+
+      // 全選択チェックボックスの状態を更新
+      const allCheckboxes = document.querySelectorAll('.order-select-checkbox');
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = allCheckboxes.length > 0 && count === allCheckboxes.length;
+        selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
+      }
+
+      // 選択状態に応じて行のハイライトを更新
+      updateRowHighlights();
+    }
+
+    // 行のハイライトを更新
+    function updateRowHighlights() {
+      // PC用テーブル: 全行のハイライトをクリア
+      document.querySelectorAll('tr.selected-row').forEach(tr => {
+        tr.classList.remove('selected-row');
+      });
+
+      // スマホ用カード: 全カードのハイライトをクリア
+      document.querySelectorAll('.order-card.selected-row').forEach(card => {
+        card.classList.remove('selected-row');
+      });
+
+      // チェックされている行にハイライトを追加
+      document.querySelectorAll('.order-select-checkbox:checked').forEach(cb => {
+        const orderId = cb.dataset.orderId;
+
+        // PC用テーブル: 同じ受注IDを持つ全ての行にハイライト
+        document.querySelectorAll(`tr[data-order-id="${orderId}"]`).forEach(tr => {
+          tr.classList.add('selected-row');
+        });
+
+        // スマホ用カード
+        document.querySelectorAll(`.order-card[data-order-id="${orderId}"]`).forEach(card => {
+          card.classList.add('selected-row');
+        });
+      });
+    }
+
+    // 全選択トグル
+    function toggleSelectAll(isChecked) {
+      const checkboxes = document.querySelectorAll('.order-select-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+      });
+      updateSelectedCount();
+    }
+
+    // 選択された受注IDを取得
+    function getSelectedOrderIds() {
+      const checkboxes = document.querySelectorAll('.order-select-checkbox:checked');
+      return Array.from(checkboxes).map(cb => cb.dataset.orderId);
+    }
+
+    // 一括出荷済み
+    function bulkUpdateShipped() {
+      const orderIds = getSelectedOrderIds();
+      if (orderIds.length === 0) {
+        alert('受注を選択してください');
+        return;
+      }
+
+      if (!confirm(orderIds.length + '件の受注を出荷済みにしますか？')) {
+        return;
+      }
+
+      showLoading('一括更新中...');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          showSuccessToast(orderIds.length + '件を出荷済みに更新しました');
+          executeSearch();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('更新エラー: ' + error.message);
+        })
+        .bulkUpdateOrderShippedStatus(orderIds, '○');
+    }
+
+    // 一括キャンセル
+    function bulkCancelOrders() {
+      const orderIds = getSelectedOrderIds();
+      if (orderIds.length === 0) {
+        alert('受注を選択してください');
+        return;
+      }
+
+      if (!confirm(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、データは削除されません。')) {
+        return;
+      }
+
+      showLoading('一括キャンセル中...');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          showSuccessToast(orderIds.length + '件をキャンセルしました');
+          executeSearch();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('キャンセルエラー: ' + error.message);
+        })
+        .bulkCancelOrders(orderIds);
+    }
+
+    // 一括削除
+    function bulkDeleteOrders() {
+      const orderIds = getSelectedOrderIds();
+      if (orderIds.length === 0) {
+        alert('受注を選択してください');
+        return;
+      }
+
+      if (!confirm('⚠️ ' + orderIds.length + '件の受注を完全に削除しますか？\n\n※この操作は取り消せません。\n※ヤマトCSV/佐川CSVのデータも同時に削除されます。')) {
+        return;
+      }
+
+      // 二重確認
+      if (!confirm('本当に削除してよろしいですか？\n\n削除対象: ' + orderIds.join(', '))) {
+        return;
+      }
+
+      showLoading('一括削除中...');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          showSuccessToast(orderIds.length + '件を削除しました');
+          executeSearch();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('削除エラー: ' + error.message);
+        })
+        .bulkDeleteOrders(orderIds);
+    }
+
+    // キャンセル解除
+    function bulkUncancelOrders() {
+      const orderIds = getSelectedOrderIds();
+      if (orderIds.length === 0) {
+        alert('受注を選択してください');
+        return;
+      }
+
+      if (!confirm(orderIds.length + '件の受注のキャンセルを解除しますか？')) {
+        return;
+      }
+
+      showLoading('キャンセル解除中...');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          showSuccessToast(orderIds.length + '件のキャンセルを解除しました');
+          executeSearch();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('キャンセル解除エラー: ' + error.message);
+        })
+        .bulkUncancelOrders(orderIds);
+    }
+
+    // 成功トースト表示（utilities.htmlのshowToastを利用、なければalert）
+    function showSuccessToast(message) {
+      if (typeof showToast === 'function') {
+        showToast(message, 'success');
+      } else {
+        alert(message);
+      }
+    }
+  </script>
 
 </body>
+
 </html>
