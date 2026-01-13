@@ -1121,6 +1121,13 @@
     <input type="hidden" name="editOrderId" id="actionOrderIdInput" value="">
     <input type="hidden" name="editMode" id="actionEditModeInput" value="">
     <input type="hidden" name="actionMode" id="actionModeInput" value="">
+    <!-- 検索条件引継用 -->
+    <input type="hidden" name="prevPeriod" id="prevPeriodInput" value="">
+    <input type="hidden" name="prevDateFrom" id="prevDateFromInput" value="">
+    <input type="hidden" name="prevDateTo" id="prevDateToInput" value="">
+    <input type="hidden" name="prevDestination" id="prevDestinationInput" value="">
+    <input type="hidden" name="prevCustomer" id="prevCustomerInput" value="">
+    <input type="hidden" name="prevStatus" id="prevStatusInput" value="">
   </form>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1139,8 +1146,49 @@
     document.addEventListener('DOMContentLoaded', function () {
       initializeDateInputs();
       setupEventListeners();
+      applyInheritedFilters(); // 引継条件の適用
       executeSearch();
     });
+
+    // 引継されたフィルター条件を適用
+    function applyInheritedFilters() {
+      const prevPeriod = '<?= typeof prevPeriod !== "undefined" ? prevPeriod : "" ?>';
+      const prevDateFrom = '<?= typeof prevDateFrom !== "undefined" ? prevDateFrom : "" ?>';
+      const prevDateTo = '<?= typeof prevDateTo !== "undefined" ? prevDateTo : "" ?>';
+      const prevDestination = '<?= typeof prevDestination !== "undefined" ? prevDestination : "" ?>';
+      const prevCustomer = '<?= typeof prevCustomer !== "undefined" ? prevCustomer : "" ?>';
+      const prevStatus = '<?= typeof prevStatus !== "undefined" ? prevStatus : "" ?>';
+
+      if (prevPeriod) {
+        const radio = document.querySelector(`input[name="period"][value="${prevPeriod}"]`);
+        if (radio) {
+          radio.checked = true;
+          // 期間指定の場合は日付入力行を表示
+          const customRow = document.getElementById('customDateRangeRow');
+          if (customRow) customRow.style.display = prevPeriod === 'custom' ? 'block' : 'none';
+        }
+      }
+
+      if (prevDateFrom) document.getElementById('dateFrom').value = prevDateFrom;
+      if (prevDateTo) document.getElementById('dateTo').value = prevDateTo;
+
+      if (prevDestination && prevDestination !== '指定なし' && prevDestination !== '') {
+        selectedDestination = prevDestination;
+        document.getElementById('destinationBtn').innerHTML = `<i class="bi bi-search me-1"></i>${prevDestination}`;
+        document.getElementById('destinationBtn').classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+
+      if (prevCustomer && prevCustomer !== '指定なし' && prevCustomer !== '') {
+        selectedCustomer = prevCustomer;
+        document.getElementById('customerBtn').innerHTML = `<i class="bi bi-search me-1"></i>${prevCustomer}`;
+        document.getElementById('customerBtn').classList.replace('btn-outline-secondary', 'btn-secondary');
+      }
+
+      if (prevStatus) {
+        const radio = document.querySelector(`input[name="shippingStatus"][value="${prevStatus}"]`);
+        if (radio) radio.checked = true;
+      }
+    }
 
     // 日付入力の初期化
     function initializeDateInputs() {
@@ -2004,6 +2052,7 @@
         alert('受注IDが取得できませんでした');
         return;
       }
+      setSearchConditionsToForm();
       document.getElementById('actionOrderIdInput').value = orderId;
       document.getElementById('actionEditModeInput').value = 'true';
       document.getElementById('actionModeInput').value = 'edit';
@@ -2016,10 +2065,30 @@
         alert('受注IDが取得できませんでした');
         return;
       }
+      setSearchConditionsToForm();
       document.getElementById('actionOrderIdInput').value = orderId;
       document.getElementById('actionEditModeInput').value = 'false';
       document.getElementById('actionModeInput').value = 'inherit';
       document.getElementById('actionForm').submit();
+    }
+
+    // 現在の検索条件を隠しフォームにセット
+    function setSearchConditionsToForm() {
+      const period = document.querySelector('input[name="period"]:checked')?.value || 'thisWeek';
+      const shippingStatus = document.querySelector('input[name="shippingStatus"]:checked')?.value || 'all';
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+
+      // 発送先と顧客はボタンのテキストから取得（または変数から）
+      const destination = document.getElementById('destinationBtn').textContent.replace('指定なし', '').trim();
+      const customer = document.getElementById('customerBtn').textContent.replace('指定なし', '').trim();
+
+      document.getElementById('prevPeriodInput').value = period;
+      document.getElementById('prevStatusInput').value = shippingStatus;
+      document.getElementById('prevDateFromInput').value = dateFrom;
+      document.getElementById('prevDateToInput').value = dateTo;
+      document.getElementById('prevDestinationInput').value = destination;
+      document.getElementById('prevCustomerInput').value = customer;
     }
 
     // ========================================

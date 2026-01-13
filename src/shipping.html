@@ -34,6 +34,15 @@
           onclick="clearAISession()">ホーム画面に戻る</button>
         <button type="submit" formnovalidate class="btn btn-outline-primary me-3 nav-btn" name="orderListPage"
           value="true" onclick="clearAISession()">受注一覧に戻る</button>
+
+        <!-- 検索条件引継用 -->
+        <input type="hidden" name="prevPeriod" value="<?= typeof prevPeriod !== 'undefined' ? prevPeriod : '' ?>">
+        <input type="hidden" name="prevDateFrom" value="<?= typeof prevDateFrom !== 'undefined' ? prevDateFrom : '' ?>">
+        <input type="hidden" name="prevDateTo" value="<?= typeof prevDateTo !== 'undefined' ? prevDateTo : '' ?>">
+        <input type="hidden" name="prevDestination"
+          value="<?= typeof prevDestination !== 'undefined' ? prevDestination : '' ?>">
+        <input type="hidden" name="prevCustomer" value="<?= typeof prevCustomer !== 'undefined' ? prevCustomer : '' ?>">
+        <input type="hidden" name="prevStatus" value="<?= typeof prevStatus !== 'undefined' ? prevStatus : '' ?>">
       </div>
       <h2 class="text-center m-4">受注管理</h2>
       <!-- AI解析済みインジケーター（フォーム上部に表示） -->

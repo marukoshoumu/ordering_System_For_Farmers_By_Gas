@@ -55,8 +55,8 @@ function doGet(e) {
   // URLパラメータを保持してログイン画面に渡す
   template.tempOrderId = e.parameter.tempOrderId || '';
   template.redirectTo = e.parameter.aiImportList ? 'aiImportList'
-                      : e.parameter.shipping ? 'shipping'
-                      : '';
+    : e.parameter.shipping ? 'shipping'
+      : '';
 
   const htmlOutput = template.evaluate();
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -173,7 +173,7 @@ function doPost(e) {
     if (userRole === 'viewer' && (redirectTo === 'aiImportList' || tempOrderId)) {
       return redirectToHome(userRole);
     }
-    
+
     // tempOrderIdがあれば受注画面へ直接遷移
     if (tempOrderId) {
       const template = HtmlService.createTemplateFromFile('shipping');
@@ -187,7 +187,7 @@ function doPost(e) {
       htmlOutput.setTitle('受注画面（AI入力）');
       return htmlOutput;
     }
-    
+
     // リダイレクト先パラメータに応じて遷移
     if (redirectTo === 'aiImportList') {
       const template = HtmlService.createTemplateFromFile('aiImportList');
@@ -197,7 +197,7 @@ function doPost(e) {
       htmlOutput.setTitle('AI取込一覧');
       return htmlOutput;
     }
-    
+
     if (redirectTo === 'shipping') {
       const template = HtmlService.createTemplateFromFile('shipping');
       template.deployURL = ScriptApp.getService().getUrl();
@@ -212,7 +212,7 @@ function doPost(e) {
       htmlOutput.setTitle('受注画面');
       return htmlOutput;
     }
-    
+
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
     template.userRole = userRole;
@@ -259,6 +259,14 @@ function doPost(e) {
     const editMode = e.parameter.editMode === 'true';
     template.isEditMode = editMode;
     template.editOrderId = editOrderId;
+
+    // 検索条件引継用
+    template.prevPeriod = e.parameter.prevPeriod || '';
+    template.prevDateFrom = e.parameter.prevDateFrom || '';
+    template.prevDateTo = e.parameter.prevDateTo || '';
+    template.prevDestination = e.parameter.prevDestination || '';
+    template.prevCustomer = e.parameter.prevCustomer || '';
+    template.prevStatus = e.parameter.prevStatus || '';
 
     // AI取込一覧からの遷移チェック
     const tempOrderId = e.parameter.tempOrderId || '';
@@ -330,7 +338,7 @@ function doPost(e) {
     }
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
-    
+
     // 編集モードの設定を追加
     const editOrderId = e.parameter.editOrderId || '';
     const editMode = e.parameter.editMode === 'true';
@@ -338,10 +346,10 @@ function doPost(e) {
     template.editOrderId = editOrderId;
     // 仮受注IDを引き継ぎ
     template.tempOrderId = e.parameter.tempOrderId || '';
-    
+
     // fromConfirmフラグを設定（再検索防止）
     e.parameter.fromConfirm = 'true';
-    
+
     template.shippingHTML = getshippingHTML(e);
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -446,6 +454,15 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('orderList');
     template.deployURL = ScriptApp.getService().getUrl();
     template.userRole = userRole;
+
+    // 検索条件引継用
+    template.prevPeriod = e.parameter.prevPeriod || '';
+    template.prevDateFrom = e.parameter.prevDateFrom || '';
+    template.prevDateTo = e.parameter.prevDateTo || '';
+    template.prevDestination = e.parameter.prevDestination || '';
+    template.prevCustomer = e.parameter.prevCustomer || '';
+    template.prevStatus = e.parameter.prevStatus || '';
+
     return template.evaluate()
       .setTitle('受注一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -516,19 +533,19 @@ function getshippingHTMLForTempOrder(tempOrderId) {
   // LINE Bot側のスプレッドシートから仮受注データを取得
   const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
   const sheet = ss.getSheetByName('仮受注');
-  
+
   if (!sheet) {
     return getshippingHTML({ parameter: {} }, '仮受注データが見つかりません');
   }
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  
+
   // 仮受注IDで検索
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === tempOrderId) {
       const analysisResult = JSON.parse(data[i][7]); // 解析結果JSON
-      
+
       // eパラメータを模擬して既存関数を利用
       const mockParam = buildMockParameterFromAnalysis(analysisResult);
       return getshippingHTML({
@@ -537,7 +554,7 @@ function getshippingHTMLForTempOrder(tempOrderId) {
       });
     }
   }
-  
+
   return getshippingHTML({
     parameter: {},
     parameters: {}
@@ -602,32 +619,32 @@ function buildMockParameterFromAnalysis(analysis) {
   const param = {
     fromTempOrder: 'true'
   };
-  
+
   // 顧客情報
   if (analysis.customer) {
-    param.customerName = analysis.customer.masterData?.displayName || 
-                         analysis.customer.rawCompanyName || '';
+    param.customerName = analysis.customer.masterData?.displayName ||
+      analysis.customer.rawCompanyName || '';
     param.customerZipcode = analysis.customer.masterData?.zipcode || '';
     param.customerAddress = analysis.customer.masterData?.address || '';
     param.customerTel = analysis.customer.masterData?.tel || '';
   }
-  
+
   // 発送先情報
   if (analysis.shippingTo) {
     param.shippingToName = analysis.shippingTo.masterData?.companyName ||
-                           analysis.shippingTo.rawCompanyName || '';
-    param.shippingToZipcode = analysis.shippingTo.masterData?.zipcode || 
-                              analysis.shippingTo.rawZipcode || '';
+      analysis.shippingTo.rawCompanyName || '';
+    param.shippingToZipcode = analysis.shippingTo.masterData?.zipcode ||
+      analysis.shippingTo.rawZipcode || '';
     param.shippingToAddress = analysis.shippingTo.masterData?.address ||
-                              analysis.shippingTo.rawAddress || '';
+      analysis.shippingTo.rawAddress || '';
     param.shippingToTel = analysis.shippingTo.masterData?.tel ||
-                          analysis.shippingTo.rawTel || '';
+      analysis.shippingTo.rawTel || '';
   }
-  
+
   // 日付
   param.shippingDate = analysis.shippingDate || '';
   param.deliveryDate = analysis.deliveryDate || '';
-  
+
   // 商品情報（最大10件）
   if (analysis.items && analysis.items.length > 0) {
     analysis.items.slice(0, 10).forEach((item, i) => {
@@ -638,7 +655,7 @@ function buildMockParameterFromAnalysis(analysis) {
       param['price' + num] = item.price || '';
     });
   }
-  
+
   return param;
 }
 
@@ -817,13 +834,13 @@ function getAllRecordsInternal(sheetName, flg) {
       return flg ? '[]' : [];
     }
   }
-  
+
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     Logger.log('getAllRecords: シート「' + sheetName + '」が見つかりません');
     return flg ? '[]' : [];
   }
-  
+
   const values = sheet.getDataRange().getValues();
   const labels = values.shift();
 
