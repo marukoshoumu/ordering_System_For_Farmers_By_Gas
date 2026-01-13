@@ -84,7 +84,18 @@
     }
 
     /**
-     * AIアシスタントの開閉
+     * AIアシスタントパネルの開閉を切り替え
+     *
+     * AIアシスタントパネルの表示/非表示を切り替えます。
+     * パネルを開いた際に商品マスタが未読み込みの場合は自動的にロードします。
+     *
+     * 処理フロー:
+     * 1. パネルのopen/closeクラスをトグル
+     * 2. ボタンテキストを「開く」↔「閉じる」で切り替え
+     * 3. パネルを開いた際にcategoryListが空なら商品マスタをロード
+     *
+     * @returns {void}
+     * @see loadProductMaster() - 商品マスタ読み込み処理
      */
     function toggleAIAssistant() {
       const body = document.getElementById('aiAssistantBody');
@@ -201,7 +212,31 @@
     }
 
     /**
-     * 顧客新規登録フォームを開いてAI解析値を反映
+     * 顧客新規登録フォームを開いてAI解析値を事前入力
+     *
+     * AI解析結果から顧客データを抽出し、新規登録ダイアログに自動入力します。
+     * ユーザーは内容を確認・修正して登録できます。
+     *
+     * 処理フロー:
+     * 1. 顧客フォームをクリア
+     * 2. AI解析データ（raw値優先）を各フィールドに設定
+     *    - 会社名 → 顧客名（表示名にも同じ値）
+     *    - 担当者名 → 識別名
+     *    - 郵便番号 → ハイフン除去して設定
+     *    - 住所 → splitAddressString()で住所1/住所2に分割
+     *    - 電話番号/FAX → ハイフン除去して設定
+     * 3. jQuery UIダイアログを開く（登録/キャンセルボタン付き）
+     *
+     * データ優先順位:
+     * - raw値（AI読み取り）> 正規化済み値
+     *
+     * @param {Object} customerData - 顧客データオブジェクト（AI解析結果）
+     * @returns {void}
+     * @see clearCustomerForm() - フォームクリア処理
+     * @see sanitizeZipcode() - 郵便番号正規化
+     * @see sanitizeTel() - 電話番号正規化
+     * @see splitAddressString() - 住所分割処理
+     * @see addCustomer() - 顧客登録処理
      */
     function openNewCustomerFormWithAI(customerData) {
       console.log('顧客データ:', customerData);
@@ -252,7 +287,31 @@
     }
 
     /**
-     * 発送先新規登録フォームを開いてAI解析値を反映
+     * 発送先新規登録フォームを開いてAI解析値を事前入力
+     *
+     * AI解析結果から発送先データを抽出し、新規登録ダイアログに自動入力します。
+     * ユーザーは内容を確認・修正して登録できます。
+     *
+     * 処理フロー:
+     * 1. 発送先フォームをクリア
+     * 2. AI解析データ（raw値優先）を各フィールドに設定
+     *    - 会社名 → 発送先名
+     *    - 宛名 → 識別名
+     *    - 郵便番号 → ハイフン除去して設定
+     *    - 住所 → splitAddressString()で住所1/住所2に分割
+     *    - 電話番号 → ハイフン除去して設定
+     * 3. jQuery UIダイアログを開く（登録/キャンセルボタン付き）
+     *
+     * データ優先順位:
+     * - raw値（AI読み取り）> 正規化済み値
+     *
+     * @param {Object} shippingToData - 発送先データオブジェクト（AI解析結果）
+     * @returns {void}
+     * @see clearShippingToForm() - フォームクリア処理
+     * @see sanitizeZipcode() - 郵便番号正規化
+     * @see sanitizeTel() - 電話番号正規化
+     * @see splitAddressString() - 住所分割処理
+     * @see addShippingTo() - 発送先登録処理
      */
     function openNewShippingToFormWithAI(shippingToData) {
       console.log('発送先データ:', shippingToData);
@@ -333,7 +392,27 @@
     }
 
     /**
-     * 商品マスタの読み込み
+     * 商品マスタを読み込み（カテゴリ別・価格付き）
+     *
+     * サーバーサイドから商品マスタをカテゴリ別に取得し、
+     * グローバル変数に保存します。商品選択ドロップダウンと価格自動入力に使用されます。
+     *
+     * 取得データ:
+     * - productsByCategory: カテゴリごとの商品リスト { "野菜": ["トマト", "キュウリ"], ... }
+     * - productPrices: 商品名と価格のマップ { "トマト": 500, ... }
+     *
+     * グローバル変数への保存:
+     * - productMaster: カテゴリ別商品リスト
+     * - productPrices: 商品価格マップ
+     * - categoryList: カテゴリ名配列
+     *
+     * 呼び出しタイミング:
+     * - AIアシスタントパネルを初めて開いた時（toggleAIAssistant）
+     * - AI取込一覧から遷移した時（openAIModalWithResult）
+     *
+     * @returns {void}
+     * @see getProductMasterForUI() - サーバーサイド取得関数
+     * @see toggleAIAssistant() - パネル開閉処理
      */
     function loadProductMaster() {
       google.script.run
@@ -349,7 +428,24 @@
     }
     
     /**
-     * AIセッションデータの読み込み
+     * AIセッションデータの読み込み（30分間キャッシュ）
+     *
+     * sessionStorageからAI解析結果を読み込み、有効期限をチェックします。
+     * 30分以内のデータであれば解析済みインジケーターを表示します。
+     *
+     * 処理フロー:
+     * 1. sessionStorageからデータを取得
+     * 2. データがない場合は何もせず終了
+     * 3. データをパースし、解析時刻との差分を計算
+     * 4. 30分以上経過していればデータを削除して終了
+     * 5. 30分以内であれば解析済みインジケーターを表示
+     *
+     * エラーハンドリング:
+     * - パースエラー時は破損データを削除
+     *
+     * @returns {void}
+     * @see saveAISessionData() - セッション保存処理
+     * @see showAIAnalyzedIndicator() - インジケーター表示処理
      */
     function loadAISessionData() {
       const saved = sessionStorage.getItem(AI_SESSION_KEY);
@@ -368,7 +464,26 @@
     }
     
     /**
-     * AIセッションデータの保存
+     * AIセッションデータの保存（30分間有効）
+     *
+     * 現在のAI解析結果と商品編集内容をsessionStorageに保存します。
+     * 30分間キャッシュされ、ページ更新時に解析済みインジケーターを表示できます。
+     *
+     * 保存内容:
+     * - analyzedAt: 解析実行時刻（ISO 8601形式）
+     * - analysisResult: AI解析の完全な結果オブジェクト
+     * - items: 商品編集内容（原文テキスト、商品名、価格、数量など）
+     * - totalAmount: 合計金額（除外カテゴリ・商品を除く）
+     *
+     * 除外ルール:
+     * - カテゴリ: 送料、手数料、追加料金
+     * - 商品: 送料、クール便追加、代引手数料、梱包料
+     *
+     * @returns {void}
+     * @see loadAISessionData() - セッション読み込み処理
+     * @see AI_SESSION_KEY - セッションストレージキー定数
+     * @see AI_EXCLUDE_CATEGORIES - 除外カテゴリ定義
+     * @see AI_EXCLUDE_PRODUCTS - 除外商品定義
      */
     function saveAISessionData() {
       if (!aiAnalysisResult) return;
@@ -483,16 +598,27 @@
     }
     
     /**
-     * AI解析実行
+     * AI解析を実行（エントリーポイント）
+     *
+     * テキストまたはファイル（FAX/画像）をGemini APIで解析し、
+     * 顧客・発送先・商品情報を自動抽出します。
+     *
+     * 処理フロー:
+     * 1. 前回の解析結果をクリア
+     * 2. currentTabに応じてテキストまたはファイル解析を実行
+     * 3. サーバーサイド関数（analyzeOrderText/analyzeOrderFileBase64）を呼び出し
+     * 4. 成功時: handleAnalysisSuccess()、失敗時: handleAnalysisError()
+     *
+     * @returns {void}
      */
     function analyzeWithAI() {
       const btn = document.getElementById('aiAnalyzeBtn');
       btn.classList.add('loading');
       btn.disabled = true;
-      
+
       // 前の解析結果をクリア（UIステートのリセット）
       resetAnalysisState();
-      
+
       if (currentTab === 'text') {
         const text = document.getElementById('aiInputText').value.trim();
         if (!text) { showWarningToast('テキストを入力してください'); btn.classList.remove('loading'); btn.disabled = false; return; }
@@ -504,7 +630,25 @@
     }
     
     /**
-     * 解析ステートをリセット
+     * AI解析ステートをリセット（新規解析前のクリーンアップ）
+     *
+     * 次の解析実行前に、前回の解析結果とUI状態を完全にクリアします。
+     * analyzeWithAI()の冒頭で呼び出されます。
+     *
+     * クリア対象:
+     * - aiAnalysisResult: 解析結果オブジェクト
+     * - useShippingToMaster/useCustomerMaster: マスタ使用フラグ
+     * - itemEdits: 商品編集内容
+     * - manualShippingToSelection/manualCustomerSelection: 手動選択データ
+     * - 発送先/顧客セクションのUI（バッジ、マスタ表示、手動選択表示、ソース選択ボタン）
+     * - 顧客推定候補エリア
+     *
+     * 保持されるもの:
+     * - 入力テキスト（#aiInputText）
+     * - 選択ファイル（selectedFile）
+     *
+     * @returns {void}
+     * @see analyzeWithAI() - エントリーポイント
      */
     function resetAnalysisState() {
       aiAnalysisResult = null;
@@ -537,7 +681,25 @@
     }
     
     /**
-     * AI解析成功コールバック
+     * AI解析成功時のコールバック関数
+     *
+     * Gemini APIからの解析結果を受け取り、パース後に画面表示します。
+     * analyzeWithAI()のwithSuccessHandlerとして登録されています。
+     *
+     * 処理フロー:
+     * 1. ローディング状態を解除（ボタン再有効化）
+     * 2. 解析結果JSONをパース
+     * 3. success=falseの場合はエラー表示
+     * 4. success=trueの場合はdisplayAnalysisResult()で表示
+     *
+     * エラーハンドリング:
+     * - JSONパースエラー時はエラーメッセージを表示
+     * - API側のエラー（success=false）もキャッチして表示
+     *
+     * @param {string} result - JSON文字列（サーバーサイドからの返却値）
+     * @returns {void}
+     * @see analyzeWithAI() - エントリーポイント
+     * @see displayAnalysisResult() - 結果表示処理
      */
     function handleAnalysisSuccess(result) {
       const btn = document.getElementById('aiAnalyzeBtn');
@@ -553,7 +715,25 @@
     }
     
     /**
-     * AI解析エラーコールバック
+     * AI解析エラー時のコールバック関数
+     *
+     * Gemini API呼び出しやサーバーサイド処理でエラーが発生した際に呼び出されます。
+     * analyzeWithAI()のwithFailureHandlerとして登録されています。
+     *
+     * 処理フロー:
+     * 1. ローディング状態を解除（ボタン再有効化）
+     * 2. エラーメッセージをshowError()で表示
+     *
+     * エラーの種類:
+     * - Google Apps Script実行エラー
+     * - Gemini APIエラー（API制限、認証失敗など）
+     * - ネットワークエラー
+     * - タイムアウト
+     *
+     * @param {Error} error - エラーオブジェクト
+     * @returns {void}
+     * @see analyzeWithAI() - エントリーポイント
+     * @see showError() - エラー表示関数
      */
     function handleAnalysisError(error) {
       const btn = document.getElementById('aiAnalyzeBtn');
@@ -563,7 +743,32 @@
     }
     
     /**
-     * 解析結果の表示
+     * AI解析結果を画面に表示（メイン表示関数）
+     *
+     * Gemini APIからの解析結果を受け取り、UI全体を更新します。
+     * 顧客、発送先、商品、日付などすべての解析情報を表示します。
+     *
+     * 表示内容:
+     * - 全体信頼度バッジ（高/中/低）
+     * - アラート情報（新規顧客/発送先など）
+     * - 発送日、配送希望日、配送時間
+     * - 発送先情報（displayShippingTo）
+     * - 顧客情報（displayCustomer）
+     * - 顧客推定候補（displayCustomerSuggestion、Phase 4）
+     * - 商品リスト（編集可能、displayItemsEditable）
+     * - メモ情報
+     * - 学習サマリ
+     * - 新規登録ボタン
+     *
+     * グローバル変数:
+     * - itemEdits をクリア（商品編集状態の初期化）
+     *
+     * @param {Object} result - AI解析結果オブジェクト
+     * @returns {void}
+     * @see displayShippingTo() - 発送先表示処理
+     * @see displayCustomer() - 顧客表示処理
+     * @see displayCustomerSuggestion() - 顧客推定候補表示（Phase 4）
+     * @see displayItemsEditable() - 商品リスト表示処理
      */
     function displayAnalysisResult(result) {
       document.getElementById('aiResultArea').classList.add('show');
@@ -600,7 +805,30 @@
     }
     
     /**
-     * 発送先データ表示
+     * 発送先データを表示
+     *
+     * AI解析された発送先情報を表示します。
+     * マスタマッチング状況に応じてバッジと選択肢を表示します。
+     *
+     * 表示内容:
+     * - マッチング状態バッジ（新規/一致/部分一致/依頼先から設定）
+     * - AI読み取り値（raw値: 会社名、宛名、郵便番号、住所、電話番号）
+     * - マスタデータ（マッチした場合）
+     * - 手動選択データ（検索または新規登録した場合）
+     * - データソース選択ボタン（読み取り/マスタ/手動選択）
+     *
+     * データソース優先順位:
+     * - 手動選択 > マスタ > AI読み取り
+     *
+     * マッチング状態:
+     * - exact: 完全一致（✅）
+     * - partial: 部分一致（⚠️）
+     * - new: 新規
+     * - fallback: 依頼先から設定（📍）
+     *
+     * @param {Object|null} st - 発送先オブジェクト（nullの場合は空表示）
+     * @returns {void}
+     * @see selectSource() - データソース選択処理
      */
     function displayShippingTo(st) {
       const badge = document.getElementById('shippingToMatchBadge');
@@ -672,7 +900,31 @@
     }
     
     /**
-     * 顧客データ表示
+     * 顧客データを表示
+     *
+     * AI解析された顧客情報を表示します。
+     * マスタマッチング状況に応じてバッジと選択肢を表示します。
+     *
+     * 表示内容:
+     * - マッチング状態バッジ（新規/一致/部分一致）
+     * - AI読み取り値（raw値: 会社名、担当者、電話番号、FAX番号）
+     * - マスタデータ（マッチした場合）
+     * - 手動選択データ（検索/新規登録/AI推定した場合）
+     * - データソース選択ボタン（読み取り/マスタ/手動選択）
+     * - FAX番号登録促進（displayFaxRegistrationPrompt）
+     *
+     * 手動選択のソースタイプ:
+     * - manual_registration: 新規登録
+     * - ai_suggestion: AI推定（Phase 4）
+     * - manual: 検索
+     *
+     * 顧客名表示形式:
+     * - 受注画面では常に「会社名　氏名」形式（displayNameは使用しない）
+     *
+     * @param {Object|null} cust - 顧客オブジェクト（nullの場合は空表示）
+     * @returns {void}
+     * @see displayFaxRegistrationPrompt() - FAX登録促進表示
+     * @see selectSource() - データソース選択処理
      */
     function displayCustomer(cust) {
       const badge = document.getElementById('customerMatchBadge');
@@ -760,10 +1012,33 @@
     }
 
     /**
-     * FAX番号登録促進を表示
-     * - AIがFAX番号を検出した
-     * - マスタに顧客がマッチした（exact または partial）
-     * - マスタの顧客にはFAX番号が未登録
+     * FAX番号登録促進UIを表示
+     *
+     * AI解析でFAX番号を検出し、マッチした顧客マスタにFAX番号が未登録の場合、
+     * ワンクリックでFAX番号を登録できるプロンプトを表示します。
+     *
+     * 表示条件（すべて満たす必要あり）:
+     * - AI解析結果にFAX番号が含まれている（10桁以上）
+     * - 顧客マスタとマッチしている（exact または partial）
+     * - マッチした顧客マスタにFAX番号が未登録
+     *
+     * または:
+     * - 手動選択した顧客にFAX番号が未登録
+     * - AI解析結果にFAX番号が含まれている
+     *
+     * 表示内容:
+     * - FAX番号（AIが読み取った値）
+     * - 顧客名（マスタの表示名）
+     * - 説明文（登録促進メッセージ）
+     * - 登録ボタン（registerCustomerFax呼び出し）
+     *
+     * セキュリティ:
+     * - escapeHtml()でXSS対策済み
+     *
+     * @param {Object} cust - 顧客オブジェクト
+     * @returns {void}
+     * @see registerCustomerFax() - FAX番号登録処理
+     * @see escapeHtml() - HTMLエスケープ関数
      */
     function displayFaxRegistrationPrompt(cust) {
       const promptDiv = document.getElementById('faxRegistrationPrompt');
@@ -807,6 +1082,29 @@
 
     /**
      * 顧客マスタにFAX番号を登録
+     *
+     * AI解析で検出されたFAX番号を既存の顧客マスタに追加登録します。
+     * 登録成功後はプロンプトを非表示にし、マスタデータを更新します。
+     *
+     * 処理フロー:
+     * 1. AI解析結果からFAX番号を取得
+     * 2. 登録対象顧客を特定（手動選択 > マスタデータ）
+     * 3. ボタンを無効化してローディング表示
+     * 4. サーバーサイド関数（updateCustomerFax）を呼び出し
+     * 5. 成功時: プロンプト非表示、マスタデータ更新、成功トースト表示
+     * 6. 失敗時: ボタン再有効化、エラートースト表示
+     *
+     * 登録対象顧客の特定:
+     * - manualCustomerSelection が存在すればそれを使用
+     * - なければ cust.masterData を使用
+     *
+     * データ更新:
+     * - aiAnalysisResult.customer.masterData.fax を更新
+     * - manualCustomerSelection.fax を更新（該当時）
+     *
+     * @returns {void}
+     * @see displayFaxRegistrationPrompt() - プロンプト表示処理
+     * @see updateCustomerFax() - サーバーサイドFAX更新関数
      */
     function registerCustomerFax() {
       const cust = aiAnalysisResult?.customer;
@@ -888,7 +1186,28 @@
     }
 
     /**
-     * 顧客推定候補を表示（XSS安全な実装）
+     * AI顧客推定候補を表示（Phase 4）
+     *
+     * AI自動学習システムによる顧客推定結果を表示します。
+     * 発送先名から過去の受注履歴と学習データを元に顧客を推定し、
+     * 1クリックで適用できる候補を提示します。
+     *
+     * 表示内容:
+     * - 主要候補（顧客名、信頼度、適用ボタン）
+     * - 代替候補リスト（confidence 40%以上）
+     * - 推定根拠（マッピング学習/受注履歴）
+     *
+     * セキュリティ:
+     * - XSS対策のため、createElement() + textContent で安全に生成
+     *
+     * 信頼度の基準:
+     * - 80%以上: 「推奨候補」として表示
+     * - 40-79%: 「候補」として表示
+     * - 40%未満: 表示しない
+     *
+     * @returns {void}
+     * @see applyCustomerSuggestion() - 候補適用処理
+     * @see estimateCustomerFromShippingTo() - サーバーサイド推定ロジック
      */
     function displayCustomerSuggestion() {
       const suggestionDiv = document.getElementById('aiResultCustomerSuggestion');
@@ -998,8 +1317,23 @@
     }
 
     /**
-     * 顧客推定候補を適用（1クリック適用機能）
-     * @param {string} customerName - 適用する顧客名
+     * AI顧客推定候補を適用（1クリック適用機能、Phase 4）
+     *
+     * 表示された推定候補をクリックすることで、顧客情報をフォームに自動入力します。
+     *
+     * 処理フロー:
+     * 1. 顧客マスタから詳細情報を取得（getCustomerByDisplayName）
+     * 2. manualCustomerSelectionに保存（sourceは'ai_suggestion'）
+     * 3. フォームに自動入力（顧客名、郵便番号、住所、電話番号）
+     * 4. AI解析結果表示を更新
+     *
+     * データソース識別:
+     * - source: 'ai_suggestion' を設定することで、AI推定由来であることを記録
+     *
+     * @param {string} customerName - 適用する顧客名（表示名、会社名、または会社名+氏名）
+     * @returns {void}
+     * @see getCustomerByDisplayName() - サーバーサイド顧客検索関数
+     * @see displayCustomerSuggestion() - 候補表示処理
      */
     function applyCustomerSuggestion(customerName) {
       if (!customerName) {
@@ -1069,7 +1403,40 @@
     }
 
     /**
-     * 編集可能な商品リスト表示
+     * 編集可能な商品リストを表示
+     *
+     * AI解析で抽出された商品を編集可能なカード形式で表示します。
+     * ユーザーはカテゴリ、商品名、規格、価格、数量を修正でき、
+     * マッピング学習のチェックボックスで学習対象を選択できます。
+     *
+     * 表示内容（商品カードごと）:
+     * - 原文テキスト（AI読み取り元）
+     * - 信頼度バッジ（高/中/低）または学習済みバッジ
+     * - 分類ドロップダウン（変更時に商品リストが更新される）
+     * - 商品ドロップダウン（カテゴリ別＋他カテゴリ）
+     * - 規格入力欄
+     * - 価格入力欄（価格バッジ: AI読み取り/マスタ）
+     * - 数量＋単位（ケース/本/袋/kg/個）
+     * - 学習チェックボックス（未学習商品のみ、low信頼度は除外）
+     *
+     * 価格自動入力:
+     * - AI読み取り価格がある場合: そのまま使用（バッジ: 顧客指定）
+     * - ない場合、商品マスタに価格がある場合: マスタ価格を使用（バッジ: マスタ）
+     *
+     * 学習済み判定:
+     * - mappingMatch.found && matchType === 'exact' → 学習済みバッジ表示
+     * - 学習チェックボックスは非表示
+     *
+     * グローバル変数:
+     * - itemEdits: 各商品の編集内容を保存
+     *
+     * @param {Array} items - 商品配列（AI解析結果）
+     * @param {Array} unknownItems - 未認識商品配列（現在未使用）
+     * @returns {void}
+     * @see onCategoryChange() - カテゴリ変更ハンドラ
+     * @see onProductChange() - 商品変更ハンドラ
+     * @see toggleLearn() - 学習チェック切り替え
+     * @see buildProductOptions() - 商品オプション生成
      */
     function displayItemsEditable(items, unknownItems) {
       const container = document.getElementById('aiResultItems');
@@ -1316,7 +1683,42 @@
     }
     
     /**
-     * AI解析結果をフォームに反映
+     * AI解析結果を受注フォームに反映（最重要関数）
+     *
+     * AI解析結果と商品マッピング学習内容を受注フォームに適用します。
+     * これは「フォームに反映」ボタンのメイン処理関数です。
+     *
+     * 処理フロー:
+     * 1. 商品マッピング学習データの記録（learn=trueの商品）
+     *    - 発送先名優先でマッピング（発送先名 → 商品名）
+     *    - 後方互換のため顧客名も記録
+     * 2. 日付情報の反映（発送日、配送希望日）
+     * 3. 発送先情報の反映（優先順位: 手動選択 > マスタ > AI読み取り）
+     * 4. 顧客情報の反映（優先順位: 手動選択 > マスタ > AI読み取り）
+     * 5. 商品情報の反映（最大10行、分類・商品・価格・数量）
+     * 6. セッションデータの保存
+     * 7. 解析済みインジケーターの表示
+     * 8. 成功トーストの表示（学習件数含む）
+     * 9. AIアシスタントパネルを閉じる
+     *
+     * データ適用の優先順位:
+     * - 手動選択（検索/新規登録/AI推定）: 最優先
+     * - マスタデータ（自動マッチング）: 中優先
+     * - AI読み取り（raw値）: 最低優先
+     *
+     * マッピング学習:
+     * - Phase 5実装: 発送先名優先マッピング
+     * - 原文テキスト → 商品名 の対応を学習
+     * - 次回から同じ原文が自動認識される
+     *
+     * 顧客名表示形式:
+     * - 受注画面では常に「会社名　氏名」形式（displayNameは使用しない）
+     *
+     * @returns {void}
+     * @see registerProductMappingBulk() - サーバーサイド一括学習関数
+     * @see saveAISessionData() - セッション保存
+     * @see showAIAnalyzedIndicator() - インジケーター表示
+     * @see toggleAIAssistant() - パネル閉じる
      */
     function applyAIResult() {
       if (!aiAnalysisResult) { showWarningToast('解析結果がありません'); return; }

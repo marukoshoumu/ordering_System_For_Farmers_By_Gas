@@ -13,7 +13,24 @@
 
 /**
  * 発送先マッピングシートを作成（存在しない場合のみ）
+ *
+ * AI自動学習システム（Phase 1）の基盤となるシートを作成します。
+ * 発送先名と顧客の対応関係を学習データとして蓄積します。
+ *
+ * シート構造:
+ * - AI認識発送先名: FAXから読み取った発送先名（表記ゆれを含む）
+ * - マスタ発送先名: 正規化された発送先名
+ * - 顧客名: この発送先に紐づく顧客
+ * - 信頼度: 使用回数（頻度が高いほど信頼性が高い）
+ * - 最終使用日: 最後に使用された日付（古いデータの減衰に使用）
+ * - 作成日時: レコード作成日時
+ *
+ * スタイル:
+ * - ヘッダー: 青背景（#4285f4）、白文字、太字、中央揃え
+ * - ヘッダー行を固定（スクロール時も表示）
+ *
  * @returns {GoogleAppsScript.Spreadsheet.Sheet} - 作成または既存のシート
+ * @see recordShippingMapping() - マッピングデータ記録関数
  */
 function createShippingMappingSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -64,11 +81,36 @@ function createShippingMappingSheet() {
 }
 
 /**
- * 発送先マッピングデータを記録または更新
- * @param {string} aiRecognizedName - AI認識した発送先名
- * @param {string} masterName - マスタの発送先名
+ * 発送先マッピングデータを記録または更新（Phase 1-2: 学習データ蓄積）
+ *
+ * 受注完了時に自動的に呼び出され、発送先名と顧客の対応を学習します。
+ * 同じ組み合わせが再度使用されると信頼度が自動的に上昇します。
+ *
+ * 処理ロジック:
+ * 1. 既存レコード検索（AI認識発送先名 + マスタ発送先名 + 顧客名）
+ * 2. 見つかった場合:
+ *    - 信頼度を+1（使用頻度カウント）
+ *    - 最終使用日を現在日時に更新
+ * 3. 見つからない場合:
+ *    - 新規レコードを作成（初期信頼度: 1）
+ *
+ * 自動呼び出し元:
+ * - orderCode.js の受注完了処理（約1942行目）
+ *
+ * データ例:
+ * ```
+ * AI認識発送先名: "東京青果市場 太田支店"
+ * マスタ発送先名: "東京青果市場太田支店"
+ * 顧客名: "山田商店"
+ * 信頼度: 5 (5回使用)
+ * ```
+ *
+ * @param {string} aiRecognizedName - AI認識した発送先名（表記ゆれを含む）
+ * @param {string} masterName - マスタの発送先名（正規化済み）
  * @param {string} customerName - 顧客名
- * @returns {Object} - 処理結果
+ * @returns {Object} - 処理結果 {success, action: 'created'|'updated', confidence}
+ * @see createShippingMappingSheet() - シート作成
+ * @see estimateCustomerFromShippingTo() - 推定時に使用
  */
 function recordShippingMapping(aiRecognizedName, masterName, customerName) {
   if (!aiRecognizedName || !masterName || !customerName) {
@@ -134,9 +176,39 @@ function recordShippingMapping(aiRecognizedName, masterName, customerName) {
 }
 
 /**
- * 発送先名から顧客を推定（マッピングデータから検索）
+ * 発送先名から顧客を推定（マッピングデータから検索、Phase 3）
+ *
+ * 学習済みのマッピングデータから、発送先名に対応する顧客候補を検索します。
+ * 正規化+柔軟なマッチングにより、表記ゆれに対応します。
+ *
+ * マッチングロジック:
+ * 1. 入力発送先名を正規化（空白除去、全角→半角、小文字化）
+ * 2. マッピングシートの各レコードと比較:
+ *    - 完全一致: normalizedAiName === normalizedInput
+ *    - 部分一致: どちらかが他方を含む
+ * 3. 候補を信頼度と最終使用日でソート
+ *
+ * 正規化処理:
+ * - 空白除去: "東京　青果" → "東京青果"
+ * - 全角→半角: "ＡＢＣ" → "ABC"
+ * - ハイフン統一: "‐－―−" → "-"
+ * - 小文字化: "ABC" → "abc"
+ *
+ * 戻り値の構造:
+ * ```javascript
+ * [{
+ *   customer: "山田商店",
+ *   confidence: 5,           // 使用回数
+ *   lastUsed: Date,          // 最終使用日
+ *   source: 'mapping',       // データソース
+ *   matchType: 'exact'       // 'exact' or 'partial'
+ * }]
+ * ```
+ *
  * @param {string} shippingToName - 発送先名
- * @returns {Array} - 候補リスト [{customer, confidence, lastUsed, source: 'mapping'}]
+ * @returns {Array} - 候補リスト（信頼度降順、同率なら最近使用順）
+ * @see normalizeShippingName() - 発送先名正規化処理
+ * @see estimateCustomerFromShippingTo() - 統合推定処理
  */
 function getCustomerFromMapping(shippingToName) {
   if (!shippingToName) return [];
@@ -328,9 +400,60 @@ function getCustomerFromOrderHistory(shippingToName, maxResults = 5) {
 }
 
 /**
- * マルチソース統合: 複数の情報源から顧客を推定
+ * マルチソース統合: 複数の情報源から顧客を推定（Phase 3-4: AI自動学習の核心機能）
+ *
+ * 発送先名から顧客を推定する最も重要な関数です。
+ * マッピングデータと受注履歴の両方を統合し、重み付けスコアリングで最適な顧客を推定します。
+ *
+ * 処理フロー:
+ * 1. マッピングデータから候補を取得（getCustomerFromMapping）
+ * 2. 受注履歴から候補を取得（getCustomerFromOrderHistory）
+ * 3. 全候補を顧客名でグループ化
+ * 4. ソースごとの重み付けスコアリング:
+ *    - マッピングデータ: ×2.0（明示的な学習なので最も信頼性が高い）
+ *    - 受注履歴: ×1.5（確定データなので信頼性高い）
+ * 5. スコア順にソート、上位候補を選出
+ * 6. 信頼度を0-100%に正規化
+ *
+ * 重み付けロジック:
+ * ```javascript
+ * スコア = Σ(各候補の信頼度 × ソース重み)
+ *
+ * ソース重み:
+ * - mapping: 2.0  // 受注完了時の明示的な学習
+ * - order_history: 1.5  // 過去の受注実績
+ * ```
+ *
+ * 信頼度正規化:
+ * ```javascript
+ * 正規化信頼度 = min(100, round((スコア / (スコア + 5)) × 100))
+ * // スコアが高いほど100%に近づく
+ * // スコア=5で50%, スコア=15で75%, スコア=45で90%
+ * ```
+ *
+ * 戻り値の構造:
+ * ```javascript
+ * {
+ *   customer: "山田商店",          // 推定顧客名
+ *   confidence: 85,                // 信頼度（0-100%）
+ *   alternatives: [                // 代替候補（上位3件）
+ *     { customer: "佐藤商店", confidence: 60, sources: ['mapping'] },
+ *     { customer: "田中商店", confidence: 45, sources: ['order_history'] }
+ *   ],
+ *   sources: ['mapping', 'order_history'],  // データソース
+ *   rawDetails: [...]              // デバッグ用の詳細情報
+ * }
+ * ```
+ *
+ * 使用場面:
+ * - AI解析時の顧客自動推定（shippingAi.html: displayCustomerSuggestion）
+ * - 1クリック適用機能（shippingAi.html: applyCustomerSuggestion）
+ *
  * @param {string} shippingToName - 発送先名
- * @returns {Object} - 推定結果 {customer, confidence, alternatives, sources}
+ * @returns {Object} - 推定結果 {customer, confidence, alternatives, sources, rawDetails}
+ * @see getCustomerFromMapping() - マッピングデータ検索
+ * @see getCustomerFromOrderHistory() - 受注履歴検索
+ * @see recordShippingMapping() - 学習データ記録（受注完了時）
  */
 function estimateCustomerFromShippingTo(shippingToName) {
   if (!shippingToName) {

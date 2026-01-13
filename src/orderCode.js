@@ -1,4 +1,27 @@
-// キャッシュをクリアして再取得
+/**
+ * マスタデータキャッシュをクリアして再取得
+ *
+ * CacheService に保存されているマスタデータキャッシュを削除し、
+ * 最新のマスタデータを取得して新しいキャッシュを作成します。
+ *
+ * 使用シーン:
+ * - 商品マスタ、発送元情報を更新した後
+ * - マスタデータが最新でない可能性がある場合
+ * - 手動でキャッシュをリフレッシュしたい場合
+ *
+ * 処理フロー:
+ * 1. CacheService.getScriptCache() 取得
+ * 2. 'masterData_v5' キーのキャッシュを削除
+ * 3. getMasterDataCached() で最新データ取得 & 新規キャッシュ作成
+ * 4. 成功時: 商品数、発送元数を含む結果オブジェクト返却
+ * 5. エラー時: エラーメッセージを含む結果オブジェクト返却
+ *
+ * @returns {Object} 実行結果オブジェクト
+ *   成功時: { success: true, message: string, productCount: number, shippingFromCount: number }
+ *   失敗時: { success: false, message: string }
+ *
+ * @see getMasterDataCached() - マスタデータ取得とキャッシュ管理
+ */
 function refreshMasterDataCache() {
   try {
     const cache = CacheService.getScriptCache();
@@ -19,12 +42,59 @@ function refreshMasterDataCache() {
   }
 }
 
-// キャッシュ用関数を追加
+/**
+ * マスタデータをキャッシュから取得（2時間キャッシュ、パフォーマンス最適化）
+ *
+ * スプレッドシートから全マスタデータを取得し、CacheService に2時間保存します。
+ * キャッシュが存在する場合はスプレッドシート読み取りをスキップして高速にデータを返します。
+ *
+ * パフォーマンス改善:
+ * - キャッシュヒット時: 数十ミリ秒（スプレッドシート読み取りなし）
+ * - キャッシュミス時: 数秒（全マスタシートを読み取り）
+ * - キャッシュ有効期間: 2時間（7200秒）
+ *
+ * 処理フロー:
+ * 1. CacheService から 'masterData_v5' キーでキャッシュ取得
+ * 2. キャッシュヒット & 有効なデータ構造:
+ *    - JSON.parse() してそのまま返却
+ * 3. キャッシュミス または 古いキャッシュ構造:
+ *    - getAllRecords() で各マスタシートからデータ取得
+ *    - masterData オブジェクトを構築
+ *    - cache.put() で2時間キャッシュに保存
+ * 4. エラー時: 空配列・空オブジェクトのデフォルト値を返却
+ *
+ * キャッシュキー履歴:
+ * - v5: shippingFromList 追加（複数発送元対応）
+ * - 古いバージョンのキャッシュは自動的に破棄される
+ *
+ * 返却データ構造:
+ * {
+ *   products: Array<Object>,         // 商品マスタ
+ *   recipients: Array<Object>,        // 担当者マスタ
+ *   deliveryMethods: Array<Object>,   // 納品方法マスタ
+ *   receipts: Array<Object>,          // 受付方法マスタ
+ *   deliveryTimes: Array<Object>,     // 配送時間帯マスタ
+ *   invoiceTypes: Array<Object>,      // 送り状種別マスタ
+ *   coolClss: Array<Object>,          // クール区分マスタ
+ *   cargos: Array<Object>,            // 荷扱いマスタ
+ *   shippingFrom: Object,             // デフォルト発送元（1件目）
+ *   shippingFromList: Array<Object>   // 全発送元リスト
+ * }
+ *
+ * @returns {Object} マスタデータオブジェクト（キャッシュまたはスプレッドシートから取得）
+ *
+ * @see refreshMasterDataCache() - キャッシュクリアと再取得
+ * @see getAllRecords() - スプレッドシートからレコード取得
+ *
+ * 呼び出し元:
+ * - getshippingHTML() - 受注入力画面の初期化
+ * - refreshMasterDataCache() - キャッシュ更新
+ */
 function getMasterDataCached() {
   try {
     const cache = CacheService.getScriptCache();
     const cacheKey = 'masterData_v5';
-    
+
     let cached = cache.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -33,7 +103,7 @@ function getMasterDataCached() {
         return parsed;
       }
     }
-    
+
     // キャッシュがなければ取得
     const shippingFromRecords = getAllRecords('発送元情報') || [];
     const shippingFromList = shippingFromRecords.map(function(r) {
@@ -45,7 +115,7 @@ function getMasterDataCached() {
       };
     });
     const shippingFrom = shippingFromList.length > 0 ? shippingFromList[0] : { name: '', zipcode: '', address: '', tel: '' };
-    
+
     const masterData = {
       products: getAllRecords('商品') || [],
       recipients: getAllRecords('担当者') || [],
@@ -58,7 +128,7 @@ function getMasterDataCached() {
       shippingFrom: shippingFrom,
       shippingFromList: shippingFromList
     };
-    
+
     // 2時間キャッシュ（7200秒）
     try {
       cache.put(cacheKey, JSON.stringify(masterData), 7200);
@@ -1751,7 +1821,63 @@ function registerNewCustomerToMaster(e) {
   }
 }
 
-// 受注登録
+/**
+ * 受注登録（AI自動学習フック統合、複数日程対応）
+ *
+ * フォームから送信された受注データをスプレッドシートに登録します。
+ * 複数の配送日程に対応し、各日程ごとに受注IDを発行します。
+ * 受注完了後、自動学習システムにより発送先名と顧客名の関係を学習します。
+ *
+ * 主要処理フロー:
+ * 1. 新規顧客の場合: registerNewCustomerToMaster() でマスタ登録
+ * 2. 編集モードの場合: 既存受注データ削除（受注シート + CSV）
+ * 3. 日程数カウント（shippingDate1～10）
+ * 4. 日程ごとにループ処理:
+ *    a) 受注ID発行（generateId()）
+ *    b) 商品1～10をループして受注レコード作成
+ *    c) addRecords('受注', records) で受注シート登録
+ *    d) 納品方法に応じてCSV登録（ヤマト/佐川）
+ *    e) チェックリストに応じてPDF作成（納品書/領収書）
+ * 5. AI取込一覧から遷移した場合: 仮受注データ削除
+ * 6. **自動学習フック**: recordShippingMapping() で発送先→顧客のマッピング学習
+ *
+ * **AI自動学習システム統合（Phase 2）**:
+ * - 受注完了時に recordShippingMapping(shippingToName, shippingToName, customerName) を自動呼び出し
+ * - 発送先名と顧客名の関係を学習し、次回以降の顧客推定精度を向上
+ * - エラー時も受注処理は継続（学習失敗が受注に影響しない設計）
+ *
+ * 複数日程対応:
+ * - shippingDate1, deliveryDate1, shippingDate2, deliveryDate2, ...
+ * - 各日程ごとに別々の受注IDを発行
+ * - 最大10日程まで対応
+ *
+ * @param {Object} e - フォーム送信イベントオブジェクト
+ *   e.parameter.isNewCustomer: 'true' or undefined
+ *   e.parameter.editOrderId: 編集モードの場合の受注ID
+ *   e.parameter.shippingDate1～10: 発送日
+ *   e.parameter.deliveryDate1～10: 納品日
+ *   e.parameter.bunrui1～10: 商品分類
+ *   e.parameter.product1～10: 商品名
+ *   e.parameter.price1～10: 価格
+ *   e.parameter.quantity1～10: 数量
+ *   e.parameter.deliveryMethod: 'ヤマト' or '佐川' or その他
+ *   e.parameters.checklist: ['納品書', '領収書', ...]
+ *   e.parameter.tempOrderId: AI取込一覧からの遷移時の仮受注ID
+ *   e.parameter.shippingToName: 発送先名（学習用）
+ *   e.parameter.customerName: 顧客名（学習用）
+ *
+ * @see registerNewCustomerToMaster() - 新規顧客マスタ登録
+ * @see generateId() - 受注ID発行
+ * @see addRecords() - 受注シート登録
+ * @see addRecordYamato() - ヤマトCSV登録
+ * @see addRecordSagawa() - 佐川CSV登録
+ * @see createFile() - 納品書PDF作成
+ * @see createReceiptFile() - 領収書PDF作成
+ * @see deleteTempOrder() - 仮受注データ削除
+ * @see recordShippingMapping() - AI自動学習フック（shippingMappingCode.js）
+ *
+ * 呼び出し元: shippingComfirm.html の [受注する] ボタン送信時
+ */
 function createOrder(e) {
   // 新規顧客の場合、顧客情報・発送先情報マスタに登録
   if (e.parameter.isNewCustomer === 'true') {
@@ -2599,7 +2725,32 @@ function createReceiptFile(records) {
 }
 
 /**
- * 仮受注データを削除（受注登録完了時）
+ * 仮受注データ削除（AI取込一覧からの遷移完了時のクリーンアップ）
+ *
+ * AI取込一覧から受注入力画面に遷移して受注登録が完了した際、
+ * 元の仮受注データ（'仮受注'シート）を削除します。
+ *
+ * 処理フロー:
+ * 1. LINE Bot用スプレッドシート取得
+ * 2. '仮受注'シート取得
+ * 3. シートなし: return（何もしない）
+ * 4. 全データを取得してループ
+ * 5. A列（仮受注ID）が一致する行を発見
+ * 6. sheet.deleteRow() で行削除
+ * 7. Logger.log で削除ログ出力 & break
+ *
+ * 使用シーン:
+ * - AI取込一覧画面で「受注入力」ボタンクリック
+ * - 受注入力画面で内容確認・修正
+ * - 「受注する」ボタンで受注完了
+ * - createOrder() 内で本関数を自動呼び出し → 仮受注データ削除
+ *
+ * @param {string} tempOrderId - 仮受注ID（AI取込一覧から引き継がれる）
+ *
+ * @see createOrder() - 受注登録完了時に本関数を呼び出し
+ *
+ * 呼び出し元: orderCode.js の createOrder() 関数（約2062行目）
+ * データソース: LINE Bot用スプレッドシートの '仮受注' シート
  */
 function deleteTempOrder(tempOrderId) {
   const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());

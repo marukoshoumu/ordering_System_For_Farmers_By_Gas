@@ -354,6 +354,22 @@
 
     var oriproduct = $('select[id="product1"]').html();
     var oriquantity = $('select[id="quantity1"]').html();
+
+    /**
+     * 分類（カテゴリ）変更時に商品ドロップダウンをフィルタリング
+     *
+     * 商品分類が選択されると、その分類に属する商品のみを表示します。
+     * 元のoripro duct HTMLを復元してから、選択された分類以外のオプションを削除します。
+     *
+     * 処理フロー:
+     * 1. 商品ドロップダウンをoriproductで初期化
+     * 2. 各オプションのdata-val属性と選択された分類を比較
+     * 3. 一致しないオプションを削除（最初の空オプションは保持）
+     *
+     * @param {number} numVal - 商品行番号（1-10）
+     * @returns {void}
+     * @see productChange() - 商品選択時の処理
+     */
     function bunruiChange(numVal) {
         var bunrui = 'bunrui' + numVal;
         var product = 'product' + numVal;
@@ -366,6 +382,27 @@
             }
         })
     }
+    /**
+     * 商品選択時に価格と数量を自動設定
+     *
+     * 商品が選択されると、マスタデータから価格と在庫数を取得して自動反映します。
+     * 数量ドロップダウンは在庫数に応じてフィルタリングされます。
+     *
+     * 処理内容:
+     * 1. 選択商品のdata属性から在庫数・価格・略称を取得
+     * 2. 価格フィールドに自動入力
+     * 3. 数量ドロップダウンを在庫数でフィルタリング
+     * 4. 1行目の場合は発送品名に略称を設定
+     *
+     * データ属性:
+     * - data-zaiko: 在庫数
+     * - data-price: 単価
+     * - data-abbreviation: 略称（発送品名用）
+     *
+     * @param {number} numVal - 商品行番号（1-10）
+     * @returns {void}
+     * @see bunruiChange() - 分類変更時の処理
+     */
     function productChange(numVal) {
         var product = 'product' + numVal;
         var quantity = 'quantity' + numVal;
@@ -454,7 +491,27 @@
         updateCargoByConditions();
     }
 
-    // 納品方法・送り状種別・クール区分に応じて荷扱いを自動設定
+    /**
+     * 納品方法・送り状種別・クール区分に応じて荷扱いを自動設定
+     *
+     * 佐川急便選択時に、条件に応じた荷扱いオプションを自動設定します。
+     * 受注完了画面の修正で追加されたビジネスロジックです。
+     *
+     * 自動設定ルール:
+     * 1. クール区分が「冷蔵」→ 荷扱い２に「冷蔵」を自動設定
+     * 2. クール区分が「冷凍」→ 荷扱い２に「冷凍」を自動設定
+     * 3. 送り状種別が「着払」→ 荷扱い３に「eコレクト（現金）」を自動設定
+     *
+     * 適用条件:
+     * - 納品方法に「佐川」が含まれる場合のみ
+     *
+     * 呼び出し元:
+     * - deliveryMethodChange() - 納品方法変更時
+     * - クール区分・送り状種別変更時（onChange属性）
+     *
+     * @returns {void}
+     * @see deliveryMethodChange() - 納品方法変更処理
+     */
     function updateCargoByConditions() {
         var deliveryMethod = $('select[id="deliveryMethod"]').val();
         var invoiceType = $('select[id="invoiceType"]').val();
@@ -490,18 +547,68 @@
         var companyDisplayName = '<?= getCompanyDisplayName() ?>';
         $('button[id="babaBtn"]').text(companyDisplayName);
     }
+    /**
+     * 依頼先（顧客）情報を発送元にコピー
+     *
+     * 依頼先の会社名・郵便番号・住所・電話番号を発送元フィールドにコピーします。
+     * 「依頼先コピー」ボタンのクリックで実行されます。
+     *
+     * コピー対象:
+     * - 会社名
+     * - 郵便番号
+     * - 住所
+     * - 電話番号
+     *
+     * @returns {void}
+     * @see sendCopy() - 発送先コピー
+     */
     function custCopy() {
         $('input[id="shippingFromName"]').val($('input[id="customerName"]').val());
         $('input[id="shippingFromZipcode"]').val($('input[id="customerZipcode"]').val());
         $('input[id="shippingFromAddress"]').val($('input[id="customerAddress"]').val());
         $('input[id="shippingFromTel"]').val($('input[id="customerTel"]').val());
     }
+
+    /**
+     * 発送先情報を発送元にコピー
+     *
+     * 発送先の会社名・郵便番号・住所・電話番号を発送元フィールドにコピーします。
+     * 「発送先コピー」ボタンのクリックで実行されます。
+     *
+     * コピー対象:
+     * - 会社名
+     * - 郵便番号
+     * - 住所
+     * - 電話番号
+     *
+     * @returns {void}
+     * @see custCopy() - 依頼先コピー
+     */
     function sendCopy() {
         $('input[id="shippingFromName"]').val($('input[id="shippingToName"]').val());
         $('input[id="shippingFromZipcode"]').val($('input[id="shippingToZipcode"]').val());
         $('input[id="shippingFromAddress"]').val($('input[id="shippingToAddress"]').val());
         $('input[id="shippingFromTel"]').val($('input[id="shippingToTel"]').val());
     }
+
+    /**
+     * 依頼先（顧客）情報を発送先にコピー
+     *
+     * 依頼先の会社名・郵便番号・住所・電話番号を発送先フィールドにコピーします。
+     * 「発送先同上」チェックボックスや、顧客ダイアログの「発送先同上」チェックで実行されます。
+     *
+     * コピー対象:
+     * - 会社名
+     * - 郵便番号
+     * - 住所
+     * - 電話番号
+     *
+     * 使用場面:
+     * - 顧客と発送先が同一の場合
+     *
+     * @returns {void}
+     * @see addCustomer() - 顧客新規登録（発送先同上チェックあり）
+     */
     function customerSame() {
         $('input[id="shippingToName"]').val($('input[id="customerName"]').val());
         $('input[id="shippingToZipcode"]').val($('input[id="customerZipcode"]').val());
@@ -811,6 +918,34 @@
     // ========================================
     // 検索パフォーマンス改善: マスタデータロード
     // ========================================
+
+    /**
+     * 検索用マスタデータを事前ロード（60x高速化の核心機能）
+     *
+     * ページ読み込み時（DOMContentLoaded）に全マスタデータをメモリにキャッシュします。
+     * これにより、検索時のサーバーアクセスが不要になり、検索速度が60倍に向上しました。
+     *
+     * パフォーマンス改善:
+     * - 旧方式: 1-3秒（毎回サーバー検索）
+     * - 新方式: 20-50ms（メモリ内フィルタリング）
+     * - 高速化率: 60倍
+     *
+     * キャッシュデータ:
+     * - cachedCustomers: 全顧客マスタ配列
+     * - cachedShippingTos: 全発送先マスタ配列
+     * - masterDataLoaded: ロード完了フラグ
+     *
+     * フォールバック:
+     * - ロード失敗時は、検索時に旧方式（サーバー検索）にフォールバック
+     *
+     * 呼び出しタイミング:
+     * - document.addEventListener('DOMContentLoaded', ...) で自動実行
+     *
+     * @returns {void}
+     * @see customerSearch() - 顧客検索（メモリ内フィルタリング使用）
+     * @see shippingToSearch() - 発送先検索（メモリ内フィルタリング使用）
+     * @see getAllMasterDataForSearch() - サーバーサイド全件取得関数
+     */
     function loadMasterDataForSearch() {
       console.log('マスタデータをロード中...');
       google.script.run
@@ -831,6 +966,33 @@
         .getAllMasterDataForSearch();
     }
 
+    /**
+     * 顧客検索（メモリ内フィルタリングで60x高速化）
+     *
+     * キャッシュ済みの顧客マスタをメモリ内でフィルタリングして検索します。
+     * 従来のサーバー検索（1-3秒）に対し、20-50msで完了する高速検索です。
+     *
+     * 検索条件:
+     * - 顧客分類（一次卸し・大口、小売店、飲食店など）
+     * - 検索対象（会社名/氏名/表示名/フリガナ）
+     * - キーワード（部分一致検索）
+     *
+     * 処理フロー:
+     * 1. キーワード未入力チェック
+     * 2. masterDataLoadedフラグ確認
+     *    - false: 旧方式（サーバー検索）にフォールバック
+     *    - true: メモリ内フィルタリング実行
+     * 3. Array.filter()で顧客分類と検索キーワードでフィルタリング
+     * 4. 検索結果をdataSearchSuccess()で表示
+     *
+     * パフォーマンス:
+     * - 新方式: 20-50ms（メモリ内フィルタリング）
+     * - 旧方式: 1-3秒（サーバー検索、フォールバック時のみ）
+     *
+     * @returns {boolean|void} - キーワード未入力時はfalseを返す
+     * @see loadMasterDataForSearch() - マスタデータ事前ロード
+     * @see dataSearchSuccess() - 検索結果表示
+     */
     function customerSearch() {
         if (!$('input[id="customerSearchKeyDg"]').val()) {
             showWarningToast('キーワードが入力されていません。');
@@ -901,6 +1063,31 @@
             $("#resCustArea").html('');
         }
     }
+    /**
+     * 検索結果から顧客を選択してフォームに適用
+     *
+     * 顧客検索ダイアログで選択された顧客情報を受注フォームに反映します。
+     * AI解析との統合のため、手動選択データ（manualCustomerSelection）を保存します。
+     *
+     * 処理フロー:
+     * 1. ボタンのdata-val属性から顧客情報を取得（パイプ区切り）
+     * 2. 検索ダイアログを閉じる
+     * 3. manualCustomerSelectionに保存（source: 'manual_search'）
+     * 4. 顧客フォームに会社名・氏名・郵便番号・住所・電話番号を入力
+     * 5. AIモーダルの表示を更新
+     *
+     * データ形式（パイプ区切り）:
+     * - 会社名|氏名|郵便番号|住所|電話番号
+     *
+     * AI解析との統合:
+     * - manualCustomerSelectionを保存することで、AI解析結果より手動選択を優先
+     * - updateManualSelectionDisplay()でAI解析モーダルに反映
+     *
+     * @param {number} num - 検索結果のインデックス番号
+     * @returns {void}
+     * @see customerSearch() - 顧客検索処理
+     * @see updateManualSelectionDisplay() - AIモーダル更新（shippingAi.html）
+     */
     function applyName(num) {
         var nameVal = 'nameCust' + num;
         var dataVal = $('button[id="' + nameVal + '"]').data('val');
@@ -967,6 +1154,33 @@
         });
     });
 
+    /**
+     * 発送先検索（メモリ内フィルタリングで60x高速化）
+     *
+     * キャッシュ済みの発送先マスタをメモリ内でフィルタリングして検索します。
+     * 従来のサーバー検索（1-3秒）に対し、20-50msで完了する高速検索です。
+     *
+     * 検索条件:
+     * - 検索対象（会社名/氏名）
+     * - キーワード（部分一致検索）
+     *
+     * 処理フロー:
+     * 1. キーワード未入力チェック
+     * 2. masterDataLoadedフラグ確認
+     *    - false: 旧方式（サーバー検索）にフォールバック
+     *    - true: メモリ内フィルタリング実行
+     * 3. Array.filter()で検索キーワードでフィルタリング
+     * 4. 検索結果をdataShippingToSearchSuccess()で表示
+     *
+     * パフォーマンス:
+     * - 新方式: 20-50ms（メモリ内フィルタリング）
+     * - 旧方式: 1-3秒（サーバー検索、フォールバック時のみ）
+     *
+     * @returns {boolean|void} - キーワード未入力時はfalseを返す
+     * @see loadMasterDataForSearch() - マスタデータ事前ロード
+     * @see dataShippingToSearchSuccess() - 検索結果表示
+     * @see customerSearch() - 顧客検索（同様の仕組み）
+     */
     function shippingToSearch() {
         if (!$('input[id="shippingToSearchKeyDg"]').val()) {
             showWarningToast('キーワードが入力されていません。');
@@ -1026,6 +1240,32 @@
             $("#resShippingToArea").html('');
         }
     }
+    /**
+     * 検索結果から発送先を選択してフォームに適用
+     *
+     * 発送先検索ダイアログで選択された発送先情報を受注フォームに反映します。
+     * AI解析との統合のため、手動選択データ（manualShippingToSelection）を保存します。
+     *
+     * 処理フロー:
+     * 1. ボタンのdata-val属性から発送先情報を取得（パイプ区切り）
+     * 2. 検索ダイアログを閉じる
+     * 3. manualShippingToSelectionに保存（source: 'manual_search'）
+     * 4. 発送先フォームに会社名・氏名・郵便番号・住所・電話番号を入力
+     * 5. AIモーダルの表示を更新
+     *
+     * データ形式（パイプ区切り）:
+     * - 会社名|氏名|郵便番号|住所|電話番号
+     *
+     * AI解析との統合:
+     * - manualShippingToSelectionを保存することで、AI解析結果より手動選択を優先
+     * - updateManualSelectionDisplay()でAI解析モーダルに反映
+     *
+     * @param {number} num - 検索結果のインデックス番号
+     * @returns {void}
+     * @see shippingToSearch() - 発送先検索処理
+     * @see updateManualSelectionDisplay() - AIモーダル更新（shippingAi.html）
+     * @see applyName() - 顧客選択処理（同様の仕組み）
+     */
     function applyShippingToName(num) {
         var nameVal = 'nameShipTo' + num;
         var dataVal = $('button[id="' + nameVal + '"]').data('val');

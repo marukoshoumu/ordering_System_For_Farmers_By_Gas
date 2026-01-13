@@ -1,7 +1,54 @@
 // PDF出力先
 const BILL_PDF_OUTDIR = DriveApp.getFolderById(getBillPdfFolderId());
-// 請求書のテンプレートファイル　
+// 請求書のテンプレートファイル
 const BILL_TEMPLATE = DriveApp.getFileById(getBillTemplateId());
+
+/**
+ * 請求書を作成するメイン関数
+ *
+ * 指定された期間と顧客条件に基づいて受注データを集計し、請求書PDFを生成します。
+ *
+ * 処理フロー:
+ * 1. JSON形式の入力データをパースして、顧客名・期間・請求日を取得
+ * 2. 「受注」シートから全レコードを取得
+ * 3. 期間条件でフィルタリング（納品日が指定期間内）
+ * 4. 顧客名が指定されている場合は該当顧客のみ、未指定の場合は全顧客を対象
+ * 5. 同一顧客の同一商品を集約（受注数と販売価格を合算）
+ * 6. 各顧客ごとにcreateBillFile()を呼び出して請求書PDFを生成
+ * 7. 生成されたファイル名リストをJSON形式で返却
+ *
+ * @param {string} datas - JSON文字列形式の入力データ
+ * @param {string} datas.customerName - 対象顧客名（空文字列の場合は全顧客）
+ * @param {string} datas.targetDateFrom - 集計期間の開始日（ISO形式）
+ * @param {string} datas.targetDateTo - 集計期間の終了日（ISO形式）
+ * @param {string} datas.billDate - 請求日（ISO形式）
+ *
+ * @returns {string} 生成された請求書ファイル名の配列をJSON形式で返却
+ *
+ * @see createBillFile - 請求書ファイル生成関数
+ * @see getAllRecords - 受注シートデータ取得関数（「受注」シート）
+ *
+ * @example
+ * // 特定顧客の2024年1月分の請求書を作成
+ * const input = JSON.stringify({
+ *   customerName: "株式会社サンプル　田中太郎",
+ *   targetDateFrom: "2024-01-01",
+ *   targetDateTo: "2024-01-31",
+ *   billDate: "2024-02-01"
+ * });
+ * const result = createBill(input);
+ * // returns: '["株式会社サンプル_請求文書_20240201_1030"]'
+ *
+ * @example
+ * // 全顧客の2024年1月分の請求書を一括作成
+ * const input = JSON.stringify({
+ *   customerName: "",
+ *   targetDateFrom: "2024-01-01",
+ *   targetDateTo: "2024-01-31",
+ *   billDate: "2024-02-01"
+ * });
+ * const result = createBill(input);
+ */
 function createBill(datas) {
   var data = JSON.parse(datas);
   var customerName = data['customerName'];
@@ -107,7 +154,73 @@ function createBill(datas) {
   return JSON.stringify(datas);
 }
 
-// 請求書のドキュメントを置換
+/**
+ * 請求書用Googleドキュメントを生成する関数
+ *
+ * テンプレートファイルを複製し、受注データと顧客情報を使って請求書を作成します。
+ * 商品情報、税率計算、入金期日などを反映した請求書ドキュメントを生成します。
+ *
+ * 処理フロー:
+ * 1. 「顧客情報」「発送先情報」「商品」シートからマスタデータを取得
+ * 2. 顧客名から該当する顧客情報を検索（会社名・氏名でマッチング）
+ * 3. 顧客情報が見つからない場合は受注データから最低限の情報を取得
+ * 4. テンプレートファイルをコピーして新しいドキュメントを作成
+ * 5. 顧客情報（会社名、郵便番号、住所など）をドキュメントに反映
+ * 6. 入金期日を計算（翌末日、翌々中日、翌々末日、2週間後の4パターン）
+ * 7. 商品情報（最大10品目）をループで処理
+ *    - 商品分類、商品名、価格、数量、金額を設定
+ *    - 税率（8%または10%）に基づいて税額を計算
+ * 8. 合計金額、税額（8%・10%別）、総額を計算してドキュメントに反映
+ * 9. ファイル名を「会社名_請求文書_yyyyMMdd_HHmm」形式で設定
+ * 10. ドキュメントIDとファイル名を返却
+ *
+ * @param {Object} rowVal - 受注レコードデータ
+ * @param {string} rowVal.顧客名 - 顧客名（「会社名　氏名」形式または「氏名」のみ）
+ * @param {string} rowVal.顧客住所 - 顧客住所（顧客情報が見つからない場合に使用）
+ * @param {string} rowVal.顧客郵便番号 - 顧客郵便番号（7桁数字）
+ * @param {string} rowVal.受注ID - 受注ID（請求書に表示）
+ * @param {Date} rowVal.納品日 - 納品日（入金期日計算で使用）
+ * @param {Array<Object>} rowVal.商品 - 商品情報の配列（最大10品目）
+ * @param {string} rowVal.商品[].商品分類 - 商品の分類
+ * @param {string} rowVal.商品[].商品名 - 商品名
+ * @param {number} rowVal.商品[].受注数 - 受注数量
+ * @param {number} rowVal.商品[].販売価格 - 単価
+ * @param {string} billDate - 請求日（ISO形式）
+ *
+ * @returns {Array<string>} [ドキュメントID, ファイル名] の配列
+ * @returns {string} returns[0] - 生成されたGoogleドキュメントのID
+ * @returns {string} returns[1] - 設定されたファイル名（会社名_請求文書_yyyyMMdd_HHmm）
+ *
+ * @see getAllRecords - マスタデータ取得関数（「顧客情報」「発送先情報」「商品」シート）
+ * @see BILL_TEMPLATE - 請求書テンプレートファイル（グローバル定数）
+ *
+ * @example
+ * const record = {
+ *   顧客名: "株式会社サンプル　田中太郎",
+ *   顧客住所: "東京都渋谷区1-2-3",
+ *   顧客郵便番号: "1500001",
+ *   受注ID: "ORD-2024-001",
+ *   納品日: new Date("2024-01-15"),
+ *   商品: [
+ *     { 商品分類: "野菜", 商品名: "トマト", 受注数: 10, 販売価格: 300 },
+ *     { 商品分類: "野菜", 商品名: "きゅうり", 受注数: 5, 販売価格: 200 }
+ *   ]
+ * };
+ * const [docId, fileName] = createBillGDoc(record, "2024-02-01");
+ * // returns: ["1a2b3c4d5e6f...", "株式会社サンプル_請求文書_20240201_1030"]
+ *
+ * @note 入金期日の計算パターン:
+ *   - 翌末日: 翌月末日
+ *   - 翌々中日: 翌々月15日
+ *   - 2週間後: 納品日から14日後
+ *   - 翌々末日: 翌々月末日
+ *   - 未設定の場合: 翌末日として計算
+ *
+ * @note 税率計算:
+ *   - 商品マスタの税率が8を超える場合は10%として計算
+ *   - それ以外は8%として計算
+ *   - 各税率ごとに対象金額と税額を集計
+ */
 function createBillGDoc(rowVal, billDate) {
   // 顧客情報シートを取得する
   const customerItems = getAllRecords('顧客情報');
@@ -275,7 +388,26 @@ function createBillGDoc(rowVal, billDate) {
   // コピーしたファイルIDとファイル名を返却する（あとでこのIDをもとにPDFに変換するため）
   return [wCopyFileId, fileName];
 }
-// 請求書のファイル生成
+/**
+ * 請求書ファイル生成（Googleドキュメント作成 → PDF変換 → 元ファイル削除）
+ *
+ * 受注レコードと請求日から請求書Googleドキュメントを作成し、
+ * PDFに変換してGoogle Driveに保存した後、元のドキュメントを削除します。
+ *
+ * 処理フロー:
+ * 1. createBillGDoc()でGoogleドキュメント作成 → [ドキュメントID, ファイル名]を取得
+ * 2. createBillPdf()でPDF変換 → PDF ID返却
+ * 3. DriveApp.getFileById().setTrashed()で元ドキュメントを削除
+ * 4. ファイル名を返却
+ *
+ * @param {Object} records - 受注レコードデータ（createBillGDocと同じ形式）
+ * @param {string} billDate - 請求日（ISO形式）
+ * @returns {string} 生成されたPDFファイル名（例: "株式会社サンプル_請求文書_20240201_1030"）
+ *
+ * @see createBillGDoc() - Googleドキュメント作成
+ * @see createBillPdf() - PDF変換
+ * @see createBill() - この関数を呼び出すメイン関数
+ */
 function createBillFile(records, billDate) {
   // PDF変換する元ファイルを作成する
   let wFileRtn = createBillGDoc(records, billDate);
@@ -285,7 +417,32 @@ function createBillFile(records, billDate) {
   DriveApp.getFileById(wFileRtn[0]).setTrashed(true);
   return wFileRtn[1];
 }
-// PDF生成
+
+/**
+ * Google ドキュメントをPDFに変換してGoogle Driveに保存
+ *
+ * 指定されたGoogleドキュメントIDをPDF形式にエクスポートし、
+ * 請求書PDF出力フォルダ（BILL_PDF_OUTDIR）に保存します。
+ *
+ * 処理フロー:
+ * 1. Google Docs Export API URL構築（/export?exportFormat=pdf）
+ * 2. OAuthトークンをヘッダーに設定
+ * 3. UrlFetchApp.fetch()でPDF取得
+ * 4. Blobオブジェクトに変換してファイル名設定（.pdf拡張子追加）
+ * 5. BILL_PDF_OUTDIRフォルダにPDFファイル作成
+ * 6. 作成したPDFのファイルIDを返却
+ *
+ * @param {string} docId - GoogleドキュメントのID
+ * @param {string} fileName - 保存するファイル名（拡張子なし）
+ * @returns {string} 作成されたPDFファイルのGoogle Drive ID
+ *
+ * @see BILL_PDF_OUTDIR - PDF出力先フォルダ（グローバル定数）
+ * @see createBillFile() - この関数を呼び出す関数
+ * @see getBillPdfFolderId() - PDF出力フォルダID取得（config.js）
+ *
+ * Google Docs Export API:
+ * https://developers.google.com/drive/api/guides/ref-export-formats
+ */
 function createBillPdf(docId, fileName) {
   // PDF変換するためのベースURLを作成する
   let wUrl = `https://docs.google.com/document/d/${docId}/export?exportFormat=pdf`;

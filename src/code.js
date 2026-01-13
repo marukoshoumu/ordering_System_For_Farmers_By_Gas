@@ -1,3 +1,36 @@
+/**
+ * GETリクエスト処理（アプリケーションエントリーポイント）
+ *
+ * Google Apps ScriptのWebアプリケーションに対するGETリクエストを処理します。
+ * URLパラメータに応じてテストページまたはログイン画面を表示します。
+ *
+ * 処理フロー:
+ * 1. URLパラメータをチェック
+ * 2. ?test=components の場合: test-components.html を表示（開発用）
+ * 3. その他の場合: index.html（ログイン画面）を表示
+ * 4. URLパラメータ（tempOrderId, redirectTo）を保持してログイン後に引き継ぎ
+ *
+ * URLパラメータ:
+ * - test=components: コンポーネントテストページを表示
+ * - tempOrderId: 仮受注ID（AI取込一覧からの遷移時）
+ * - aiImportList: AI取込一覧への直接リンク用フラグ
+ * - shipping: 受注画面への直接リンク用フラグ
+ *
+ * @param {Object} e - GETリクエストイベントオブジェクト
+ * @param {Object} e.parameter - URLパラメータのkey-valueオブジェクト
+ * @returns {HtmlOutput} HTMLページ（test-components.html または index.html）
+ *
+ * 使用例:
+ * - https://script.google.com/.../exec → ログイン画面
+ * - https://script.google.com/.../exec?test=components → テストページ
+ * - https://script.google.com/.../exec?tempOrderId=abc123 → ログイン後に仮受注abc123を開く
+ *
+ * @see doPost() - POSTリクエスト処理（ログイン、画面遷移）
+ * @see index.html - ログイン画面テンプレート
+ * @see test-components.html - コンポーネントテストページ
+ *
+ * 呼び出し元: ブラウザからのGETリクエスト
+ */
 function doGet(e) {
   // テスト用：?test=components でコンポーネントテストページを表示
   if (e.parameter.test === 'components') {
@@ -31,12 +64,86 @@ function doGet(e) {
   return htmlOutput;
 }
 
+/**
+ * ログインエラーメッセージHTML生成
+ *
+ * ログイン失敗時に表示するエラーメッセージのHTMLを生成します。
+ * Bootstrap の text-danger クラスで赤色表示されます。
+ *
+ * @param {string} alert - エラーメッセージ（デフォルト: 空文字）
+ * @returns {string} エラーメッセージのHTML文字列（<p class="text-danger">...</p>）
+ *
+ * 使用例:
+ * const html = getLoginHTML('IDまたはパスワードが間違っています。');
+ * // 返却: '<p class="text-danger">IDまたはパスワードが間違っています。</p>'
+ *
+ * @see doPost() - ログイン処理でこの関数を呼び出し
+ * @see login.html - ログイン画面テンプレート
+ */
 function getLoginHTML(alert = '') {
   let html = ``;
   html += `<p class="text-danger">${alert}</p>`
   return html;
 }
 
+/**
+ * POSTリクエスト処理（ログイン認証・画面遷移ルーティング）
+ *
+ * Google Apps ScriptのWebアプリケーションに対するPOSTリクエストを処理します。
+ * ログイン認証、画面遷移、権限チェックを一元管理するルーティング関数です。
+ *
+ * 主要な処理分岐:
+ * - e.parameter.login: ログイン認証処理 → 成功時にホーム画面またはリダイレクト先へ遷移
+ * - e.parameter.main / mainTop: ホーム画面表示
+ * - e.parameter.phoneOrder: 電話受注モード（viewer権限不可）
+ * - e.parameter.shipping: 受注画面（編集モード・AI取込対応）
+ * - e.parameter.shippingComfirm: 受注確認画面
+ * - e.parameter.shippingModify: 受注修正画面（確認画面から戻る）
+ * - e.parameter.shippingSubmit: 受注登録実行 → 完了画面
+ * - e.parameter.createShippingSlips: 送り状作成画面
+ * - e.parameter.createBill: 請求書作成画面
+ * - e.parameter.csvImport: CSV取込画面
+ * - e.parameter.quotation: 見積書作成画面
+ * - e.parameter.salesDashboard: 売上ダッシュボード（admin権限のみ）
+ * - e.parameter.orderList: 製造数一覧（ヒートマップ）
+ * - e.parameter.orderListPage: 受注一覧
+ * - e.parameter.aiImportList: AI取込一覧（viewer権限不可）
+ *
+ * 権限制御:
+ * - admin: 全機能アクセス可
+ * - viewer: 参照系のみ（受注登録・AI取込一覧・電話受注モード不可）
+ *
+ * ログイン処理フロー:
+ * 1. passシートから認証情報取得
+ * 2. ID・パスワード照合
+ * 3. 認証成功 → 権限情報取得、リダイレクト先チェック
+ * 4. viewer権限の場合、AI取込一覧へのアクセスをブロック
+ * 5. tempOrderIdがあれば仮受注データを受注画面に展開
+ * 6. redirectToパラメータに応じて遷移先を決定
+ *
+ * @param {Object} e - POSTリクエストイベントオブジェクト
+ * @param {Object} e.parameter - フォームパラメータのkey-valueオブジェクト
+ * @param {string} e.parameter.login - ログインボタン押下フラグ
+ * @param {string} e.parameter.loginId - ログインID
+ * @param {string} e.parameter.loginPass - ログインパスワード
+ * @param {string} e.parameter.userRole - ユーザー権限（admin/viewer）
+ * @param {string} e.parameter.tempOrderId - 仮受注ID（AI取込一覧から遷移時）
+ * @param {string} e.parameter.redirectTo - リダイレクト先（aiImportList/shipping）
+ * @param {string} e.parameter.editOrderId - 編集対象の受注ID
+ * @param {string} e.parameter.editMode - 編集モードフラグ（true/false）
+ * @returns {HtmlOutput} 各画面のHTMLページ
+ *
+ * @see doGet() - GETリクエスト処理
+ * @see redirectToHome() - 権限不足時のホーム画面リダイレクト
+ * @see getshippingHTML() - 受注画面HTML生成
+ * @see getshippingHTMLForTempOrder() - 仮受注データから受注画面HTML生成
+ * @see createOrder() - 受注登録処理
+ * @see home.html - ホーム画面テンプレート
+ * @see shipping.html - 受注画面テンプレート
+ * @see aiImportList.html - AI取込一覧テンプレート
+ *
+ * 呼び出し元: 各HTMLページのフォーム送信
+ */
 function doPost(e) {
   Logger.log(e);
   if (e.parameter.login) {
@@ -368,7 +475,42 @@ function doPost(e) {
 }
 
 /**
- * 仮受注IDからshippingHTMLを生成
+ * 仮受注IDから受注画面HTMLを生成（AI取込一覧からの遷移用）
+ *
+ * LINE BotスプレッドシートまたはAI取込一覧から仮受注データを取得し、
+ * AI解析結果を受注画面のフォームに展開するHTMLを生成します。
+ * 仮受注データには顧客情報、発送先情報、商品情報が含まれます。
+ *
+ * 処理フロー:
+ * 1. LINE BotスプレッドシートID取得（getLineBotSpreadsheetId()）
+ * 2. '仮受注'シートを開く
+ * 3. 仮受注IDで検索（シートの1列目）
+ * 4. 該当レコードの解析結果JSON（8列目）を取得
+ * 5. buildMockParameterFromAnalysis() でフォームパラメータに変換
+ * 6. getshippingHTML() で受注画面HTMLを生成
+ * 7. 該当データなしの場合: エラーメッセージ付きHTMLを返却
+ *
+ * @param {string} tempOrderId - 仮受注ID（例: "temp_abc123"）
+ * @returns {string} 受注画面のHTML文字列（フォームにAI解析データが展開済み）
+ *
+ * 仮受注シート構造:
+ * - 列A: 仮受注ID
+ * - 列B: 登録日時
+ * - 列C: ステータス
+ * - 列D: 顧客名
+ * - 列E: 発送先名
+ * - 列F: 商品JSON
+ * - 列G: ファイル名
+ * - 列H: 解析結果JSON
+ * - 列I: ファイルURL
+ *
+ * @see buildMockParameterFromAnalysis() - AI解析結果からフォームパラメータ生成
+ * @see getshippingHTML() - 受注画面HTML生成
+ * @see getTempOrderData() - 仮受注データ取得
+ * @see getLineBotSpreadsheetId() - LINE Botスプレッドシート ID取得（config.js）
+ * @see doPost() - 呼び出し元（tempOrderIdパラメータがある場合）
+ *
+ * 呼び出し元: doPost() の tempOrderId パラメータ処理
  */
 function getshippingHTMLForTempOrder(tempOrderId) {
   // LINE Bot側のスプレッドシートから仮受注データを取得
@@ -403,7 +545,58 @@ function getshippingHTMLForTempOrder(tempOrderId) {
 }
 
 /**
- * AI解析結果からフォームパラメータを生成
+ * AI解析結果からフォームパラメータオブジェクトを生成（仮受注データ展開用）
+ *
+ * AI（Gemini）の画像解析結果を受注画面のフォーム入力形式に変換します。
+ * 顧客情報、発送先情報、日付、商品情報（最大10件）を含むパラメータオブジェクトを生成し、
+ * getshippingHTML() に渡すことで受注画面にデータを展開します。
+ *
+ * 処理フロー:
+ * 1. fromTempOrder フラグを設定（仮受注からの遷移であることを示す）
+ * 2. analysis.customer から顧客情報を抽出:
+ *    - masterData があればマスタデータ使用、なければrawデータ使用
+ *    - displayName, zipcode, address, tel
+ * 3. analysis.shippingTo から発送先情報を抽出:
+ *    - masterData があればマスタデータ使用、なければrawデータ使用
+ *    - companyName, zipcode, address, tel
+ * 4. analysis.shippingDate, deliveryDate を設定
+ * 5. analysis.items から商品情報を抽出（最大10件）:
+ *    - bunrui1-10: 商品分類
+ *    - product1-10: 商品名
+ *    - quantity1-10: 個数
+ *    - price1-10: 価格
+ *
+ * @param {Object} analysis - AI解析結果オブジェクト
+ * @param {Object} analysis.customer - 顧客情報
+ * @param {Object} analysis.customer.masterData - マスタデータ（displayName, zipcode, address, tel）
+ * @param {string} analysis.customer.rawCompanyName - 生の会社名（マスタなし時）
+ * @param {Object} analysis.shippingTo - 発送先情報
+ * @param {Object} analysis.shippingTo.masterData - マスタデータ（companyName, zipcode, address, tel）
+ * @param {string} analysis.shippingTo.rawCompanyName - 生の会社名（マスタなし時）
+ * @param {string} analysis.shippingTo.rawZipcode - 生の郵便番号（マスタなし時）
+ * @param {string} analysis.shippingTo.rawAddress - 生の住所（マスタなし時）
+ * @param {string} analysis.shippingTo.rawTel - 生の電話番号（マスタなし時）
+ * @param {string} analysis.shippingDate - 発送日（yyyy/MM/dd）
+ * @param {string} analysis.deliveryDate - 納品日（yyyy/MM/dd）
+ * @param {Array} analysis.items - 商品情報配列
+ * @param {string} analysis.items[].category - 商品分類
+ * @param {string} analysis.items[].productName - 商品名
+ * @param {number} analysis.items[].quantity - 個数
+ * @param {number} analysis.items[].price - 価格
+ * @returns {Object} フォームパラメータオブジェクト
+ *   {
+ *     fromTempOrder: 'true',
+ *     customerName: string, customerZipcode: string, customerAddress: string, customerTel: string,
+ *     shippingToName: string, shippingToZipcode: string, shippingToAddress: string, shippingToTel: string,
+ *     shippingDate: string, deliveryDate: string,
+ *     bunrui1-10: string, product1-10: string, quantity1-10: number, price1-10: number
+ *   }
+ *
+ * @see getshippingHTMLForTempOrder() - 呼び出し元
+ * @see getshippingHTML() - 生成したパラメータを使用してHTML生成
+ * @see getTempOrderData() - 仮受注データ取得
+ *
+ * 呼び出し元: getshippingHTMLForTempOrder()
  */
 function buildMockParameterFromAnalysis(analysis) {
   const param = {
@@ -451,6 +644,50 @@ function buildMockParameterFromAnalysis(analysis) {
 
 /**
  * 仮受注IDから仮受注データを取得（AI解析結果を含む）
+ *
+ * LINE BotスプレッドシートまたはAI取込一覧から仮受注データを検索し、
+ * AI解析結果を含む完全なデータオブジェクトを返却します。
+ * 受注画面へのデータ展開時に使用されます。
+ *
+ * 処理フロー:
+ * 1. LINE BotスプレッドシートID取得（getLineBotSpreadsheetId()）
+ * 2. '仮受注'シートを開く
+ * 3. 仮受注IDで全行を検索（列A）
+ * 4. 該当レコードが見つかった場合:
+ *    - 列Hの解析結果JSON文字列をパース
+ *    - 全カラムの情報を含むオブジェクトを返却
+ * 5. 該当レコードなしまたはエラー: null返却
+ *
+ * @param {string} tempOrderId - 仮受注ID（例: "temp_abc123"）
+ * @returns {Object|null} 仮受注データオブジェクト、見つからない場合はnull
+ *   {
+ *     tempOrderId: string,        // 仮受注ID
+ *     registeredAt: Date,         // 登録日時
+ *     status: string,             // ステータス（例: "未処理", "処理済み"）
+ *     customerName: string,       // 顧客名
+ *     shippingToName: string,     // 発送先名
+ *     itemsJson: string,          // 商品情報JSON文字列
+ *     fileName: string,           // 元ファイル名
+ *     analysisResult: Object,     // AI解析結果オブジェクト（JSONパース済み）
+ *     fileUrl: string             // ファイルURL
+ *   }
+ *
+ * 仮受注シート構造:
+ * - 列A: 仮受注ID
+ * - 列B: 登録日時
+ * - 列C: ステータス
+ * - 列D: 顧客名
+ * - 列E: 発送先名
+ * - 列F: 商品JSON
+ * - 列G: ファイル名
+ * - 列H: 解析結果JSON
+ * - 列I: ファイルURL
+ *
+ * @see getshippingHTMLForTempOrder() - 呼び出し元（HTML生成時）
+ * @see doPost() - 呼び出し元（受注画面遷移時）
+ * @see getLineBotSpreadsheetId() - LINE Botスプレッドシート ID取得（config.js）
+ *
+ * 呼び出し元: doPost() の shipping パラメータ処理、getshippingHTMLForTempOrder()
  */
 function getTempOrderData(tempOrderId) {
   try {
@@ -500,11 +737,74 @@ function getTempOrderData(tempOrderId) {
   }
 }
 
-// スプレッドシートのシート名からヘッダの文字列の連想配列を返却
+/**
+ * スプレッドシートのシート名からヘッダ付きレコード配列を取得
+ *
+ * 指定されたシート名の全レコードを、ヘッダ行をキーとした連想配列の配列形式で取得します。
+ * 内部的に getAllRecordsInternal() を呼び出し、オブジェクト形式で返却します。
+ *
+ * 処理フロー:
+ * 1. getAllRecordsInternal(sheetName, false) を呼び出し
+ * 2. シートの1行目をヘッダとして取得
+ * 3. 2行目以降の各行を { ヘッダ名: セル値 } の連想配列に変換
+ * 4. 連想配列の配列を返却
+ *
+ * @param {string} sheetName - シート名（例: "受注", "顧客情報", "商品"）
+ * @returns {Array<Object>} レコード配列
+ *   [
+ *     { ヘッダ1: 値1, ヘッダ2: 値2, ... },
+ *     { ヘッダ1: 値1, ヘッダ2: 値2, ... },
+ *     ...
+ *   ]
+ *
+ * 使用例:
+ * const orders = getAllRecords('受注');
+ * // 返却: [{ '受注ID': 'ORD001', '発送先名': '株式会社ABC', ... }, ...]
+ *
+ * @see getAllRecordsInternal() - 内部実装（JSON文字列/オブジェクト形式切り替え可能）
+ * @see getLastData() - 前回商品反映機能で使用
+ * @see customerSearch() - 顧客検索で使用
+ * @see shippingToSearch() - 発送先検索で使用
+ *
+ * 呼び出し元: customerCode.js, orderCode.js, quotationCode.js など多数
+ */
 function getAllRecords(sheetName) {
   return getAllRecordsInternal(sheetName, false);
 }
 
+/**
+ * スプレッドシート全レコード取得（内部実装）
+ *
+ * 指定されたシート名の全レコードを取得し、ヘッダ行をキーとした連想配列形式で返却します。
+ * flgパラメータによってJSON文字列またはオブジェクト配列を選択できます。
+ * Webアプリ実行時はマスタスプレッドシートIDを使用してシートを開きます。
+ *
+ * 処理フロー:
+ * 1. アクティブスプレッドシート取得試行
+ * 2. 取得できない場合（Webアプリ実行時）: getMasterSpreadsheetId() でマスタIDを取得
+ * 3. 指定されたシート名のシートを取得
+ * 4. シートの全データを取得（getDataRange().getValues()）
+ * 5. 1行目をヘッダとして取得（shift()）
+ * 6. 2行目以降の各行を { ヘッダ名: セル値 } の連想配列に変換
+ * 7. flg=true の場合: JSON.stringify() で文字列化
+ * 8. flg=false の場合: オブジェクト配列をそのまま返却
+ *
+ * @param {string} sheetName - シート名（例: "受注", "顧客情報", "商品"）
+ * @param {boolean} flg - 返却形式フラグ（true=JSON文字列, false=オブジェクト配列）
+ * @returns {Array<Object>|string} レコード配列またはJSON文字列、シートなしの場合は [] または '[]'
+ *   flg=false: [{ ヘッダ1: 値1, ... }, ...]
+ *   flg=true: '[{"ヘッダ1":"値1",...},...]'
+ *
+ * エラーハンドリング:
+ * - スプレッドシートを開けない: [] または '[]' を返却
+ * - シートが見つからない: [] または '[]' を返却
+ * - Logger.log() でエラー内容を記録
+ *
+ * @see getAllRecords() - 公開API（flg=false で呼び出し）
+ * @see getMasterSpreadsheetId() - マスタスプレッドシートID取得（config.js）
+ *
+ * 呼び出し元: getAllRecords()
+ */
 function getAllRecordsInternal(sheetName, flg) {
   // WebアプリではgetActiveSpreadsheet()がnullになるため、マスタIDを使用
   let ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -542,7 +842,33 @@ function getAllRecordsInternal(sheetName, flg) {
   }
 }
 
-// 商品のゼロ入力チェック
+/**
+ * 商品個数のゼロ入力チェック（受注確認画面でのバリデーション）
+ *
+ * 受注画面で入力された商品の個数が全てゼロまたは未入力かチェックします。
+ * quantity1～quantity8 の合計がゼロの場合、受注確認画面への遷移をブロックします。
+ *
+ * 処理フロー:
+ * 1. quantity1～quantity8 のパラメータをループ
+ * 2. 各個数を数値に変換して合計を計算
+ * 3. 合計が0の場合: true を返却（エラー）
+ * 4. 合計が1以上の場合: false を返却（正常）
+ *
+ * @param {Object} e - POSTリクエストイベントオブジェクト
+ * @param {Object} e.parameter - フォームパラメータのkey-valueオブジェクト
+ * @param {string} e.parameter.quantity1-8 - 商品1～8の個数
+ * @returns {boolean} true=全ての個数がゼロ（エラー）, false=1個以上入力あり（正常）
+ *
+ * 使用例:
+ * if (isZero(e)) {
+ *   // エラー処理: 「少なくとも1個以上注文してください」というアラート表示
+ * }
+ *
+ * @see doPost() - 受注確認画面遷移時にバリデーション実行
+ * @see shipping.html - 受注画面フォーム
+ *
+ * 呼び出し元: doPost() の shippingComfirm パラメータ処理
+ */
 function isZero(e) {
   let total = 0;
   var rowNum = 0;

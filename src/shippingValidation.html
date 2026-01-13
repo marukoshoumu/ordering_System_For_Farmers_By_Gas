@@ -6,7 +6,28 @@
 -->
 <script>
     /**
-     * 送信前バリデーション
+     * 送信前バリデーション（受注確認画面遷移前の最終チェック）
+     *
+     * AI解析データと入力内容を比較し、差異や問題がある場合は警告モーダルを表示します。
+     * 警告がない場合は確認画面への遷移を許可します。
+     *
+     * 処理フロー:
+     * 1. performLocalCheck()で全バリデーションを実行
+     * 2. 警告なし: return true（確認画面へ遷移）
+     * 3. 警告あり: showWarningModal()で警告モーダル表示 → return false（遷移中断）
+     *
+     * バリデーション内容:
+     * - AI解析合計金額 vs 入力合計金額の差異チェック（許容誤差: ¥1）
+     * - AI解析商品 vs 入力商品の数量・価格の差異チェック
+     * - 商品の重複チェック
+     * - 異常数量チェック（100個以上）
+     *
+     * @returns {boolean} true=バリデーションOK（遷移許可）, false=警告あり（遷移中断）
+     *
+     * @see performLocalCheck() - バリデーションロジック本体
+     * @see showWarningModal() - 警告モーダル表示
+     *
+     * 呼び出し元: shipping.html フォーム送信時（onsubmit="return validateBeforeSubmit()"）
      */
     function validateBeforeSubmit() {
       const warnings = performLocalCheck();
@@ -16,7 +37,45 @@
     }
     
     /**
-     * ローカルチェック実行
+     * ローカルチェック実行（AI解析データと入力内容の差異検出）
+     *
+     * sessionStorageに保存されたAI解析結果と現在の入力内容を比較し、
+     * 差異や問題を検出して警告配列を返します。
+     *
+     * 処理フロー:
+     * 1. sessionStorageからAI解析データ取得（AI_SESSION_KEY）
+     * 2. AI解析データなし: checkBasicValidation()のみ実行して終了
+     * 3. AI解析データあり: 以下の詳細チェック実行
+     *    a) 合計金額の差異チェック（許容誤差: ¥1）
+     *       - 差異 > ¥1: 🔴 critical警告
+     *    b) 商品ごとの差異チェック（AI_EXCLUDE_CATEGORIES/PRODUCTS除外）
+     *       - AI解析にあるが入力なし: 🟡 warning
+     *       - 数量が異なる: 🟡 warning
+     *       - 価格が異なる: 🟡 warning
+     * 4. 基本バリデーション追加（checkBasicValidation()）
+     *
+     * 警告タイプ:
+     * - critical (🔴): 合計金額の差異 - 重大な入力ミスの可能性
+     * - warning (🟡): 数量・価格の差異、商品の欠落
+     * - info (💡): 異常数量など、確認を促す情報
+     *
+     * AI解析データ構造:
+     * {
+     *   totalAmount: 15000,  // AI解析合計金額
+     *   items: [
+     *     { productName: "商品A", category: "野菜", quantity: 5, price: 1000 },
+     *     ...
+     *   ]
+     * }
+     *
+     * @returns {Array<Object>} 警告配列
+     *   各警告オブジェクト: { type: string, icon: string, title: string, detail: string }
+     *
+     * @see calculateInputTotal() - 入力合計金額計算
+     * @see findInputItem() - 入力商品検索
+     * @see checkBasicValidation() - 基本バリデーション
+     * @see AI_EXCLUDE_CATEGORIES - 除外カテゴリ（送料など）
+     * @see AI_EXCLUDE_PRODUCTS - 除外商品
      */
     function performLocalCheck() {
       const warnings = [];
@@ -52,7 +111,26 @@
     }
     
     /**
-     * 入力合計金額計算
+     * 入力合計金額計算（AI解析との比較用）
+     *
+     * 現在の入力フォーム（商品1～10）から合計金額を計算します。
+     * AI_EXCLUDE_CATEGORIES（送料など）とAI_EXCLUDE_PRODUCTSは除外されます。
+     *
+     * 処理ロジック:
+     * 1. 商品行1～10をループ
+     * 2. 各行から商品名、カテゴリ、価格、数量を取得
+     * 3. 除外対象（送料、手数料など）はスキップ
+     * 4. total += 価格 × 数量
+     *
+     * 除外される商品例:
+     * - カテゴリ: "送料", "手数料", "その他"
+     * - 商品名: "配送料", "代引き手数料" など
+     *
+     * @returns {number} 合計金額（除外商品を除く）
+     *
+     * @see performLocalCheck() - この関数を使用してAI解析と比較
+     * @see AI_EXCLUDE_CATEGORIES - 除外カテゴリ定義（shippingAi.html）
+     * @see AI_EXCLUDE_PRODUCTS - 除外商品定義（shippingAi.html）
      */
     function calculateInputTotal() {
       let total = 0;
@@ -68,7 +146,27 @@
     }
     
     /**
-     * 入力商品検索
+     * 入力商品検索（AI解析商品との照合用）
+     *
+     * 指定された商品名が入力フォーム（商品1～10）に存在するか検索し、
+     * 存在する場合は価格と数量を含むオブジェクトを返します。
+     *
+     * 処理ロジック:
+     * 1. 商品行1～10をループ
+     * 2. product{i}の値と引数productNameを完全一致で比較
+     * 3. 一致した場合: 商品名、価格、数量をオブジェクトで返す
+     * 4. 一致しない場合: null返却
+     *
+     * @param {string} productName - 検索する商品名（AI解析データから）
+     * @returns {Object|null} 商品情報オブジェクト、または見つからない場合はnull
+     *   返却オブジェクト: { productName: string, price: number, quantity: number }
+     *
+     * @see performLocalCheck() - この関数を使用してAI解析商品を検索
+     *
+     * 使用例:
+     * const item = findInputItem("白菜");
+     * // 存在する場合: { productName: "白菜", price: 500, quantity: 10 }
+     * // 存在しない場合: null
      */
     function findInputItem(productName) {
       for (let i = 1; i <= 10; i++) {
@@ -81,7 +179,35 @@
     }
     
     /**
-     * 基本バリデーション
+     * 基本バリデーション（商品重複と異常数量のチェック）
+     *
+     * AI解析データに依存しない基本的なバリデーションを実行します。
+     * 商品の重複と異常に多い数量をチェックして警告を返します。
+     *
+     * チェック内容:
+     * 1. 商品重複チェック
+     *    - 同じ商品名が複数行に入力されている場合
+     *    - 警告タイプ: warning (🟡)
+     *    - 意図: 誤って同じ商品を複数行に入力した可能性
+     *
+     * 2. 異常数量チェック
+     *    - 数量が100個以上の場合
+     *    - 警告タイプ: info (💡)
+     *    - 意図: 桁間違いなど入力ミスの可能性を確認
+     *
+     * 処理フロー:
+     * 1. 全商品行をループして重複チェック
+     * 2. 全商品行をループして数量チェック（>=100）
+     * 3. 警告配列を返却
+     *
+     * @returns {Array<Object>} 警告配列
+     *   各警告オブジェクト: { type: string, icon: string, title: string, detail: string }
+     *
+     * @see performLocalCheck() - この関数を呼び出してAIチェックに基本チェックを追加
+     *
+     * 警告例:
+     * - { type: 'warning', icon: '🟡', title: '白菜 が重複しています', detail: '同じ商品が複数行あります' }
+     * - { type: 'info', icon: '💡', title: '白菜 の数量が多いです', detail: '150個 - 入力ミスではないか確認してください' }
      */
     function checkBasicValidation() {
       const warnings = [];
@@ -113,14 +239,50 @@
     }
     
     /**
-     * 警告モーダル閉じる
+     * 警告モーダルを閉じる（入力画面に戻る）
+     *
+     * 表示中の警告モーダルを閉じて、ユーザーを入力画面に戻します。
+     * ユーザーが[修正する]ボタンをクリックした際に呼び出されます。
+     *
+     * 処理:
+     * - aiWarningModalから'show'クラスを削除（CSSトランジションでフェードアウト）
+     *
+     * @see showWarningModal() - モーダルを表示
+     * @see proceedWithWarnings() - 警告を無視して続行する場合
+     *
+     * 呼び出し元: 警告モーダルの[修正する]ボタン
      */
     function closeWarningModal() {
       document.getElementById('aiWarningModal').classList.remove('show');
     }
     
     /**
-     * 警告を確認して続行
+     * 警告を確認して続行（バリデーションをバイパスして確認画面へ遷移）
+     *
+     * ユーザーが警告内容を確認した上で[このまま続行]ボタンをクリックした際に呼び出されます。
+     * validateBeforeSubmit()をバイパスして強制的に確認画面へ遷移させます。
+     *
+     * 処理フロー:
+     * 1. closeWarningModal()でモーダルを閉じる
+     * 2. フォーム要素を取得
+     * 3. shippingComfirmボタンを取得
+     * 4. onclickイベントを削除（validateBeforeSubmit()の呼び出しを無効化）
+     * 5. btn.click()で確認画面へ遷移
+     *
+     * onclick削除の理由:
+     * - 通常、shippingComfirmボタンは onclick="return validateBeforeSubmit()" を持つ
+     * - このonclickが存在すると再度バリデーションが実行され、再び警告モーダルが表示される
+     * - removeAttribute('onclick')で無効化し、バリデーションをスキップして遷移
+     *
+     * @see showWarningModal() - 警告モーダル表示
+     * @see closeWarningModal() - モーダルを閉じる
+     * @see validateBeforeSubmit() - 通常のバリデーション処理
+     *
+     * 呼び出し元: 警告モーダルの[このまま続行]ボタン
+     *
+     * セキュリティ考慮:
+     * - サーバー側でも最終的なバリデーションを実行すること
+     * - この関数はクライアント側の確認プロセスをスキップするのみ
      */
     function proceedWithWarnings() {
       closeWarningModal();
