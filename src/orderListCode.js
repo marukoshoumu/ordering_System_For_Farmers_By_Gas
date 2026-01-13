@@ -8,10 +8,10 @@ function getOrderListData(params) {
   const sheet = ss.getSheetByName('受注');
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  
+
   // 列インデックスを取得
   const getColIndex = (name) => headers.indexOf(name);
-  
+
   const orderIdCol = getColIndex('受注ID');
   const orderDateCol = getColIndex('受注日');
   const shippingDateCol = getColIndex('発送日');
@@ -24,14 +24,15 @@ function getOrderListData(params) {
   const priceCol = getColIndex('販売価格');
   const bunruiCol = getColIndex('商品分類');
   const shippedCol = getColIndex('出荷済');
-  
+  const statusCol = getColIndex('ステータス');  // ステータス列を追加
+
   // パラメータ
   const startDate = params.dateFrom ? new Date(params.dateFrom) : null;
   const endDate = params.dateTo ? new Date(params.dateTo) : null;
   const searchDestination = params.destination || '';
   const searchCustomer = params.customer || '';
   const shippingStatus = params.shippingStatus || 'all';
-  
+
   // endDateは終日を含むように調整
   if (endDate) {
     endDate.setHours(23, 59, 59, 999);
@@ -39,7 +40,7 @@ function getOrderListData(params) {
   if (startDate) {
     startDate.setHours(0, 0, 0, 0);
   }
-  
+
   // 除外する商品分類・商品名
   const excludeCategories = ['送料', '手数料', '追加料金', '送料・代引手数料'];
   const excludeProducts = ['送料', 'クール便追加', '代引手数料', '梱包料'];
@@ -81,6 +82,7 @@ function getOrderListData(params) {
         customerName: customerName,
         destinationName: shippingToName,   // HTML側の名前に合わせる
         shipped: row[shippedCol] || '',  // 出荷済フラグ
+        status: statusCol >= 0 ? (row[statusCol] || '') : '',  // ステータス
         items: [],  // 商品ごとの配列
         totalAmount: 0
       });
@@ -102,7 +104,7 @@ function getOrderListData(params) {
       order.totalAmount += price * qty;
     }
   }
-  
+
   // Mapを配列に変換
   let orders = Array.from(orderMap.values());
 
@@ -113,20 +115,23 @@ function getOrderListData(params) {
 
     orders = orders.filter(order => {
       const isShipped = order.shipped === '○' || order.shipped === true;
+      const isCancelled = order.status === 'キャンセル' || order.status === 'cancelled';
       const shippingDate = order.shippingDateRaw ? new Date(order.shippingDateRaw) : null;
-      const isOverdue = !isShipped && shippingDate && shippingDate < today;
+      const isOverdue = !isShipped && !isCancelled && shippingDate && shippingDate < today;
 
       if (shippingStatus === 'shipped') {
         return isShipped;
       } else if (shippingStatus === 'notShipped') {
-        return !isShipped;
+        return !isShipped && !isCancelled;
       } else if (shippingStatus === 'overdue') {
         return isOverdue;
+      } else if (shippingStatus === 'cancelled') {
+        return isCancelled;
       }
       return true;
     });
   }
-  
+
   // ソート：発送日昇順 → 顧客名順
   orders.sort((a, b) => {
     const dateA = a.shippingDateRaw ? new Date(a.shippingDateRaw) : new Date(0);
@@ -136,7 +141,7 @@ function getOrderListData(params) {
     }
     return (a.customerName || '').localeCompare(b.customerName || '');
   });
-  
+
   // 日付をフォーマット & shippingDateRawを削除 & 商品情報を整形
   orders = orders.map(order => {
     return {
@@ -147,11 +152,12 @@ function getOrderListData(params) {
       customerName: order.customerName,
       destinationName: order.destinationName,
       shipped: order.shipped,  // 出荷済フラグ
+      status: order.status,    // ステータス
       items: order.items,  // 商品配列をそのまま渡す
       totalAmount: order.totalAmount
     };
   });
-  
+
   return JSON.stringify({
     orders: orders,
     totalCount: orders.length
@@ -164,7 +170,7 @@ function getOrderListData(params) {
  */
 function formatDateForDisplay(dateValue) {
   if (!dateValue) return '';
-  
+
   try {
     let date;
     if (dateValue instanceof Date) {
@@ -174,9 +180,9 @@ function formatDateForDisplay(dateValue) {
     } else {
       return '';
     }
-    
+
     if (isNaN(date.getTime())) return '';
-    
+
     // yyyy-MM-dd形式で返す（HTML側でMM/dd形式に変換）
     return Utilities.formatDate(date, 'JST', 'yyyy-MM-dd');
   } catch (e) {
@@ -189,32 +195,32 @@ function formatDateForDisplay(dateValue) {
  */
 function searchShippingTo(keyword) {
   if (!keyword || keyword.length < 2) return [];
-  
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('発送先情報');
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  
+
   const companyCol = headers.indexOf('会社名');
   const personCol = headers.indexOf('氏名');
   const addressCol = headers.indexOf('住所１');
   const telCol = headers.indexOf('TEL');
-  
+
   const results = [];
   const keywordLower = keyword.toLowerCase();
-  
+
   for (let i = 1; i < data.length && results.length < 20; i++) {
     const row = data[i];
     const company = row[companyCol] || '';
     const person = row[personCol] || '';
     const address = row[addressCol] || '';
     const tel = row[telCol] || '';
-    
+
     const name = [company, person].filter(Boolean).join('　');
     const searchTarget = (name + address + tel).toLowerCase();
-    
+
     if (searchTarget.includes(keywordLower)) {
       results.push({
         name: name,
@@ -223,7 +229,7 @@ function searchShippingTo(keyword) {
       });
     }
   }
-  
+
   return results;
 }
 
@@ -232,23 +238,23 @@ function searchShippingTo(keyword) {
  */
 function searchCustomer(keyword) {
   if (!keyword || keyword.length < 2) return [];
-  
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('顧客情報');
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  
+
   const companyCol = headers.indexOf('会社名');
   const personCol = headers.indexOf('氏名');
   const displayCol = headers.indexOf('表示名');
   const addressCol = headers.indexOf('住所１');
   const telCol = headers.indexOf('TEL');
-  
+
   const results = [];
   const keywordLower = keyword.toLowerCase();
-  
+
   for (let i = 1; i < data.length && results.length < 20; i++) {
     const row = data[i];
     const company = row[companyCol] || '';
@@ -256,7 +262,7 @@ function searchCustomer(keyword) {
     const display = row[displayCol] || '';
     const address = row[addressCol] || '';
     const tel = row[telCol] || '';
-    
+
     const name = display || [company, person].filter(Boolean).join('　');
     const searchTarget = (name + address + tel).toLowerCase();
 
@@ -306,4 +312,221 @@ function updateOrderShippedStatus(orderId, shippedValue) {
   }
 
   return { success: true, updatedRows: updatedCount };
+}
+
+/**
+ * 複数受注の出荷済ステータスを一括更新
+ * @param {Array<string>} orderIds - 受注IDの配列
+ * @param {string} shippedValue - 出荷済の値（'○' or ''）
+ * @returns {Object} - 更新結果
+ */
+function bulkUpdateOrderShippedStatus(orderIds, shippedValue) {
+  if (!orderIds || orderIds.length === 0) {
+    throw new Error('受注IDが指定されていません');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const orderIdCol = headers.indexOf('受注ID');
+  const shippedCol = headers.indexOf('出荷済');
+
+  if (orderIdCol === -1 || shippedCol === -1) {
+    throw new Error('必要な列が見つかりません');
+  }
+
+  const orderIdSet = new Set(orderIds);
+  let updatedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (orderIdSet.has(data[i][orderIdCol])) {
+      sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
+      updatedCount++;
+    }
+  }
+
+  return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
+}
+
+/**
+ * 複数受注を一括キャンセル（ステータスを「キャンセル」に更新）
+ * @param {Array<string>} orderIds - 受注IDの配列
+ * @returns {Object} - 更新結果
+ */
+function bulkCancelOrders(orderIds) {
+  if (!orderIds || orderIds.length === 0) {
+    throw new Error('受注IDが指定されていません');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const orderIdCol = headers.indexOf('受注ID');
+  let statusCol = headers.indexOf('ステータス');
+
+  if (orderIdCol === -1) {
+    throw new Error('受注ID列が見つかりません');
+  }
+
+  // ステータス列がなければ追加
+  if (statusCol === -1) {
+    statusCol = headers.length;
+    sheet.getRange(1, statusCol + 1).setValue('ステータス');
+  }
+
+  const orderIdSet = new Set(orderIds);
+  let updatedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (orderIdSet.has(data[i][orderIdCol])) {
+      sheet.getRange(i + 1, statusCol + 1).setValue('キャンセル');
+      updatedCount++;
+    }
+  }
+
+  return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
+}
+
+/**
+ * 複数受注のキャンセルを解除（ステータスを空に更新）
+ * @param {Array<string>} orderIds - 受注IDの配列
+ * @returns {Object} - 更新結果
+ */
+function bulkUncancelOrders(orderIds) {
+  if (!orderIds || orderIds.length === 0) {
+    throw new Error('受注IDが指定されていません');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const orderIdCol = headers.indexOf('受注ID');
+  const statusCol = headers.indexOf('ステータス');
+
+  if (orderIdCol === -1) {
+    throw new Error('受注ID列が見つかりません');
+  }
+
+  if (statusCol === -1) {
+    // ステータス列がなければ何もしない
+    return { success: true, updatedRows: 0, orderCount: orderIds.length, message: 'ステータス列がありません' };
+  }
+
+  const orderIdSet = new Set(orderIds);
+  let updatedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (orderIdSet.has(data[i][orderIdCol])) {
+      sheet.getRange(i + 1, statusCol + 1).setValue('');  // ステータスを空にする
+      updatedCount++;
+    }
+  }
+
+  return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
+}
+
+/**
+ * 複数受注を一括削除（ヤマトCSV/佐川CSVも連動削除）
+ * @param {Array<string>} orderIds - 受注IDの配列
+ * @returns {Object} - 削除結果
+ */
+function bulkDeleteOrders(orderIds) {
+  if (!orderIds || orderIds.length === 0) {
+    throw new Error('受注IDが指定されていません');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const orderSheet = ss.getSheetByName('受注');
+  const yamatoSheet = ss.getSheetByName('ヤマトCSV');
+  const sagawaSheet = ss.getSheetByName('佐川CSV');
+
+  if (!orderSheet) {
+    throw new Error('受注シートが見つかりません');
+  }
+
+  const orderData = orderSheet.getDataRange().getValues();
+  const orderHeaders = orderData[0];
+  const orderIdCol = orderHeaders.indexOf('受注ID');
+  const deliveryMethodCol = orderHeaders.indexOf('納品方法');
+
+  if (orderIdCol === -1) {
+    throw new Error('受注ID列が見つかりません');
+  }
+
+  const orderIdSet = new Set(orderIds);
+
+  // 各受注の納品方法を取得して、対応するCSVも削除
+  const yamatoOrderIds = new Set();
+  const sagawaOrderIds = new Set();
+
+  for (let i = 1; i < orderData.length; i++) {
+    const orderId = orderData[i][orderIdCol];
+    if (orderIdSet.has(orderId)) {
+      const deliveryMethod = orderData[i][deliveryMethodCol] || '';
+      if (deliveryMethod.includes('ヤマト')) {
+        yamatoOrderIds.add(orderId);
+      } else if (deliveryMethod.includes('佐川')) {
+        sagawaOrderIds.add(orderId);
+      }
+    }
+  }
+
+  // 受注シートから削除（逆順で削除）
+  const orderRowsToDelete = [];
+  for (let i = 1; i < orderData.length; i++) {
+    if (orderIdSet.has(orderData[i][orderIdCol])) {
+      orderRowsToDelete.push(i + 1);  // 1-indexed
+    }
+  }
+  for (let i = orderRowsToDelete.length - 1; i >= 0; i--) {
+    orderSheet.deleteRow(orderRowsToDelete[i]);
+  }
+
+  // ヤマトCSVから削除
+  if (yamatoSheet && yamatoOrderIds.size > 0) {
+    deleteCSVByOrderIds(yamatoSheet, yamatoOrderIds);
+  }
+
+  // 佐川CSVから削除
+  if (sagawaSheet && sagawaOrderIds.size > 0) {
+    deleteCSVByOrderIds(sagawaSheet, sagawaOrderIds);
+  }
+
+  return {
+    success: true,
+    deletedOrderRows: orderRowsToDelete.length,
+    orderCount: orderIds.length
+  };
+}
+
+/**
+ * CSVシートから指定された受注IDの行を削除
+ * @param {Sheet} sheet - CSVシート
+ * @param {Set<string>} orderIds - 削除対象の受注IDセット
+ */
+function deleteCSVByOrderIds(sheet, orderIds) {
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // お客様管理番号列を探す（受注IDが格納されている）
+  const customerNoCol = headers.indexOf('お客様管理番号');
+  if (customerNoCol === -1) return;
+
+  const rowsToDelete = [];
+  for (let i = 1; i < data.length; i++) {
+    if (orderIds.has(data[i][customerNoCol])) {
+      rowsToDelete.push(i + 1);  // 1-indexed
+    }
+  }
+
+  // 逆順で削除
+  for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+    sheet.deleteRow(rowsToDelete[i]);
+  }
 }
