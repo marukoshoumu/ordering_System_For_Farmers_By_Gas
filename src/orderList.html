@@ -853,6 +853,101 @@
     .order-table thead th .form-check-input {
       border-color: white;
     }
+
+    /* スキャナー関連スタイル */
+    #scannerView {
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+    }
+
+    #scannerView video,
+    #scannerView canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+    }
+
+    .scanner-region {
+      border: 3px solid #0d6efd;
+      width: 80%;
+      height: 30%;
+      margin: auto;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .scanner-region::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 0, 0, 0.5);
+      box-shadow: 0 0 10px red;
+      animation: scan-line 2s infinite ease-in-out;
+    }
+
+    @keyframes scan-line {
+
+      0%,
+      100% {
+        transform: translateY(-50px);
+      }
+
+      50% {
+        transform: translateY(50px);
+      }
+    }
+
+    .scanner-result-overlay,
+    .scanner-error-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+    }
+
+    .scanner-result-overlay {
+      background: rgba(25, 135, 84, 0.95);
+    }
+
+    .scanner-error-overlay {
+      background: rgba(220, 53, 69, 0.95);
+    }
+
+    .manual-input-area {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 15;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+    }
   </style>
 </head>
 
@@ -1102,11 +1197,17 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">閉じる</button>
+
+          <!-- 伝票スキャン: viewerも含めて全員利用可能 -->
+          <button type="button" class="btn btn-info text-white" id="detailScanBtn" onclick="openScanner()" disabled>
+            <i class="bi bi-upc-scan me-1"></i>伝票スキャン
+          </button>
+
           <? if (userRole !== 'viewer') { ?>
-          <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()">
+          <button type="button" class="btn btn-success" id="detailInheritBtn" onclick="inheritFromDetail()" disabled>
             <i class="bi bi-copy me-1"></i>コピー
           </button>
-          <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()">
+          <button type="button" class="btn btn-primary" id="detailEditBtn" onclick="editFromDetail()" disabled>
             <i class="bi bi-pencil me-1"></i>修正
           </button>
           <? } ?>
@@ -1114,6 +1215,65 @@
       </div>
     </div>
   </div>
+  <!-- 配送伝票スキャナーモーダル -->
+  <div class="modal fade" id="scannerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content bg-black text-white">
+        <div class="info py-2 bg-primary text-center fw-bold">
+          <span id="scannerTargetName">伝票スキャン</span>
+        </div>
+        <div class="modal-body p-0 position-relative overflow-hidden" style="flex: 1;">
+          <div id="scannerView" class="w-100 h-100"></div>
+          <div class="scanner-overlay">
+            <div class="scanner-region"></div>
+          </div>
+          <!-- 手入力エリア -->
+          <div id="modalManualInputArea" class="manual-input-area p-4">
+            <h3 class="text-center mb-4">送り状番号を入力</h3>
+            <div class="input-group input-group-lg mb-4">
+              <input type="tel" id="modalManualNo" class="form-control text-center" placeholder="123456789012"
+                maxlength="12">
+            </div>
+            <div class="d-grid gap-3">
+              <button onclick="submitModalManual()" class="btn btn-primary py-3">決定</button>
+              <button onclick="toggleModalManual(false)" class="btn btn-outline-light">スキャンに戻る</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer flex-column bg-black border-0 p-3">
+          <div id="scannerStatus" class="mb-3">バーコードを枠内に収めてください</div>
+          <div class="d-flex gap-2 w-100 mb-2">
+            <button onclick="captureAndOcrModal()" class="btn btn-warning flex-grow-1 py-3 text-dark">
+              <i class="bi bi-camera"></i> 写真で読み取る
+            </button>
+          </div>
+          <div class="d-flex gap-2 w-100">
+            <button onclick="toggleModalManual(true)" class="btn btn-primary flex-grow-1 py-3">
+              <i class="bi bi-keyboard"></i> 手入力
+            </button>
+            <button type="button" class="btn btn-outline-light py-3 px-4" data-bs-dismiss="modal">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成功・エラー時のオーバーレイ（スキャナー用） -->
+  <div id="scannerSuccessOverlay" class="scanner-result-overlay">
+    <h2 class="mb-3">スキャン成功！</h2>
+    <div id="modalScannedNo" class="h1 mb-4"></div>
+    <div class="spinner-border text-light mb-3" role="status"></div>
+    <div>システム更新中...</div>
+  </div>
+  <div id="scannerErrorOverlay" class="scanner-error-overlay">
+    <h2 class="mb-3">エラー</h2>
+    <div id="scannerErrorMsg" class="mb-4"></div>
+    <button onclick="retryScanner()" class="btn btn-light px-5">再試行</button>
+  </div>
+
+  <audio id="scannerBeepSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+  </audio>
 
   <!-- 操作用の隠しフォーム -->
   <form id="actionForm" method="POST" action="<?= deployURL ?>" style="display: none;">
@@ -1131,6 +1291,7 @@
   </form>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
 
   <script>
     // グローバル変数
@@ -1141,6 +1302,7 @@
     let currentPage = 1;
     const pageSize = 50;
     let currentDetailOrderId = null;
+    let currentDetailCustomerName = '';
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function () {
@@ -1511,6 +1673,24 @@
         .getOrderListData(params);
     }
 
+    // ステータスに応じたバッジHTML生成
+    function getStatusBadge(status) {
+      if (!status) return '';
+
+      let badgeClass = 'bg-secondary';
+      if (status === '配達完了' || status === '完了' || status === 'お届け完了') {
+        badgeClass = 'bg-success';
+      } else if (status === '発送中' || status === '配達中' || status === '輸送中' || status === '出荷済') {
+        badgeClass = 'bg-primary';
+      } else if (status === '不在' || status === '持戻') {
+        badgeClass = 'bg-warning text-dark';
+      } else if (status === '調査中' || status.includes('エラー')) {
+        badgeClass = 'bg-danger';
+      }
+
+      return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.75rem;">${escapeHtml(status)}</span>`;
+    }
+
     // テーブル描画
     function renderTable() {
       const tbody = document.getElementById('orderTableBody');
@@ -1594,11 +1774,14 @@
           if (isFirstRow) {
             tableRows += `
             <td class="col-shipped" rowspan="${itemCount}" onclick="event.stopPropagation();">
-              <input type="checkbox" class="form-check-input shipped-checkbox"
-                     ${isShipped ? 'checked' : ''}
-                     ${isCancelled ? 'disabled' : ''}
-                     onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
-                     title="出荷済にチェック">
+              <div class="d-flex align-items-center justify-content-center">
+                <input type="checkbox" class="form-check-input shipped-checkbox"
+                       ${isShipped ? 'checked' : ''}
+                       ${isCancelled ? 'disabled' : ''}
+                       onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
+                       title="出荷済にチェック">
+                ${getStatusBadge(order.status)}
+              </div>
             </td>
           `;
 
@@ -1687,17 +1870,18 @@
               ${itemsHtml}
             </div>
           </div>
-          <div class="order-card-row" onclick="event.stopPropagation();">
-            <span class="order-card-icon"><i class="bi bi-check2-square"></i></span>
-            <div class="order-card-value" style="display: flex; align-items: center; gap: 8px;">
-              <input type="checkbox" class="form-check-input shipped-checkbox"
-                     ${isShipped ? 'checked' : ''}
-                     ${isCancelled ? 'disabled' : ''}
-                     onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
-                     title="出荷済にチェック">
-              <span style="font-size: 0.875rem; color: #666;">出荷済</span>
+            <div class="order-card-row" onclick="event.stopPropagation();">
+              <span class="order-card-icon"><i class="bi bi-check2-square"></i></span>
+              <div class="order-card-value" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" class="form-check-input shipped-checkbox"
+                       ${isShipped ? 'checked' : ''}
+                       ${isCancelled ? 'disabled' : ''}
+                       onchange="updateShippedStatus('${escapeHtml(order.orderId)}', this.checked)"
+                       title="出荷済にチェック">
+                <span style="font-size: 0.875rem; color: #666;">出荷済</span>
+                ${getStatusBadge(order.status)}
+              </div>
             </div>
-          </div>
           ${userRole !== 'viewer' ? `
           <div class="order-card-buttons" onclick="event.stopPropagation();">
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')" ${isCancelled ? 'disabled' : ''}>
@@ -1739,10 +1923,14 @@
     }
 
     // 詳細モーダル表示
+    // 詳細モーダル表示
     function showOrderDetail(orderId) {
       currentDetailOrderId = orderId;
       const body = document.getElementById('orderDetailBody');
       body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">読み込み中...</p></div>';
+
+      // ボタンを非活性化（読み込み開始時）
+      setDetailButtonsState(false);
 
       const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
       modal.show();
@@ -1754,7 +1942,12 @@
             body.innerHTML = '<div class="text-center py-4 text-danger">データが見つかりませんでした</div>';
             return;
           }
+          currentDetailOrderId = result.orderId;
+          currentDetailCustomerName = result.customerName; // 変数にセット
+
           renderOrderDetail(result);
+          // 読み込み完了後にボタンを活性化
+          setDetailButtonsState(true);
         })
         .withFailureHandler(function (error) {
           body.innerHTML = '<div class="text-center py-4 text-danger">エラー: ' + error.message + '</div>';
@@ -1764,6 +1957,7 @@
 
     // 詳細モーダルの内容を描画
     function renderOrderDetail(data) {
+      currentDetailCustomerName = data.customerName || '';
       const body = document.getElementById('orderDetailBody');
 
       // チェックリストのバッジ生成
@@ -1858,6 +2052,10 @@
           <div class="detail-row">
             <span class="detail-label">配達時間帯</span>
             <span class="detail-value">${escapeHtml(data.deliveryTime ? data.deliveryTime.split(':')[1] : '') || '<span class="empty">-</span>'}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">追跡番号</span>
+            <span class="detail-value" id="detailTrackingNo">${escapeHtml(data.trackingNumber) || '<span class="empty">-</span>'}</span>
           </div>
         </div>
       </div>
@@ -2044,6 +2242,165 @@
         bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
         inheritOrder(currentDetailOrderId);
       }
+    }
+
+    // スキャン画面を開く
+    function openScanner() {
+      if (!currentDetailOrderId) return;
+      openScannerDialog(currentDetailOrderId, currentDetailCustomerName);
+    }
+
+    function openScannerDialog(orderId, customerName) {
+      currentDetailOrderId = orderId;
+      currentDetailCustomerName = customerName;
+      document.getElementById('scannerTargetName').innerText = customerName + " 様の伝票";
+      const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
+      modal.show();
+    }
+
+    // モーダルが開いた時にスキャナー起動、閉じるときに停止
+    document.getElementById('scannerModal').addEventListener('shown.bs.modal', initQuagga);
+    document.getElementById('scannerModal').addEventListener('hidden.bs.modal', () => {
+      Quagga.stop();
+      toggleModalManual(false);
+      document.getElementById('scannerSuccessOverlay').style.display = 'none';
+      document.getElementById('scannerErrorOverlay').style.display = 'none';
+    });
+
+    let isScannerProcessing = false;
+    function initQuagga() {
+      isScannerProcessing = false;
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#scannerView'),
+          constraints: { facingMode: "environment" },
+        },
+        decoder: {
+          readers: ["code_128_reader", "codabar_reader", "code_39_reader"]
+        },
+        locate: true
+      }, function (err) {
+        if (err) {
+          showScannerError("カメラの起動に失敗しました。");
+          return;
+        }
+        Quagga.start();
+      });
+      Quagga.onDetected(onQuaggaDetected);
+    }
+
+    function onQuaggaDetected(data) {
+      if (isScannerProcessing) return;
+      const code = data.codeResult.code;
+      // 簡易バリデーション: 10-12桁
+      if (code && (code.length >= 10 && code.length <= 12)) {
+        // 日本の電話番号（0から始まる10桁/11桁）を誤検知しないための対策
+        // 西濃運輸などの10桁追跡番号は通常0以外から始まります
+        if ((code.length === 10 || code.length === 11) && code.startsWith('0')) {
+          return;
+        }
+        isScannerProcessing = true;
+        handleScannerSuccess(code);
+      }
+    }
+
+    function toggleModalManual(show) {
+      const area = document.getElementById('modalManualInputArea');
+      if (show) {
+        area.style.display = 'flex';
+        document.getElementById('modalManualNo').focus();
+      } else {
+        area.style.display = 'none';
+      }
+    }
+
+    function submitModalManual() {
+      const code = document.getElementById('modalManualNo').value.trim();
+      if (code.length < 10) return alert("10桁以上で入力してください");
+      handleScannerSuccess(code.replace(/-/g, ''));
+    }
+
+    async function captureAndOcrModal() {
+      if (isScannerProcessing) return;
+      isScannerProcessing = true;
+      document.getElementById('scannerStatus').innerText = "画像を解析中...";
+      try {
+        const video = document.querySelector('#scannerView video');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) handleScannerSuccess(res.code);
+            else {
+              isScannerProcessing = false;
+              alert("認識不可: " + res.message);
+              document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
+            }
+          })
+          .withFailureHandler(() => {
+            isScannerProcessing = false;
+            alert("OCRエラー");
+          })
+          .recognizeTrackingNumber(base64Data);
+      } catch (e) {
+        isScannerProcessing = false;
+        alert("キャプチャ失敗");
+      }
+    }
+
+    function handleScannerSuccess(code) {
+      document.getElementById('scannerBeepSound').play();
+      document.getElementById('modalScannedNo').innerText = code;
+      document.getElementById('scannerSuccessOverlay').style.display = 'flex';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            setTimeout(() => {
+              bootstrap.Modal.getInstance(document.getElementById('scannerModal')).hide();
+              onScanComplete();
+            }, 1000);
+          } else showScannerError(res.message);
+        })
+        .updateOrderTrackingStatus(currentDetailOrderId, code);
+    }
+
+    function showScannerError(msg) {
+      isScannerProcessing = true;
+      document.getElementById('scannerErrorMsg').innerText = msg;
+      document.getElementById('scannerErrorOverlay').style.display = 'flex';
+    }
+
+    function retryScanner() {
+      isScannerProcessing = false;
+      document.getElementById('scannerErrorOverlay').style.display = 'none';
+    }
+
+    // スキャン完了時のコールバック（サーバー側から受注一覧を更新させる）
+    function onScanComplete() {
+      executeSearch();
+      // 詳細モーダルを閉じる
+      const detailModal = bootstrap.Modal.getInstance(document.getElementById('orderDetailModal'));
+      if (detailModal) detailModal.hide();
+      showSuccessToast('伝票番号を更新しました');
+    }
+
+    // ボタンの活性/非活性セット
+    function setDetailButtonsState(enabled) {
+      const scanBtn = document.getElementById('detailScanBtn');
+      const inheritBtn = document.getElementById('detailInheritBtn');
+      const editBtn = document.getElementById('detailEditBtn');
+
+      if (scanBtn) scanBtn.disabled = !enabled;
+      // inheritBtn, editBtn は権限によって存在しない場合がある
+      if (inheritBtn) inheritBtn.disabled = !enabled;
+      if (editBtn) editBtn.disabled = !enabled;
     }
 
     // 修正画面へ遷移

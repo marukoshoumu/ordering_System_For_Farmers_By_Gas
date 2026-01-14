@@ -42,6 +42,17 @@ function refreshMasterDataCache() {
   }
 }
 
+// 配送伝票スキャンモーダルを表示
+function getScannerHTML(orderId, customerName) {
+  const template = HtmlService.createTemplateFromFile('scanner');
+  template.orderId = orderId;
+  template.customerName = customerName;
+  return template.evaluate()
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .getContent();
+}
+
+
 /**
  * マスタデータをキャッシュから取得（2時間キャッシュ、パフォーマンス最適化）
  *
@@ -106,7 +117,7 @@ function getMasterDataCached() {
 
     // キャッシュがなければ取得
     const shippingFromRecords = getAllRecords('発送元情報') || [];
-    const shippingFromList = shippingFromRecords.map(function(r) {
+    const shippingFromList = shippingFromRecords.map(function (r) {
       return {
         name: r['発送元名'] || r['名前'] || '',
         zipcode: r['郵便番号'] || '',
@@ -161,11 +172,11 @@ function getshippingHTML(e, alert = '') {
   const actionMode = e.parameter.actionMode || '';
   const isInheritMode = actionMode === 'inherit';
   let editData = null;
-  
+
   if (editOrderId && !e.parameter.fromConfirm) {
     editData = getOrderByOrderId(editOrderId);
   }
-  
+
   if (editData) {
     e.parameter.shippingToName = editData.shippingToName;
     e.parameter.shippingToZipcode = editData.shippingToZipcode;
@@ -179,7 +190,7 @@ function getshippingHTML(e, alert = '') {
     e.parameter.shippingFromZipcode = editData.shippingFromZipcode;
     e.parameter.shippingFromAddress = editData.shippingFromAddress;
     e.parameter.shippingFromTel = editData.shippingFromTel;
-    
+
     if (isInheritMode) {
       e.parameter.shippingDate1 = '';
       e.parameter.deliveryDate1 = '';
@@ -187,12 +198,12 @@ function getshippingHTML(e, alert = '') {
       e.parameter.shippingDate1 = editData.shippingDate;
       e.parameter.deliveryDate1 = editData.deliveryDate;
     }
-    
+
     e.parameter.receiptWay = editData.receiptWay;
     e.parameter.recipient = editData.recipient;
     e.parameter.deliveryMethod = editData.deliveryMethod;
     e.parameter.deliveryTime = editData.deliveryTime;
-    
+
     e.parameters = e.parameters || {};
     e.parameters.checklist = [];
     if (editData.checklist.deliverySlip) e.parameters.checklist.push('納品書');
@@ -200,9 +211,9 @@ function getshippingHTML(e, alert = '') {
     if (editData.checklist.receipt) e.parameters.checklist.push('領収書');
     if (editData.checklist.pamphlet) e.parameters.checklist.push('パンフ');
     if (editData.checklist.recipe) e.parameters.checklist.push('レシピ');
-    
+
     e.parameter.otherAttach = editData.otherAttach;
-    
+
     editData.items.forEach((item, index) => {
       const rowNum = index + 1;
       e.parameter['bunrui' + rowNum] = item.bunrui;
@@ -214,7 +225,7 @@ function getshippingHTML(e, alert = '') {
         e.parameter['quantity' + rowNum] = item.quantity;
       }
     });
-    
+
     e.parameter.sendProduct = editData.sendProduct;
     e.parameter.invoiceType = editData.invoiceType;
     e.parameter.coolCls = editData.coolCls;
@@ -228,7 +239,7 @@ function getshippingHTML(e, alert = '') {
     e.parameter.deliveryMemo = editData.deliveryMemo;
     e.parameter.memo = editData.memo;
   }
-  
+
   const master = getMasterDataCached();
   const items = getAllRecords('商品');
   const recipients = master.recipients;
@@ -238,7 +249,7 @@ function getshippingHTML(e, alert = '') {
   const invoiceTypes = master.invoiceTypes;
   const coolClss = master.coolClss;
   const cargos = master.cargos;
-  
+
   var nDate = new Date();
   var strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
   const orderDate = e.parameter.orderDate ? e.parameter.orderDate : strDate;
@@ -249,6 +260,9 @@ function getshippingHTML(e, alert = '') {
   nDate.setDate(nDate.getDate() + 1);
   strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
   const deliveryDate = e.parameter.deliveryDate ? e.parameter.deliveryDate : strDate;
+
+  // 受注シートのヘッダー更新（追跡番号がない場合のみ追加）
+  setupOrderSheetHeaders();
 
   // ============================================
   // CSS スタイル
@@ -547,19 +561,19 @@ function getshippingHTML(e, alert = '') {
   if (existingDateCount === 0) {
     existingDateCount = 1;
   }
-  
+
   html += `<div class="mb-3">`;
   html += `  <div class="d-flex align-items-center mb-2">`;
   html += `    <span class="fw-bold">📅 発送日程</span>`;
   html += `    <button type="button" class="btn btn-sm btn-outline-primary ms-3" onclick="addShippingDate()">＋ 日程追加</button>`;
   html += `  </div>`;
   html += `  <div id="shippingDateContainer">`;
-  
+
   for (let i = 1; i <= existingDateCount; i++) {
     const sd = e.parameter['shippingDate' + i] || (i === 1 ? shippingDate : '');
     const dd = e.parameter['deliveryDate' + i] || (i === 1 ? deliveryDate : '');
     const disabledAttr = (existingDateCount === 1) ? 'disabled' : '';
-    
+
     html += `    <div class="shipping-date-row d-flex align-items-center gap-2 mb-2" data-row="${i}">`;
     html += `      <span class="badge bg-secondary">#${i}</span>`;
     html += `      <label class="col-form-label">発送日</label>`;
@@ -569,7 +583,7 @@ function getshippingHTML(e, alert = '') {
     html += `      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)" ${disabledAttr}>✕</button>`;
     html += `    </div>`;
   }
-  
+
   html += `  </div>`;
   html += `</div>`;
 
@@ -890,7 +904,7 @@ function getshippingHTML(e, alert = '') {
     html += `<input type="hidden" name="editOrderId" value="${editOrderId}">`;
     html += `<input type="hidden" name="editMode" value="true">`;
   }
-  
+
   return html;
 }
 
@@ -904,7 +918,7 @@ function getShippingComfirmHTML(e) {
   const invoiceTypes = master.invoiceTypes;
   const coolClss = master.coolClss;
   const cargos = master.cargos;
-  
+
   var nDate = new Date();
   var strDate = Utilities.formatDate(nDate, 'JST', 'yyyy-MM-dd')
   const orderDate = e.parameter.orderDate ? e.parameter.orderDate : strDate;
@@ -1292,11 +1306,11 @@ function getShippingComfirmHTML(e) {
       break;
     }
   }
-  
+
   // 日程カード表示
   html += `<div class="mb-3">`;
   html += `<div class="fw-bold mb-2">📅 発送日程（${dateCount}件）</div>`;
-  
+
   for (let i = 1; i <= dateCount; i++) {
     const sd = e.parameter['shippingDate' + i] || '';
     const dd = e.parameter['deliveryDate' + i] || '';
@@ -1397,13 +1411,13 @@ function getShippingComfirmHTML(e) {
   // 商品データを収集
   let total = 0;
   const products = [];
-  
+
   for (let i = 1; i <= 10; i++) {
     const bunruiVal = e.parameter['bunrui' + i];
     const productVal = e.parameter['product' + i];
     const count = Number(e.parameter['quantity' + i]);
     const unitPrice = Number(e.parameter['price' + i]);
-    
+
     if (count > 0) {
       const subtotal = unitPrice * count;
       total += subtotal;
@@ -1417,7 +1431,7 @@ function getShippingComfirmHTML(e) {
       });
     }
   }
-  
+
   // Hidden inputs（パラメータ保持用）
   products.forEach(p => {
     html += `<input type="hidden" name="bunrui${p.row}" value="${p.bunrui}">`;
@@ -1425,7 +1439,7 @@ function getShippingComfirmHTML(e) {
     html += `<input type="hidden" name="price${p.row}" value="${p.price}">`;
     html += `<input type="hidden" name="quantity${p.row}" value="${p.quantity}">`;
   });
-  
+
   // PC用テーブル表示
   html += `<div class="product-table-pc">`;
   html += `<table class="table table-striped">`;
@@ -1439,7 +1453,7 @@ function getShippingComfirmHTML(e) {
   html += `</tr>`;
   html += `</thead>`;
   html += `<tbody>`;
-  
+
   products.forEach(p => {
     html += `<tr>`;
     html += `<td class="text-start">${p.bunrui}</td>`;
@@ -1449,14 +1463,14 @@ function getShippingComfirmHTML(e) {
     html += `<td class="text-end fw-bold">¥${p.subtotal.toLocaleString()}</td>`;
     html += `</tr>`;
   });
-  
+
   html += `</tbody>`;
   html += `</table>`;
   html += `</div>`;
-  
+
   // スマホ用カード表示
   html += `<div class="product-cards-sp">`;
-  
+
   products.forEach(p => {
     html += `<div class="product-card">`;
     html += `  <div class="product-card-header">`;
@@ -1469,9 +1483,9 @@ function getShippingComfirmHTML(e) {
     html += `  </div>`;
     html += `</div>`;
   });
-  
+
   html += `</div>`;
-  
+
   // ============================================
   // 過去注文比較チェック（電話対応時の入力ミス防止）
   // ============================================
@@ -1482,10 +1496,10 @@ function getShippingComfirmHTML(e) {
       productName: p.product,
       quantity: p.quantity
     }));
-    
+
     try {
       const checkResult = JSON.parse(checkOrderAgainstHistory(shippingToName, currentItems));
-      
+
       if (checkResult.hasWarnings && checkResult.warnings.length > 0) {
         html += `
 <div class="alert alert-warning mt-3" role="alert">
@@ -1495,27 +1509,27 @@ function getShippingComfirmHTML(e) {
   </div>
   <small class="text-muted d-block mb-2">（直近${checkResult.recentOrderCount}回の注文と比較）</small>
   <ul class="mb-0 ps-3">`;
-        
+
         // 警告の種類ごとに整理して表示
         const quantityWarnings = checkResult.warnings.filter(w => w.type === 'quantity');
         const missingWarnings = checkResult.warnings.filter(w => w.type === 'missing');
         const newWarnings = checkResult.warnings.filter(w => w.type === 'new');
-        
+
         // 数量異常（最も重要）
         quantityWarnings.forEach(w => {
           html += `<li class="text-danger"><strong>📊 数量確認:</strong> ${w.message}</li>`;
         });
-        
+
         // 常連商品の欠落
         missingWarnings.forEach(w => {
           html += `<li class="text-warning"><strong>📦 商品漏れ:</strong> ${w.message}</li>`;
         });
-        
+
         // 初めての商品（情報のみ）
         newWarnings.forEach(w => {
           html += `<li class="text-info"><strong>🆕 新規:</strong> ${w.message}</li>`;
         });
-        
+
         html += `
   </ul>
   <div class="mt-2">
@@ -1534,7 +1548,7 @@ function getShippingComfirmHTML(e) {
       Logger.log('過去注文比較チェックエラー: ' + error.toString());
     }
   }
-  
+
   // 合計セクション
   html += `<div class="total-section d-flex justify-content-between align-items-center">`;
   html += `  <span class="label">合計金額</span>`;
@@ -1576,7 +1590,7 @@ function getShippingComfirmHTML(e) {
       break;
     }
   }
-  
+
   html += `<div class="confirm-row">`;
   html += `  <div class="confirm-item">`;
   html += `    <span class="confirm-item-label">送り状種別</span>`;
@@ -1686,7 +1700,7 @@ function getShippingComfirmHTML(e) {
     html += `<input type="hidden" name="editOrderId" value="${editOrderIdConfirm}">`;
     html += `<input type="hidden" name="editMode" value="true">`;
   }
-  
+
   return html;
 }
 
@@ -1705,7 +1719,7 @@ function generateId(length = 8) {
 function registerNewCustomerToMaster(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
+
     // 顧客情報シート
     const customerSheet = ss.getSheetByName('顧客情報');
     if (!customerSheet) {
@@ -1715,7 +1729,7 @@ function registerNewCustomerToMaster(e) {
     const customerLastRow = customerSheet.getLastRow();
     const customerBkSheet = ss.getSheetByName('顧客情報BK');
     const customerBkLastRow = customerBkSheet ? customerBkSheet.getLastRow() : 0;
-    
+
     // 発送先情報シート
     const shippingToSheet = ss.getSheetByName('発送先情報');
     if (!shippingToSheet) {
@@ -1725,30 +1739,30 @@ function registerNewCustomerToMaster(e) {
     const shippingToLastRow = shippingToSheet.getLastRow();
     const shippingToBkSheet = ss.getSheetByName('発送先情報BK');
     const shippingToBkLastRow = shippingToBkSheet ? shippingToBkSheet.getLastRow() : 0;
-    
+
     const customerName = e.parameter.customerName || '';
     const customerCompany = e.parameter.customerCompany || '';
     const customerZipcode = e.parameter.customerZipcode || '';
     const customerAddress = e.parameter.customerAddress || '';
     const customerTel = e.parameter.customerTel || '';
-    
+
     const shippingToName = e.parameter.shippingToName || '';
     const shippingToCompany = e.parameter.shippingToCompany || '';
     const shippingToZipcode = e.parameter.shippingToZipcode || '';
     const shippingToAddress = e.parameter.shippingToAddress || '';
     const shippingToTel = e.parameter.shippingToTel || '';
-    
+
     Logger.log('顧客登録: 会社名=' + customerCompany + ', 氏名=' + customerName);
     Logger.log('発送先登録: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
-    
+
     // 顧客情報に既に存在するかチェック（会社名と氏名の両方が一致する場合のみ重複とみなす）
     const existingCustomers = getAllRecords('顧客情報');
-    const customerExists = existingCustomers.some(function(c) {
+    const customerExists = existingCustomers.some(function (c) {
       // 会社名と氏名の両方が一致する場合のみ重複
       // 例: 既存「株式会社田中/田中太郎」と新規「田中太郎/田中太郎」は別人として登録可能
       return c['会社名'] === customerCompany && c['氏名'] === customerName;
     });
-    
+
     // 顧客情報マスタに登録（存在しない場合のみ）
     if (!customerExists && customerName) {
       // カラム: 顧客分類,表示名,フリガナ,会社名,部署,役職,氏名,郵便番号,住所１,住所２,TEL,携帯電話,FAX,メールアドレス,請求書有無,入金期日,備考
@@ -1777,13 +1791,13 @@ function registerNewCustomerToMaster(e) {
       }
       Logger.log('顧客情報マスタに登録: 会社名=' + customerCompany + ', 氏名=' + customerName);
     }
-    
+
     // 発送先情報に既に存在するかチェック（会社名と氏名の両方が一致する場合のみ重複とみなす）
     const existingShippingTo = getAllRecords('発送先情報');
     Logger.log('発送先情報マスタ件数: ' + existingShippingTo.length);
     Logger.log('登録しようとしている発送先: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
-    
-    const shippingToExists = existingShippingTo.some(function(s) {
+
+    const shippingToExists = existingShippingTo.some(function (s) {
       // 会社名と氏名の両方が一致する場合のみ重複とみなす
       const match = s['会社名'] === shippingToCompany && s['氏名'] === shippingToName;
       if (match) {
@@ -1791,9 +1805,9 @@ function registerNewCustomerToMaster(e) {
       }
       return match;
     });
-    
+
     Logger.log('発送先存在チェック結果: ' + shippingToExists);
-    
+
     // 発送先情報マスタに登録（存在しない場合のみ）
     if (!shippingToExists && shippingToName) {
       // カラム: 会社名,部署,氏名,郵便番号,住所１,住所２,TEL,メールアドレス,備考
@@ -1814,7 +1828,7 @@ function registerNewCustomerToMaster(e) {
       }
       Logger.log('発送先情報マスタに登録: 会社名=' + shippingToCompany + ', 氏名=' + shippingToName);
     }
-    
+
   } catch (error) {
     Logger.log('registerNewCustomerToMaster エラー: ' + error.toString());
     // エラーがあっても受注処理は継続
@@ -1883,7 +1897,7 @@ function createOrder(e) {
   if (e.parameter.isNewCustomer === 'true') {
     registerNewCustomerToMaster(e);
   }
-  
+
   // 編集モードの場合、既存データを削除
   const editOrderId = e.parameter.editOrderId || '';
   if (editOrderId) {
@@ -1912,15 +1926,15 @@ function createOrder(e) {
       break;
     }
   }
-  
+
   // 日程ごとにループして受注登録
   for (let dateIndex = 1; dateIndex <= dateCount; dateIndex++) {
     const shippingDate = e.parameter['shippingDate' + dateIndex];
     const deliveryDate = e.parameter['deliveryDate' + dateIndex];
-    
+
     // 納品ID（日程ごとに別ID）
     const deliveryId = generateId();
-    
+
     // 受注テーブルに複数レコードを追加する
     const records = [];
     const createRecords = [];
@@ -1978,6 +1992,8 @@ function createOrder(e) {
         record['納品書備考欄'] = e.parameter.deliveryMemo;
         record['メモ'] = e.parameter.memo;
         record['出荷済'] = "";  // デフォルトは未出荷
+        record['ステータス'] = ""; // ステータス列を追加
+        record['追跡番号'] = ""; // 追跡番号列を追加
         record['商品分類'] = bunruiVal;
         record['商品名'] = productVal;
         record['受注数'] = count;
@@ -2027,14 +2043,16 @@ function createOrder(e) {
           record['送り状備考欄'],
           record['納品書備考欄'],
           record['メモ'],
+          record['小計'],
           record['出荷済'],
-          record['小計']
+          record['ステータス'],
+          record['追跡番号']
         ];
         records.push(addRecord);
         createRecords.push(record);
       }
     }
-    
+
     // 日程ごとに登録処理を実行
     addRecords('受注', records);
 
@@ -2970,7 +2988,7 @@ function normalizeString(str) {
 
   return String(str)
     .replace(/\s+/g, '')  // 全ての空白を除去
-    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
       // 全角英数字を半角に変換
       return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
     })

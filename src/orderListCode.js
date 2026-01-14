@@ -24,7 +24,8 @@ function getOrderListData(params) {
   const priceCol = getColIndex('販売価格');
   const bunruiCol = getColIndex('商品分類');
   const shippedCol = getColIndex('出荷済');
-  const statusCol = getColIndex('ステータス');  // ステータス列を追加
+  const trackingCol = getColIndex('追跡番号');
+  const statusCol = getColIndex('ステータス');
 
   // パラメータ
   const startDate = params.dateFrom ? new Date(params.dateFrom) : null;
@@ -82,6 +83,7 @@ function getOrderListData(params) {
         customerName: customerName,
         destinationName: shippingToName,   // HTML側の名前に合わせる
         shipped: row[shippedCol] || '',  // 出荷済フラグ
+        trackingNumber: trackingCol >= 0 ? (row[trackingCol] || '') : '', // 追跡番号
         status: statusCol >= 0 ? (row[statusCol] || '') : '',  // ステータス
         items: [],  // 商品ごとの配列
         totalAmount: 0
@@ -152,6 +154,7 @@ function getOrderListData(params) {
       customerName: order.customerName,
       destinationName: order.destinationName,
       shipped: order.shipped,  // 出荷済フラグ
+      trackingNumber: order.trackingNumber, // 追跡番号
       status: order.status,    // ステータス
       items: order.items,  // 商品配列をそのまま渡す
       totalAmount: order.totalAmount

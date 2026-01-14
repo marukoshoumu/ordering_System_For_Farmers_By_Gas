@@ -72,15 +72,15 @@
  */
 function getOrderByOrderId(orderId) {
   if (!orderId) return null;
-  
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('受注');
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  
+
   // ヘッダーからインデックスを取得
   const getColIndex = (name) => headers.indexOf(name);
-  
+
   // 受注IDが一致する行を全て取得
   const matchingRows = [];
   for (let i = 1; i < data.length; i++) {
@@ -88,22 +88,22 @@ function getOrderByOrderId(orderId) {
       matchingRows.push(data[i]);
     }
   }
-  
+
   if (matchingRows.length === 0) return null;
-  
+
   const firstRow = matchingRows[0];
-  
+
   // 納品方法を先に取得（ヤマト/佐川の判定に使用）
   const deliveryMethod = firstRow[getColIndex('納品方法')] || '';
-  
+
   // マスタデータを取得
   const master = getMasterDataCached();
-  
+
   // ============================================
   // 納品方法でフィルタリングした逆引きマップを作成
   // 表示名（種別）→ 種別値 の変換
   // ============================================
-  
+
   // 送り状種別の逆引き（種別 → 種別値）
   const invoiceTypeMap = {};
   master.invoiceTypes
@@ -111,7 +111,7 @@ function getOrderByOrderId(orderId) {
     .forEach(item => {
       invoiceTypeMap[item['種別']] = item['種別値'];
     });
-  
+
   // クール区分の逆引き（種別 → 種別値）
   const coolClsMap = {};
   master.coolClss
@@ -119,7 +119,7 @@ function getOrderByOrderId(orderId) {
     .forEach(item => {
       coolClsMap[item['種別']] = item['種別値'];
     });
-  
+
   // 荷扱いの逆引き（種別 → 種別値）
   const cargoMap = {};
   master.cargos
@@ -127,7 +127,7 @@ function getOrderByOrderId(orderId) {
     .forEach(item => {
       cargoMap[item['種別']] = item['種別値'];
     });
-  
+
   // 配達時間帯の逆引き（時間指定 → 時間指定値）
   const deliveryTimeMap = {};
   master.deliveryTimes
@@ -135,46 +135,47 @@ function getOrderByOrderId(orderId) {
     .forEach(item => {
       deliveryTimeMap[item['時間指定']] = item['時間指定値'];
     });
-  
+
   // ============================================
   // 受注データを取得
   // ============================================
-  
+
   const result = {
     orderId: orderId,
     orderDate: firstRow[getColIndex('受注日')],
-    
+
     // 発送先情報
     shippingToName: firstRow[getColIndex('発送先名')] || '',
     shippingToZipcode: firstRow[getColIndex('発送先郵便番号')] || '',
     shippingToAddress: firstRow[getColIndex('発送先住所')] || '',
     shippingToTel: firstRow[getColIndex('発送先電話番号')] || '',
-    
+
     // 顧客情報
     customerName: firstRow[getColIndex('顧客名')] || '',
     customerZipcode: firstRow[getColIndex('顧客郵便番号')] || '',
     customerAddress: firstRow[getColIndex('顧客住所')] || '',
     customerTel: firstRow[getColIndex('顧客電話番号')] || '',
-    
+
     // 発送元情報
     shippingFromName: firstRow[getColIndex('発送元名')] || '',
     shippingFromZipcode: firstRow[getColIndex('発送元郵便番号')] || '',
     shippingFromAddress: firstRow[getColIndex('発送元住所')] || '',
     shippingFromTel: firstRow[getColIndex('発送元電話番号')] || '',
-    
+
     // 日程情報
     shippingDate: formatDateForInput(firstRow[getColIndex('発送日')]),
     deliveryDate: formatDateForInput(firstRow[getColIndex('納品日')]),
-    
+
     // 受付情報
     receiptWay: firstRow[getColIndex('受付方法')] || '',
     recipient: firstRow[getColIndex('受付者')] || '',
     deliveryMethod: deliveryMethod,
-    
+    trackingNumber: firstRow[getColIndex('追跡番号')] || '',
+
     // 配達時間帯（表示名から時間指定値に変換）
     // 受注シートには「午前中」等の表示名が保存されている → 「0812:午前中」形式に変換
     deliveryTime: deliveryTimeMap[firstRow[getColIndex('配達時間帯')]] || '',
-    
+
     // チェックリスト
     checklist: {
       deliverySlip: firstRow[getColIndex('納品書')] === '○',
@@ -184,7 +185,7 @@ function getOrderByOrderId(orderId) {
       recipe: firstRow[getColIndex('レシピ')] === '○'
     },
     otherAttach: firstRow[getColIndex('その他添付')] || '',
-    
+
     // 発送情報（表示名から種別値に変換）
     // 受注シートには「発払い」等の表示名が保存されている → 「0:発払い」形式に変換
     sendProduct: firstRow[getColIndex('品名')] || '',
@@ -192,28 +193,28 @@ function getOrderByOrderId(orderId) {
     coolCls: coolClsMap[firstRow[getColIndex('クール区分')]] || '',
     cargo1: cargoMap[firstRow[getColIndex('荷扱い１')]] || '',
     cargo2: cargoMap[firstRow[getColIndex('荷扱い２')]] || '',
-    
+
     // 代引・発行枚数
     cashOnDelivery: firstRow[getColIndex('代引総額')] || '',
     cashOnDeliTax: firstRow[getColIndex('代引内税')] || '',
     copiePrint: firstRow[getColIndex('発行枚数')] || '',
-    
+
     // 備考
     csvmemo: firstRow[getColIndex('送り状備考欄')] || '',
     deliveryMemo: firstRow[getColIndex('納品書備考欄')] || '',
     memo: firstRow[getColIndex('メモ')] || '',
-    
+
     // 商品情報（複数行）
     items: []
   };
-  
+
   // 商品情報を取得
   matchingRows.forEach(row => {
     const bunrui = row[getColIndex('商品分類')];
     const product = row[getColIndex('商品名')];
     const quantity = row[getColIndex('受注数')];
     const price = row[getColIndex('販売価格')];
-    
+
     if (product) {
       result.items.push({
         bunrui: bunrui || '',
@@ -223,7 +224,7 @@ function getOrderByOrderId(orderId) {
       });
     }
   });
-  
+
   return result;
 }
 
@@ -260,7 +261,7 @@ function getOrderByOrderId(orderId) {
  */
 function formatDateForInput(dateValue) {
   if (!dateValue) return '';
-  
+
   try {
     let date;
     if (dateValue instanceof Date) {
@@ -271,9 +272,9 @@ function formatDateForInput(dateValue) {
     } else {
       return '';
     }
-    
+
     if (isNaN(date.getTime())) return '';
-    
+
     return Utilities.formatDate(date, 'JST', 'yyyy-MM-dd');
   } catch (e) {
     Logger.log('日付変換エラー: ' + e.message);

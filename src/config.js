@@ -38,11 +38,11 @@ function getConfigAll() {
   if (_configCache !== null) {
     return _configCache;
   }
-  
+
   // 2. CacheServiceをチェック（複数リクエスト間で共有）
   const cache = CacheService.getScriptCache();
   const cachedData = cache.get(CONFIG_CACHE_KEY);
-  
+
   if (cachedData) {
     try {
       _configCache = JSON.parse(cachedData);
@@ -51,17 +51,17 @@ function getConfigAll() {
       // パースエラーの場合は再取得
     }
   }
-  
+
   // 3. PropertiesServiceから取得してキャッシュ
   _configCache = PropertiesService.getScriptProperties().getProperties();
-  
+
   // CacheServiceに保存（6時間有効）
   try {
     cache.put(CONFIG_CACHE_KEY, JSON.stringify(_configCache), CONFIG_CACHE_DURATION);
   } catch (e) {
     // キャッシュ保存エラーは無視（動作には影響なし）
   }
-  
+
   return _configCache;
 }
 
@@ -137,6 +137,10 @@ function getGeminiApiKey() {
   return getConfig('GEMINI_API_KEY');
 }
 
+function getVisionApiKey() {
+  return getConfig('VISION_API_KEY') || getConfig('GEMINI_API_KEY');
+}
+
 // === 表示用会社名 ===
 function getCompanyDisplayName() {
   return getConfig('COMPANY_DISPLAY_NAME') || '受注管理システム';
@@ -154,20 +158,20 @@ const CONFIG = {
     ADDRESS: getConfig('COMPANY_ADDRESS') || '○○県○○市○○町0-0-0',
     TEL: getConfig('COMPANY_TEL') || '0000-00-0000'
   },
-  
+
   // 外部連携先
   TABECHOKU: {
     COMPANY: getConfig('TABECHOKU_COMPANY') || '',
     ZIPCODE: getConfig('TABECHOKU_ZIPCODE') || '000-0000',
     ADDRESS: getConfig('TABECHOKU_ADDRESS') || ''
   },
-  
+
   POCKEMARU: {
     COMPANY: getConfig('POCKEMARU_COMPANY') || '',
     ZIPCODE: getConfig('POCKEMARU_ZIPCODE') || '000-0000',
     ADDRESS: getConfig('POCKEMARU_ADDRESS') || ''
   },
-  
+
   FURUSATO: {
     COMPANY: getConfig('FURUSATO_COMPANY') || '',
     ZIPCODE: getConfig('FURUSATO_ZIPCODE') || '000-0000',
