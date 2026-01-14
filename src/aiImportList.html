@@ -12,6 +12,7 @@
 
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <base target="_top">
@@ -65,15 +66,28 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
     }
 
     /* サマリーセクション */
     .summary-section {
-      padding: 16px 20px;
+      padding: 20px;
       background: #fff;
       border-bottom: 1px solid #e9ecef;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .summary-cards {
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
@@ -83,33 +97,53 @@
       flex: 1;
       min-width: 120px;
       padding: var(--space-3) var(--space-4);
-      border-radius: var(--radius);
+      border-radius: var(--radius-md);
       text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .summary-card:hover {
+      transform: translateY(-2px);
     }
 
     .summary-card.pending {
-      background: linear-gradient(135deg, var(--status-warning-light) 0%, #ffeaa7 100%);
-      border: 1px solid var(--status-warning);
-    }
-
-    .summary-card.processed {
-      background: linear-gradient(135deg, var(--status-success-light) 0%, #c3e6cb 100%);
-      border: 1px solid var(--status-success);
+      background: linear-gradient(135deg, #fff9db 0%, #fff3cd 100%);
+      border: 1px solid #ffe066;
     }
 
     .summary-card.rejected {
-      background: linear-gradient(135deg, var(--status-error-light) 0%, #f5c6cb 100%);
-      border: 1px solid var(--status-error);
+      background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%);
+      border: 1px solid #ffc9c9;
     }
 
     .summary-card .count {
-      font-size: 1.5rem;
-      font-weight: 700;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--gray-800);
     }
 
     .summary-card .label {
       font-size: 0.75rem;
-      color: #666;
+      color: var(--gray-600);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* 処理進捗バー */
+    .overall-progress-container {
+      background: var(--gray-100);
+      border-radius: var(--radius-full);
+      height: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .overall-progress-bar {
+      height: 100%;
+      background: var(--gradient-purple);
+      width: 0%;
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     /* フィルターセクション */
@@ -123,29 +157,49 @@
       flex-wrap: wrap;
     }
 
-    /* テーブルセクション */
-    .table-section {
-      padding: 16px 20px;
-      background: #fff;
-    }
-
     /* カード形式の一覧 - .card-unifiedを使用 */
     .card-unified {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       position: relative;
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      overflow: hidden;
+      animation: cardIn 0.5s ease-out forwards;
+      opacity: 0;
+    }
+
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card-unified:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--brand-purple);
     }
 
     .card-unified.pending {
-      border-left: 4px solid var(--status-warning);
+      border-left: 6px solid var(--brand-purple);
     }
 
     .card-unified.processed {
-      border-left: 4px solid var(--status-success);
+      border-left: 6px solid var(--status-success);
       opacity: 0.7;
     }
 
     .card-unified.rejected {
-      border-left: 4px solid var(--status-error);
+      border-left: 6px solid var(--status-error);
       opacity: 0.5;
     }
 
@@ -153,48 +207,83 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 20px 12px;
+      background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
+    }
+
+    /* 信頼度/完遂度プログレス */
+    .completeness-container {
+      margin: 0 20px 16px;
+    }
+
+    .completeness-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gray-600);
+    }
+
+    .completeness-bar-bg {
+      height: 6px;
+      background: var(--gray-100);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .completeness-bar-fill {
+      height: 100%;
+      background: var(--brand-purple);
+      width: 0%;
+      transition: width 0.8s ease-out;
     }
 
     .import-card-id {
-      font-size: 0.75rem;
-      color: #666;
-      font-family: monospace;
+      font-size: 0.7rem;
+      color: #999;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
     }
 
     .import-card-time {
-      font-size: 0.8rem;
-      color: #888;
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      font-weight: 500;
     }
 
     .import-card-status {
-      padding: var(--space-1) 10px;
+      padding: 4px 12px;
       border-radius: var(--radius-full);
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
 
     .status-pending {
       background: var(--status-warning-light);
       color: #856404;
+      border: 1px solid #ffeeba;
     }
 
     .status-processed {
       background: var(--status-success-light);
       color: #155724;
+      border: 1px solid #c3e6cb;
     }
 
     .status-rejected {
       background: var(--status-error-light);
       color: #721c24;
+      border: 1px solid #f5c6cb;
     }
 
     .import-card-body {
+      padding: 0 20px 20px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 16px;
     }
 
     @media (max-width: 576px) {
@@ -206,51 +295,65 @@
     .import-card-info {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
+      gap: 12px;
+      padding: 12px;
+      background: var(--gray-50);
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .card-unified:hover .import-card-info {
+      background: #fafbff;
+      border-color: #eef2ff;
     }
 
     .import-card-icon {
-      color: var(--primary-color);
-      flex-shrink: 0;
-      width: 20px;
+      color: var(--brand-purple);
+      font-size: 1.1rem;
+      margin-top: 2px;
     }
 
     .import-card-label {
       font-size: 0.7rem;
-      color: #999;
+      color: var(--gray-500);
+      font-weight: 600;
+      text-transform: uppercase;
       margin-bottom: 2px;
     }
 
     .import-card-value {
-      font-size: 0.875rem;
-      color: #333;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gray-800);
       word-break: break-word;
     }
 
     /* 商品リスト */
     .import-card-items {
       grid-column: 1 / -1;
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 10px 12px;
-      margin-top: 8px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
     }
 
     .import-card-items-header {
-      font-size: 0.75rem;
-      color: #666;
-      margin-bottom: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--gray-700);
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
     }
 
     .import-card-item {
       display: flex;
       justify-content: space-between;
-      font-size: 0.85rem;
-      padding: 4px 0;
-      border-bottom: 1px dashed #e0e0e0;
+      font-size: 0.9rem;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.03);
     }
 
     .import-card-item:last-child {
@@ -258,43 +361,34 @@
     }
 
     .import-card-item-name {
-      color: #333;
+      color: var(--gray-800);
+      font-weight: 500;
     }
 
     .import-card-item-qty {
-      color: #666;
-      font-weight: 500;
+      color: var(--brand-purple);
+      font-weight: 700;
+      background: white;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      box-shadow: var(--shadow-sm);
     }
 
     /* 信頼度バッジ */
     .confidence-badge {
-      padding: 2px var(--space-2);
-      border-radius: var(--radius-md);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
       font-size: 0.7rem;
-      font-weight: 500;
-    }
-
-    .confidence-high {
-      background: var(--status-success-light);
-      color: #155724;
-    }
-
-    .confidence-medium {
-      background: var(--status-warning-light);
-      color: #856404;
-    }
-
-    .confidence-low {
-      background: var(--status-error-light);
-      color: #721c24;
+      font-weight: 700;
     }
 
     /* アクションボタン */
     .import-card-actions {
       display: flex;
-      gap: 10px;
-      margin-top: 16px;
-      padding-top: 12px;
+      gap: 12px;
+      padding: 16px 20px;
+      background: #fafafa;
       border-top: 1px solid #f0f0f0;
     }
 
@@ -303,32 +397,33 @@
       background: var(--gradient-purple);
       border: none;
       color: white;
-      padding: 10px var(--space-4);
-      border-radius: var(--radius);
-      font-weight: 600;
+      padding: 12px var(--space-4);
+      border-radius: var(--radius-md);
+      font-weight: 700;
       transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(122, 109, 181, 0.3);
     }
 
     .btn-process:hover {
       transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 6px 16px rgba(122, 109, 181, 0.4);
       color: white;
     }
 
     .btn-reject {
       flex: 1;
       background: white;
-      border: 2px solid var(--status-error);
-      color: var(--status-error);
-      padding: 10px var(--space-4);
-      border-radius: var(--radius);
-      font-weight: 500;
+      border: 2px solid #ffc9c9;
+      color: #fa5252;
+      padding: 12px var(--space-4);
+      border-radius: var(--radius-md);
+      font-weight: 700;
       transition: all 0.2s;
     }
 
     .btn-reject:hover {
-      background: var(--status-error);
-      color: white;
+      background: #fff5f5;
+      border-color: #fa5252;
     }
 
     /* 空状態 */
@@ -418,424 +513,500 @@
         flex-direction: column;
       }
 
-      .btn-process, .btn-reject {
+      .btn-process,
+      .btn-reject {
         flex: none;
       }
     }
   </style>
 </head>
+
 <body>
 
-<div class="main-container">
-  <div class="card">
-    <!-- ヘッダー -->
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center gap-3">
-        <h1><i class="bi bi-robot me-2"></i>AI取込一覧</h1>
-        <span class="pending-badge" id="pendingBadge">未処理: 0件</span>
-      </div>
-      <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-        <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-          <i class="bi bi-house"></i> ホーム
-        </button>
-      </form>
-    </div>
-
-    <!-- サマリー -->
-    <div class="summary-section">
-      <div class="summary-card pending">
-        <div class="count" id="pendingCount">0</div>
-        <div class="label">未処理</div>
-      </div>
-      <div class="summary-card rejected">
-        <div class="count" id="rejectedCount">0</div>
-        <div class="label">却下</div>
-      </div>
-    </div>
-
-    <!-- フィルター -->
-    <div class="filter-section">
-      <span class="text-muted" style="font-size: 0.875rem;">表示：</span>
-      <div class="btn-group btn-group-sm" role="group">
-        <input type="radio" class="btn-check" name="statusFilter" id="filterPending" value="pending" checked>
-        <label class="btn btn-outline-warning" for="filterPending">🟡 未処理のみ</label>
-        <input type="radio" class="btn-check" name="statusFilter" id="filterAll" value="all">
-        <label class="btn btn-outline-secondary" for="filterAll">すべて</label>
-      </div>
-      <button type="button" class="btn btn-outline-primary btn-sm ms-auto" onclick="loadImportData()">
-        <i class="bi bi-arrow-clockwise me-1"></i>更新
-      </button>
-    </div>
-
-    <!-- 一覧 -->
-    <div class="table-section position-relative">
-
-      <div id="importListContainer">
-        <!-- 動的に生成 -->
-      </div>
-
-      <div class="empty-state" id="emptyState" style="display: none;">
-        <i class="bi bi-inbox-fill"></i>
-        <h3>未処理の取込データはありません</h3>
-        <p>FAX/メールが届くとここに表示されます</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 却下確認モーダル -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header reject-header">
-        <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>却下確認</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>この取込データを却下しますか？</p>
-        <p class="text-muted mb-0" style="font-size: 0.875rem;">
-          <strong>顧客：</strong><span id="rejectCustomerName"></span><br>
-          <strong>商品：</strong><span id="rejectItemsSummary"></span>
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-        <button type="button" class="btn btn-danger" id="confirmRejectBtn">却下する</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 詳細モーダル -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header" style="background: var(--gradient-purple); color: white;">
-        <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>取込詳細</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="detailModalBody">
-        <!-- 動的に生成 -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
-        <button type="button" class="btn btn-danger" id="detailRejectBtn">却下</button>
-        <button type="button" class="btn btn-process" id="detailProcessBtn">
-          <i class="bi bi-arrow-right-circle me-1"></i>受注処理へ
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 受注画面遷移用フォーム -->
-<form id="processForm" method="POST" action="<?= deployURL ?>" style="display: none;">
-  <input type="hidden" name="shipping" value="true">
-  <input type="hidden" name="tempOrderId" id="tempOrderIdInput" value="">
-</form>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-  // グローバル変数
-  let importData = [];
-  let currentRejectId = null;
-  let currentDetailData = null;
-
-  // 初期化
-  document.addEventListener('DOMContentLoaded', function() {
-    setupEventListeners();
-    loadImportData();
-  });
-
-  // イベントリスナー設定
-  function setupEventListeners() {
-    // フィルター変更
-    document.querySelectorAll('input[name="statusFilter"]').forEach(radio => {
-      radio.addEventListener('change', renderImportList);
-    });
-
-    // 却下確認ボタン
-    document.getElementById('confirmRejectBtn').addEventListener('click', function() {
-      if (currentRejectId) {
-        rejectImport(currentRejectId);
-      }
-    });
-  }
-
-  // データ読み込み
-  function loadImportData() {
-    showLoading('データ読み込み中...');
-    document.getElementById('emptyState').style.display = 'none';
-
-    google.script.run
-      .withSuccessHandler(function(result) {
-        hideLoading();
-        try {
-          importData = JSON.parse(result) || [];
-          updateSummary();
-          renderImportList();
-        } catch (e) {
-          console.error('パースエラー:', e);
-          importData = [];
-          renderImportList();
-        }
-      })
-      .withFailureHandler(function(error) {
-        hideLoading();
-        showErrorToast('データ取得エラー: ' + error.message);
-      })
-      .getAIImportList();
-  }
-
-  // サマリー更新
-  function updateSummary() {
-    const pending = importData.filter(d => d.status === '未処理').length;
-    const rejected = importData.filter(d => d.status === '却下').length;
-
-    document.getElementById('pendingCount').textContent = pending;
-    document.getElementById('rejectedCount').textContent = rejected;
-
-    const badge = document.getElementById('pendingBadge');
-    badge.textContent = '未処理: ' + pending + '件';
-    badge.style.display = pending > 0 ? 'inline-block' : 'none';
-  }
-
-  // 一覧描画
-  function renderImportList() {
-    const container = document.getElementById('importListContainer');
-    const filter = document.querySelector('input[name="statusFilter"]:checked').value;
-    
-    let filteredData = importData;
-    if (filter === 'pending') {
-      filteredData = importData.filter(d => d.status === '未処理');
-    }
-
-    if (filteredData.length === 0) {
-      container.innerHTML = '';
-      document.getElementById('emptyState').style.display = 'block';
-      return;
-    }
-
-    document.getElementById('emptyState').style.display = 'none';
-
-    container.innerHTML = filteredData.map(item => {
-      const statusClass = item.status === '未処理' ? 'pending' : 
-                          item.status === '処理済み' ? 'processed' : 'rejected';
-      const statusBadgeClass = item.status === '未処理' ? 'status-pending' : 
-                               item.status === '処理済み' ? 'status-processed' : 'status-rejected';
-      
-      const confidenceClass = item.confidence === '高' ? 'confidence-high' :
-                              item.confidence === '中' ? 'confidence-medium' : 'confidence-low';
-      const confidenceText = item.confidence === '高' ? '✅ 高' :
-                             item.confidence === '中' ? '⚠️ 中' : '❓ 低';
-
-      // 商品リスト（最大3件表示）
-      const items = item.items || [];
-      const displayItems = items.slice(0, 3);
-      const moreCount = items.length - 3;
-
-      return `
-        <div class="card-unified ${statusClass}" onclick="showDetail('${escapeHtml(item.tempOrderId)}')">
-          <div class="card-unified-header">
-            <div>
-              <div class="import-card-id">${escapeHtml(item.tempOrderId)}</div>
-              <div class="import-card-time">
-                <i class="bi bi-clock me-1"></i>${formatDateTime(item.createdAt)}
-              </div>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="confidence-badge ${confidenceClass}">${confidenceText}</span>
-              <span class="import-card-status ${statusBadgeClass}">${item.status}</span>
-            </div>
-          </div>
-
-          <div class="import-card-body">
-            <div class="import-card-info">
-              <i class="bi bi-person import-card-icon"></i>
-              <div>
-                <div class="import-card-label">顧客</div>
-                <div class="import-card-value">${escapeHtml(item.customerName) || '不明'}</div>
-              </div>
-            </div>
-            <div class="import-card-info">
-              <i class="bi bi-geo-alt import-card-icon"></i>
-              <div>
-                <div class="import-card-label">発送先</div>
-                <div class="import-card-value">${escapeHtml(item.shippingTo) || '同上'}</div>
-              </div>
-            </div>
-
-            <div class="import-card-items">
-              <div class="import-card-items-header">
-                <i class="bi bi-box-seam"></i>商品（${items.length}点）
-              </div>
-              ${displayItems.map(i => `
-                <div class="import-card-item">
-                  <span class="import-card-item-name">${escapeHtml(i.productName || i.originalText)}</span>
-                  <span class="import-card-item-qty">${i.quantity || ''}${i.unit || ''}</span>
-                </div>
-              `).join('')}
-              ${moreCount > 0 ? `<div class="import-card-item text-muted">...他${moreCount}点</div>` : ''}
-            </div>
-          </div>
-
-          ${item.status === '未処理' ? `
-            <div class="import-card-actions" onclick="event.stopPropagation();">
-              <button type="button" class="btn btn-process" onclick="processImport('${escapeHtml(item.tempOrderId)}')">
-                <i class="bi bi-arrow-right-circle me-1"></i>受注処理へ
-              </button>
-              <button type="button" class="btn btn-reject" onclick="showRejectModal('${escapeHtml(item.tempOrderId)}', '${escapeHtml(item.customerName)}', '${escapeHtml(getItemsSummary(items))}')">
-                <i class="bi bi-x-circle me-1"></i>却下
-              </button>
-            </div>
-          ` : ''}
-          ${item.status === '却下' ? `
-            <div class="import-card-actions" onclick="event.stopPropagation();">
-              <button type="button" class="btn btn-secondary" onclick="reactivateImport('${escapeHtml(item.tempOrderId)}')">
-                <i class="bi bi-arrow-counterclockwise me-1"></i>再登録
-              </button>
-              <button type="button" class="btn btn-danger" onclick="deleteImport('${escapeHtml(item.tempOrderId)}')">
-                <i class="bi bi-trash me-1"></i>削除
-              </button>
-            </div>
-          ` : ''}
+  <div class="main-container">
+    <div class="card overflow-hidden">
+      <!-- ヘッダー -->
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <h1><i class="bi bi-robot me-2"></i>AI取込一覧</h1>
+          <span class="pending-badge" id="pendingBadge" style="display: none;">未処理: 0件</span>
         </div>
-      `;
-    }).join('');
-  }
+        <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+          <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
+            <i class="bi bi-house"></i> ホーム
+          </button>
+        </form>
+      </div>
 
-  // 日時フォーマット
-  function formatDateTime(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '-';
-    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + 
-           String(d.getHours()).padStart(2, '0') + ':' + 
-           String(d.getMinutes()).padStart(2, '0');
-  }
+      <!-- サマリー -->
+      <div class="summary-section">
+        <div class="summary-cards">
+          <div class="summary-card pending">
+            <div class="count" id="pendingCount">0</div>
+            <div class="label">未処理</div>
+          </div>
+          <div class="summary-card rejected">
+            <div class="count" id="rejectedCount">0</div>
+            <div class="label">却下</div>
+          </div>
+        </div>
+        <div class="ps-1">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-bold">全体処理進捗</span>
+            <span class="text-muted small fw-bold" id="overallProgressText">0%</span>
+          </div>
+          <div class="overall-progress-container">
+            <div class="overall-progress-bar" id="overallProgressBar"></div>
+          </div>
+        </div>
+      </div>
 
-  // 商品サマリー取得
-  function getItemsSummary(items) {
-    if (!items || items.length === 0) return 'なし';
-    const first = items[0].productName || items[0].originalText || '';
-    if (items.length === 1) return first;
-    return first + ' 他' + (items.length - 1) + '点';
-  }
+      <!-- フィルター -->
+      <div class="filter-section">
+        <span class="text-muted" style="font-size: 0.875rem;">表示：</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="statusFilter" id="filterPending" value="pending" checked>
+          <label class="btn btn-outline-warning" for="filterPending">🟡 未処理のみ</label>
+          <input type="radio" class="btn-check" name="statusFilter" id="filterAll" value="all">
+          <label class="btn btn-outline-secondary" for="filterAll">すべて</label>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm ms-auto" onclick="loadImportData()">
+          <i class="bi bi-arrow-clockwise me-1"></i>更新
+        </button>
+      </div>
 
-  // HTMLエスケープ
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-  }
+      <!-- 一覧 -->
+      <div class="table-section position-relative">
 
-  // 受注処理へ遷移
-  function processImport(tempOrderId) {
-    document.getElementById('tempOrderIdInput').value = tempOrderId;
-    document.getElementById('processForm').submit();
-  }
+        <div id="importListContainer">
+          <!-- 動的に生成 -->
+        </div>
 
-  // 却下モーダル表示
-  function showRejectModal(tempOrderId, customerName, itemsSummary) {
-    currentRejectId = tempOrderId;
-    document.getElementById('rejectCustomerName').textContent = customerName || '不明';
-    document.getElementById('rejectItemsSummary').textContent = itemsSummary || 'なし';
-    new bootstrap.Modal(document.getElementById('rejectModal')).show();
-  }
 
-  // 却下処理
-  function rejectImport(tempOrderId) {
-    bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <i class="bi bi-inbox-fill"></i>
+          <h3>未処理の取込データはありません</h3>
+          <p>FAX/メールが届くとここに表示されます</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    google.script.run
-      .withSuccessHandler(function(result) {
-        if (result.success) {
-          // ローカルデータ更新
-          const item = importData.find(d => d.tempOrderId === tempOrderId);
-          if (item) {
-            item.status = '却下';
-          }
-          updateSummary();
-          renderImportList();
-        } else {
-          showErrorToast('却下に失敗しました: ' + (result.error || ''));
+  <!-- 却下確認モーダル -->
+  <div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header reject-header">
+          <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>却下確認</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>この取込データを却下しますか？</p>
+          <p class="text-muted mb-0" style="font-size: 0.875rem;">
+            <strong>顧客：</strong><span id="rejectCustomerName"></span><br>
+            <strong>商品：</strong><span id="rejectItemsSummary"></span>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-danger" id="confirmRejectBtn">却下する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header" style="background: var(--gradient-purple); color: white;">
+          <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>取込詳細</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+          <!-- 動的に生成 -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+          <button type="button" class="btn btn-danger" id="detailRejectBtn">却下</button>
+          <button type="button" class="btn btn-process" id="detailProcessBtn">
+            <i class="bi bi-arrow-right-circle me-1"></i>受注処理へ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 受注画面遷移用フォーム -->
+  <form id="processForm" method="POST" action="<?= deployURL ?>" style="display: none;">
+    <input type="hidden" name="shipping" value="true">
+    <input type="hidden" name="tempOrderId" id="tempOrderIdInput" value="">
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // グローバル変数
+    let importData = [];
+    let currentRejectId = null;
+    let currentDetailData = null;
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function () {
+      setupEventListeners();
+      loadImportData();
+    });
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // フィルター変更
+      document.querySelectorAll('input[name="statusFilter"]').forEach(radio => {
+        radio.addEventListener('change', renderImportList);
+      });
+
+      // 却下確認ボタン
+      document.getElementById('confirmRejectBtn').addEventListener('click', function () {
+        if (currentRejectId) {
+          rejectImport(currentRejectId);
         }
-      })
-      .withFailureHandler(function(error) {
-        showErrorToast('エラー: ' + error.message);
-      })
-      .rejectTempOrder(tempOrderId);
-  }
-
-  // 仮受注データを完全削除
-  function deleteImport(tempOrderId) {
-    if (!confirm('この仮受注データを完全に削除しますか？\n削除後は復元できません。')) {
-      return;
+      });
     }
 
-    google.script.run
-      .withSuccessHandler(function(result) {
-        if (result.success) {
-          // ローカルデータから削除
-          const index = importData.findIndex(d => d.tempOrderId === tempOrderId);
-          if (index !== -1) {
-            importData.splice(index, 1);
-          }
-          updateSummary();
-          renderImportList();
-          showSuccessToast('削除しました');
-        } else {
-          showErrorToast('削除に失敗しました: ' + (result.error || ''));
-        }
-      })
-      .withFailureHandler(function(error) {
-        showErrorToast('エラー: ' + error.message);
-      })
-      .deleteTempOrderData(tempOrderId);
-  }
+    // データ読み込み
+    function loadImportData() {
+      showLoading('データ読み込み中...');
+      document.getElementById('emptyState').style.display = 'none';
 
-  // 却下データを再登録（ステータスを「未処理」に戻す）
-  function reactivateImport(tempOrderId) {
-    if (!confirm('この仮受注を再登録しますか？\nステータスが「未処理」に戻ります。')) {
-      return;
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          try {
+            importData = JSON.parse(result) || [];
+            updateSummary();
+            renderImportList();
+          } catch (e) {
+            console.error('パースエラー:', e);
+            importData = [];
+            renderImportList();
+          }
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          showErrorToast('データ取得エラー: ' + error.message);
+        })
+        .getAIImportList();
     }
 
-    google.script.run
-      .withSuccessHandler(function(result) {
-        if (result.success) {
-          // ローカルデータ更新
-          const item = importData.find(d => d.tempOrderId === tempOrderId);
-          if (item) {
-            item.status = '未処理';
+    // サマリー更新
+    function updateSummary() {
+      const total = importData.length;
+      const pending = importData.filter(d => d.status === '未処理').length;
+      const rejected = importData.filter(d => d.status === '却下').length;
+      const processed = importData.filter(d => d.status === '処理済み').length;
+
+      document.getElementById('pendingCount').textContent = pending;
+      document.getElementById('rejectedCount').textContent = rejected;
+
+      const badge = document.getElementById('pendingBadge');
+      badge.textContent = '未処理: ' + pending + '件';
+      badge.style.display = pending > 0 ? 'inline-block' : 'none';
+
+      // 全体進捗バー更新
+      const progress = total > 0 ? Math.round((processed / total) * 100) : 0;
+      const progBar = document.getElementById('overallProgressBar');
+      const progText = document.getElementById('overallProgressText');
+
+      if (progBar) progBar.style.width = progress + '%';
+      if (progText) progText.textContent = progress + '%';
+    }
+
+    // 完遂度スコア計算
+    function calculateCompleteness(item) {
+      let score = 0;
+
+      // 1. 顧客名 (30%)
+      if (item.customerName && item.customerName !== '不明') score += 30;
+
+      // 2. 発送先 (20%)
+      if (item.shippingTo) score += 20;
+
+      // 3. 商品マッピング (50%)
+      const items = item.items || [];
+      if (items.length > 0) {
+        const mappedCount = items.filter(i => i.productName && i.productName !== i.originalText).length;
+        score += Math.round((mappedCount / items.length) * 50);
+      } else {
+        score += 50;
+      }
+
+      return Math.min(score, 100);
+    }
+
+    // 一覧描画
+    function renderImportList() {
+      const container = document.getElementById('importListContainer');
+      const filterInput = document.querySelector('input[name="statusFilter"]:checked');
+      const filter = filterInput ? filterInput.value : 'pending';
+
+      let filteredData = importData;
+      if (filter === 'pending') {
+        filteredData = importData.filter(d => d.status === '未処理');
+      }
+
+      if (filteredData.length === 0) {
+        container.innerHTML = '';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('emptyState').style.display = 'none';
+
+      container.innerHTML = filteredData.map((item, index) => {
+        const statusClass = item.status === '未処理' ? 'pending' :
+          item.status === '処理済み' ? 'processed' : 'rejected';
+        const statusBadgeClass = item.status === '未処理' ? 'status-pending' :
+          item.status === '処理済み' ? 'status-processed' : 'status-rejected';
+
+        const confidenceClass = item.confidence === '高' ? 'confidence-high' :
+          item.confidence === '中' ? 'confidence-medium' : 'confidence-low';
+        const confidenceText = item.confidence === '高' ? '✅ 高' :
+          item.confidence === '中' ? '⚠️ 中' : '❓ 低';
+
+        const completeness = calculateCompleteness(item);
+        const completenessColor = completeness >= 80 ? 'var(--status-success)' :
+          completeness >= 50 ? 'var(--brand-purple)' : 'var(--status-warning)';
+
+        // 商品リスト（最大3件表示）
+        const items = item.items || [];
+        const displayItems = items.slice(0, 3);
+        const moreCount = items.length - 3;
+
+        // カードの表示遅延（アニメーション用）
+        const delay = index * 0.1;
+
+        return `
+          <div class="card-unified ${statusClass}" style="animation-delay: ${delay}s" onclick="showDetail('${escapeHtml(item.tempOrderId)}')">
+            <div class="card-unified-header">
+              <div>
+                <div class="import-card-id">#${escapeHtml(item.tempOrderId)}</div>
+                <div class="import-card-time">
+                  <i class="bi bi-clock-history me-1"></i>${formatDateTime(item.createdAt)}
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="confidence-badge ${confidenceClass}">${confidenceText} 信頼度</span>
+                <span class="import-card-status ${statusBadgeClass}">${item.status}</span>
+              </div>
+            </div>
+
+            <!-- 完遂度バー -->
+            <div class="completeness-container">
+              <div class="completeness-header">
+                <span>データ完遂度</span>
+                <span>${completeness}%</span>
+              </div>
+              <div class="completeness-bar-bg">
+                <div class="completeness-bar-fill" id="bar-${item.tempOrderId}" style="width: 0%; background-color: ${completenessColor}"></div>
+              </div>
+            </div>
+
+            <div class="import-card-body">
+              <div class="import-card-info">
+                <i class="bi bi-person-badge import-card-icon"></i>
+                <div>
+                  <div class="import-card-label">顧客名</div>
+                  <div class="import-card-value">${escapeHtml(item.customerName) || '不明'}</div>
+                </div>
+              </div>
+              <div class="import-card-info">
+                <i class="bi bi-truck import-card-icon"></i>
+                <div>
+                  <div class="import-card-label">発送先</div>
+                  <div class="import-card-value">${escapeHtml(item.shippingTo) || '同上 (マスタ参照)'}</div>
+                </div>
+              </div>
+
+              <div class="import-card-items">
+                <div class="import-card-items-header">
+                  <i class="bi bi-list-check"></i>注文内容（${items.length}点）
+                </div>
+                ${displayItems.map(i => `
+                  <div class="import-card-item">
+                    <span class="import-card-item-name">${escapeHtml(i.productName || i.originalText)}</span>
+                    <span class="import-card-item-qty">${i.quantity || ''}${i.unit || ''}</span>
+                  </div>
+                `).join('')}
+                ${moreCount > 0 ? `<div class="import-card-item text-muted small px-2">他${moreCount}点の商品があります...</div>` : ''}
+              </div>
+            </div>
+
+            ${item.status === '未処理' ? `
+              <div class="import-card-actions" onclick="event.stopPropagation();">
+                <button type="button" class="btn btn-process" onclick="processImport('${escapeHtml(item.tempOrderId)}')">
+                  <i class="bi bi-arrow-right-circle me-1"></i>受注処理を開始する
+                </button>
+                <button type="button" class="btn btn-reject" onclick="showRejectModal('${escapeHtml(item.tempOrderId)}', '${escapeHtml(item.customerName)}', '${escapeHtml(getItemsSummary(items))}')">
+                  <i class="bi bi-x-circle me-1"></i>却下
+                </button>
+              </div>
+            ` : ''}
+            ${item.status === '却下' ? `
+              <div class="import-card-actions" onclick="event.stopPropagation();">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="reactivateImport('${escapeHtml(item.tempOrderId)}')">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>再登録
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteImport('${escapeHtml(item.tempOrderId)}')">
+                  <i class="bi bi-trash me-1"></i>完全削除
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // アニメーション後に完遂度バーを伸ばす
+      setTimeout(() => {
+        filteredData.forEach(item => {
+          const bar = document.getElementById(`bar-${item.tempOrderId}`);
+          if (bar) {
+            const comp = calculateCompleteness(item);
+            bar.style.width = comp + '%';
           }
-          updateSummary();
-          renderImportList();
-          showSuccessToast('再登録しました');
-        } else {
-          showErrorToast('再登録に失敗しました: ' + (result.error || ''));
-        }
-      })
-      .withFailureHandler(function(error) {
-        showErrorToast('エラー: ' + error.message);
-      })
-      .reactivateTempOrder(tempOrderId);
-  }
+        });
+      }, 100);
+    }
 
-  // 詳細モーダル表示
-  function showDetail(tempOrderId) {
-    const item = importData.find(d => d.tempOrderId === tempOrderId);
-    if (!item) return;
+    // 日時フォーマット
+    function formatDateTime(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0');
+    }
 
-    currentDetailData = item;
-    const body = document.getElementById('detailModalBody');
+    // 商品サマリー取得
+    function getItemsSummary(items) {
+      if (!items || items.length === 0) return 'なし';
+      const first = items[0].productName || items[0].originalText || '';
+      if (items.length === 1) return first;
+      return first + ' 他' + (items.length - 1) + '点';
+    }
 
-    const items = item.items || [];
-    
-    body.innerHTML = `
+    // HTMLエスケープ
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // 受注処理へ遷移
+    function processImport(tempOrderId) {
+      document.getElementById('tempOrderIdInput').value = tempOrderId;
+      document.getElementById('processForm').submit();
+    }
+
+    // 却下モーダル表示
+    function showRejectModal(tempOrderId, customerName, itemsSummary) {
+      currentRejectId = tempOrderId;
+      document.getElementById('rejectCustomerName').textContent = customerName || '不明';
+      document.getElementById('rejectItemsSummary').textContent = itemsSummary || 'なし';
+      new bootstrap.Modal(document.getElementById('rejectModal')).show();
+    }
+
+    // 却下処理
+    function rejectImport(tempOrderId) {
+      bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (result.success) {
+            // ローカルデータ更新
+            const item = importData.find(d => d.tempOrderId === tempOrderId);
+            if (item) {
+              item.status = '却下';
+            }
+            updateSummary();
+            renderImportList();
+          } else {
+            showErrorToast('却下に失敗しました: ' + (result.error || ''));
+          }
+        })
+        .withFailureHandler(function (error) {
+          showErrorToast('エラー: ' + error.message);
+        })
+        .rejectTempOrder(tempOrderId);
+    }
+
+    // 仮受注データを完全削除
+    function deleteImport(tempOrderId) {
+      if (!confirm('この仮受注データを完全に削除しますか？\n削除後は復元できません。')) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (result.success) {
+            // ローカルデータから削除
+            const index = importData.findIndex(d => d.tempOrderId === tempOrderId);
+            if (index !== -1) {
+              importData.splice(index, 1);
+            }
+            updateSummary();
+            renderImportList();
+            showSuccessToast('削除しました');
+          } else {
+            showErrorToast('削除に失敗しました: ' + (result.error || ''));
+          }
+        })
+        .withFailureHandler(function (error) {
+          showErrorToast('エラー: ' + error.message);
+        })
+        .deleteTempOrderData(tempOrderId);
+    }
+
+    // 却下データを再登録（ステータスを「未処理」に戻す）
+    function reactivateImport(tempOrderId) {
+      if (!confirm('この仮受注を再登録しますか？\nステータスが「未処理」に戻ります。')) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (result.success) {
+            // ローカルデータ更新
+            const item = importData.find(d => d.tempOrderId === tempOrderId);
+            if (item) {
+              item.status = '未処理';
+            }
+            updateSummary();
+            renderImportList();
+            showSuccessToast('再登録しました');
+          } else {
+            showErrorToast('再登録に失敗しました: ' + (result.error || ''));
+          }
+        })
+        .withFailureHandler(function (error) {
+          showErrorToast('エラー: ' + error.message);
+        })
+        .reactivateTempOrder(tempOrderId);
+    }
+
+    // 詳細モーダル表示
+    function showDetail(tempOrderId) {
+      const item = importData.find(d => d.tempOrderId === tempOrderId);
+      if (!item) return;
+
+      currentDetailData = item;
+      const body = document.getElementById('detailModalBody');
+
+      const items = item.items || [];
+
+      body.innerHTML = `
       <div class="row">
         <div class="col-md-6">
           <div class="detail-section">
@@ -891,29 +1062,30 @@
       </div>
     `;
 
-    // ボタンの表示/非表示
-    const rejectBtn = document.getElementById('detailRejectBtn');
-    const processBtn = document.getElementById('detailProcessBtn');
-    
-    if (item.status === '未処理') {
-      rejectBtn.style.display = '';
-      processBtn.style.display = '';
-      processBtn.onclick = () => {
-        bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
-        processImport(item.tempOrderId);
-      };
-      rejectBtn.onclick = () => {
-        bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
-        showRejectModal(item.tempOrderId, item.customerName, getItemsSummary(items));
-      };
-    } else {
-      rejectBtn.style.display = 'none';
-      processBtn.style.display = 'none';
-    }
+      // ボタンの表示/非表示
+      const rejectBtn = document.getElementById('detailRejectBtn');
+      const processBtn = document.getElementById('detailProcessBtn');
 
-    new bootstrap.Modal(document.getElementById('detailModal')).show();
-  }
-</script>
+      if (item.status === '未処理') {
+        rejectBtn.style.display = '';
+        processBtn.style.display = '';
+        processBtn.onclick = () => {
+          bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+          processImport(item.tempOrderId);
+        };
+        rejectBtn.onclick = () => {
+          bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+          showRejectModal(item.tempOrderId, item.customerName, getItemsSummary(items));
+        };
+      } else {
+        rejectBtn.style.display = 'none';
+        processBtn.style.display = 'none';
+      }
+
+      new bootstrap.Modal(document.getElementById('detailModal')).show();
+    }
+  </script>
 
 </body>
+
 </html>
