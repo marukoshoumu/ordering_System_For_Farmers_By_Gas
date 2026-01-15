@@ -15,6 +15,10 @@
 </head>
 
 <body>
+  <div id="gas-session-data" style="display:none;"
+    data-auto-open="<?= typeof autoOpenAI !== 'undefined' ? autoOpenAI : false ?>"
+    data-analysis="<?= typeof aiAnalysisResult !== 'undefined' ? aiAnalysisResult : '' ?>">
+  </div>
   <div class="container">
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <div class="mt-3">
@@ -1473,8 +1477,9 @@
       setupFileDragDrop();
 
       // AI取込一覧から遷移した場合、自動でAIモーダルを開く
-      var shouldAutoOpen = <?= typeof autoOpenAI !== 'undefined' ? autoOpenAI : false ?>;
-      var preloadedAnalysis = <?= typeof aiAnalysisResult !== 'undefined' ? aiAnalysisResult : '""' ?>;
+      var sessionDataEl = document.getElementById('gas-session-data');
+      var shouldAutoOpen = sessionDataEl.dataset.autoOpen === 'true';
+      var preloadedAnalysis = sessionDataEl.dataset.analysis;
 
       if (shouldAutoOpen && preloadedAnalysis && preloadedAnalysis !== '""') {
         setTimeout(function () {

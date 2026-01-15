@@ -182,6 +182,15 @@ function doPost(e) {
       template.editOrderId = '';
       template.tempOrderId = tempOrderId;
       template.shippingHTML = getshippingHTMLForTempOrder(tempOrderId);
+      template.autoOpenAI = false;
+      template.aiAnalysisResult = '';
+      // 検索条件引継用
+      template.prevPeriod = e.parameter.prevPeriod || '';
+      template.prevDateFrom = e.parameter.prevDateFrom || '';
+      template.prevDateTo = e.parameter.prevDateTo || '';
+      template.prevDestination = e.parameter.prevDestination || '';
+      template.prevCustomer = e.parameter.prevCustomer || '';
+      template.prevStatus = e.parameter.prevStatus || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面（AI入力）');
@@ -207,6 +216,13 @@ function doPost(e) {
       template.autoOpenAI = false;
       template.aiAnalysisResult = '';
       template.shippingHTML = getshippingHTML(e);
+      // 検索条件引継用
+      template.prevPeriod = e.parameter.prevPeriod || '';
+      template.prevDateFrom = e.parameter.prevDateFrom || '';
+      template.prevDateTo = e.parameter.prevDateTo || '';
+      template.prevDestination = e.parameter.prevDestination || '';
+      template.prevCustomer = e.parameter.prevCustomer || '';
+      template.prevStatus = e.parameter.prevStatus || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面');
@@ -309,6 +325,18 @@ function doPost(e) {
       const alert = '少なくとも1個以上注文してください。';
       template.deployURL = ScriptApp.getService().getUrl();
       template.shippingHTML = getshippingHTML(e, alert);
+      template.autoOpenAI = false;
+      template.aiAnalysisResult = '';
+      template.isEditMode = e.parameter.editMode === 'true';
+      template.editOrderId = e.parameter.editOrderId || '';
+      template.tempOrderId = e.parameter.tempOrderId || '';
+      // 検索条件引継用
+      template.prevPeriod = e.parameter.prevPeriod || '';
+      template.prevDateFrom = e.parameter.prevDateFrom || '';
+      template.prevDateTo = e.parameter.prevDateTo || '';
+      template.prevDestination = e.parameter.prevDestination || '';
+      template.prevCustomer = e.parameter.prevCustomer || '';
+      template.prevStatus = e.parameter.prevStatus || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面');
@@ -351,6 +379,15 @@ function doPost(e) {
     e.parameter.fromConfirm = 'true';
 
     template.shippingHTML = getshippingHTML(e);
+    template.autoOpenAI = false;
+    template.aiAnalysisResult = '';
+    // 検索条件引継用
+    template.prevPeriod = e.parameter.prevPeriod || '';
+    template.prevDateFrom = e.parameter.prevDateFrom || '';
+    template.prevDateTo = e.parameter.prevDateTo || '';
+    template.prevDestination = e.parameter.prevDestination || '';
+    template.prevCustomer = e.parameter.prevCustomer || '';
+    template.prevStatus = e.parameter.prevStatus || '';
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面');
