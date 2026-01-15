@@ -1685,17 +1685,19 @@
     }
 
     // ステータスに応じたバッジHTML生成
+    // trackingCode.js の normalizeTrackingStatus が返す値:
+    // - 配達完了, 発送済, 配達中, 不在/持戻
     function getStatusBadge(status) {
       if (!status) return '';
 
       let badgeClass = 'bg-secondary';
-      if (status === '配達完了' || status === '完了' || status === 'お届け完了') {
+      if (status === '配達完了') {
         badgeClass = 'bg-success';
-      } else if (status === '発送中' || status === '配達中' || status === '輸送中' || status === '出荷済') {
+      } else if (status === '発送済' || status === '配達中') {
         badgeClass = 'bg-primary';
-      } else if (status === '不在' || status === '持戻') {
+      } else if (status === '不在/持戻') {
         badgeClass = 'bg-warning text-dark';
-      } else if (status === '調査中' || status.includes('エラー')) {
+      } else if (status.includes('エラー')) {
         badgeClass = 'bg-danger';
       }
 

@@ -127,7 +127,7 @@ function syncDeliveryStatus() {
  * 
  * @param {string} trackingNo - 伝票番号（追跡番号）
  * @param {string} deliveryMethod - 納品方法（'ヤマト','佐川','西濃運輸'など）
- * @returns {string|null} 判定されたステータス（「配達完了」「発送中」など）または null
+ * @returns {string|null} 判定されたステータス（「配達完了」「発送済」など）または null
  * 
  * @see normalizeTrackingStatus - 取得した生文言をシステム標準に変換
  */
@@ -214,7 +214,7 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
                 // フォールバック: 主要キーワードで判定（西濃固有の表現を優先）
                 if (html.includes('お届け完了')) return '配達完了';
                 if (html.includes('持出中')) return '配達中';
-                if (html.includes('発送')) return '発送中';
+                if (html.includes('発送')) return '発送済';
                 if (html.includes('不在') || html.includes('持戻')) return '不在/持戻';
                 return null;
             }
@@ -239,8 +239,8 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
 function normalizeTrackingStatus(statusText) {
     if (!statusText) return null;
 
-    // 発送中・輸送中・受付系（「発送済み」を含む）
-    // ※「発送済」「発送済み」は配達完了ではなく発送中として扱う
+    // 発送済・輸送中・受付系（「発送済み」を含む）
+    // ※「発送済」「発送済み」は配達完了ではなく発送済として扱う
     // ※配達完了系より先にチェックすることで誤判定を防ぐ
     if (statusText.includes('発送') ||
         statusText.includes('受付') ||
@@ -250,7 +250,7 @@ function normalizeTrackingStatus(statusText) {
         statusText.includes('到着') ||
         statusText.includes('準備') ||
         statusText.includes('中継')) {
-        return '発送中';
+        return '発送済';
     }
 
     // 配達中系
@@ -293,14 +293,14 @@ function testTrackingNormalization() {
         { input: "お届け済", expected: "配達完了" },
         { input: "配達済", expected: "配達完了" },
         { input: "受取済", expected: "配達完了" },
-        { input: "荷物受付", expected: "発送中" },
-        { input: "発送済み", expected: "発送中" },  // ★重要: 「発送済み」は発送中
-        { input: "発送済", expected: "発送中" },    // ★重要: 「発送済」は発送中
-        { input: "作業店通過", expected: "発送中" },
-        { input: "配達店到着", expected: "発送中" },
-        { input: "配達準備中", expected: "発送中" },
-        { input: "輸送中", expected: "発送中" },
-        { input: "中継センター通過", expected: "発送中" },
+        { input: "荷物受付", expected: "発送済" },
+        { input: "発送済み", expected: "発送済" },  // ★重要: 「発送済み」は発送済
+        { input: "発送済", expected: "発送済" },    // ★重要: 「発送済」は発送済
+        { input: "作業店通過", expected: "発送済" },
+        { input: "配達店到着", expected: "発送済" },
+        { input: "配達準備中", expected: "発送済" },
+        { input: "輸送中", expected: "発送済" },
+        { input: "中継センター通過", expected: "発送済" },
         { input: "配達中", expected: "配達中" },
         { input: "持出中", expected: "配達中" },
         { input: "配達担当店を出発しました", expected: "配達中" },
