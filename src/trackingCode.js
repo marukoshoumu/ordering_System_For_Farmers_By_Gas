@@ -231,13 +231,33 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
  * 送り状のステータス文言をシステム標準のステータスに変換する
  * @param {string} statusText キャリアサイトから抽出した生文言
  * @return {string|null} 変換後のステータス（該当なしはnull）
+ * 
+ * 注意: 判定順序が重要！
+ * - 「発送済み」を「配達完了」と誤判定しないよう、発送系を先にチェック
+ * - 具体的な文言（「配達完了」「お届け済」等）を優先判定
  */
 function normalizeTrackingStatus(statusText) {
     if (!statusText) return null;
 
-    // 配達完了系
-    if (statusText.includes('完了') || statusText.includes('済')) {
-        return '配達完了';
+    // 発送中・輸送中・受付系（「発送済み」を含む）
+    // ※「発送済」「発送済み」は配達完了ではなく発送中として扱う
+    // ※配達完了系より先にチェックすることで誤判定を防ぐ
+    if (statusText.includes('発送') ||
+        statusText.includes('受付') ||
+        statusText.includes('集荷') ||
+        statusText.includes('通過') ||
+        statusText.includes('輸送') ||
+        statusText.includes('到着') ||
+        statusText.includes('準備') ||
+        statusText.includes('中継')) {
+        return '発送中';
+    }
+
+    // 配達中系
+    if (statusText.includes('配達中') ||
+        statusText.includes('持出') ||
+        statusText.includes('出発')) {
+        return '配達中';
     }
 
     // 不在・持戻・保管系
@@ -249,23 +269,14 @@ function normalizeTrackingStatus(statusText) {
         return '不在/持戻';
     }
 
-    // 配達中系
-    if (statusText.includes('配達中') ||
-        statusText.includes('持出') ||
-        statusText.includes('出発')) {
-        return '配達中';
-    }
-
-    // 発送中・輸送中・受付系（これらはすべて「発送中」扱いとする）
-    if (statusText.includes('発送') ||
-        statusText.includes('受付') ||
-        statusText.includes('集荷') ||
-        statusText.includes('通過') ||
-        statusText.includes('輸送') ||
-        statusText.includes('到着') ||
-        statusText.includes('準備') ||
-        statusText.includes('中継')) {
-        return '発送中';
+    // 配達完了系
+    // ※「発送済み」等は上で処理済みなので、ここでは純粋な配達完了のみ
+    // ※「完了」「お届け済」「配達済」等を判定
+    if (statusText.includes('完了') ||
+        statusText.includes('お届け済') ||
+        statusText.includes('配達済') ||
+        statusText.includes('受取済')) {
+        return '配達完了';
     }
 
     return null;
@@ -279,7 +290,12 @@ function testTrackingNormalization() {
     const testCases = [
         { input: "配達完了", expected: "配達完了" },
         { input: "お届け完了です", expected: "配達完了" },
+        { input: "お届け済", expected: "配達完了" },
+        { input: "配達済", expected: "配達完了" },
+        { input: "受取済", expected: "配達完了" },
         { input: "荷物受付", expected: "発送中" },
+        { input: "発送済み", expected: "発送中" },  // ★重要: 「発送済み」は発送中
+        { input: "発送済", expected: "発送中" },    // ★重要: 「発送済」は発送中
         { input: "作業店通過", expected: "発送中" },
         { input: "配達店到着", expected: "発送中" },
         { input: "配達準備中", expected: "発送中" },
