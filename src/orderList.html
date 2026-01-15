@@ -973,6 +973,8 @@
           <div class="filter-group">
             <span class="filter-label">期間：</span>
             <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="period" id="periodYesterday" value="yesterday">
+              <label class="btn btn-outline-primary" for="periodYesterday">前日</label>
               <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
               <label class="btn btn-outline-primary" for="periodToday">今日</label>
               <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
@@ -1568,6 +1570,14 @@
       let dateFrom, dateTo;
 
       switch (period) {
+        case 'yesterday':
+          // 前日：前日のみ
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          dateFrom = formatDate(yesterday);
+          dateTo = formatDate(yesterday);
+          break;
+
         case 'today':
           // 今日：今日のみ
           dateFrom = formatDate(today);
