@@ -123,7 +123,13 @@ function syncDeliveryStatus() {
 }
 
 /**
- * 各業者の追跡サイトからステータスを取得（スクレイピング）
+ * 各運送業者の追跡サイトからステータスを取得（HTMLスクレイピング）
+ * 
+ * @param {string} trackingNo - 伝票番号（追跡番号）
+ * @param {string} deliveryMethod - 納品方法（'ヤマト','佐川','西濃運輸'など）
+ * @returns {string|null} 判定されたステータス（「配達完了」「発送中」など）または null
+ * 
+ * @see normalizeTrackingStatus - 取得した生文言をシステム標準に変換
  */
 function fetchTrackingStatus(trackingNo, deliveryMethod) {
     // 簡易バリデーション
@@ -380,7 +386,10 @@ function recognizeTrackingNumber(base64Data) {
 }
 
 /**
- * シート内の特定受注IDの全行ステータスを更新
+ * シート内の特定受注IDに紐づく全行のステータスを一括更新
+ * 
+ * @param {string} orderId - 対象の受注ID
+ * @param {string} newStatus - 設定する新しいステータス名
  */
 function updateOrderStatusInSheet(orderId, newStatus) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();

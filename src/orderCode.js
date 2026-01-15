@@ -42,7 +42,13 @@ function refreshMasterDataCache() {
   }
 }
 
-// 配送伝票スキャンモーダルを表示
+/**
+ * 配送伝票スキャンモーダル用のHTMLコンテンツを取得
+ * 
+ * @param {string} orderId - 対象の受注ID
+ * @param {string} customerName - 顧客名（モーダルタイトル表示用）
+ * @returns {string} scanner.html を evaluate したHTML文字列
+ */
 function getScannerHTML(orderId, customerName) {
   const template = HtmlService.createTemplateFromFile('scanner');
   template.orderId = orderId;
@@ -164,7 +170,19 @@ function getMasterDataCached() {
     };
   }
 }
-// 受注管理画面
+/**
+ * 受注入力画面（shipping.html）のメイン生成関数
+ * 
+ * 編集モード、引き継ぎモード、新規入力の各状態に応じてフォームの初期値を設定し、
+ * 受注入力画面のHTMLパーツを構築します。
+ * 
+ * @param {Object} e - POSTリクエストイベントオブジェクト
+ * @param {string} alert - エラーメッセージ（バリデーション失敗時など）
+ * @returns {string} 受注入力フォームのHTML文字列
+ * 
+ * @see getOrderByOrderId - 編集モード時のデータ取得
+ * @see getMasterDataCached - マスタデータの取得
+ */
 function getshippingHTML(e, alert = '') {
 
   // 編集モードの判定
@@ -908,7 +926,17 @@ function getshippingHTML(e, alert = '') {
   return html;
 }
 
-// 受注確認画面
+/**
+ * 受注確認画面（shippingComfirm.html）のメイン生成関数
+ * 
+ * 受注入力画面から送信されたパラメータを元に、確認用の読み取り専用画面を構築します。
+ * 過去注文との差異チェック（AIによる入力ミス防止）もここで行います。
+ * 
+ * @param {Object} e - POSTリクエストイベントオブジェクト
+ * @returns {string} 受注確認画面のHTML文字列
+ * 
+ * @see checkOrderAgainstHistory - 過去注文との比較ロジック
+ */
 function getShippingComfirmHTML(e) {
   const master = getMasterDataCached();
   const recipients = master.recipients;
@@ -1704,7 +1732,12 @@ function getShippingComfirmHTML(e) {
   return html;
 }
 
-// 受注IDの生成
+/**
+ * 一意のランダムなIDを生成
+ * 
+ * @param {number} length - IDの長さ (デフォルト: 8)
+ * @returns {string} 生成されたID
+ */
 function generateId(length = 8) {
   const [alphabets, numbers] = ['abcdefghijklmnopqrstuvwxyz', '0123456789'];
   const string = alphabets + numbers;
@@ -1715,7 +1748,13 @@ function generateId(length = 8) {
   return id;
 }
 
-// 新規顧客をマスタに登録（電話注文モード用）
+/**
+ * 電話注文モードなどで入力された新規顧客情報をマスタシートに登録
+ * 
+ * 重複チェックを行い、存在しない場合のみ「顧客情報」および「発送先情報」シートに追加します。
+ * 
+ * @param {Object} e - POSTリクエストイベントオブジェクト
+ */
 function registerNewCustomerToMaster(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2091,7 +2130,14 @@ function createOrder(e) {
     Logger.log('自動学習エラー（処理続行）: ' + error.message);
   }
 }
-// ヤマトCSV登録
+/**
+ * ヤマト運輸B2用CSVデータを「ヤマトCSV」シートに登録
+ * 
+ * @param {string} sheetName - シート名（通常 'ヤマトCSV'）
+ * @param {Array} records - 受注レコード配列
+ * @param {Object} e - オリジナルのリクエストパラメータ
+ * @param {string} deliveryId - 受注ID
+ */
 function addRecordYamato(sheetName, records, e, deliveryId) {
   Logger.log(e);
   Logger.log(records);
@@ -2207,7 +2253,14 @@ function addRecordYamato(sheetName, records, e, deliveryId) {
   adds.push(addList);
   addRecords(sheetName, adds);
 }
-// 佐川CSV登録
+/**
+ * 佐川急便e飛伝用CSVデータを「佐川CSV」シートに登録
+ * 
+ * @param {string} sheetName - シート名（通常 '佐川CSV'）
+ * @param {Array} records - 受注レコード配列
+ * @param {Object} e - オリジナルのリクエストパラメータ
+ * @param {string} deliveryId - 受注ID
+ */
 function addRecordSagawa(sheetName, records, e, deliveryId) {
   Logger.log(e);
   Logger.log(records);

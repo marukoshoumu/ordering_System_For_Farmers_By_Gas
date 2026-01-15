@@ -6,6 +6,8 @@
 /**
  * 受注シートから月次集計データを生成
  * トリガー: 受注シート更新時に自動実行
+ * 
+ * @returns {Object} 実行結果 {success, message, count}
  */
 function aggregateMonthlySales() {
   try {
@@ -66,7 +68,7 @@ function aggregateMonthlySales() {
 
     // ヘッダーとデータ行を作成
     const headers = ['年月', '商品名', '商品分類', '受注数合計',
-                     '売上高', '受注回数', '最終更新'];
+      '売上高', '受注回数', '最終更新'];
     const rows = [headers];
 
     Object.values(monthlyData).forEach(data => {
@@ -115,7 +117,9 @@ function aggregateMonthlySales() {
 
 /**
  * 顧客リテンション分析
- * 最終注文日からの経過日数で顧客をセグメント化
+ * 最終注文日からの経過日数で顧客をセグメント化（アクティブ/要注意/リスク/離脱）
+ * 
+ * @returns {Object} 分析結果のサマリー {success, segments, topChurnRisk}
  */
 function analyzeCustomerRetention() {
   try {
@@ -262,7 +266,9 @@ function analyzeCustomerRetention() {
 
 /**
  * 季節パターン学習
- * 過去データから商品ごとの季節トレンドを分析
+ * 過去データから商品ごとの季節トレンド（売上ピーク月など）を分析
+ * 
+ * @returns {Object} 季節パターンのサマリー {success, count, topSeasonal}
  */
 function analyzeSeasonalPatterns() {
   try {
@@ -388,12 +394,12 @@ function analyzeSeasonalPatterns() {
     seasonalSheet.clear();
 
     const headers = ['商品名', 'ピーク月', 'ピーク売上', 'オフ月', 'オフ売上',
-                     '季節性強度', '月平均売上', '推奨アクション'];
+      '季節性強度', '月平均売上', '推奨アクション'];
     const rows = [headers];
 
     seasonalPatterns.forEach(pattern => {
       const monthNames = ['', '1月', '2月', '3月', '4月', '5月', '6月',
-                          '7月', '8月', '9月', '10月', '11月', '12月'];
+        '7月', '8月', '9月', '10月', '11月', '12月'];
 
       let recommendation = '';
       if (pattern.seasonalityStrength > 0.5) {
@@ -448,6 +454,8 @@ function analyzeSeasonalPatterns() {
 /**
  * 顧客傾向データパターン学習
  * 顧客ごとの購入パターンを分析（RFM分析 + 商品親和性）
+ * 
+ * @returns {Object} 顧客傾向のサマリー {success, count, segmentSummary, vipCustomers}
  */
 function analyzeCustomerTrends() {
   try {
@@ -592,7 +600,7 @@ function analyzeCustomerTrends() {
     trendSheet.clear();
 
     const headers = ['顧客名', 'セグメント', '最終注文からの日数', '注文回数', '累計売上',
-                     '平均注文間隔(日)', '次回注文予測日', 'お気に入り商品TOP3'];
+      '平均注文間隔(日)', '次回注文予測日', 'お気に入り商品TOP3'];
     const rows = [headers];
 
     customerTrends.forEach(trend => {
@@ -657,7 +665,9 @@ function analyzeCustomerTrends() {
 }
 
 /**
- * 全分析を一括実行
+ * 全分析（月次、リテンション、季節性、トレンド）を一括実行
+ * 
+ * @returns {Object} 各分析結果をまとめたオブジェクト
  */
 function runAllAnalyses() {
 
@@ -716,7 +726,10 @@ function getProductAbbreviationMap() {
 
 /**
  * ダッシュボード用データ取得
+ * 指定月の売上、受注数、前月比などの主要指標を取得します。
+ * 
  * @param {string} targetMonth - 対象月（yyyy-MM形式）
+ * @returns {Object} ダッシュボード用データオブジェクト
  */
 function getSalesDashboardData(targetMonth) {
   try {
@@ -938,12 +951,13 @@ function getSalesDashboardData(targetMonth) {
 }
 
 /**
- * 前月を取得
- * @param {string} yearMonth - yyyy-MM形式
- * @return {string} 前月（yyyy-MM形式）
+ * 与えられた月の前月を yyyy-MM 形式で算出
+ * 
+ * @param {string} yearMonthStr - 基準月 (yyyy-MM)
+ * @returns {string} 前月 (yyyy-MM)
  */
-function getPreviousMonth(yearMonth) {
-  const parts = yearMonth.split('-');
+function getPreviousMonth(yearMonthStr) {
+  const parts = yearMonthStr.split('-');
   const year = parseInt(parts[0]);
   const month = parseInt(parts[1]);
 

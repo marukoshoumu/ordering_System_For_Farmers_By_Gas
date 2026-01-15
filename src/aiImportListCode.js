@@ -9,30 +9,34 @@
 
 // LINE Botプロジェクトのスプレッドシートの情報は config.js から取得
 // getLineBotSpreadsheetId() を使用
-  
+
 // ========== AI取込一覧 ==========
 
 /**
  * AI取込一覧データを取得
- * @returns {string} JSON文字列
+ * 
+ * LINE Botプロジェクトの「仮受注」シートからデータを読み取り、
+ * 受注システム側で扱いやすい形式に変換して返却します。
+ * 
+ * @returns {string} JSON配列文字列 [{tempOrderId, createdAt, status, customerName, shippingTo, items, originalText, confidence}]
  */
 function getAIImportList() {
   try {
     const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
     const sheet = ss.getSheetByName('仮受注');
-    
+
     if (!sheet) {
       return JSON.stringify([]);
     }
-    
+
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
       return JSON.stringify([]);
     }
-    
+
     const headers = data[0];
     const result = [];
-    
+
     // ヘッダーのインデックスを取得
     const idxTempOrderId = headers.indexOf('仮受注ID');
     const idxCreatedAt = headers.indexOf('登録日時');
@@ -42,11 +46,11 @@ function getAIImportList() {
     const idxItemsData = headers.indexOf('商品データ');
     const idxOriginalText = headers.indexOf('原文');
     const idxAnalysisResult = headers.indexOf('解析結果');
-    
+
     // データ行を処理（新しい順にソート）
     for (let i = data.length - 1; i >= 1; i--) {
       const row = data[i];
-      
+
       // 商品データをパース
       let items = [];
       try {
@@ -54,7 +58,7 @@ function getAIImportList() {
       } catch (e) {
         items = [];
       }
-      
+
       // 解析結果から信頼度を取得
       let confidence = '中';
       try {
@@ -67,7 +71,7 @@ function getAIImportList() {
       } catch (e) {
         confidence = '中';
       }
-      
+
       result.push({
         tempOrderId: row[idxTempOrderId] || '',
         createdAt: row[idxCreatedAt] ? new Date(row[idxCreatedAt]).toISOString() : '',
@@ -84,9 +88,9 @@ function getAIImportList() {
         confidence: confidence
       });
     }
-    
+
     return JSON.stringify(result);
-    
+
   } catch (error) {
     console.error('getAIImportList エラー:', error);
     return JSON.stringify([]);
@@ -94,24 +98,25 @@ function getAIImportList() {
 }
 
 /**
- * 仮受注を却下
- * @param {string} tempOrderId - 仮受注ID
- * @returns {Object} 結果
+ * 仮受注を却下（ステータスを「却下」に更新）
+ * 
+ * @param {string} tempOrderId - 却下対象の仮受注ID
+ * @returns {Object} 結果オブジェクト {success: boolean, error?: string}
  */
 function rejectTempOrder(tempOrderId) {
   try {
     const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
     const sheet = ss.getSheetByName('仮受注');
-    
+
     if (!sheet) {
       return { success: false, error: '仮受注シートがありません' };
     }
-    
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const idxTempOrderId = headers.indexOf('仮受注ID');
     const idxStatus = headers.indexOf('ステータス');
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i][idxTempOrderId] === tempOrderId) {
         // ステータスを「却下」に更新
@@ -119,9 +124,9 @@ function rejectTempOrder(tempOrderId) {
         return { success: true };
       }
     }
-    
+
     return { success: false, error: '該当する仮受注が見つかりません' };
-    
+
   } catch (error) {
     console.error('rejectTempOrder エラー:', error);
     return { success: false, error: error.message };
@@ -137,19 +142,19 @@ function getTempOrderById(tempOrderId) {
   try {
     const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
     const sheet = ss.getSheetByName('仮受注');
-    
+
     if (!sheet) {
       return null;
     }
-    
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    
+
     const idxTempOrderId = headers.indexOf('仮受注ID');
     const idxOriginalText = headers.indexOf('原文');
     const idxAnalysisResult = headers.indexOf('解析結果');
     const idxStatus = headers.indexOf('ステータス');
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i][idxTempOrderId] === tempOrderId) {
         let analysisResult = null;
@@ -158,7 +163,7 @@ function getTempOrderById(tempOrderId) {
         } catch (e) {
           analysisResult = {};
         }
-        
+
         return {
           tempOrderId: tempOrderId,
           originalText: data[i][idxOriginalText] || '',
@@ -167,9 +172,9 @@ function getTempOrderById(tempOrderId) {
         };
       }
     }
-    
+
     return null;
-    
+
   } catch (error) {
     console.error('getTempOrderById エラー:', error);
     return null;
@@ -178,9 +183,10 @@ function getTempOrderById(tempOrderId) {
 
 /**
  * 仮受注のステータスを更新
- * @param {string} tempOrderId - 仮受注ID
- * @param {string} status - 新しいステータス
- * @returns {Object} 結果
+ * 
+ * @param {string} tempOrderId - 変更対象の仮受注ID
+ * @param {string} status - 新しいステータス名（例: 「処理済み」「却下」）
+ * @returns {Object} 結果オブジェクト {success: boolean, error?: string}
  */
 function updateTempOrderStatus(tempOrderId, status) {
   try {
@@ -293,15 +299,15 @@ function getPendingImportCount() {
   try {
     const ss = SpreadsheetApp.openById(getLineBotSpreadsheetId());
     const sheet = ss.getSheetByName('仮受注');
-    
+
     if (!sheet) {
       return 0;
     }
-    
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const idxStatus = headers.indexOf('ステータス');
-    
+
     let count = 0;
     for (let i = 1; i < data.length; i++) {
       const status = data[i][idxStatus];
@@ -312,7 +318,7 @@ function getPendingImportCount() {
     }
 
     return count;
-    
+
   } catch (error) {
     console.error('getPendingImportCount エラー:', error);
     return 0;

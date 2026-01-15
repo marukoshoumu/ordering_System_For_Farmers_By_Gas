@@ -85,63 +85,114 @@ function clearConfigCache() {
   cache.remove(CONFIG_CACHE_KEY);
 }
 
-// === スプレッドシート ID ===
+/**
+ * LINE Bot 用スプレッドシート ID を取得
+ * @returns {string} スプレッドシート ID
+ */
 function getLineBotSpreadsheetId() {
   return getConfig('LINE_BOT_SPREADSHEET_ID');
 }
 
+/**
+ * マスタスプレッドシート ID を取得
+ * @returns {string} スプレッドシート ID
+ */
 function getMasterSpreadsheetId() {
   return getConfig('MASTER_SPREADSHEET_ID');
 }
 
-// === ドライブ フォルダ ID ===
+/**
+ * ヤマトCSV出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getYamatoFolderId() {
   return getConfig('YAMATO_FOLDER_ID');
 }
 
+/**
+ * 佐川CSV出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getSagawaFolderId() {
   return getConfig('SAGAWA_FOLDER_ID');
 }
 
+/**
+ * 納品書PDF出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getDeliveredPdfFolderId() {
   return getConfig('DELIVERED_PDF_FOLDER_ID');
 }
 
+/**
+ * 領収書PDF出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getReceiptPdfFolderId() {
   return getConfig('RECEIPT_PDF_FOLDER_ID');
 }
 
+/**
+ * 請求書PDF出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getBillPdfFolderId() {
   return getConfig('BILL_PDF_FOLDER_ID');
 }
 
+/**
+ * 見積書フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
 function getQuotationFolderId() {
   return getConfig('QUOTATION_FOLDER_ID');
 }
 
-// === テンプレート ID ===
+/**
+ * 納品書テンプレートドキュメント ID を取得
+ * @returns {string} ドキュメント ID
+ */
 function getDeliveredTemplateId() {
   return getConfig('DELIVERED_TEMPLATE_ID');
 }
 
+/**
+ * 領収書テンプレートドキュメント ID を取得
+ * @returns {string} ドキュメント ID
+ */
 function getReceiptTemplateId() {
   return getConfig('RECEIPT_TEMPLATE_ID');
 }
 
+/**
+ * 請求書テンプレートドキュメント ID を取得
+ * @returns {string} ドキュメント ID
+ */
 function getBillTemplateId() {
   return getConfig('BILL_TEMPLATE_ID');
 }
 
-// === API キー ===
+/**
+ * Gemini API キーを取得
+ * @returns {string} API キー
+ */
 function getGeminiApiKey() {
   return getConfig('GEMINI_API_KEY');
 }
 
+/**
+ * Cloud Vision API キーを取得（未設定時は Gemini API キーを流用）
+ * @returns {string} API キー
+ */
 function getVisionApiKey() {
   return getConfig('VISION_API_KEY') || getConfig('GEMINI_API_KEY');
 }
 
-// === 表示用会社名 ===
+/**
+ * アプリケーションの表示用会社名を取得
+ * @returns {string} 会社名
+ */
 function getCompanyDisplayName() {
   return getConfig('COMPANY_DISPLAY_NAME') || '受注管理システム';
 }
@@ -197,26 +248,46 @@ function getCompanyRecordForShipping() {
 // フォルダ URL 取得関数
 // ========================================
 
+/**
+ * 見積書フォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
 function getQuotationFolderUrl() {
   const folderId = getQuotationFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
 
+/**
+ * 請求書フォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
 function getBillFolderUrl() {
   const folderId = getBillPdfFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
 
+/**
+ * 納品書フォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
 function getDeliveredFolderUrl() {
   const folderId = getDeliveredPdfFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
 
+/**
+ * ヤマトCSVフォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
 function getYamatoFolderUrl() {
   const folderId = getYamatoFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
 
+/**
+ * 佐川CSVフォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
 function getSagawaFolderUrl() {
   const folderId = getSagawaFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
