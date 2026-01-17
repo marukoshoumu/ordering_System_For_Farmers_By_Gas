@@ -764,7 +764,10 @@ function getshippingHTML(e, alert = '') {
     html += `</td>`;
     var quantity = "quantity" + rowNum;
     html += `<td>`;
+    html += `<div class="d-flex align-items-center gap-2">`;
     html += `<input type="number" class="form-control no-spin" id="${quantity}" name="${quantity}" min='0' max='999' step="0.1" title="整数部3桁小数部1桁の数字のみを入力してください。" value="${e.parameter[quantity] ? e.parameter[quantity] : ""}" >`;
+    html += `<button type="button" class="btn btn-sm btn-outline-danger" onclick="clearProductRow(${rowNum})" title="この行をクリア">✖</button>`;
+    html += `</div>`;
     html += `</td>`;
     html += `</tr>`;
   }

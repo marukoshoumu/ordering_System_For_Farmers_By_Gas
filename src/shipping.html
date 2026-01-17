@@ -449,6 +449,31 @@
         $('#sendProduct').val(val3);
       }
     }
+
+    /**
+     * 商品行のデータをクリアする
+     *
+     * @param {number} rowNum - 商品行番号（1-10）
+     * @returns {void}
+     */
+    function clearProductRow(rowNum) {
+      var bunrui = 'bunrui' + rowNum;
+      var product = 'product' + rowNum;
+      var price = 'price' + rowNum;
+      var quantity = 'quantity' + rowNum;
+
+      // 各フィールドをクリア
+      $('select[id="' + bunrui + '"]').val('');
+      $('select[id="' + product + '"]').val('');
+      $('input[id="' + price + '"]').val('');
+      $('input[id="' + quantity + '"]').val('');
+
+      // 1行目の場合、発送品名もクリア
+      if (rowNum == 1) {
+        $('#sendProduct').val('');
+      }
+    }
+
     var orideliveryTime = $('select[id="deliveryTime"]').html();
     var oriinvoiceType = $('select[id="invoiceType"]').html();
     var oricoolCls = $('select[id="coolCls"]').html();
