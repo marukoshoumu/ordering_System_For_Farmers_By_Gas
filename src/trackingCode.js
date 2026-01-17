@@ -151,12 +151,9 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
     }
     // 佐川急便系
     else if (deliveryMethod === '佐川' || deliveryMethod === '佐川伝票受領') {
-        // 2026/01時点の最新仕様: POSTメソッドでokurijoNoパラメータを送信
-        url = 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do';
-        options.method = 'post';
-        options.payload = {
-            'okurijoNo': trackingNo
-        };
+        // GETメソッドで追跡番号をパラメータとして送信
+        // 参考: https://blog.djuggernaut.com/spreadsheet-package-tracking/
+        url = 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=' + trackingNo;
     }
     // 西濃運輸系
     else if (deliveryMethod === '西濃運輸') {
@@ -206,7 +203,16 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
             const match = cleanHtml.match(/<span\s+class="state"[^>]*>([^<]+)<\/span>/);
             if (match) {
                 statusText = match[1].trim();
-                if (statusText === '該当なし') return null; // 未登録または誤り
+                if (statusText === '該当なし' || statusText === '該当する送り状が見つかりませんでした') {
+                    return null; // 未登録または誤り
+                }
+            } else {
+                // フォールバック: 主要キーワードで判定
+                if (html.includes('配達完了') || html.includes('配送完了')) return '配達完了';
+                if (html.includes('配達中') || html.includes('配送中')) return '配達中';
+                if (html.includes('輸送中') || html.includes('集荷') || html.includes('発送')) return '発送済';
+                if (html.includes('不在')) return '不在/持戻';
+                return null;
             }
         }
         // 西濃運輸
