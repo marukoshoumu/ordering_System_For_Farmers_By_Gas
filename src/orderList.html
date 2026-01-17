@@ -164,8 +164,12 @@
     }
 
     .order-table .col-action {
-      width: 100px;
+      width: 150px;
       text-align: center;
+    }
+
+    .scan-btn {
+      padding: 4px 8px;
     }
 
     .edit-btn {
@@ -1306,6 +1310,7 @@
     const pageSize = 50;
     let currentDetailOrderId = null;
     let currentDetailCustomerName = '';
+    let currentDetailDeliveryMethod = ''; // 納品方法を保存
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function () {
@@ -1802,6 +1807,9 @@
             if (userRole !== 'viewer') {
               tableRows += `
               <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
+                <button type="button" class="btn btn-sm btn-outline-info scan-btn" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.customerName || order.shippingToName)}', '${escapeHtml(order.deliveryMethod || '')}')" title="バーコード読み取り">
+                  <i class="bi bi-camera"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正" ${isCancelled ? 'disabled' : ''}>
                   <i class="bi bi-pencil"></i>
                 </button>
@@ -1897,6 +1905,9 @@
             </div>
           ${userRole !== 'viewer' ? `
           <div class="order-card-buttons" onclick="event.stopPropagation();">
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.customerName || order.shippingToName)}', '${escapeHtml(order.deliveryMethod || '')}')">
+              <i class="bi bi-camera me-1"></i>スキャン
+            </button>
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')" ${isCancelled ? 'disabled' : ''}>
               <i class="bi bi-pencil me-1"></i>修正
             </button>
@@ -1971,6 +1982,7 @@
     // 詳細モーダルの内容を描画
     function renderOrderDetail(data) {
       currentDetailCustomerName = data.customerName || '';
+      currentDetailDeliveryMethod = data.deliveryMethod || ''; // 納品方法を保存
       const body = document.getElementById('orderDetailBody');
 
       // チェックリストのバッジ生成
@@ -2260,12 +2272,13 @@
     // スキャン画面を開く
     function openScanner() {
       if (!currentDetailOrderId) return;
-      openScannerDialog(currentDetailOrderId, currentDetailCustomerName);
+      openScannerDialog(currentDetailOrderId, currentDetailCustomerName, currentDetailDeliveryMethod);
     }
 
-    function openScannerDialog(orderId, customerName) {
+    function openScannerDialog(orderId, customerName, deliveryMethod) {
       currentDetailOrderId = orderId;
       currentDetailCustomerName = customerName;
+      currentDetailDeliveryMethod = deliveryMethod || '';
       document.getElementById('scannerTargetName').innerText = customerName + " 様の伝票";
       const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
       modal.show();
@@ -2307,6 +2320,33 @@
     function onQuaggaDetected(data) {
       if (isScannerProcessing) return;
       const code = data.codeResult.code;
+
+      // 納品方法に応じた桁数チェック
+      const deliveryMethod = currentDetailDeliveryMethod || '';
+      let expectedLength = 0;
+      let carrierName = '';
+
+      if (deliveryMethod.includes('ヤマト')) {
+        expectedLength = 12;
+        carrierName = 'ヤマト';
+      } else if (deliveryMethod.includes('佐川')) {
+        expectedLength = 12;
+        carrierName = '佐川';
+      } else if (deliveryMethod.includes('西濃')) {
+        expectedLength = 10;
+        carrierName = '西濃運輸';
+      }
+
+      // 桁数チェック（納品方法が特定できる場合）
+      if (expectedLength > 0 && code && code.length !== expectedLength) {
+        document.getElementById('scannerStatus').innerText =
+          `${carrierName}の送り状番号は${expectedLength}桁です。再度読み取ってください。(現在: ${code.length}桁)`;
+        setTimeout(() => {
+          document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
+        }, 3000);
+        return;
+      }
+
       // 簡易バリデーション: 10-12桁
       if (code && (code.length >= 10 && code.length <= 12)) {
         // 日本の電話番号（0から始まる10桁/11桁）を誤検知しないための対策
@@ -2330,9 +2370,35 @@
     }
 
     function submitModalManual() {
-      const code = document.getElementById('modalManualNo').value.trim();
-      if (code.length < 10) return alert("10桁以上で入力してください");
-      handleScannerSuccess(code.replace(/-/g, ''));
+      const code = document.getElementById('modalManualNo').value.trim().replace(/-/g, '');
+
+      // 納品方法に応じた桁数チェック
+      const deliveryMethod = currentDetailDeliveryMethod || '';
+      let expectedLength = 0;
+      let carrierName = '';
+
+      if (deliveryMethod.includes('ヤマト')) {
+        expectedLength = 12;
+        carrierName = 'ヤマト';
+      } else if (deliveryMethod.includes('佐川')) {
+        expectedLength = 12;
+        carrierName = '佐川';
+      } else if (deliveryMethod.includes('西濃')) {
+        expectedLength = 10;
+        carrierName = '西濃運輸';
+      }
+
+      // 桁数チェック（納品方法が特定できる場合）
+      if (expectedLength > 0 && code.length !== expectedLength) {
+        return alert(`${carrierName}の送り状番号は${expectedLength}桁です。\n現在: ${code.length}桁\n\n正しい桁数で入力してください。`);
+      }
+
+      // 基本的な桁数チェック
+      if (code.length < 10) {
+        return alert("10桁以上で入力してください");
+      }
+
+      handleScannerSuccess(code);
     }
 
     async function captureAndOcrModal() {

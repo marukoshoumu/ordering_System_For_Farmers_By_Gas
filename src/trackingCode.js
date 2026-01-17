@@ -151,7 +151,12 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
     }
     // 佐川急便系
     else if (deliveryMethod === '佐川' || deliveryMethod === '佐川伝票受領') {
-        url = 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=' + trackingNo;
+        // 2026/01時点の最新仕様: POSTメソッドでokurijoNoパラメータを送信
+        url = 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do';
+        options.method = 'post';
+        options.payload = {
+            'okurijoNo': trackingNo
+        };
     }
     // 西濃運輸系
     else if (deliveryMethod === '西濃運輸') {

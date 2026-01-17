@@ -26,6 +26,7 @@ function getOrderListData(params) {
   const shippedCol = getColIndex('出荷済');
   const trackingCol = getColIndex('追跡番号');
   const statusCol = getColIndex('ステータス');
+  const deliveryMethodCol = getColIndex('納品方法');
 
   // パラメータ
   const startDate = params.dateFrom ? new Date(params.dateFrom) : null;
@@ -85,6 +86,7 @@ function getOrderListData(params) {
         shipped: row[shippedCol] || '',  // 出荷済フラグ
         trackingNumber: trackingCol >= 0 ? (row[trackingCol] || '') : '', // 追跡番号
         status: statusCol >= 0 ? (row[statusCol] || '') : '',  // ステータス
+        deliveryMethod: deliveryMethodCol >= 0 ? (row[deliveryMethodCol] || '') : '', // 納品方法
         items: [],  // 商品ごとの配列
         totalAmount: 0
       });
