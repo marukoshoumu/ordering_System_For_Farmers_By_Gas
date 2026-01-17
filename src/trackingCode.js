@@ -123,12 +123,28 @@ function syncDeliveryStatus() {
 }
 
 /**
+ * HTML数値文字参照をデコードする
+ * 例: "&#20445;&#31649;&#20013;" → "保管中"
+ *
+ * @param {string} text - デコード対象のテキスト
+ * @returns {string} デコードされたテキスト
+ */
+function decodeHtmlEntities(text) {
+    if (!text) return text;
+
+    // &#数値; または &#数値 形式の数値文字参照をデコード（セミコロンあり/なし両対応）
+    return text.replace(/&#(\d+);?/g, function(match, dec) {
+        return String.fromCharCode(dec);
+    });
+}
+
+/**
  * 各運送業者の追跡サイトからステータスを取得（HTMLスクレイピング）
- * 
+ *
  * @param {string} trackingNo - 伝票番号（追跡番号）
  * @param {string} deliveryMethod - 納品方法（'ヤマト','佐川','西濃運輸'など）
  * @returns {string|null} 判定されたステータス（「配達完了」「発送済」など）または null
- * 
+ *
  * @see normalizeTrackingStatus - 取得した生文言をシステム標準に変換
  */
 function fetchTrackingStatus(trackingNo, deliveryMethod) {
@@ -202,7 +218,8 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
             // <span class="state">該当なし</span> や <span class="state">配達完了</span> を抽出
             const match = cleanHtml.match(/<span\s+class="state"[^>]*>([^<]+)<\/span>/);
             if (match) {
-                statusText = match[1].trim();
+                // HTML数値文字参照をデコード (例: &#20445;&#31649;&#20013; → 保管中)
+                statusText = decodeHtmlEntities(match[1].trim());
                 if (statusText === '該当なし' || statusText === '該当する送り状が見つかりませんでした') {
                     return null; // 未登録または誤り
                 }
