@@ -139,8 +139,8 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
     let options = { muteHttpExceptions: true };
 
     // キャリアごとのリクエスト設定を構築
-    // ヤマト運輸系
-    if (deliveryMethod === 'ヤマト' || deliveryMethod === 'ヤマト伝票受領') {
+    // ヤマト運輸系（部分一致で判定）
+    if (deliveryMethod && deliveryMethod.includes('ヤマト')) {
         // 2026/01時点の最新仕様: POSTメソッドでnumber01パラメータを送信
         url = 'https://toi.kuronekoyamato.co.jp/cgi-bin/tneko';
         options.method = 'post';
@@ -149,14 +149,14 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
             'category': '0'
         };
     }
-    // 佐川急便系
-    else if (deliveryMethod === '佐川' || deliveryMethod === '佐川伝票受領') {
+    // 佐川急便系（部分一致で判定）
+    else if (deliveryMethod && deliveryMethod.includes('佐川')) {
         // GETメソッドで追跡番号をパラメータとして送信
         // 参考: https://blog.djuggernaut.com/spreadsheet-package-tracking/
         url = 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=' + trackingNo;
     }
-    // 西濃運輸系
-    else if (deliveryMethod === '西濃運輸') {
+    // 西濃運輸系（部分一致で判定）
+    else if (deliveryMethod && deliveryMethod.includes('西濃')) {
         // vfs.seino.co.jp ではなく、標準的な track.seino.co.jp を使用
         // POSTメソッドでGNPNO1パラメータを送信
         url = 'https://track.seino.co.jp/cgi-bin/gnpquery.pgm';
@@ -250,18 +250,13 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
 function normalizeTrackingStatus(statusText) {
     if (!statusText) return null;
 
-    // 発送済・輸送中・受付系（「発送済み」を含む）
-    // ※「発送済」「発送済み」は配達完了ではなく発送済として扱う
-    // ※配達完了系より先にチェックすることで誤判定を防ぐ
-    if (statusText.includes('発送') ||
-        statusText.includes('受付') ||
-        statusText.includes('集荷') ||
-        statusText.includes('通過') ||
-        statusText.includes('輸送') ||
-        statusText.includes('到着') ||
-        statusText.includes('準備') ||
-        statusText.includes('中継')) {
-        return '発送済';
+    // 配達完了系（最優先でチェック）
+    // ※「完了」「お届け済」「配達済」等を判定
+    if (statusText.includes('完了') ||
+        statusText.includes('お届け済') ||
+        statusText.includes('配達済') ||
+        statusText.includes('受取済')) {
+        return '配達完了';
     }
 
     // 配達中系
@@ -271,23 +266,27 @@ function normalizeTrackingStatus(statusText) {
         return '配達中';
     }
 
-    // 不在・持戻・保管系
+    // 不在・持戻系（「保管」は除外 - 保管中は配達予定のための一時保管なので発送済として扱う）
     if (statusText.includes('不在') ||
         statusText.includes('持戻') ||
-        statusText.includes('保管') ||
         statusText.includes('調査中') ||
         statusText.includes('入館不可')) {
         return '不在/持戻';
     }
 
-    // 配達完了系
-    // ※「発送済み」等は上で処理済みなので、ここでは純粋な配達完了のみ
-    // ※「完了」「お届け済」「配達済」等を判定
-    if (statusText.includes('完了') ||
-        statusText.includes('お届け済') ||
-        statusText.includes('配達済') ||
-        statusText.includes('受取済')) {
-        return '配達完了';
+    // 発送済・輸送中・受付・保管系
+    // ※「保管中」は配達営業所での一時保管なので「発送済」として扱う
+    // ※「発送済」「発送済み」は配達完了ではなく発送済として扱う
+    if (statusText.includes('発送') ||
+        statusText.includes('受付') ||
+        statusText.includes('集荷') ||
+        statusText.includes('通過') ||
+        statusText.includes('輸送') ||
+        statusText.includes('到着') ||
+        statusText.includes('準備') ||
+        statusText.includes('保管') ||
+        statusText.includes('中継')) {
+        return '発送済';
     }
 
     return null;
