@@ -1051,10 +1051,16 @@
               <label class="btn btn-outline-secondary" for="statusNotShipped">未出荷</label>
               <input type="radio" class="btn-check" name="shippingStatus" id="statusShipped" value="shipped">
               <label class="btn btn-outline-secondary" for="statusShipped">出荷済</label>
-              <input type="radio" class="btn-check" name="shippingStatus" id="statusOverdue" value="overdue">
-              <label class="btn btn-outline-danger" for="statusOverdue">予定日超過</label>
               <input type="radio" class="btn-check" name="shippingStatus" id="statusCancelled" value="cancelled">
               <label class="btn btn-outline-warning" for="statusCancelled">キャンセル済</label>
+            </div>
+          </div>
+          <div class="filter-group">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="includeOverdue">
+              <label class="form-check-label" for="includeOverdue" style="color: #dc3545; font-weight: 500;">
+                予定日超過を含む
+              </label>
             </div>
           </div>
           <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
@@ -1295,6 +1301,7 @@
     <input type="hidden" name="prevDestination" id="prevDestinationInput" value="">
     <input type="hidden" name="prevCustomer" id="prevCustomerInput" value="">
     <input type="hidden" name="prevStatus" id="prevStatusInput" value="">
+    <input type="hidden" name="prevIncludeOverdue" id="prevIncludeOverdueInput" value="">
   </form>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1328,6 +1335,7 @@
       const prevDestination = '<?= typeof prevDestination !== "undefined" ? prevDestination : "" ?>';
       const prevCustomer = '<?= typeof prevCustomer !== "undefined" ? prevCustomer : "" ?>';
       const prevStatus = '<?= typeof prevStatus !== "undefined" ? prevStatus : "" ?>';
+      const prevIncludeOverdue = '<?= typeof prevIncludeOverdue !== "undefined" ? prevIncludeOverdue : "" ?>';
 
       if (prevPeriod) {
         const radio = document.querySelector(`input[name="period"][value="${prevPeriod}"]`);
@@ -1357,6 +1365,14 @@
       if (prevStatus) {
         const radio = document.querySelector(`input[name="shippingStatus"][value="${prevStatus}"]`);
         if (radio) radio.checked = true;
+      }
+      
+      // 予定日超過を含む：引き継ぎがある場合はその値、ない場合はデフォルトでON
+      if (prevIncludeOverdue !== '') {
+        document.getElementById('includeOverdue').checked = prevIncludeOverdue === 'true';
+      } else {
+        // 初回表示時はデフォルトでチェックON
+        document.getElementById('includeOverdue').checked = true;
       }
     }
 
@@ -1662,13 +1678,17 @@
       // 出荷状態フィルター取得
       const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
       const shippingStatus = shippingStatusElement ? shippingStatusElement.value : 'all';
+      
+      // 予定日超過を含むチェックボックスの状態取得
+      const includeOverdue = document.getElementById('includeOverdue').checked;
 
       const params = {
         dateFrom: dateFrom,
         dateTo: dateTo,
         destination: selectedDestination || '',
         customer: selectedCustomer || '',
-        shippingStatus: shippingStatus
+        shippingStatus: shippingStatus,
+        includeOverdue: includeOverdue  // チェックボックスの状態を追加
       };
 
       showLoading('検索中...');
@@ -2514,6 +2534,7 @@
       const shippingStatus = document.querySelector('input[name="shippingStatus"]:checked')?.value || 'all';
       const dateFrom = document.getElementById('dateFrom').value;
       const dateTo = document.getElementById('dateTo').value;
+      const includeOverdue = document.getElementById('includeOverdue').checked;
 
       // 発送先と顧客はボタンのテキストから取得（または変数から）
       const destination = document.getElementById('destinationBtn').textContent.replace('指定なし', '').trim();
@@ -2525,6 +2546,7 @@
       document.getElementById('prevDateToInput').value = dateTo;
       document.getElementById('prevDestinationInput').value = destination;
       document.getElementById('prevCustomerInput').value = customer;
+      document.getElementById('prevIncludeOverdueInput').value = includeOverdue;
     }
 
     // ========================================

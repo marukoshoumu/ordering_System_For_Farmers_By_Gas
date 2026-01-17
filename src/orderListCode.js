@@ -1,6 +1,6 @@
 /**
  * 受注一覧データを取得
- * @param {Object} params - 検索パラメータ {dateFrom, dateTo, destination, customer}
+ * @param {Object} params - 検索パラメータ {dateFrom, dateTo, destination, customer, shippingStatus, includeOverdue}
  * @returns {string} - JSON文字列
  */
 function getOrderListData(params) {
@@ -34,6 +34,7 @@ function getOrderListData(params) {
   const searchDestination = params.destination || '';
   const searchCustomer = params.customer || '';
   const shippingStatus = params.shippingStatus || 'all';
+  const includeOverdue = params.includeOverdue || false;  // 予定日超過を含むかどうか
 
   // endDateは終日を含むように調整
   if (endDate) {
@@ -47,6 +48,10 @@ function getOrderListData(params) {
   const excludeCategories = ['送料', '手数料', '追加料金', '送料・代引手数料'];
   const excludeProducts = ['送料', 'クール便追加', '代引手数料', '梱包料'];
 
+  // 予定日超過判定用の今日の日付
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   // 受注IDでグループ化
   const orderMap = new Map();
 
@@ -56,13 +61,23 @@ function getOrderListData(params) {
 
     if (!orderId) continue;
 
-    // 発送日でフィルタ
+    // 発送日でフィルタ（予定日超過を含む場合は過去のデータも含める）
     const shippingDateRaw = row[shippingDateCol];
+    const isShippedRow = row[shippedCol] === '○' || row[shippedCol] === true;
+    const isCancelledRow = statusCol >= 0 && (row[statusCol] === 'キャンセル' || row[statusCol] === 'cancelled');
+    
     if (shippingDateRaw) {
       const shipDate = new Date(shippingDateRaw);
       shipDate.setHours(0, 0, 0, 0);
-      if (startDate && shipDate < startDate) continue;
-      if (endDate && shipDate > endDate) continue;
+      
+      // 予定日超過かどうかを判定
+      const isOverdueRow = !isShippedRow && !isCancelledRow && shipDate < today;
+      
+      // includeOverdueがtrueで予定日超過の場合は期間条件を無視
+      if (!(includeOverdue && isOverdueRow)) {
+        if (startDate && shipDate < startDate) continue;
+        if (endDate && shipDate > endDate) continue;
+      }
     }
 
     // 発送先フィルタ
@@ -113,7 +128,7 @@ function getOrderListData(params) {
   let orders = Array.from(orderMap.values());
 
   // 出荷状態でフィルタリング
-  if (shippingStatus !== 'all') {
+  if (shippingStatus !== 'all' || includeOverdue) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -123,26 +138,57 @@ function getOrderListData(params) {
       const shippingDate = order.shippingDateRaw ? new Date(order.shippingDateRaw) : null;
       const isOverdue = !isShipped && !isCancelled && shippingDate && shippingDate < today;
 
-      if (shippingStatus === 'shipped') {
-        return isShipped;
+      // 基本条件による判定
+      let matchesBasicCondition = false;
+      
+      if (shippingStatus === 'all') {
+        matchesBasicCondition = true;
+      } else if (shippingStatus === 'shipped') {
+        matchesBasicCondition = isShipped;
       } else if (shippingStatus === 'notShipped') {
-        return !isShipped && !isCancelled;
-      } else if (shippingStatus === 'overdue') {
-        return isOverdue;
+        matchesBasicCondition = !isShipped && !isCancelled;
       } else if (shippingStatus === 'cancelled') {
-        return isCancelled;
+        matchesBasicCondition = isCancelled;
       }
-      return true;
+
+      // includeOverdueがtrueの場合、基本条件 OR 予定日超過でマッチ
+      if (includeOverdue) {
+        return matchesBasicCondition || isOverdue;
+      }
+      
+      // includeOverdueがfalseの場合、基本条件のみ
+      return matchesBasicCondition;
     });
   }
 
-  // ソート：発送日昇順 → 顧客名順
+  // ソート：予定日超過優先 → 発送日昇順 → 顧客名順
   orders.sort((a, b) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 予定日超過判定
+    const isShippedA = a.shipped === '○' || a.shipped === true;
+    const isCancelledA = a.status === 'キャンセル' || a.status === 'cancelled';
+    const shippingDateA = a.shippingDateRaw ? new Date(a.shippingDateRaw) : null;
+    const isOverdueA = !isShippedA && !isCancelledA && shippingDateA && shippingDateA < today;
+    
+    const isShippedB = b.shipped === '○' || b.shipped === true;
+    const isCancelledB = b.status === 'キャンセル' || b.status === 'cancelled';
+    const shippingDateB = b.shippingDateRaw ? new Date(b.shippingDateRaw) : null;
+    const isOverdueB = !isShippedB && !isCancelledB && shippingDateB && shippingDateB < today;
+    
+    // 1. 予定日超過を優先（超過が先頭）
+    if (isOverdueA && !isOverdueB) return -1;
+    if (!isOverdueA && isOverdueB) return 1;
+    
+    // 2. 発送日昇順
     const dateA = a.shippingDateRaw ? new Date(a.shippingDateRaw) : new Date(0);
     const dateB = b.shippingDateRaw ? new Date(b.shippingDateRaw) : new Date(0);
     if (dateA.getTime() !== dateB.getTime()) {
       return dateA - dateB;
     }
+    
+    // 3. 顧客名順
     return (a.customerName || '').localeCompare(b.customerName || '');
   });
 

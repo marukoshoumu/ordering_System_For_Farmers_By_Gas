@@ -191,6 +191,7 @@ function doPost(e) {
       template.prevDestination = e.parameter.prevDestination || '';
       template.prevCustomer = e.parameter.prevCustomer || '';
       template.prevStatus = e.parameter.prevStatus || '';
+      template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面（AI入力）');
@@ -223,6 +224,7 @@ function doPost(e) {
       template.prevDestination = e.parameter.prevDestination || '';
       template.prevCustomer = e.parameter.prevCustomer || '';
       template.prevStatus = e.parameter.prevStatus || '';
+      template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面');
@@ -283,6 +285,7 @@ function doPost(e) {
     template.prevDestination = e.parameter.prevDestination || '';
     template.prevCustomer = e.parameter.prevCustomer || '';
     template.prevStatus = e.parameter.prevStatus || '';
+    template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
 
     // AI取込一覧からの遷移チェック
     const tempOrderId = e.parameter.tempOrderId || '';
@@ -337,6 +340,7 @@ function doPost(e) {
       template.prevDestination = e.parameter.prevDestination || '';
       template.prevCustomer = e.parameter.prevCustomer || '';
       template.prevStatus = e.parameter.prevStatus || '';
+      template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('受注画面');
@@ -352,6 +356,14 @@ function doPost(e) {
     template.editOrderId = editOrderId;
     // 仮受注IDを引き継ぎ
     template.tempOrderId = e.parameter.tempOrderId || '';
+    // 検索条件引継用
+    template.prevPeriod = e.parameter.prevPeriod || '';
+    template.prevDateFrom = e.parameter.prevDateFrom || '';
+    template.prevDateTo = e.parameter.prevDateTo || '';
+    template.prevDestination = e.parameter.prevDestination || '';
+    template.prevCustomer = e.parameter.prevCustomer || '';
+    template.prevStatus = e.parameter.prevStatus || '';
+    template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
     template.confirmHTML = getShippingComfirmHTML(e);
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -388,6 +400,7 @@ function doPost(e) {
     template.prevDestination = e.parameter.prevDestination || '';
     template.prevCustomer = e.parameter.prevCustomer || '';
     template.prevStatus = e.parameter.prevStatus || '';
+    template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面');
@@ -499,6 +512,7 @@ function doPost(e) {
     template.prevDestination = e.parameter.prevDestination || '';
     template.prevCustomer = e.parameter.prevCustomer || '';
     template.prevStatus = e.parameter.prevStatus || '';
+    template.prevIncludeOverdue = e.parameter.prevIncludeOverdue || '';
 
     return template.evaluate()
       .setTitle('受注一覧')
