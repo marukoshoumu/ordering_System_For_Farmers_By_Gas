@@ -766,7 +766,7 @@ function getshippingHTML(e, alert = '') {
     html += `<td>`;
     html += `<div class="d-flex align-items-center gap-1">`;
     html += `<input type="number" class="form-control no-spin flex-grow-1" id="${quantity}" name="${quantity}" min='0' max='999' step="0.1" title="整数部3桁小数部1桁の数字のみを入力してください。" value="${e.parameter[quantity] ? e.parameter[quantity] : ""}" >`;
-    html += `<button type="button" class="btn btn-sm btn-outline-danger px-2 py-1" style="min-width: 32px; width: 32px; font-size: 0.75rem; line-height: 1;" onclick="clearProductRow(${rowNum})" title="この行をクリア">✖</button>`;
+    html += `<button type="button" class="btn btn-sm btn-outline-danger px-1 py-1" style="min-width: 20px; width: 20px; font-size: 0.7rem; line-height: 1;" onclick="clearProductRow(${rowNum})" title="この行をクリア">✖</button>`;
     html += `</div>`;
     html += `</td>`;
     html += `</tr>`;
