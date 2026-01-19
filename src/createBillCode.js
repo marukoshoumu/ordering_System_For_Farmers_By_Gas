@@ -1,7 +1,28 @@
-// PDF出力先
-const BILL_PDF_OUTDIR = DriveApp.getFolderById(getBillPdfFolderId());
-// 請求書のテンプレートファイル
-const BILL_TEMPLATE = DriveApp.getFileById(getBillTemplateId());
+// PDF出力先フォルダとテンプレートファイルを取得する関数
+// グローバルスコープでの初期化を避け、必要時に取得する
+function getBillPdfOutdir() {
+  const folderId = getBillPdfFolderId();
+  if (!folderId) {
+    throw new Error('BILL_PDF_FOLDER_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFolderById(folderId);
+  } catch (e) {
+    throw new Error(`請求書PDF出力フォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
+
+function getBillTemplate() {
+  const templateId = getBillTemplateId();
+  if (!templateId) {
+    throw new Error('BILL_TEMPLATE_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFileById(templateId);
+  } catch (e) {
+    throw new Error(`請求書テンプレート(ID: ${templateId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
 
 /**
  * 請求書を作成するメイン関数
@@ -253,7 +274,7 @@ function createBillGDoc(rowVal, billDate) {
     customerItem['入金期日'] = "";
   }
   // テンプレートファイルをコピーする
-  const wCopyFile = BILL_TEMPLATE.makeCopy()
+  const wCopyFile = getBillTemplate().makeCopy()
     , wCopyFileId = wCopyFile.getId()
     , wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
   let wCopyDocBody = wCopyDoc.getBody(); // Googleドキュメント内の本文を取得する
@@ -457,6 +478,6 @@ function createBillPdf(docId, fileName) {
   let wBlob = UrlFetchApp.fetch(wUrl, wOtions).getBlob().setName(fileName + '.pdf');
 
   //PDFを指定したフォルダに保存する
-  return BILL_PDF_OUTDIR.createFile(wBlob).getId();
+  return getBillPdfOutdir().createFile(wBlob).getId();
 }
 

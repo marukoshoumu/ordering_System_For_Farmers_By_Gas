@@ -151,13 +151,26 @@ function createBlob(csv, fileName) {
  * @see createBlob() - Blob作成
  */
 function writeDrive(blob, type) {
-  // CSV出力先
-  const yamtoDrive = DriveApp.getFolderById(getYamatoFolderId());
-  const sagawaDrive = DriveApp.getFolderById(getSagawaFolderId());
+  // CSV出力先（必要なフォルダのみ取得）
   if (type == 1) {
-    yamtoDrive.createFile(blob);
-  }
-  else {
-    sagawaDrive.createFile(blob);
+    const folderId = getYamatoFolderId();
+    if (!folderId) {
+      throw new Error('YAMATO_FOLDER_ID がスクリプトプロパティに設定されていません');
+    }
+    try {
+      DriveApp.getFolderById(folderId).createFile(blob);
+    } catch (e) {
+      throw new Error(`ヤマトCSVフォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+    }
+  } else {
+    const folderId = getSagawaFolderId();
+    if (!folderId) {
+      throw new Error('SAGAWA_FOLDER_ID がスクリプトプロパティに設定されていません');
+    }
+    try {
+      DriveApp.getFolderById(folderId).createFile(blob);
+    } catch (e) {
+      throw new Error(`佐川CSVフォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+    }
   }
 }

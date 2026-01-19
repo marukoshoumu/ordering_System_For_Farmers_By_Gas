@@ -2459,14 +2459,56 @@ function updateZaiko(e) {
     }
   }
 }
-// 納品書のテンプレートファイル
-const DELIVERED_TEMPLATE = DriveApp.getFileById(getDeliveredTemplateId());
-// 納品書PDF出力先
-const DELIVERED_PDF_OUTDIR = DriveApp.getFolderById(getDeliveredPdfFolderId());
-// 領収書のテンプレートファイル　
-const RECEIPT_TEMPLATE = DriveApp.getFileById(getReceiptTemplateId());
-// 領収書PDF出力先
-const RECEIPT_PDF_OUTDIR = DriveApp.getFolderById(getReceiptPdfFolderId());
+
+// 納品書・領収書用のテンプレートとフォルダを取得する関数
+// グローバルスコープでの初期化を避け、必要時に取得する
+function getDeliveredTemplate() {
+  const templateId = getDeliveredTemplateId();
+  if (!templateId) {
+    throw new Error('DELIVERED_TEMPLATE_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFileById(templateId);
+  } catch (e) {
+    throw new Error(`納品書テンプレート(ID: ${templateId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
+
+function getDeliveredPdfOutdir() {
+  const folderId = getDeliveredPdfFolderId();
+  if (!folderId) {
+    throw new Error('DELIVERED_PDF_FOLDER_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFolderById(folderId);
+  } catch (e) {
+    throw new Error(`納品書PDF出力フォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
+
+function getReceiptTemplate() {
+  const templateId = getReceiptTemplateId();
+  if (!templateId) {
+    throw new Error('RECEIPT_TEMPLATE_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFileById(templateId);
+  } catch (e) {
+    throw new Error(`領収書テンプレート(ID: ${templateId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
+
+function getReceiptPdfOutdir() {
+  const folderId = getReceiptPdfFolderId();
+  if (!folderId) {
+    throw new Error('RECEIPT_PDF_FOLDER_ID がスクリプトプロパティに設定されていません');
+  }
+  try {
+    return DriveApp.getFolderById(folderId);
+  } catch (e) {
+    throw new Error(`領収書PDF出力フォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+  }
+}
 
 // 納品書ファイル生成
 function createFile(records) {
@@ -2515,7 +2557,7 @@ function createGDoc(rowVal) {
     customerItem['住所２'] = "";
   }
   // テンプレートファイルをコピーする
-  const wCopyFile = DELIVERED_TEMPLATE.makeCopy()
+  const wCopyFile = getDeliveredTemplate().makeCopy()
     , wCopyFileId = wCopyFile.getId()
     , wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
   let wCopyDocBody = wCopyDoc.getBody(); // Googleドキュメント内の本文を取得する
@@ -2627,15 +2669,16 @@ function createDeliveredPdf(docId, fileName, targetFolderName) {
   // PDFを作成する
   let wBlob = UrlFetchApp.fetch(wUrl, wOtions).getBlob().setName(fileName + '.pdf');
   // 保存先のフォルダが存在するか確認
+  const deliveredPdfOutdir = getDeliveredPdfOutdir();
   var targetFolder = null;
-  var folders = DELIVERED_PDF_OUTDIR.getFoldersByName(targetFolderName);
+  var folders = deliveredPdfOutdir.getFoldersByName(targetFolderName);
 
   if (folders.hasNext()) {
     // 既存のフォルダが見つかった場合
     targetFolder = folders.next();
   } else {
     // フォルダが存在しない場合は新規作成
-    targetFolder = DELIVERED_PDF_OUTDIR.createFolder(targetFolderName);
+    targetFolder = deliveredPdfOutdir.createFolder(targetFolderName);
   }
   //PDFを指定したフォルダに保存する
   return targetFolder.createFile(wBlob).getId();
@@ -2655,7 +2698,7 @@ function createReceiptPdf(docId, fileName) {
   let wBlob = UrlFetchApp.fetch(wUrl, wOtions).getBlob().setName(fileName + '.pdf');
 
   //PDFを指定したフォルダに保存する
-  return RECEIPT_PDF_OUTDIR.createFile(wBlob).getId();
+  return getReceiptPdfOutdir().createFile(wBlob).getId();
 }
 // 領収書のドキュメントを置換
 function createReceiptGDoc(rowVal) {
@@ -2691,7 +2734,7 @@ function createReceiptGDoc(rowVal) {
     customerItem['住所２'] = "";
   }
   // テンプレートファイルをコピーする
-  const wCopyFile = RECEIPT_TEMPLATE.makeCopy()
+  const wCopyFile = getReceiptTemplate().makeCopy()
     , wCopyFileId = wCopyFile.getId()
     , wCopyDoc = DocumentApp.openById(wCopyFileId); // コピーしたファイルをGoogleドキュメントとして開く
   let wCopyDocBody = wCopyDoc.getBody(); // Googleドキュメント内の本文を取得する
