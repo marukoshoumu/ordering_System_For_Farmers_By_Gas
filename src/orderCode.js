@@ -2180,12 +2180,12 @@ function addRecordYamato(sheetName, records, e, deliveryId) {
   record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
   record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
   record['荷扱い３'] = e.parameter.cargo3 ? e.parameter.cargo3.split(':')[0] : "";
-  record['記事'] = records[0][38];
-  record['コレクト代金引換額（税込）'] = records[0][35];
-  record['コレクト内消費税額等'] = records[0][36];
+  record['記事'] = records[0][39];
+  record['コレクト代金引換額（税込）'] = records[0][36];
+  record['コレクト内消費税額等'] = records[0][37];
   record['営業所止置き'] = "";
   record['営業所コード'] = "";
-  record['発行枚数'] = records[0][37];
+  record['発行枚数'] = records[0][38];
   record['個数口枠の印字'] = "";
   record['ご請求先顧客コード'] = "019543385101";
   record['ご請求先分類コード'] = "";
@@ -2233,6 +2233,7 @@ function addRecordYamato(sheetName, records, e, deliveryId) {
     record['品名２'],
     record['荷扱い１'],
     record['荷扱い２'],
+    record['荷扱い３'],
     record['記事'],
     record['コレクト代金引換額（税込）'],
     record['コレクト内消費税額等'],
@@ -2316,14 +2317,14 @@ function addRecordSagawa(sheetName, records, e, deliveryId) {
   record['荷札品名９'] = "";
   record['荷札品名１０'] = "";
   record['荷札品名１１'] = "";
-  record['出荷個数'] = records[0][37];
+  record['出荷個数'] = records[0][38];
   record['スピード指定'] = "000";
   record['クール便指定'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
   record['配達日'] = Utilities.formatDate(new Date(records[0][19]), 'JST', 'yyyyMMdd');
   record['配達指定時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[0] : "";
   record['配達指定時間（時分）'] = "";
-  record['代引金額'] = records[0][35];
-  record['消費税'] = records[0][36];
+  record['代引金額'] = records[0][36];
+  record['消費税'] = records[0][37];
   record['決済種別'] = "";
   record['保険金額'] = "";
   record['指定シール１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
