@@ -1823,22 +1823,29 @@
             </td>
           `;
 
-            // viewerの場合はボタンを表示しない
-            if (userRole !== 'viewer') {
-              tableRows += `
+            // アクションボタン列
+            tableRows += `
               <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
-                <button type="button" class="btn btn-sm btn-outline-info scan-btn" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.customerName || order.shippingToName)}', '${escapeHtml(order.deliveryMethod || '')}')" title="バーコード読み取り">
+                <button type="button" class="btn btn-sm btn-outline-info scan-btn" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.shippingToName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')" title="バーコード読み取り">
                   <i class="bi bi-camera"></i>
                 </button>
+            `;
+
+            // viewerの場合は編集・コピーボタンを表示しない
+            if (userRole !== 'viewer') {
+              tableRows += `
                 <button type="button" class="btn btn-sm btn-outline-primary edit-btn" onclick="editOrder('${escapeHtml(order.orderId)}')" title="修正" ${isCancelled ? 'disabled' : ''}>
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-success inherit-btn" onclick="inheritOrder('${escapeHtml(order.orderId)}')" title="コピー">
                   <i class="bi bi-copy"></i>コピー
                 </button>
+              `;
+            }
+
+            tableRows += `
               </td>
             `;
-            }
             tableRows += `
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.orderDate)}</td>
           `;
@@ -1923,19 +1930,19 @@
                 ${getStatusBadge(order.status)}
               </div>
             </div>
-          ${userRole !== 'viewer' ? `
           <div class="order-card-buttons" onclick="event.stopPropagation();">
-            <button type="button" class="btn btn-sm btn-outline-info" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.customerName || order.shippingToName)}', '${escapeHtml(order.deliveryMethod || '')}')">
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.shippingToName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')">
               <i class="bi bi-camera me-1"></i>スキャン
             </button>
+            ${userRole !== 'viewer' ? `
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOrder('${escapeHtml(order.orderId)}')" ${isCancelled ? 'disabled' : ''}>
               <i class="bi bi-pencil me-1"></i>修正
             </button>
             <button type="button" class="btn btn-sm btn-outline-success" onclick="inheritOrder('${escapeHtml(order.orderId)}')">
               <i class="bi bi-copy me-1"></i>コピー
             </button>
+            ` : ''}
           </div>
-          ` : ''}
         </div>
       `;
       });
