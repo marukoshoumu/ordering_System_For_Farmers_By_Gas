@@ -1826,7 +1826,7 @@
             // アクションボタン列
             tableRows += `
               <td class="col-action" rowspan="${itemCount}" onclick="event.stopPropagation();">
-                <button type="button" class="btn btn-sm btn-outline-info scan-btn" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.shippingToName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')" title="バーコード読み取り">
+                <button type="button" class="btn btn-sm btn-outline-info scan-btn" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.destinationName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')" title="バーコード読み取り">
                   <i class="bi bi-camera"></i>
                 </button>
             `;
@@ -1931,7 +1931,7 @@
               </div>
             </div>
           <div class="order-card-buttons" onclick="event.stopPropagation();">
-            <button type="button" class="btn btn-sm btn-outline-info" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.shippingToName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')">
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="openScannerDialog('${escapeHtml(order.orderId)}', '${escapeHtml(order.destinationName || order.customerName)}', '${escapeHtml(order.deliveryMethod || '')}')">
               <i class="bi bi-camera me-1"></i>スキャン
             </button>
             ${userRole !== 'viewer' ? `
