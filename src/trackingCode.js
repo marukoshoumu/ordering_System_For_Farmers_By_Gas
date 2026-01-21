@@ -240,7 +240,7 @@ function fetchTrackingStatus(trackingNo, deliveryMethod) {
                 statusText = match[1].trim();
             } else {
                 // フォールバック: 主要キーワードで判定（西濃固有の表現を優先）
-                if (html.includes('お届け完了')) return '配達完了';
+                if (html.includes('配達済みです') || html.includes('お届け完了')) return '配達完了';
                 if (html.includes('持出中')) return '配達中';
                 if (html.includes('発送')) return '発送済';
                 if (html.includes('不在') || html.includes('持戻')) return '不在/持戻';
