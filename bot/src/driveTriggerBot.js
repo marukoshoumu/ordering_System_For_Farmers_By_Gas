@@ -168,18 +168,26 @@ function getOrCreateErrorFolder() {
 
 /**
  * ファイルを指定フォルダに移動
+ * 
+ * 注意: DriveApp.removeFile/addFileは共有ドライブや権限設定によって
+ * Access deniedエラーが発生することがある。
+ * file.moveTo()を使用するか、エラー時はコピー＋削除にフォールバック。
  */
 function moveFileToFolder(file, targetFolder) {
   try {
-    // 元のフォルダから削除して新しいフォルダに追加
-    const parents = file.getParents();
-    while (parents.hasNext()) {
-      const parent = parents.next();
-      parent.removeFile(file);
-    }
-    targetFolder.addFile(file);
+    // 方法1: moveTo()を使用（GAS の新しいAPI）
+    file.moveTo(targetFolder);
   } catch (error) {
     Logger.log('ファイル移動エラー: ' + error.toString());
+    
+    // 方法2: フォールバック - コピーして元ファイルをゴミ箱に移動
+    try {
+      const newFile = file.makeCopy(file.getName(), targetFolder);
+      file.setTrashed(true);
+      Logger.log('フォールバック方法でファイルを移動しました: ' + file.getName());
+    } catch (fallbackError) {
+      Logger.log('フォールバック移動も失敗: ' + fallbackError.toString());
+    }
   }
 }
 
