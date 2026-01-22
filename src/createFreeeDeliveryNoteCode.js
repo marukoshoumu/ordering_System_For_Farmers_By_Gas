@@ -440,22 +440,3 @@ function generateCSVWithBOM(rows) {
 
   return BOM + csvLines.join('\n');
 }
-
-/**
- * freee CSV出力フォルダIDを取得
- *
- * スクリプトプロパティから取得。未設定の場合は請求書と同じフォルダを使用。
- *
- * @returns {string} フォルダID
- */
-function getFreeeCSVFolderId() {
-  const props = PropertiesService.getScriptProperties();
-  let folderId = props.getProperty('FREEE_CSV_FOLDER_ID');
-
-  // 未設定の場合は請求書フォルダを使用
-  if (!folderId) {
-    folderId = getBillPdfFolderId();
-  }
-
-  return folderId;
-}

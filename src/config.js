@@ -148,7 +148,13 @@ function getBillPdfFolderId() {
 function getQuotationFolderId() {
   return getConfig('QUOTATION_FOLDER_ID');
 }
-
+/**
+ * FreeeCSV出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
+function getFreeeCSVFolderId() {
+  return getConfig('FREEE_CSV_FOLDER_ID');
+}
 /**
  * 納品書テンプレートドキュメント ID を取得
  * @returns {string} ドキュメント ID
