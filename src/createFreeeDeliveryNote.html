@@ -123,7 +123,7 @@
     setFirstDate();
     function setLastDate() {
       const nowDate = new Date();
-      var lastDate = new Date(nowDate.getFullYear(), nowDate.getMonth(), 0);
+      var lastDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0);
       var yyyy = lastDate.getFullYear();
       var mm = ("0"+(lastDate.getMonth()+1)).slice(-2);
       var dd = ("0"+lastDate.getDate()).slice(-2);
@@ -230,21 +230,86 @@
       // 結果を表示
       dataSearchSuccess(JSON.stringify(results));
     }
+
+    /**
+     * HTMLエスケープ関数（XSS対策）
+     */
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function dataSearchSuccess(datas) {
       var res = JSON.parse(datas);
       if (res && res.length > 0) {
-        var html = "<table>";
-        html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+        var container = document.getElementById('resCustArea');
+        container.innerHTML = '';
+
+        var table = document.createElement('table');
+        var headerRow = document.createElement('tr');
+        ['', '会社名', '氏名'].forEach(function(text) {
+          var th = document.createElement('th');
+          th.textContent = text;
+          headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+
         for (let i = 0; i < res.length; i++) {
-          var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|"+ res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
-          html += "<tr>";
-          html += "<td><button type='button' id='nameCust"+i+"' data-val='"+ datVal + "' onclick='applyName("+i+")'>選択</button></td>";
-          html += "<td><input style='width:120px;' type='text' id='cust"+i+"' value='" + res[i]["会社名"] + "'readonly ></td>";
-          html += "<td><input style='width:120px;' type='text' id='ident"+i+"'value='" + res[i]["氏名"] + "' readonly></td>";
-          html += "</tr>";
+          var companyName = res[i]["会社名"] || '';
+          var personName = res[i]["氏名"] || '';
+          var zipcode = res[i]["郵便番号"] || '';
+          var address1 = res[i]["住所１"] || '';
+          var address2 = res[i]["住所２"] || '';
+          var tel = res[i]["TEL"] || '';
+
+          var datVal = companyName + "|" + personName + "|" + zipcode + "|" + address1 + address2 + "|" + tel;
+
+          var tr = document.createElement('tr');
+
+          // 選択ボタンセル
+          var tdBtn = document.createElement('td');
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.id = 'nameCust' + i;
+          btn.dataset.val = datVal;
+          btn.textContent = '選択';
+          btn.onclick = (function(index) {
+            return function() { applyName(index); };
+          })(i);
+          tdBtn.appendChild(btn);
+          tr.appendChild(tdBtn);
+
+          // 会社名セル
+          var tdCompany = document.createElement('td');
+          var inputCompany = document.createElement('input');
+          inputCompany.style.width = '120px';
+          inputCompany.type = 'text';
+          inputCompany.id = 'cust' + i;
+          inputCompany.value = companyName;
+          inputCompany.readOnly = true;
+          tdCompany.appendChild(inputCompany);
+          tr.appendChild(tdCompany);
+
+          // 氏名セル
+          var tdPerson = document.createElement('td');
+          var inputPerson = document.createElement('input');
+          inputPerson.style.width = '120px';
+          inputPerson.type = 'text';
+          inputPerson.id = 'ident' + i;
+          inputPerson.value = personName;
+          inputPerson.readOnly = true;
+          tdPerson.appendChild(inputPerson);
+          tr.appendChild(tdPerson);
+
+          table.appendChild(tr);
         }
-        html += "</table>";
-        $("#resCustArea").html(html);
+
+        container.appendChild(table);
       }
       else {
         showInfoToast('該当データがありませんでした。');
