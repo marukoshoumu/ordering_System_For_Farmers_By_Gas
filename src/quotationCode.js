@@ -1,9 +1,13 @@
 /**
  * 見積書データシートのヘッダーを取得する
  * @returns {Array} ヘッダー名の配列
+ * @throws {Error} 見積書データシートが存在しない場合
  */
 function getQuotationDataSheetHeaders() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('見積書データ');
+  if (!sheet) {
+    throw new Error('「見積書データ」シートが見つかりません');
+  }
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
 
