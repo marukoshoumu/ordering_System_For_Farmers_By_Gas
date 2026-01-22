@@ -1755,6 +1755,15 @@ function getShippingComfirmHTML(e) {
   }
   html += `<input type="hidden" name="copiePrint" value="${e.parameter.copiePrint || ''}">`;
 
+  // 社内メモ
+  if (e.parameter.internalMemo) {
+    html += `<div class="confirm-field">
+      <div class="confirm-field-label">社内メモ</div>
+      <div class="confirm-field-value">${e.parameter.internalMemo}</div>
+    </div>`;
+  }
+  html += `<input type="hidden" name="internalMemo" value="${e.parameter.internalMemo || ''}">`;
+
   // 備考欄
   if (e.parameter.csvmemo) {
     html += `<div class="confirm-field">
@@ -1864,7 +1873,7 @@ function registerNewCustomerToMaster(e) {
 
     // 顧客情報マスタに登録（存在しない場合のみ）
     if (!customerExists && customerName) {
-      // カラム: 顧客分類,表示名,フリガナ,会社名,部署,役職,氏名,郵便番号,住所１,住所２,TEL,携帯電話,FAX,メールアドレス,請求書有無,入金期日,備考
+      // カラム: 顧客分類,表示名,フリガナ,会社名,部署,役職,氏名,郵便番号,住所１,住所２,TEL,携帯電話,FAX,メールアドレス,請求書有無,入金期日,消費税の表示方法,備考
       const customerRow = [
         '',                    // 顧客分類
         '',                    // 表示名
@@ -1882,6 +1891,7 @@ function registerNewCustomerToMaster(e) {
         '',                    // メールアドレス
         '',                    // 請求書有無
         '',                    // 入金期日
+        '',                    // 消費税の表示方法
         '【電話注文から自動登録】'  // 備考
       ];
       customerSheet.getRange(customerLastRow + 1, 1, 1, customerRow.length).setNumberFormat('@').setValues([customerRow]).setBorder(true, true, true, true, true, true);
