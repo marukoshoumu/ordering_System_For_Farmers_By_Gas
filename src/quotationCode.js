@@ -1,4 +1,28 @@
 /**
+ * 見積書データシートのヘッダーを取得する
+ * @returns {Array} ヘッダー名の配列
+ */
+function getQuotationDataSheetHeaders() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('見積書データ');
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+}
+
+/**
+ * ヘッダー名から見積書データの値を取得する
+ * @param {Array} record - データ行の配列
+ * @param {string} headerName - 取得したい列のヘッダー名
+ * @param {Array} headers - ヘッダー配列
+ * @returns {*} 指定した列の値
+ */
+function getQuotationValue(record, headerName, headers) {
+  const index = headers.indexOf(headerName);
+  if (index === -1) {
+    throw new Error(`見積書データヘッダー「${headerName}」が見つかりません`);
+  }
+  return record[index];
+}
+
+/**
  * 見積書作成に必要なマスタデータを取得する
  *
  * 処理フロー:
@@ -142,7 +166,8 @@ function createQuoutation(datas) {
     adds.push(record);
   });
   addRecords('見積書データ', adds);
-  let filenm = makeQuoutation(adds);
+  const quotationHeaders = getQuotationDataSheetHeaders();
+  let filenm = makeQuoutation(adds, quotationHeaders);
   return filenm;
 }
 
@@ -214,7 +239,7 @@ function createQuoutation(datas) {
  * ];
  * const fileName = makeQuoutation(quotationData);
  */
-function makeQuoutation(fileData) {
+function makeQuoutation(fileData, quotationHeaders) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const pdfSheet = ss.getSheetByName('見積書');
   // 初期化
@@ -233,31 +258,31 @@ function makeQuoutation(fileData) {
   }
 
   // 見積書データ設定
-  pdfSheet.getRange(3, 12).setValue(fileData[0][1]);
-  pdfSheet.getRange(5, 2).setValue(fileData[0][2].split('　')[0]);
-  pdfSheet.getRange(12, 2).setValue('納品場所：' + fileData[0][3]);
-  pdfSheet.getRange(13, 2).setValue('納入方法：' + fileData[0][4]);
-  pdfSheet.getRange(14 , 2).setValue('出荷リードタイム：' + fileData[0][5]);
+  pdfSheet.getRange(3, 12).setValue(getQuotationValue(fileData[0], '作成日', quotationHeaders));
+  pdfSheet.getRange(5, 2).setValue(getQuotationValue(fileData[0], '顧客名', quotationHeaders).split('　')[0]);
+  pdfSheet.getRange(12, 2).setValue('納品場所：' + getQuotationValue(fileData[0], '納品先名', quotationHeaders));
+  pdfSheet.getRange(13, 2).setValue('納入方法：' + getQuotationValue(fileData[0], '納品方法', quotationHeaders));
+  pdfSheet.getRange(14 , 2).setValue('出荷リードタイム：' + getQuotationValue(fileData[0], 'リードタイム', quotationHeaders));
   for (let i = 0; i < fileData.length; i++) {
     let line = 20 + i;
-    pdfSheet.getRange(line, 2).setValue(fileData[i][7]);
-    pdfSheet.getRange(line, 4).setValue(fileData[i][8]);
-    pdfSheet.getRange(line,5).setValue(fileData[i][9]);
-    pdfSheet.getRange(line,6).setValue(fileData[i][10]);
-    pdfSheet.getRange(line,7).setValue(fileData[i][11]);
-    pdfSheet.getRange(line,8).setValue(fileData[i][12]);
-    pdfSheet.getRange(line,9).setValue(fileData[i][13]);
-    pdfSheet.getRange(line,10).setValue(fileData[i][14]);
-    pdfSheet.getRange(line,11).setValue(fileData[i][15]);
-    pdfSheet.getRange(line,12).setValue(fileData[i][16]);
+    pdfSheet.getRange(line, 2).setValue(getQuotationValue(fileData[i], '商品名', quotationHeaders));
+    pdfSheet.getRange(line, 4).setValue(getQuotationValue(fileData[i], '規格', quotationHeaders));
+    pdfSheet.getRange(line,5).setValue(getQuotationValue(fileData[i], '出荷ロット', quotationHeaders));
+    pdfSheet.getRange(line,6).setValue(getQuotationValue(fileData[i], '価格', quotationHeaders));
+    pdfSheet.getRange(line,7).setValue(getQuotationValue(fileData[i], '単位', quotationHeaders));
+    pdfSheet.getRange(line,8).setValue(getQuotationValue(fileData[i], '産地', quotationHeaders));
+    pdfSheet.getRange(line,9).setValue(getQuotationValue(fileData[i], 'JANコード', quotationHeaders));
+    pdfSheet.getRange(line,10).setValue(getQuotationValue(fileData[i], '保存温度帯', quotationHeaders));
+    pdfSheet.getRange(line,11).setValue(getQuotationValue(fileData[i], '賞味期限延長', quotationHeaders));
+    pdfSheet.getRange(line,12).setValue(getQuotationValue(fileData[i], 'その他', quotationHeaders));
   }
-  pdfSheet.getRange(30, 2).setValue(fileData[0][17]);
+  pdfSheet.getRange(30, 2).setValue(getQuotationValue(fileData[0], 'メモ', quotationHeaders));
   if (fileData.length < 8) {
     let line = 20 + fileData.length;
     pdfSheet.getRange(line, 2).setValue("以下余白");
   }
   SpreadsheetApp.flush();
-  const fileName = fileData[0][2].split('　')[0];
+  const fileName = getQuotationValue(fileData[0], '顧客名', quotationHeaders).split('　')[0];
   const ssId = ss.getId();
   const shId = pdfSheet.getSheetId();
   const folderId = getQuotationFolderId();

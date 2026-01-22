@@ -1,4 +1,37 @@
 /**
+ * 受注シートからヘッダーを取得
+ * シートのヘッダーが真実の情報源（Single Source of Truth）
+ * @returns {Array} ヘッダー配列
+ */
+function getOrderSheetHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(getMasterSpreadsheetId());
+  const sheet = ss.getSheetByName('受注');
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+}
+
+/**
+ * 受注レコード配列から指定ヘッダーの値を取得
+ * @param {Array} record - 受注レコード配列
+ * @param {string} headerName - ヘッダー名
+ * @param {Array} headers - ヘッダー配列
+ * @returns {*} 値（見つからない場合はundefined）
+ */
+function getOrderValue(record, headerName, headers) {
+  const index = headers.indexOf(headerName);
+  return index >= 0 ? record[index] : undefined;
+}
+
+/**
+ * recordオブジェクトをヘッダー順の配列に変換
+ * @param {Object} record - キーが列名のオブジェクト
+ * @param {Array} headers - ヘッダー配列
+ * @returns {Array} ヘッダー順に並んだ値の配列
+ */
+function recordToArray(record, headers) {
+  return headers.map(header => record[header] !== undefined ? record[header] : '');
+}
+
+/**
  * マスタデータキャッシュをクリアして再取得
  *
  * CacheService に保存されているマスタデータキャッシュを削除し、
@@ -209,12 +242,25 @@ function getshippingHTML(e, alert = '') {
     e.parameter.shippingFromAddress = editData.shippingFromAddress;
     e.parameter.shippingFromTel = editData.shippingFromTel;
 
+    // 複数日程対応: dates配列からデータを設定
     if (isInheritMode) {
       e.parameter.shippingDate1 = '';
       e.parameter.deliveryDate1 = '';
     } else {
-      e.parameter.shippingDate1 = editData.shippingDate;
-      e.parameter.deliveryDate1 = editData.deliveryDate;
+      // 後方互換性: 旧形式（dates配列がない場合）にも対応
+      if (editData.dates && editData.dates.length > 0) {
+        // 複数日程の場合: dates配列から設定
+        editData.dates.forEach((dateInfo, index) => {
+          const dateNum = index + 1;
+          e.parameter['shippingDate' + dateNum] = dateInfo.shippingDate;
+          e.parameter['deliveryDate' + dateNum] = dateInfo.deliveryDate;
+          e.parameter['deliveryNoteText' + dateNum] = dateInfo.deliveryNoteText || '';
+        });
+      } else {
+        // 旧形式の場合: トップレベルのプロパティから設定
+        e.parameter.shippingDate1 = editData.shippingDate;
+        e.parameter.deliveryDate1 = editData.deliveryDate;
+      }
     }
 
     e.parameter.receiptWay = editData.receiptWay;
@@ -590,6 +636,7 @@ function getshippingHTML(e, alert = '') {
   for (let i = 1; i <= existingDateCount; i++) {
     const sd = e.parameter['shippingDate' + i] || (i === 1 ? shippingDate : '');
     const dd = e.parameter['deliveryDate' + i] || (i === 1 ? deliveryDate : '');
+    const dnt = e.parameter['deliveryNoteText' + i] || '';
     const disabledAttr = (existingDateCount === 1) ? 'disabled' : '';
 
     html += `    <div class="shipping-date-row d-flex align-items-center gap-2 mb-2" data-row="${i}">`;
@@ -598,6 +645,8 @@ function getshippingHTML(e, alert = '') {
     html += `      <input type="date" class="form-control" style="width:160px;" name="shippingDate${i}" required value="${sd}">`;
     html += `      <label class="col-form-label">納品日</label>`;
     html += `      <input type="date" class="form-control" style="width:160px;" name="deliveryDate${i}" required value="${dd}">`;
+    html += `      <label class="col-form-label">納品書テキスト</label>`;
+    html += `      <input type="text" class="form-control" style="width:300px;" name="deliveryNoteText${i}" placeholder="例: 月曜コース分の商品" value="${dnt}">`;
     html += `      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)" ${disabledAttr}>✕</button>`;
     html += `    </div>`;
   }
@@ -907,8 +956,12 @@ function getshippingHTML(e, alert = '') {
 
   // 備考欄
   html += `<div class="mb-3">`;
+  html += `<label for="internalMemo" class="text-left form-label">社内メモ</label>`;
+  html += `<textarea class="form-control" id="internalMemo" name="internalMemo" rows="2" cols="30" placeholder="freeeの社内メモ列に出力されます">${e.parameter.internalMemo ? e.parameter.internalMemo : ""}</textarea>`;
+  html += `</div>`;
+  html += `<div class="mb-3">`;
   html += `<label for="csvmemo" class="text-left form-label">送り状　備考欄</label>`;
-  html += `<textarea class="form-control" id="csvmemo" name="csvmemo" rows="2" cols="30" maxlength="22">${e.parameter.csvmemo ? e.parameter.csvmemo : ""}</textarea>`;
+  html += `<textarea class="form-control" id="csvmemo" name="csvmemo" rows="2" cols="30" maxlength="22" placeholder="freeeの備考列に出力されます">${e.parameter.csvmemo ? e.parameter.csvmemo : ""}</textarea>`;
   html += `</div>`;
   html += `<div class="mb-3">`;
   html += `<label for="deliveryMemo" class="text-left form-label">納品書　備考欄</label>`;
@@ -1940,6 +1993,9 @@ function createOrder(e) {
     registerNewCustomerToMaster(e);
   }
 
+  // 受注シートからヘッダーを取得（シートが真実の情報源）
+  const orderHeaders = getOrderSheetHeaders();
+
   // 編集モードの場合、既存データを削除
   const editOrderId = e.parameter.editOrderId || '';
   if (editOrderId) {
@@ -1969,13 +2025,25 @@ function createOrder(e) {
     }
   }
 
+  // 紐付け受注ID管理用（複数日程対応）
+  let firstOrderId = null;
+
   // 日程ごとにループして受注登録
   for (let dateIndex = 1; dateIndex <= dateCount; dateIndex++) {
     const shippingDate = e.parameter['shippingDate' + dateIndex];
     const deliveryDate = e.parameter['deliveryDate' + dateIndex];
+    const deliveryNoteText = e.parameter['deliveryNoteText' + dateIndex] || '';
 
     // 納品ID（日程ごとに別ID）
     const deliveryId = generateId();
+
+    // 紐付け受注IDの設定
+    let linkedOrderId = '';
+    if (dateIndex === 1) {
+      firstOrderId = deliveryId;  // 最初の受注IDを保持
+    } else {
+      linkedOrderId = firstOrderId;  // 2つ目以降は最初のIDを紐付け
+    }
 
     // 受注テーブルに複数レコードを追加する
     const records = [];
@@ -2030,66 +2098,23 @@ function createOrder(e) {
         record['代引総額'] = e.parameter.cashOnDelivery;
         record['代引内税'] = e.parameter.cashOnDeliTax;
         record['発行枚数'] = e.parameter.copiePrint;
+        record['社内メモ'] = e.parameter.internalMemo;
         record['送り状備考欄'] = e.parameter.csvmemo;
         record['納品書備考欄'] = e.parameter.deliveryMemo;
         record['メモ'] = e.parameter.memo;
         record['出荷済'] = "";  // デフォルトは未出荷
         record['ステータス'] = ""; // ステータス列を追加
         record['追跡番号'] = ""; // 追跡番号列を追加
+        record['紐付け受注ID'] = linkedOrderId;  // 紐付け受注ID（複数日程対応）
+        record['納品書テキスト'] = deliveryNoteText;  // 納品書テキスト（freee用）
         record['商品分類'] = bunruiVal;
         record['商品名'] = productVal;
         record['受注数'] = count;
         record['販売価格'] = unitPrice;
         record['小計'] = count * unitPrice;
 
-        const addRecord = [
-          record['受注ID'],
-          record['受注日'],
-          record['商品分類'],
-          record['商品名'],
-          record['受注数'],
-          record['販売価格'],
-          record['顧客名'],
-          record['顧客郵便番号'],
-          record['顧客住所'],
-          record['顧客電話番号'],
-          record['発送先名'],
-          record['発送先郵便番号'],
-          record['発送先住所'],
-          record['発送先電話番号'],
-          record['発送元名'],
-          record['発送元郵便番号'],
-          record['発送元住所'],
-          record['発送元電話番号'],
-          record['発送日'],
-          record['納品日'],
-          record['受付方法'],
-          record['受付者'],
-          record['納品方法'],
-          record['配達時間帯'],
-          record['納品書'],
-          record['請求書'],
-          record['領収書'],
-          record['パンフ'],
-          record['レシピ'],
-          record['その他添付'],
-          record['品名'],
-          record['送り状種別'],
-          record['クール区分'],
-          record['荷扱い１'],
-          record['荷扱い２'],
-          record['荷扱い３'],
-          record['代引総額'],
-          record['代引内税'],
-          record['発行枚数'],
-          record['送り状備考欄'],
-          record['納品書備考欄'],
-          record['メモ'],
-          record['小計'],
-          record['出荷済'],
-          record['ステータス'],
-          record['追跡番号']
-        ];
+        // ヘッダー順に配列化（シートのヘッダーが真実の情報源）
+        const addRecord = recordToArray(record, orderHeaders);
         records.push(addRecord);
         createRecords.push(record);
       }
@@ -2099,10 +2124,10 @@ function createOrder(e) {
     addRecords('受注', records);
 
     if (e.parameter.deliveryMethod == 'ヤマト') {
-      addRecordYamato('ヤマトCSV', records, e, deliveryId);
+      addRecordYamato('ヤマトCSV', records, e, deliveryId, orderHeaders);
     }
     if (e.parameter.deliveryMethod == '佐川') {
-      addRecordSagawa('佐川CSV', records, e, deliveryId);
+      addRecordSagawa('佐川CSV', records, e, deliveryId, orderHeaders);
     }
     if (e.parameters.checklist && e.parameters.checklist.includes('納品書')) {
       createFile(createRecords);
@@ -2140,52 +2165,55 @@ function createOrder(e) {
  * @param {Array} records - 受注レコード配列
  * @param {Object} e - オリジナルのリクエストパラメータ
  * @param {string} deliveryId - 受注ID
+ * @param {Array} orderHeaders - 受注シートのヘッダー配列
  */
-function addRecordYamato(sheetName, records, e, deliveryId) {
+function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
   Logger.log(e);
   Logger.log(records);
   const adds = [];
   var record = [];
-  record['発送日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
+  // 受注データから値を取得（ヘッダー名でアクセス）
+  const orderData = records[0];
+  record['発送日'] = Utilities.formatDate(new Date(getOrderValue(orderData, '発送日', orderHeaders)), 'JST', 'yyyy/MM/dd');
   record['お客様管理番号'] = deliveryId || "";
   record['送り状種別'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[0] : "";
   record['クール区分'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
   record['伝票番号'] = "";
-  record['出荷予定日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
-  record['お届け予定（指定）日'] = Utilities.formatDate(new Date(records[0][19]), 'JST', 'yyyy/MM/dd');
+  record['出荷予定日'] = Utilities.formatDate(new Date(getOrderValue(orderData, '発送日', orderHeaders)), 'JST', 'yyyy/MM/dd');
+  record['お届け予定（指定）日'] = Utilities.formatDate(new Date(getOrderValue(orderData, '納品日', orderHeaders)), 'JST', 'yyyy/MM/dd');
   record['配達時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[0] : "";
   record['お届け先コード'] = "";
-  record['お届け先電話番号'] = records[0][13];
+  record['お届け先電話番号'] = getOrderValue(orderData, '発送先電話番号', orderHeaders);
   record['お届け先電話番号枝番'] = "";
-  record['お届け先郵便番号'] = records[0][11];
-  record['お届け先住所'] = records[0][12];
+  record['お届け先郵便番号'] = getOrderValue(orderData, '発送先郵便番号', orderHeaders);
+  record['お届け先住所'] = getOrderValue(orderData, '発送先住所', orderHeaders);
   record['お届け先住所（アパートマンション名）'] = "";
   record['お届け先会社・部門名１'] = "";
   record['お届け先会社・部門名２'] = "";
-  record['お届け先名'] = records[0][10];
+  record['お届け先名'] = getOrderValue(orderData, '発送先名', orderHeaders);
   record['お届け先名略称カナ'] = "";
   record['敬称'] = "";
   record['ご依頼主コード'] = "";
-  record['ご依頼主電話番号'] = records[0][17];
+  record['ご依頼主電話番号'] = getOrderValue(orderData, '発送元電話番号', orderHeaders);
   record['ご依頼主電話番号枝番'] = "";
-  record['ご依頼主郵便番号'] = records[0][15];
-  record['ご依頼主住所'] = records[0][16];
+  record['ご依頼主郵便番号'] = getOrderValue(orderData, '発送元郵便番号', orderHeaders);
+  record['ご依頼主住所'] = getOrderValue(orderData, '発送元住所', orderHeaders);
   record['ご依頼主住所（アパートマンション名）'] = "";
-  record['ご依頼主名'] = records[0][14];
+  record['ご依頼主名'] = getOrderValue(orderData, '発送元名', orderHeaders);
   record['ご依頼主略称カナ'] = "";
   record['品名コード１'] = "";
-  record['品名１'] = records[0][30];
+  record['品名１'] = getOrderValue(orderData, '品名', orderHeaders);
   record['品名コード２'] = "";
   record['品名２'] = "";
   record['荷扱い１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
   record['荷扱い２'] = e.parameter.cargo2 ? e.parameter.cargo2.split(':')[0] : "";
   record['荷扱い３'] = e.parameter.cargo3 ? e.parameter.cargo3.split(':')[0] : "";
-  record['記事'] = records[0][39];
-  record['コレクト代金引換額（税込）'] = records[0][36];
-  record['コレクト内消費税額等'] = records[0][37];
+  record['記事'] = getOrderValue(orderData, '送り状備考欄', orderHeaders);
+  record['コレクト代金引換額（税込）'] = getOrderValue(orderData, '代引総額', orderHeaders);
+  record['コレクト内消費税額等'] = getOrderValue(orderData, '代引内税', orderHeaders);
   record['営業所止置き'] = "";
   record['営業所コード'] = "";
-  record['発行枚数'] = records[0][38];
+  record['発行枚数'] = getOrderValue(orderData, '発行枚数', orderHeaders);
   record['個数口枠の印字'] = "";
   record['ご請求先顧客コード'] = "019543385101";
   record['ご請求先分類コード'] = "";
@@ -2264,21 +2292,24 @@ function addRecordYamato(sheetName, records, e, deliveryId) {
  * @param {Array} records - 受注レコード配列
  * @param {Object} e - オリジナルのリクエストパラメータ
  * @param {string} deliveryId - 受注ID
+ * @param {Array} orderHeaders - 受注シートのヘッダー配列
  */
-function addRecordSagawa(sheetName, records, e, deliveryId) {
+function addRecordSagawa(sheetName, records, e, deliveryId, orderHeaders) {
   Logger.log(e);
   Logger.log(records);
   const adds = [];
   var record = [];
-  record['発送日'] = Utilities.formatDate(new Date(records[0][18]), 'JST', 'yyyy/MM/dd');
+  // 受注データから値を取得（ヘッダー名でアクセス）
+  const orderData = records[0];
+  record['発送日'] = Utilities.formatDate(new Date(getOrderValue(orderData, '発送日', orderHeaders)), 'JST', 'yyyy/MM/dd');
   record['お届け先コード取得区分'] = "";
   record['お届け先コード'] = "";
-  record['お届け先電話番号'] = records[0][13];
-  record['お届け先郵便番号'] = records[0][11];
-  record['お届け先住所１'] = records[0][12];
+  record['お届け先電話番号'] = getOrderValue(orderData, '発送先電話番号', orderHeaders);
+  record['お届け先郵便番号'] = getOrderValue(orderData, '発送先郵便番号', orderHeaders);
+  record['お届け先住所１'] = getOrderValue(orderData, '発送先住所', orderHeaders);
   record['お届け先住所２'] = "";
   record['お届け先住所３'] = "";
-  record['お届け先名称１'] = records[0][10];
+  record['お届け先名称１'] = getOrderValue(orderData, '発送先名', orderHeaders);
   record['お届け先名称２'] = "";
   record['お客様管理番号'] = deliveryId || "";
   record['お客様コード'] = "";
@@ -2288,18 +2319,19 @@ function addRecordSagawa(sheetName, records, e, deliveryId) {
   record['荷送人電話番号'] = "";
   record['ご依頼主コード取得区分'] = "";
   record['ご依頼主コード'] = "";
-  record['ご依頼主電話番号'] = records[0][17];
-  record['ご依頼主郵便番号'] = records[0][15];
-  record['ご依頼主住所１'] = records[0][16];
+  record['ご依頼主電話番号'] = getOrderValue(orderData, '発送元電話番号', orderHeaders);
+  record['ご依頼主郵便番号'] = getOrderValue(orderData, '発送元郵便番号', orderHeaders);
+  record['ご依頼主住所１'] = getOrderValue(orderData, '発送元住所', orderHeaders);
   record['ご依頼主住所２'] = "";
-  record['ご依頼主名称１'] = records[0][14];
+  record['ご依頼主名称１'] = getOrderValue(orderData, '発送元名', orderHeaders);
   record['ご依頼主名称２'] = "";
   record['荷姿'] = "";
-  if (records[0][30].length > 16) {
-    record['品名１'] = records[0][30].substring(0, 16);
+  const productName = getOrderValue(orderData, '品名', orderHeaders) || '';
+  if (productName.length > 16) {
+    record['品名１'] = productName.substring(0, 16);
   }
   else {
-    record['品名１'] = records[0][30];
+    record['品名１'] = productName;
   }
   record['品名２'] = "";
   record['品名３'] = "";
@@ -2317,14 +2349,14 @@ function addRecordSagawa(sheetName, records, e, deliveryId) {
   record['荷札品名９'] = "";
   record['荷札品名１０'] = "";
   record['荷札品名１１'] = "";
-  record['出荷個数'] = records[0][38];
+  record['出荷個数'] = getOrderValue(orderData, '発行枚数', orderHeaders);
   record['スピード指定'] = "000";
   record['クール便指定'] = e.parameter.coolCls ? e.parameter.coolCls.split(':')[0] : "";
-  record['配達日'] = Utilities.formatDate(new Date(records[0][19]), 'JST', 'yyyyMMdd');
+  record['配達日'] = Utilities.formatDate(new Date(getOrderValue(orderData, '納品日', orderHeaders)), 'JST', 'yyyyMMdd');
   record['配達指定時間帯'] = e.parameter.deliveryTime ? e.parameter.deliveryTime.split(":")[0] : "";
   record['配達指定時間（時分）'] = "";
-  record['代引金額'] = records[0][36];
-  record['消費税'] = records[0][37];
+  record['代引金額'] = getOrderValue(orderData, '代引総額', orderHeaders);
+  record['消費税'] = getOrderValue(orderData, '代引内税', orderHeaders);
   record['決済種別'] = "";
   record['保険金額'] = "";
   record['指定シール１'] = e.parameter.cargo1 ? e.parameter.cargo1.split(':')[0] : "";
@@ -2335,7 +2367,7 @@ function addRecordSagawa(sheetName, records, e, deliveryId) {
   record['営業所受取営業所コード'] = "";
   record['元着区分'] = e.parameter.invoiceType ? e.parameter.invoiceType.split(':')[0] : "";
   record['メールアドレス'] = "";
-  record['ご不在時連絡先'] = records[0][13];
+  record['ご不在時連絡先'] = getOrderValue(orderData, '発送先電話番号', orderHeaders);
   record['出荷予定日'] = "";
   record['セット数'] = "";
   record['お問い合せ送り状No.'] = "";
