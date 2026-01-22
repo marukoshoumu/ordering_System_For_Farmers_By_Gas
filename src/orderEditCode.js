@@ -190,7 +190,9 @@ function getOrderByOrderId(orderId) {
   // ============================================
 
   const result = {
-    orderId: orderId,
+    // 親IDを正規のIDとして使用（子受注から開いた場合も親グループ全体を編集/削除対象とする）
+    orderId: parentId,
+    originalOrderId: orderId,  // 元々リクエストされたID（デバッグ用）
     orderDate: firstRow[getColIndex('受注日')],
 
     // 発送先情報
