@@ -81,16 +81,65 @@ function getOrderByOrderId(orderId) {
   // ヘッダーからインデックスを取得
   const getColIndex = (name) => headers.indexOf(name);
 
-  // 受注IDが一致する行を全て取得
-  const matchingRows = [];
+  // ============================================
+  // 紐付け受注対応: 関連する全受注を取得
+  // ============================================
+
+  // 指定された受注を取得
+  const targetRows = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][getColIndex('受注ID')] === orderId) {
-      matchingRows.push(data[i]);
+      targetRows.push(data[i]);
     }
   }
 
-  if (matchingRows.length === 0) return null;
+  if (targetRows.length === 0) return null;
 
+  const targetRow = targetRows[0];
+
+  // 紐付けIDを確認して親IDを決定
+  const linkedId = targetRow[getColIndex('紐付け受注ID')] || '';
+  let parentId;
+
+  if (linkedId) {
+    // 紐付けがある（子受注） → 親IDを使用
+    parentId = linkedId;
+  } else {
+    // 紐付けがない（親受注または単独） → 自分のIDを使用
+    parentId = orderId;
+  }
+
+  // 親ID + 紐付きIDが親IDのものをすべて取得してグループ化
+  const allGroupOrders = {};  // 受注ID → 行配列のマップ
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const rowOrderId = row[getColIndex('受注ID')];
+    const rowLinkedId = row[getColIndex('紐付け受注ID')] || '';
+
+    // 親自身、または親に紐付いている子
+    if (rowOrderId === parentId || rowLinkedId === parentId) {
+      if (!allGroupOrders[rowOrderId]) {
+        allGroupOrders[rowOrderId] = [];
+      }
+      allGroupOrders[rowOrderId].push(row);
+    }
+  }
+
+  // 受注IDごとの配列に変換し、発送日でソート
+  const orderGroups = Object.keys(allGroupOrders).map(id => {
+    return {
+      orderId: id,
+      rows: allGroupOrders[id]
+    };
+  }).sort((a, b) => {
+    const dateA = new Date(a.rows[0][getColIndex('発送日')]);
+    const dateB = new Date(b.rows[0][getColIndex('発送日')]);
+    return dateA - dateB;
+  });
+
+  // 最初のグループの最初の行を基本情報として使用
+  const matchingRows = orderGroups[0].rows;
   const firstRow = matchingRows[0];
 
   // 納品方法を先に取得（ヤマト/佐川の判定に使用）
@@ -208,7 +257,7 @@ function getOrderByOrderId(orderId) {
     items: []
   };
 
-  // 商品情報を取得
+  // 商品情報を取得（後方互換性のため、最初の日程の商品をitemsに格納）
   matchingRows.forEach(row => {
     const bunrui = row[getColIndex('商品分類')];
     const product = row[getColIndex('商品名')];
@@ -223,6 +272,39 @@ function getOrderByOrderId(orderId) {
         price: price || 0
       });
     }
+  });
+
+  // ============================================
+  // 複数日程対応: dates配列を追加
+  // ============================================
+  result.dates = orderGroups.map(group => {
+    const groupFirstRow = group.rows[0];
+    const dateItems = [];
+
+    // この日程の商品情報を取得
+    group.rows.forEach(row => {
+      const bunrui = row[getColIndex('商品分類')];
+      const product = row[getColIndex('商品名')];
+      const quantity = row[getColIndex('受注数')];
+      const price = row[getColIndex('販売価格')];
+
+      if (product) {
+        dateItems.push({
+          bunrui: bunrui || '',
+          product: product || '',
+          quantity: quantity || 0,
+          price: price || 0
+        });
+      }
+    });
+
+    return {
+      orderId: group.orderId,
+      shippingDate: formatDateForInput(groupFirstRow[getColIndex('発送日')]),
+      deliveryDate: formatDateForInput(groupFirstRow[getColIndex('納品日')]),
+      deliveryNoteText: groupFirstRow[getColIndex('納品書テキスト')] || '',
+      items: dateItems
+    };
   });
 
   return result;

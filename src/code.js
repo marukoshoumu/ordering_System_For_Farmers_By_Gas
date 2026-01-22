@@ -445,6 +445,18 @@ function doPost(e) {
     htmlOutput.setTitle('請求書作成');
     return htmlOutput;
   }
+  else if (e.parameter.createFreeeDeliveryNote) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
+    const template = HtmlService.createTemplateFromFile('createFreeeDeliveryNote');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('freee納品書CSV作成');
+    return htmlOutput;
+  }
   else if (e.parameter.csvImport) {
     const userRole = e.parameter.userRole || 'admin';
     if (userRole === 'viewer') {

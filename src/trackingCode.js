@@ -1,18 +1,19 @@
 /**
  * 受注シートのヘッダーをセットアップする
- * 「追跡番号」列がない場合は追加し、既存のデータの整合性を保つ
+ * 「追跡番号」「紐付け受注ID」「納品書テキスト」列がない場合は追加し、既存のデータの整合性を保つ
  */
 function setupOrderSheetHeaders() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('受注');
     if (!sheet) return;
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const trackingColIndex = headers.indexOf('追跡番号');
+    // ヘッダーを取得（列追加後も再取得が必要なため、各チェックごとに再取得）
+    let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const shippedColIndex = headers.indexOf('出荷済');
     const subtotalColIndex = headers.indexOf('小計');
 
     // 追跡番号列がない場合
+    const trackingColIndex = headers.indexOf('追跡番号');
     if (trackingColIndex === -1) {
         if (shippedColIndex !== -1) {
             // 「出荷済」の右隣に挿入
@@ -28,6 +29,40 @@ function setupOrderSheetHeaders() {
             // 末尾に追加
             sheet.getRange(1, headers.length + 1).setValue('追跡番号');
             Logger.log('「追跡番号」列を末尾に追加しました');
+        }
+    }
+
+    // ヘッダーを再取得
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    // 紐付け受注ID列がない場合（追跡番号の隣に追加）
+    const linkedOrderIdColIndex = headers.indexOf('紐付け受注ID');
+    if (linkedOrderIdColIndex === -1) {
+        const currentTrackingColIndex = headers.indexOf('追跡番号');
+        if (currentTrackingColIndex !== -1) {
+            sheet.insertColumnAfter(currentTrackingColIndex + 1);
+            sheet.getRange(1, currentTrackingColIndex + 2).setValue('紐付け受注ID');
+            Logger.log('「紐付け受注ID」列を追加しました（追跡番号の隣）');
+        } else {
+            sheet.getRange(1, headers.length + 1).setValue('紐付け受注ID');
+            Logger.log('「紐付け受注ID」列を末尾に追加しました');
+        }
+    }
+
+    // ヘッダーを再取得
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    // 納品書テキスト列がない場合（紐付け受注IDの隣に追加）
+    const deliveryNoteTextColIndex = headers.indexOf('納品書テキスト');
+    if (deliveryNoteTextColIndex === -1) {
+        const currentLinkedOrderIdColIndex = headers.indexOf('紐付け受注ID');
+        if (currentLinkedOrderIdColIndex !== -1) {
+            sheet.insertColumnAfter(currentLinkedOrderIdColIndex + 1);
+            sheet.getRange(1, currentLinkedOrderIdColIndex + 2).setValue('納品書テキスト');
+            Logger.log('「納品書テキスト」列を追加しました（紐付け受注IDの隣）');
+        } else {
+            sheet.getRange(1, headers.length + 1).setValue('納品書テキスト');
+            Logger.log('「納品書テキスト」列を末尾に追加しました');
         }
     }
 }

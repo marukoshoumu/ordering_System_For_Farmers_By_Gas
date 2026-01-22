@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+</head>
+
+<body>
+  <div class="container">
+    <h2 class="text-center m-4">freee納品書CSV作成</h2>
+    <div class="alert alert-info" role="alert">
+      <strong>📋 freee側の事前準備が必要です:</strong>
+      <ul class="mb-0 mt-2">
+        <li>取引先（顧客）をfreeeに登録</li>
+        <li>品目（商品）をfreeeに登録（任意だが推奨）</li>
+        <li>勘定科目をfreeeに登録（例: 売上高）</li>
+      </ul>
+    </div>
+    <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <div class="customerSearch_dg">
+        <div>
+          <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
+          <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg" >
+            <option value="1">会社名</option>
+            <option value="2">氏名</option>
+            <option value="3">表示名</option>
+            <option value="4">フリガナ</option>
+          </select>
+        </div>
+        <div>
+          <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
+          <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg" >
+            <option value=""></option>
+            <option value="1">一次卸し・大口</option>
+            <option value="2">小売店</option>
+            <option value="3">飲食店・ホテル</option>
+            <option value="4">地元飲食店</option>
+            <option value="5">通信販売</option>
+            <option value="6">一般販売</option>
+            <option value="7">その他</option>
+            <option value="8">職域</option>
+          </select>
+        </div>
+        <div>
+          <label for="customerSearchKeyDg" class="text-left form-label">キーワード</label>
+          <input type="text" class="form-control" id="customerSearchKeyDg" name="customerSearchKeyDg">
+        </div>
+        <div id="resCustArea" class="mt-2 resTable">
+        </div>
+      </div>
+      <div class="row mb-3 align-items-center justify-content-center">
+        <div class="col-auto">
+          <label for="customerName" class="text-center form-label">顧客名</label>
+        </div>
+        <div class="col-auto">
+          <input type="text" class="form-control" id="customerName" name="customerName" placeholder="空欄=全顧客">
+        </div>
+        <div class="col-auto">
+          <button type='button' class="customerSearchBtn_open" title="顧客検索">🔍 検索</button>
+        </div>
+      </div>
+      <div class="row mb-3 align-items-center justify-content-center">
+        <div class="col-auto">
+          <label for="targetDateFrom" class="text-center form-label">対象日</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control" id="targetDateFrom" name="targetDateFrom">
+        </div>
+        <div class="col-auto">
+          <label for="targetDateTo" class="text-center form-label">～</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control" id="targetDateTo" name="targetDateTo">
+        </div>
+        <div class="col-auto">
+          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3" onclick="createFreeeCSV()">CSV作成</button>
+        </div>
+      </div>
+  </div>
+  <p id="res" style="text-align: center;"></p>
+  <div class="text-center">
+    <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+  </div>
+  <br>
+  <div class="text-center">
+    <button type="button" class="btn btn-outline-secondary" name="openFreeeCSV" value="true" onclick="openUrlFreeeCSV()">CSV参照</button>
+  </div>
+  </form>
+  </div>
+  <script>
+    // ========================================
+    // 検索パフォーマンス改善: マスタデータキャッシュ
+    // ========================================
+    var cachedCustomers = [];
+    var masterDataLoaded = false;
+
+    function openUrlFreeeCSV() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
+    }
+    function sendFail() {
+      showErrorToast("処理に失敗しました。");
+    }
+    function sendSucces(url) {
+      window.open(url);
+    }
+    function setFirstDate () {
+      const nowDate = new Date();
+      var firstDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+      var yyyy = firstDate.getFullYear();
+      var mm = ("0"+(firstDate.getMonth()+1)).slice(-2);
+      var dd = ("0"+firstDate.getDate()).slice(-2);
+      document.getElementById("targetDateFrom").value=yyyy+'-'+mm+'-'+dd;
+    }
+    setFirstDate();
+    function setLastDate() {
+      const nowDate = new Date();
+      var lastDate = new Date(nowDate.getFullYear(), nowDate.getMonth(), 0);
+      var yyyy = lastDate.getFullYear();
+      var mm = ("0"+(lastDate.getMonth()+1)).slice(-2);
+      var dd = ("0"+lastDate.getDate()).slice(-2);
+      document.getElementById("targetDateTo").value=yyyy+'-'+mm+'-'+dd;
+    }
+    setLastDate();
+    function createFreeeCSV() {
+      const checkAddFlg = window.confirm('freee納品書CSVを作成してもよろしいですか？');
+      if(checkAddFlg) {
+        $("button[id='createFreeeCSV']").text('作成中...');
+        var customerName = $('input[id="customerName"]').val();
+        var targetDateFrom = $('input[id="targetDateFrom"]').val();
+        var targetDateTo = $('input[id="targetDateTo"]').val();
+        var record = {};
+        record['customerName'] = customerName;
+        record['targetDateFrom'] = targetDateFrom;
+        record['targetDateTo'] = targetDateTo;
+        google.script.run.withSuccessHandler(createList).withFailureHandler(createFail).createFreeeDeliveryNote(JSON.stringify(record));
+      }
+    }
+    function createFail() {
+      showErrorToast("エラーが発生しました。");
+      $("button[id='createFreeeCSV']").text('CSV作成');
+    }
+    function createList(data) {
+      if (data) {
+        var res = JSON.parse(data);
+        showSuccessToast("freee納品書CSVを作成しました。");
+        $("button[id='createFreeeCSV']").text('CSV作成');
+        var html = "◆作成ファイル◆<br>";
+        for (var ele of res) {
+          html += ele + ".csv" + "<br>";
+        }
+        $("p[id='res']").html(html);
+      }
+      else {
+        showInfoToast("該当データがありませんでした。");
+        $("button[id='createFreeeCSV']").text('CSV作成');
+      }
+    }
+    $(function(){
+      $(".customerSearchBtn_open").on("click",function(){
+          $(".customerSearch_dg").dialog({
+              title:"顧客検索",
+              width:"400",
+              height:"500",
+              modal:true,
+              buttons:{
+                  "キャンセル":function(){
+                    $(this).dialog("close");
+                  },
+                  "検索":function(){
+                    customerSearch();
+                  },
+             },
+          });
+      });
+    });
+    function customerSearch() {
+      if (!$('input[id="customerSearchKeyDg"]').val()) {
+        showWarningToast('キーワードが入力されていません。');
+        return false;
+      }
+
+      // キャッシュが読み込まれていない場合は旧方式にフォールバック
+      if (!masterDataLoaded) {
+        console.warn('マスタデータ未ロード - 旧方式で検索します');
+        $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
+        var record = {};
+        record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
+        record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
+        record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
+        google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+        return;
+      }
+
+      // メモリ内フィルタリング（高速検索）
+      var bunrui = $('select[id="customerSearchBunruiDg"]').val();
+      var searchClass = $('select[id="customerSearchClassDg"]').val();
+      var key = $('input[id="customerSearchKeyDg"]').val();
+
+      var results = cachedCustomers.filter(function(customer) {
+        // 顧客分類フィルタ
+        if (searchClass && customer['顧客分類'] !== searchClass) {
+          return false;
+        }
+
+        // 検索対象カラムを決定
+        var targetValue = '';
+        if (bunrui == "1") {
+          targetValue = customer['会社名'] || '';
+        } else if (bunrui == "2") {
+          targetValue = customer['氏名'] || '';
+        } else if (bunrui == "3") {
+          targetValue = customer['表示名'] || '';
+        } else if (bunrui == "4") {
+          targetValue = customer['フリガナ'] || '';
+        }
+
+        // キーワード検索
+        return String(targetValue).includes(key);
+      });
+
+      // 結果を表示
+      dataSearchSuccess(JSON.stringify(results));
+    }
+    function dataSearchSuccess(datas) {
+      var res = JSON.parse(datas);
+      if (res && res.length > 0) {
+        var html = "<table>";
+        html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+        for (let i = 0; i < res.length; i++) {
+          var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|"+ res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+          html += "<tr>";
+          html += "<td><button type='button' id='nameCust"+i+"' data-val='"+ datVal + "' onclick='applyName("+i+")'>選択</button></td>";
+          html += "<td><input style='width:120px;' type='text' id='cust"+i+"' value='" + res[i]["会社名"] + "'readonly ></td>";
+          html += "<td><input style='width:120px;' type='text' id='ident"+i+"'value='" + res[i]["氏名"] + "' readonly></td>";
+          html += "</tr>";
+        }
+        html += "</table>";
+        $("#resCustArea").html(html);
+      }
+      else {
+        showInfoToast('該当データがありませんでした。');
+        $("#resCustArea").html('');
+      }
+    }
+    function applyName(num) {
+      var nameVal = 'nameCust' + num;
+      var dataVal = $('button[id="'+ nameVal+ '"]').data('val');
+      var dataSp = dataVal.split('|');
+      $(".customerSearch_dg").dialog("close");
+      if (dataSp[0]) {
+        $('input[id="customerName"]').val(dataSp[0] + "　" + dataSp[1]);
+      }
+      else {
+        $('input[id="customerName"]').val(dataSp[1]);
+      }
+    }
+    function dataAddFail() {
+      showErrorToast("エラーが発生しました。");
+    }
+
+    // ========================================
+    // 検索パフォーマンス改善: マスタデータロード
+    // ========================================
+    function loadMasterDataForSearch() {
+      console.log('マスタデータをロード中...');
+      google.script.run
+        .withSuccessHandler(function(data) {
+          try {
+            const masterData = JSON.parse(data);
+            cachedCustomers = masterData.customers || [];
+            masterDataLoaded = true;
+            console.log('マスタデータロード完了:', cachedCustomers.length + '件の顧客');
+          } catch (e) {
+            console.error('マスタデータのパースに失敗:', e);
+          }
+        })
+        .withFailureHandler(function(e) {
+          console.error('マスタデータのロードに失敗:', e);
+        })
+        .getAllMasterDataForSearch();
+    }
+
+    // ページロード時に実行
+    loadMasterDataForSearch();
+  </script>
+</body>
+
+</html>

@@ -228,6 +228,7 @@
           <div class="menu-content">
             <button type="submit" class="btn menu-btn" name="createShippingSlips" value="true">📦 送り状作成</button>
             <button type="submit" class="btn menu-btn" name="createBill" value="true">💰 請求書作成</button>
+            <button type="submit" class="btn menu-btn" name="createFreeeDeliveryNote" value="true">📊 freee納品書CSV</button>
             <button type="submit" class="btn menu-btn" name="quotation" value="true">📋 見積書作成</button>
           </div>
         </div>
@@ -244,6 +245,7 @@
             <button type="button" class="btn menu-btn-sub" onclick="openUrlShipp()">📑 受注シート</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlQuotaion()">📋 見積書</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlBill()">💰 請求書</button>
+            <button type="button" class="btn menu-btn-sub" onclick="openUrlFreeeCSV()">📊 freee納品書CSV</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlDelivered()">📄 納品書</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlYamato()">🚚 ヤマト送り状</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlSagawa()">🚛 佐川送り状</button>
@@ -301,28 +303,31 @@
   </div>
   <script>
     function openUrlQuotaion() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('見積書'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('見積書');
     }
     function openUrlProduct() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('商品'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('商品');
     }
     function openUrlCustomer() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('顧客情報'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('顧客情報');
     }
     function openUrlBill() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書');
+    }
+    function openUrlFreeeCSV() {
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
     }
     function openUrlDelivered() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('納品書'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('納品書');
     }
     function openUrlYamato() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト');
     }
     function openUrlSagawa() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川');
     }
     function openUrlShipp() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注'); 
+      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注');
     }
     
     // アコーディオン開閉

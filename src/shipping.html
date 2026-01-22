@@ -302,6 +302,14 @@
           </select>
         </div>
         <div>
+          <label for="customerTaxDisplayDg" class="text-left form-label">消費税の表示方法</label>
+          <select class="form-select" id="customerTaxDisplayDg" name="customerTaxDisplayDg">
+            <option value="">（未設定）</option>
+            <option value="内税">内税</option>
+            <option value="外税">外税</option>
+          </select>
+        </div>
+        <div>
           <label for="customerMemoDg" class="text-left form-label">備考</label>
           <input type="text" class="form-control" id="customerMemoDg" name="customerMemoDg">
         </div>
@@ -761,6 +769,7 @@
       record['customerMailDg'] = $('input[id="customerMailDg"]').val();
       record['customerBillDg'] = $('select[id="customerBillDg"]').val();
       record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
+      record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
       record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
 
       const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
@@ -1421,6 +1430,7 @@
         $('input[id="cashOnDelivery"]').val(res[0]['代引総額']);
         $('input[id="cashOnDeliTax"]').val(res[0]['代引内税']);
         $('input[id="copiePrint"]').val(res[0]['発行枚数']);
+        $('textarea[id="internalMemo"]').val(res[0]['社内メモ'] || '');
         $('textarea[id="csvmemo"]').val(res[0]['送り状備考欄'] || '');
         $('textarea[id="deliveryMemo"]').val(res[0]['納品書備考欄'] || '');
         $('textarea[id="memo"]').val(res[0]['メモ'] || '');

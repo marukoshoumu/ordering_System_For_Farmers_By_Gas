@@ -46,6 +46,8 @@
         <input type="date" class="form-control" style="width:160px;" name="shippingDate${newRowNum}" required value="${nextShippingStr}">
         <label class="col-form-label">納品日</label>
         <input type="date" class="form-control" style="width:160px;" name="deliveryDate${newRowNum}" required value="${nextDeliveryStr}">
+        <label class="col-form-label">納品書テキスト</label>
+        <input type="text" class="form-control" style="width:300px;" name="deliveryNoteText${newRowNum}" placeholder="例: 月曜コース分の商品" value="">
         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)">✕</button>
       `;
       
@@ -69,13 +71,17 @@
     function renumberShippingDates() {
       const container = document.getElementById('shippingDateContainer');
       const rows = container.querySelectorAll('.shipping-date-row');
-      
+
       rows.forEach((row, index) => {
         const num = index + 1;
         row.dataset.row = num;
         row.querySelector('.badge').textContent = '#' + num;
         row.querySelector('input[name^="shippingDate"]').name = 'shippingDate' + num;
         row.querySelector('input[name^="deliveryDate"]').name = 'deliveryDate' + num;
+        const deliveryNoteTextInput = row.querySelector('input[name^="deliveryNoteText"]');
+        if (deliveryNoteTextInput) {
+          deliveryNoteTextInput.name = 'deliveryNoteText' + num;
+        }
       });
     }
 

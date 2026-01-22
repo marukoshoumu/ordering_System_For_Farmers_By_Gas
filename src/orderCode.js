@@ -14,11 +14,15 @@ function getOrderSheetHeaders() {
  * @param {Array} record - 受注レコード配列
  * @param {string} headerName - ヘッダー名
  * @param {Array} headers - ヘッダー配列
- * @returns {*} 値（見つからない場合はundefined）
+ * @returns {*} 値
+ * @throws {Error} ヘッダーが見つからない場合
  */
 function getOrderValue(record, headerName, headers) {
   const index = headers.indexOf(headerName);
-  return index >= 0 ? record[index] : undefined;
+  if (index === -1) {
+    throw new Error(`受注シートヘッダー「${headerName}」が見つかりません。利用可能なヘッダー: [${headers.join(', ')}]`);
+  }
+  return record[index];
 }
 
 /**

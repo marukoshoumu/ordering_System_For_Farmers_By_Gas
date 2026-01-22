@@ -78,6 +78,7 @@ function getAddressFromPostalCode(postalCodes) {
  *     customerMailDg: string,          // メールアドレス
  *     customerBillDg: string,          // 請求書有無
  *     customerDepositDateDg: string,   // 入金期日
+ *     customerTaxDisplayDg: string,    // 消費税の表示方法
  *     customerMemoDg: string           // 備考
  *   }
  *
@@ -112,6 +113,7 @@ function addCustomer(record) {
     data['customerMailDg'],
     data['customerBillDg'],
     data['customerDepositDateDg'],
+    data['customerTaxDisplayDg'],
     data['customerMemoDg']
   ];
   rows.push(row);
@@ -156,6 +158,7 @@ function addCustomer(record) {
  *     customerMailDg: string,          // メールアドレス
  *     customerBillDg: string,          // 請求書有無
  *     customerDepositDateDg: string,   // 入金期日
+ *     customerTaxDisplayDg: string,    // 消費税の表示方法
  *     customerMemoDg: string           // 備考
  *   }
  *
@@ -195,6 +198,7 @@ function addCustomerShippingTo(record) {
     data['customerMailDg'],
     data['customerBillDg'],
     data['customerDepositDateDg'],
+    data['customerTaxDisplayDg'],
     data['customerMemoDg']
   ];
   customerRows.push(customerRow);
