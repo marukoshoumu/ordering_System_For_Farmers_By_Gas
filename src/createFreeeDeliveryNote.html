@@ -103,7 +103,7 @@
     var cachedCustomers = [];
     var masterDataLoaded = false;
 
-    function openUrlFreeeCSV() {
+    window.openUrlFreeeCSV = function() {
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
     }
     function sendFail() {
@@ -130,7 +130,7 @@
       document.getElementById("targetDateTo").value=yyyy+'-'+mm+'-'+dd;
     }
     setLastDate();
-    function createFreeeCSV() {
+    window.createFreeeCSV = function() {
       const checkAddFlg = window.confirm('freee納品書CSVを作成してもよろしいですか？');
       if(checkAddFlg) {
         $("button[id='createFreeeCSV']").text('作成中...');
@@ -182,7 +182,7 @@
           });
       });
     });
-    function customerSearch() {
+    window.customerSearch = function() {
       if (!$('input[id="customerSearchKeyDg"]').val()) {
         showWarningToast('キーワードが入力されていません。');
         return false;
@@ -316,7 +316,7 @@
         $("#resCustArea").html('');
       }
     }
-    function applyName(num) {
+    window.applyName = function(num) {
       var nameVal = 'nameCust' + num;
       var dataVal = $('button[id="'+ nameVal+ '"]').data('val');
       var dataSp = dataVal.split('|');
