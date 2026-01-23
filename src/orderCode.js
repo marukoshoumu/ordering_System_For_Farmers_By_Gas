@@ -1402,6 +1402,7 @@ function getShippingComfirmHTML(e) {
   for (let i = 1; i <= dateCount; i++) {
     const sd = e.parameter['shippingDate' + i] || '';
     const dd = e.parameter['deliveryDate' + i] || '';
+    const dnt = e.parameter['deliveryNoteText' + i] || '';
     html += `<div class="date-card">`;
     html += `  <span class="badge">#${i}</span>`;
     html += `  <div class="dates">`;
@@ -1413,10 +1414,17 @@ function getShippingComfirmHTML(e) {
     html += `      <span class="date-label">→ 納品日</span>`;
     html += `      <span class="date-value">${dd}</span>`;
     html += `    </div>`;
+    if (dnt) {
+      html += `    <div class="date-item">`;
+      html += `      <span class="date-label">📄</span>`;
+      html += `      <span class="date-value">${dnt}</span>`;
+      html += `    </div>`;
+    }
     html += `  </div>`;
     html += `</div>`;
     html += `<input type="hidden" name="shippingDate${i}" value="${sd}">`;
     html += `<input type="hidden" name="deliveryDate${i}" value="${dd}">`;
+    html += `<input type="hidden" name="deliveryNoteText${i}" value="${dnt}">`;
   }
   html += `</div>`;
 
