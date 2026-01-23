@@ -51,7 +51,7 @@
  *     cargo1: string,        // 種別値形式（例: "0:なし"）
  *     cargo2: string,        // 種別値形式（例: "0:なし"）
  *     cashOnDelivery: number, cashOnDeliTax: number, copiePrint: number,
- *     csvmemo: string, deliveryMemo: string, memo: string,
+ *     internalMemo: string, csvmemo: string, deliveryMemo: string, memo: string,
  *     items: [
  *       { bunrui: string, product: string, quantity: number, price: number },
  *       ...
@@ -251,6 +251,7 @@ function getOrderByOrderId(orderId) {
     copiePrint: firstRow[getColIndex('発行枚数')] || '',
 
     // 備考
+    internalMemo: firstRow[getColIndex('社内メモ')] || '',
     csvmemo: firstRow[getColIndex('送り状備考欄')] || '',
     deliveryMemo: firstRow[getColIndex('納品書備考欄')] || '',
     memo: firstRow[getColIndex('メモ')] || '',
