@@ -2010,33 +2010,59 @@ function createOrder(e) {
   // 受注シートからヘッダーを取得（シートが真実の情報源）
   const orderHeaders = getOrderSheetHeaders();
 
-  // 編集モードの場合、既存データを削除
+  // 編集モードの場合、既存データを削除（紐付けグループ全体を削除）
   const editOrderId = e.parameter.editOrderId || '';
   if (editOrderId) {
-    // 元の納品方法を取得
+    // 元の納品方法と紐付けグループ情報を取得
     const oldOrder = getOrderByOrderId(editOrderId);
 
-    // 納品方法に応じてCSVデータを削除
-    if (oldOrder && oldOrder.deliveryMethod === 'ヤマト') {
-      const yamatoDeleted = deleteYamatoCSVByOrderId(editOrderId);
-      Logger.log('ヤマトCSV削除: ' + yamatoDeleted + '件');
-    } else if (oldOrder && oldOrder.deliveryMethod === '佐川') {
-      const sagawaDeleted = deleteSagawaCSVByOrderId(editOrderId);
-      Logger.log('佐川CSV削除: ' + sagawaDeleted + '件');
-    }
+    if (oldOrder) {
+      // 複数日程の場合: dates配列から全受注IDを取得して削除
+      if (oldOrder.dates && oldOrder.dates.length > 0) {
+        Logger.log('複数日程の受注グループを削除: ' + oldOrder.dates.length + '件');
 
-    // 受注シート削除
-    const deletedCount = deleteOrderByOrderId(editOrderId);
-    Logger.log('受注データ削除: ' + deletedCount + '件');
+        oldOrder.dates.forEach(function(dateInfo) {
+          const orderIdToDelete = dateInfo.orderId;
+
+          // CSVデータを削除
+          if (oldOrder.deliveryMethod === 'ヤマト') {
+            const yamatoDeleted = deleteYamatoCSVByOrderId(orderIdToDelete);
+            Logger.log('ヤマトCSV削除 (' + orderIdToDelete + '): ' + yamatoDeleted + '件');
+          } else if (oldOrder.deliveryMethod === '佐川') {
+            const sagawaDeleted = deleteSagawaCSVByOrderId(orderIdToDelete);
+            Logger.log('佐川CSV削除 (' + orderIdToDelete + '): ' + sagawaDeleted + '件');
+          }
+
+          // 受注シート削除
+          const deletedCount = deleteOrderByOrderId(orderIdToDelete);
+          Logger.log('受注データ削除 (' + orderIdToDelete + '): ' + deletedCount + '件');
+        });
+      } else {
+        // 単一日程の場合: 従来通り単一IDのみ削除
+        Logger.log('単一日程の受注を削除');
+
+        // CSVデータを削除
+        if (oldOrder.deliveryMethod === 'ヤマト') {
+          const yamatoDeleted = deleteYamatoCSVByOrderId(editOrderId);
+          Logger.log('ヤマトCSV削除: ' + yamatoDeleted + '件');
+        } else if (oldOrder.deliveryMethod === '佐川') {
+          const sagawaDeleted = deleteSagawaCSVByOrderId(editOrderId);
+          Logger.log('佐川CSV削除: ' + sagawaDeleted + '件');
+        }
+
+        // 受注シート削除
+        const deletedCount = deleteOrderByOrderId(editOrderId);
+        Logger.log('受注データ削除: ' + deletedCount + '件');
+      }
+    }
   }
-  // 日程数を取得
+  // 日程数を取得（連続性を前提としない堅牢なカウント方法）
   let dateCount = 0;
   for (let i = 1; i <= 10; i++) {
     if (e.parameter['shippingDate' + i]) {
-      dateCount = i;
-    } else {
-      break;
+      dateCount = i;  // 最後に値がある日程を記録
     }
+    // breakを削除: 非連続の日程入力にも対応
   }
 
   // 紐付け受注ID管理用（複数日程対応）

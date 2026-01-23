@@ -15,42 +15,104 @@
       const container = document.getElementById('shippingDateContainer');
       const rows = container.querySelectorAll('.shipping-date-row');
       const currentCount = rows.length;
-      
+
       if (currentCount >= 10) {
         showWarningToast('日程は最大10件までです');
         return;
       }
-      
+
       const newRowNum = currentCount + 1;
-      
+
       // 前の行の日付を取得してデフォルト値を設定
       const lastRow = rows[rows.length - 1];
-      const lastShippingDate = lastRow.querySelector('input[name^="shippingDate"]').value;
-      const lastDeliveryDate = lastRow.querySelector('input[name^="deliveryDate"]').value;
-      
+      const lastShippingInput = lastRow.querySelector('input[name^="shippingDate"]');
+      const lastDeliveryInput = lastRow.querySelector('input[name^="deliveryDate"]');
+
+      // NULL安全性チェック
+      if (!lastShippingInput || !lastDeliveryInput) {
+        console.error('前の行の日付フィールドが見つかりません');
+        return;
+      }
+
+      const lastShippingDate = lastShippingInput.value;
+      const lastDeliveryDate = lastDeliveryInput.value;
+
       // 1日後の日付を計算
       const nextShipping = new Date(lastShippingDate);
       nextShipping.setDate(nextShipping.getDate() + 1);
       const nextShippingStr = nextShipping.toISOString().split('T')[0];
-      
+
       const nextDelivery = new Date(lastDeliveryDate);
       nextDelivery.setDate(nextDelivery.getDate() + 1);
       const nextDeliveryStr = nextDelivery.toISOString().split('T')[0];
-      
+
+      // XSS対策: innerHTMLの代わりにDOM要素を個別に作成
       const newRow = document.createElement('div');
       newRow.className = 'shipping-date-row d-flex align-items-center gap-2 mb-2';
       newRow.dataset.row = newRowNum;
-      newRow.innerHTML = `
-        <span class="badge bg-secondary">#${newRowNum}</span>
-        <label class="col-form-label">発送日</label>
-        <input type="date" class="form-control" style="width:160px;" name="shippingDate${newRowNum}" required value="${nextShippingStr}">
-        <label class="col-form-label">納品日</label>
-        <input type="date" class="form-control" style="width:160px;" name="deliveryDate${newRowNum}" required value="${nextDeliveryStr}">
-        <label class="col-form-label">納品書テキスト</label>
-        <input type="text" class="form-control" style="width:300px;" name="deliveryNoteText${newRowNum}" placeholder="例: 月曜コース分の商品" value="">
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeShippingDate(this)">✕</button>
-      `;
-      
+
+      // バッジ
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-secondary';
+      badge.textContent = '#' + newRowNum;
+      newRow.appendChild(badge);
+
+      // 発送日ラベル
+      const shippingLabel = document.createElement('label');
+      shippingLabel.className = 'col-form-label';
+      shippingLabel.textContent = '発送日';
+      newRow.appendChild(shippingLabel);
+
+      // 発送日入力
+      const shippingInput = document.createElement('input');
+      shippingInput.type = 'date';
+      shippingInput.className = 'form-control';
+      shippingInput.style.width = '160px';
+      shippingInput.name = 'shippingDate' + newRowNum;
+      shippingInput.required = true;
+      shippingInput.value = nextShippingStr;
+      newRow.appendChild(shippingInput);
+
+      // 納品日ラベル
+      const deliveryLabel = document.createElement('label');
+      deliveryLabel.className = 'col-form-label';
+      deliveryLabel.textContent = '納品日';
+      newRow.appendChild(deliveryLabel);
+
+      // 納品日入力
+      const deliveryInput = document.createElement('input');
+      deliveryInput.type = 'date';
+      deliveryInput.className = 'form-control';
+      deliveryInput.style.width = '160px';
+      deliveryInput.name = 'deliveryDate' + newRowNum;
+      deliveryInput.required = true;
+      deliveryInput.value = nextDeliveryStr;
+      newRow.appendChild(deliveryInput);
+
+      // 納品書テキストラベル
+      const textLabel = document.createElement('label');
+      textLabel.className = 'col-form-label';
+      textLabel.textContent = '納品書テキスト';
+      newRow.appendChild(textLabel);
+
+      // 納品書テキスト入力
+      const textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.className = 'form-control';
+      textInput.style.width = '300px';
+      textInput.name = 'deliveryNoteText' + newRowNum;
+      textInput.placeholder = '例: 月曜コース分の商品';
+      textInput.value = '';
+      newRow.appendChild(textInput);
+
+      // 削除ボタン
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-sm btn-outline-danger';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { removeShippingDate(this); };
+      newRow.appendChild(removeBtn);
+
       container.appendChild(newRow);
       updateRemoveButtons();
     }
