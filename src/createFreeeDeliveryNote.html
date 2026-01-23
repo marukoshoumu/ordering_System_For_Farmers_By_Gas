@@ -82,7 +82,7 @@
           <input type="date" class="form-control" id="targetDateTo" name="targetDateTo">
         </div>
         <div class="col-auto">
-          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3" onclick="createFreeeCSV()">CSV作成</button>
+          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3">CSV作成</button>
         </div>
       </div>
   </div>
@@ -92,7 +92,7 @@
   </div>
   <br>
   <div class="text-center">
-    <button type="button" class="btn btn-outline-secondary" name="openFreeeCSV" value="true" onclick="openUrlFreeeCSV()">CSV参照</button>
+    <button type="button" class="btn btn-outline-secondary" id="openFreeeCSV" name="openFreeeCSV" value="true">CSV参照</button>
   </div>
   </form>
   </div>
@@ -356,6 +356,17 @@
 
     // ページロード時に実行
     loadMasterDataForSearch();
+
+    // イベントハンドラー登録（DOMロード後）
+    $(document).ready(function() {
+      $('#createFreeeCSV').on('click', function() {
+        createFreeeCSV();
+      });
+
+      $('#openFreeeCSV').on('click', function() {
+        openUrlFreeeCSV();
+      });
+    });
   </script>
 </body>
 
