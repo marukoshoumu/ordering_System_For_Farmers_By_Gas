@@ -304,6 +304,7 @@ function getshippingHTML(e, alert = '') {
     e.parameter.cashOnDeliTax = editData.cashOnDeliTax;
     e.parameter.copiePrint = editData.copiePrint;
     e.parameter.csvmemo = editData.csvmemo;
+    e.parameter.internalMemo = editData.internalMemo;
     e.parameter.deliveryMemo = editData.deliveryMemo;
     e.parameter.memo = editData.memo;
   }
