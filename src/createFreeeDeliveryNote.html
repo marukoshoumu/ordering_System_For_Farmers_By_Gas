@@ -70,7 +70,7 @@
       </div>
       <div class="row mb-3 align-items-center justify-content-center">
         <div class="col-auto">
-          <label for="targetDateFrom" class="text-center form-label">対象日</label>
+          <label for="targetDateFrom" class="text-center form-label">発送日</label>
         </div>
         <div class="col-auto">
           <input type="date" class="form-control" id="targetDateFrom" name="targetDateFrom">
@@ -112,24 +112,16 @@
     function sendSucces(url) {
       window.open(url);
     }
-    function setFirstDate () {
+    function setTodayDate() {
       const nowDate = new Date();
-      var firstDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
-      var yyyy = firstDate.getFullYear();
-      var mm = ("0"+(firstDate.getMonth()+1)).slice(-2);
-      var dd = ("0"+firstDate.getDate()).slice(-2);
-      document.getElementById("targetDateFrom").value=yyyy+'-'+mm+'-'+dd;
+      var yyyy = nowDate.getFullYear();
+      var mm = ("0"+(nowDate.getMonth()+1)).slice(-2);
+      var dd = ("0"+nowDate.getDate()).slice(-2);
+      var today = yyyy + '-' + mm + '-' + dd;
+      document.getElementById("targetDateFrom").value = today;
+      document.getElementById("targetDateTo").value = today;
     }
-    setFirstDate();
-    function setLastDate() {
-      const nowDate = new Date();
-      var lastDate = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0);
-      var yyyy = lastDate.getFullYear();
-      var mm = ("0"+(lastDate.getMonth()+1)).slice(-2);
-      var dd = ("0"+lastDate.getDate()).slice(-2);
-      document.getElementById("targetDateTo").value=yyyy+'-'+mm+'-'+dd;
-    }
-    setLastDate();
+    setTodayDate();
     function createFreeeCSV() {
       const checkAddFlg = window.confirm('freee納品書CSVを作成してもよろしいですか？');
       if(checkAddFlg) {

@@ -43,10 +43,10 @@ function createFreeeDeliveryNote(datas) {
   // 受注データを取得
   const items = getAllRecords('受注');
 
-  // 期間と顧客でフィルタリング
+  // 期間と顧客でフィルタリング（発送日ベース）
   const targetLists = items.filter(function(target) {
-    const deliveryDate = Utilities.formatDate(new Date(target['納品日']), 'JST', 'yyyy/MM/dd');
-    const isInPeriod = deliveryDate >= targetFrom && deliveryDate <= targetTo;
+    const shippingDate = Utilities.formatDate(new Date(target['発送日']), 'JST', 'yyyy/MM/dd');
+    const isInPeriod = shippingDate >= targetFrom && shippingDate <= targetTo;
     const isTargetCustomer = customerName === '' || target['顧客名'] === customerName;
     return isInPeriod && isTargetCustomer;
   });

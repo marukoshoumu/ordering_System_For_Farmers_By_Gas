@@ -298,3 +298,12 @@ function getSagawaFolderUrl() {
   const folderId = getSagawaFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
+
+/**
+ * freee納品書CSVフォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
+function getFreeeCSVFolderUrl() {
+  const folderId = getFreeeCSVFolderId();
+  return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
+}

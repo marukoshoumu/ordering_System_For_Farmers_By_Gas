@@ -69,4 +69,7 @@ function getOpenUrlDrive(sheetName) {
   if (sheetName == '佐川') {
     return getSagawaFolderUrl();
   }
+  if (sheetName == 'freee納品書CSV') {
+    return getFreeeCSVFolderUrl();
+  }
 }
