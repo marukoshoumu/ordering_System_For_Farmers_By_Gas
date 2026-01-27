@@ -4,11 +4,12 @@
 <head>
   <base target="_top">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
   <style>
     /* 文字を折り返す */
@@ -24,34 +25,37 @@
     /* 商品名の列幅を広げる */
     .product-name-td {
       min-width: 120px;
-      width: 50%; /* テーブル幅の50% */
+      width: 50%;
+      /* テーブル幅の50% */
     }
 
     /* スマホ用 */
     @media (max-width: 768px) {
       .table {
-        font-size: 0.85rem; /* 少し文字を小さく */
+        font-size: 0.85rem;
+        /* 少し文字を小さく */
       }
-      
+
       .cell-wrap {
-        padding: 0.25rem 0.5rem; /* パディングを減らす */
+        padding: 0.25rem 0.5rem;
+        /* パディングを減らす */
       }
     }
-    
+
     /* アコーディオンメニュー */
     .menu-accordion {
       max-width: 400px;
       margin: 0 auto;
     }
-    
+
     .menu-section {
       margin-bottom: 8px;
       border-radius: 12px;
       overflow: hidden;
       background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
-    
+
     .menu-header {
       display: flex;
       justify-content: space-between;
@@ -65,28 +69,28 @@
       user-select: none;
       transition: background 0.2s;
     }
-    
+
     .menu-header:hover {
       background: linear-gradient(135deg, #3d7a8c 0%, #2d6a7c 100%);
     }
-    
+
     .menu-header-util {
       background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
     }
-    
+
     .menu-header-util:hover {
       background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
     }
-    
+
     .menu-arrow {
       font-size: 0.7rem;
       transition: transform 0.3s ease;
     }
-    
+
     .menu-header.collapsed .menu-arrow {
       transform: rotate(-90deg);
     }
-    
+
     .menu-content {
       max-height: 0;
       overflow: hidden;
@@ -94,12 +98,12 @@
       background: #f8fafc;
       transition: max-height 0.3s ease, padding 0.3s ease;
     }
-    
+
     .menu-content.show {
       max-height: 1000px;
       padding: 8px;
     }
-    
+
     .menu-btn {
       display: block;
       width: 100%;
@@ -114,18 +118,18 @@
       text-align: left;
       transition: all 0.2s;
     }
-    
+
     .menu-btn:last-child {
       margin-bottom: 0;
     }
-    
+
     .menu-btn:hover {
       background: #4a90a4;
       color: #fff;
       border-color: #4a90a4;
       transform: translateX(4px);
     }
-    
+
     .menu-btn-sub {
       display: block;
       width: 100%;
@@ -140,17 +144,17 @@
       text-align: left;
       transition: all 0.2s;
     }
-    
+
     .menu-btn-sub:last-child {
       margin-bottom: 0;
     }
-    
+
     .menu-btn-sub:hover {
       background: #7c9a6e;
       color: #fff;
       border-color: #7c9a6e;
     }
-    
+
     .menu-btn-util {
       display: block;
       width: 100%;
@@ -164,17 +168,121 @@
       text-align: left;
       transition: all 0.2s;
     }
-    
+
     .menu-btn-util:hover {
       background: #6b7280;
       color: #fff;
+    }
+
+    /* スキャナー関連スタイル */
+    /* Bootstrap 5.0.2対応: modal-fullscreenのflexbox修正 */
+    #scannerModal .modal-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    #scannerView {
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+    }
+
+    #scannerView video,
+    #scannerView canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+    }
+
+    .scanner-region {
+      border: 3px solid #0d6efd;
+      width: 80%;
+      height: 30%;
+      margin: auto;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .scanner-region::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 0, 0, 0.5);
+      box-shadow: 0 0 10px red;
+      animation: scan-line 2s infinite ease-in-out;
+    }
+
+    @keyframes scan-line {
+
+      0%,
+      100% {
+        transform: translateY(-50px);
+      }
+
+      50% {
+        transform: translateY(50px);
+      }
+    }
+
+    .scanner-result-overlay,
+    .scanner-error-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+    }
+
+    .scanner-result-overlay {
+      background: rgba(25, 135, 84, 0.95);
+    }
+
+    .scanner-error-overlay {
+      background: rgba(220, 53, 69, 0.95);
+    }
+
+    .manual-input-area {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 15;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h2 class="text-center m-4"><?= getCompanyDisplayName() ?></h2>
+    <h2 class="text-center m-4">
+      <?= getCompanyDisplayName() ?>
+    </h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <!-- 権限情報を引き継ぐ -->
       <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
@@ -212,7 +320,8 @@
             <? if (userRole !== 'viewer') { ?>
             <button type="submit" class="btn menu-btn" name="aiImportList" value="true" style="position: relative;">
               🤖 AI取込一覧
-              <span id="pendingImportBadge" class="badge bg-danger" style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
+              <span id="pendingImportBadge" class="badge bg-danger"
+                style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
             </button>
             <? } ?>
           </div>
@@ -228,7 +337,8 @@
           <div class="menu-content">
             <button type="submit" class="btn menu-btn" name="createShippingSlips" value="true">📦 送り状作成</button>
             <button type="submit" class="btn menu-btn" name="createBill" value="true">💰 請求書作成</button>
-            <button type="submit" class="btn menu-btn" name="createFreeeDeliveryNote" value="true">📊 freee納品書CSV</button>
+            <button type="submit" class="btn menu-btn" name="createFreeeDeliveryNote" value="true">📊
+              freee納品書CSV</button>
             <button type="submit" class="btn menu-btn" name="quotation" value="true">📋 見積書作成</button>
           </div>
         </div>
@@ -259,14 +369,15 @@
             <span class="menu-arrow">▼</span>
           </div>
           <div class="menu-content">
-            <button type="button" class="btn menu-btn-util" id="refreshCacheBtn" onclick="refreshMasterCache()">🔄 キャッシュ更新</button>
+            <button type="button" class="btn menu-btn-util" id="refreshCacheBtn" onclick="refreshMasterCache()">🔄
+              キャッシュ更新</button>
             <button type="button" class="btn menu-btn-util" onclick="openTestComponents()">🎨 デザインシステムテスト</button>
           </div>
         </div>
         <? } ?>
 
       </div>
-      
+
       <br>
       <div class="text-center" id="cntRes">
       </div>
@@ -329,12 +440,12 @@
     function openUrlShipp() {
       google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注');
     }
-    
+
     // アコーディオン開閉
     function toggleSection(header) {
       const content = header.nextElementSibling;
       const isOpen = content.classList.contains('show');
-      
+
       if (isOpen) {
         content.classList.remove('show');
         header.classList.add('collapsed');
@@ -343,7 +454,7 @@
         header.classList.remove('collapsed');
       }
     }
-    
+
     // デザインシステムテストページを開く
     function openTestComponents() {
       const currentUrl = window.location.href.split('?')[0];
@@ -355,9 +466,9 @@
       const btn = document.getElementById('refreshCacheBtn');
       btn.disabled = true;
       btn.textContent = '🔄 更新中...';
-      
+
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           btn.disabled = false;
           btn.textContent = '🔄 キャッシュ更新';
           if (result.success) {
@@ -366,16 +477,16 @@
             showErrorToast('❌ ' + result.message);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           btn.disabled = false;
           btn.textContent = '🔄 キャッシュ更新';
           showErrorToast('❌ キャッシュ更新に失敗しました: ' + e.message);
         })
         .refreshMasterDataCache();
     }
-    
+
     function sendFail() {
-      showErrorToast("処理に失敗しました。");  
+      showErrorToast("処理に失敗しました。");
     }
     function sendSucces(url) {
       window.open(url);
@@ -384,7 +495,7 @@
       $("#cntRes").html('<div class="inline-spinner" style="padding: 20px; text-align: center;"><div class="mini-spinner"></div><span>読み込み中...</span></div>');
       google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate();
       // 未処理のAI取込件数を取得
-      google.script.run.withSuccessHandler(function(count) {
+      google.script.run.withSuccessHandler(function (count) {
         const badge = document.getElementById('pendingImportBadge');
         if (badge) {
           if (count > 0) {
@@ -394,7 +505,7 @@
             badge.style.display = 'none';
           }
         }
-      }).withFailureHandler(function(e) {
+      }).withFailureHandler(function (e) {
         console.error('AI取込件数取得エラー:', e);
       }).getPendingImportCount();
     }
@@ -486,31 +597,36 @@
       }
     }
     function setTableFail() {
-      showErrorToast("受注データ集計処理に失敗しました。");  
+      showErrorToast("受注データ集計処理に失敗しました。");
     }
     // 詳細ダイアログを表示する関数
     function showDetailDialog(details) {
-        document.getElementById('dialogCustName').textContent = details.custName;
-        document.getElementById('dialogShippingTo').textContent = details.shippingTo;
-        document.getElementById('dialogProduct').textContent = details.product;
-        document.getElementById('dialogCount').textContent = details.count;
-        document.getElementById('dialogMemo').textContent = details.memo;
+      document.getElementById('dialogCustName').textContent = details.custName;
+      document.getElementById('dialogShippingTo').textContent = details.shippingTo;
+      document.getElementById('dialogProduct').textContent = details.product;
+      document.getElementById('dialogCount').textContent = details.count;
+      document.getElementById('dialogMemo').textContent = details.memo;
 
-        document.getElementById('overlay').style.display = 'block'; // オーバーレイを表示
-        document.getElementById('detailDialog').style.display = 'block'; // ダイアログを表示
+      document.getElementById('overlay').style.display = 'block'; // オーバーレイを表示
+      document.getElementById('detailDialog').style.display = 'block'; // ダイアログを表示
     }
 
     // 詳細ダイアログを閉じるボタンのクリックイベント
-    document.getElementById('closeDialogButton').addEventListener('click', function() {
-        document.getElementById('detailDialog').style.display = 'none'; // ダイアログを非表示
-        document.getElementById('overlay').style.display = 'none'; // オーバーレイを非表示
+    document.getElementById('closeDialogButton').addEventListener('click', function () {
+      document.getElementById('detailDialog').style.display = 'none'; // ダイアログを非表示
+      document.getElementById('overlay').style.display = 'none'; // オーバーレイを非表示
     });
-    window.onload = function(){
+    window.onload = function () {
       setRes();
     };
     function createInvoiceHtml(res, dateVal, idName, colorFlg) {
+      if (!res || res.length === 0) {
+        $(idName).empty();
+        return;
+      }
+
       var html = '';
-      
+
       // 納品方法でグループ化
       const grouped = {};
       res.forEach(item => {
@@ -519,137 +635,419 @@
         }
         grouped[item['納品方法']].push(item);
       });
-      
+
       if (colorFlg) {
         html += `<p class="info_table today_color">${dateVal} 発送</p>`;
       } else {
         html += `<p class="info_table">${dateVal} 発送</p>`;
       }
-      
+
       html += `<table class="table table-bordered">`;
       html += `<thead><tr class="${colorFlg ? 'today_color' : 'table-primary'}">`;
-      
+
       // ヘッダー作成
       Object.entries(grouped).forEach(([method, items]) => {
         if (method === 'ヤマト' || method === '佐川') {
           html += `<th colspan="${items.length}" class="${colorFlg ? 'today_color' : ''}" scope="col">${method}</th>`;
         } else {
-          html += `<th rowspan="2" class="${colorFlg ? 'today_color' : ''}" scope="col">${method}</th>`;
+          html += `<th rowspan="2" class="${colorFlg ? 'today_color' : ''}" scope="col" style="vertical-align: middle;">${method}</th>`;
         }
       });
-      
+
       html += `</tr>`;
-      
+
       // クール区分の行（ヤマト・佐川のみ）
       html += `<tr class="${colorFlg ? 'today_color' : 'table-primary'}">`;
       Object.entries(grouped).forEach(([method, items]) => {
         if (method === 'ヤマト' || method === '佐川') {
           items.forEach(item => {
-            html += `<th class="${colorFlg ? 'today_color' : ''}" scope="col">${item['クール区分']}</th>`;
+            html += `<th class="${colorFlg ? 'today_color' : ''}" scope="col">${item['クール区分'] || '常温'}</th>`;
           });
         }
       });
       html += `</tr></thead>`;
-      
+
       // データ行
       html += `<tbody class="table-group-divider"><tr>`;
       Object.entries(grouped).forEach(([method, items]) => {
         items.forEach(item => {
-          html += `<td scope="col">${item['個数']}個</td>`;
+          html += `<td scope="col" class="text-center fw-bold text-primary">${item['個数']}件</td>`;
         });
       });
-      
+
       html += `</tr></tbody></table>`;
       $(idName).html(html);
     }
     function createProductHtml(res, dateVal, idName, colorFlg) {
-      var html = '';
-      if (colorFlg) {
-        // html += `<p class="info_table today_color">${dateVal} 商品</p>`;
-        html += `<table class="table table-bordered">
-        <thead>
-          <tr class="today_color">`;
-        html += `<th class="today_color" scope="col" rowspan="2">`;
-        html += "発送先名";
-        html += `</th>`;
-        html += `<th class="today_color" scope="col">`;
-        html += '商品名';
-        html += `</th>`;
-        html += `<th class="today_color" scope="col">`;
-        html += '個数';
-        html += `</th>`;
-        html += `</tr>`;
-        html += `<tr class="today_color">`;
-        html += `<th class="today_color" scope="col" colspan="2">`;
-        html += "メモ";
-        html += `</th>`;
+      if (!res || res.length === 0) {
+        $(idName).html('<div class="alert alert-light text-center py-4 border-dashed" style="border: 2px dashed #e5e7eb; color: #94a3b8; border-radius: 12px;"><i class="bi bi-info-circle me-2"></i>' + dateVal + 'の発送予定はありません</div>');
+        return;
       }
-      else {
-        // html += `<p class="info_table">${dateVal} 商品</p>`;
-        html += `<table class="table table-bordered">
-        <thead>
-          <tr class="table-primary">`;
-        html += `<th scope="col" rowspan="2">`;
-        html += "発送先名";
-        html += `</th>`;
-        html += `<th scope="col">`;
-        html += '商品名';
-        html += `</th>`;
-        html += `<th scope="col">`;
-        html += '個数';
-        html += `</th>`;
-        html += `</tr>`;
-        html += `<tr class="table-primary">`;
-        html += `<th scope="col" colspan="2">`;
-        html += "メモ";
-        html += `</th>`;
-      }
-      html += `</tr>`;
-      html += `</thead>`;
-      html += `<tbody class="table-group-divider">
-            <tr>`;
-      for (let i = 0; i < res.length; i++) {
-        html += `<td scope="col" rowspan=`+ res[i]['商品'].length * 2 +`>`;
-        html += `<div class="cell-wrap">` + res[i]['発送先名'] + `</div>`;
-        html += `</td>`;
-        html += `<td scope="col" class="product-name-td">`;
-        html += `<div class="cell-wrap">` + res[i]['商品'][0]['商品名'] + `</div>`;
-        html += `</td>`;
-        html += `<td scope="col">`;
-        html += `<div class="cell-wrap" style="width: 40px;">` + res[i]['商品'][0]['受注数'] + "個" + `</div>`;
-        html += `</td>`;
-        html += `</tr>`;
-        const memo0 = res[i]['商品'][0]['メモ'] || '';
-        const style0 = memo0 ? 'style="color: red; background-color: #FFFFCC;"' : ''; // メモがあればスタイルを適用
 
-        html += `<td scope="col" colspan="2">`;
-        html += `<div class="cell-wrap" ${style0}>` + memo0 + `</div>`; // スタイルを適用
-        html += `</td>`;
-        
-        for (let j = 1; j < res[i]['商品'].length; j++) {
-          html += `</tr>`;
-          html += `<td scope="col" class="product-name-td">`;
-          html += `<div class="cell-wrap">` + res[i]['商品'][j]['商品名'] + `</div>`;
-          html += `</td>`;
-          html += `<td scope="col">`;
-          html += `<div class="cell-wrap" style="width: 40px;">` + res[i]['商品'][j]['受注数'] + "個" + `</div>`;
-          html += `</td>`;
-          html += `</tr>`;
-          const memoJ = res[i]['商品'][j]['メモ'] || '';
-          const styleJ = memoJ ? 'style="color: red; background-color: #FFFFCC;"' : ''; // メモがあればスタイルを適用
-          
-          html += `<td scope="col" colspan="2">`;
-          html += `<div class="cell-wrap" ${styleJ}>` + memoJ + `</div>`; // スタイルを適用
-          html += `</td>`;
-        }
-        html += `</tr>`;
+      let html = '';
+      if (colorFlg) {
+        html += `<p class="info_table today_color">${dateVal} 発送商品詳細</p>`;
+      } else {
+        html += `<p class="info_table">${dateVal} 発送商品詳細</p>`;
       }
-      html += `</tbody>
-      </table>
-      `;
+
+      html += `<div class="dashboard-grid">`;
+
+      for (let i = 0; i < res.length; i++) {
+        const order = res[i];
+        const coolCls = order['クール区分'] || '';
+
+        // クール区分バッジ
+        let coolBadge = '';
+        if (coolCls.includes('冷蔵')) {
+          coolBadge = '<span class="cool-badge cool-badge-reizo">冷蔵</span>';
+        } else if (coolCls.includes('冷凍')) {
+          coolBadge = '<span class="cool-badge cool-badge-reito">冷凍</span>';
+        } else if (coolCls && coolCls !== 'なし' && coolCls !== '常温') {
+          coolBadge = '<span class="cool-badge bg-warning text-dark" style="font-size:0.6rem">' + coolCls + '</span>';
+        }
+
+        const isShipped = order['shipped'] === true;
+        html += `<div class="order-card shadow-sm ${isShipped ? 'shipped' : ''}">`;
+
+        // ステータスバッジを生成
+        const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
+
+        // アクション（スキャン・チェックボックス・ステータス）
+        const actionsHtml = `
+          <div class="order-card-actions">
+            <div class="shipped-check-wrapper">
+              <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${order.orderId}', this.checked)" title="出荷済チェック">
+              ${statusBadgeHtml}
+            </div>
+            <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${order.orderId}', '${order.発送先名}', '${order.deliveryMethod}')" title="伝票スキャン">
+              <i class="bi bi-upc-scan"></i>
+            </button>
+          </div>
+        `;
+
+        // ヘッダー（発送先情報）
+        html += `<div class="order-card-header">`;
+        html += `<div class="order-card-info-main">`;
+        html += `<h4 class="order-card-title">${order['発送先名']} 様</h4>`;
+        html += `<span class="order-card-customer">依頼主: ${order['顧客名']}</span>`;
+
+        // クール区分バッジ
+        if (coolBadge) {
+          html += `<div class="mt-1">${coolBadge}</div>`;
+        }
+
+        html += `</div>`; // info-main
+        html += actionsHtml;
+        html += `</div>`; // header
+
+        // 商品リスト
+        html += `<div class="order-card-body">`;
+        let combinedMemo = [];
+
+        for (let j = 0; j < order['商品'].length; j++) {
+          const p = order['商品'][j];
+          const unit = p['単位'] || '枚';
+          html += `<div class="product-list-item">`;
+          html += `<span class="product-name">${p['商品名']}</span>`;
+          html += `<span class="product-quantity">${p['受注数']} ${unit}</span>`;
+          html += `</div>`;
+
+          if (p['メモ']) {
+            combinedMemo.push(p['メモ']);
+          }
+        }
+
+        // メモがあれば表示
+        if (combinedMemo.length > 0) {
+          html += `<div class="memo-box">`;
+          html += `<span class="memo-icon">📌</span>`;
+          html += `<div>${combinedMemo.join('<br>')}</div>`;
+          html += `</div>`;
+        }
+
+        html += `</div>`; // body
+
+        html += `</div>`; // card
+      }
+
+      html += `</div>`; // grid
       $(idName).html(html);
     }
+
+    // 追跡URL生成
+    function getTrackingUrl(number, method) {
+      if (!number) return '#';
+      const cleanNo = String(number).trim().replace(/-/g, '');
+      if (method.includes('ヤマト')) {
+        return 'https://toi.kuronekoyamato.co.jp/cgi-bin/tneko?number01=' + cleanNo;
+      } else if (method.includes('佐川')) {
+        return 'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=' + cleanNo;
+      } else if (method.includes('西濃')) {
+        return 'https://track.seino.co.jp/cgi-bin/gnpquery.pgm?GNPNO1=' + cleanNo;
+      }
+      return '#';
+    }
+
+    // 配送ステータスバッジ
+    function getStatusBadge(status) {
+      if (!status) return '';
+      let badgeClass = 'bg-secondary';
+      if (status === '配達完了') badgeClass = 'bg-success';
+      else if (status === '発送済' || status === '配達中') badgeClass = 'bg-primary';
+      else if (status === '不在/持戻') badgeClass = 'bg-warning text-dark';
+      else if (status.includes('エラー')) badgeClass = 'bg-danger';
+
+      return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${status}</span>`;
+    }
+
+    // 出荷済ステータスの更新
+    function updateShippedStatus(orderId, isChecked) {
+      const shippedValue = isChecked ? '○' : '';
+      google.script.run
+        .withSuccessHandler(function () {
+          // ダッシュボードをリフレッシュ
+          google.script.run.withSuccessHandler(setTable).selectShippingDate();
+        })
+        .withFailureHandler(function (error) {
+          alert('更新エラー: ' + error.message);
+          google.script.run.withSuccessHandler(setTable).selectShippingDate();
+        })
+        .updateOrderShippedStatus(orderId, shippedValue);
+    }
+
+    // スキャナー関連の変数
+    let currentScanOrderId = null;
+    let currentScanCustomerName = '';
+    let currentScanDeliveryMethod = '';
+    let isScannerProcessing = false;
+
+    // スキャナーダイアログを開く
+    function openScannerDialog(orderId, customerName, deliveryMethod) {
+      currentScanOrderId = orderId;
+      currentScanCustomerName = customerName;
+      currentScanDeliveryMethod = deliveryMethod || '';
+      document.getElementById('scannerTargetName').innerText = customerName + " 様の伝票スキャン";
+      const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
+      modal.show();
+    }
+
+    // モーダルイベントリスナーでスキャナー制御（受注一覧と同様）
+    // DOMContentLoadedでモーダル要素が存在することを確認
+    document.addEventListener('DOMContentLoaded', function () {
+      const scannerModalEl = document.getElementById('scannerModal');
+      if (scannerModalEl) {
+        scannerModalEl.addEventListener('shown.bs.modal', initQuagga);
+        scannerModalEl.addEventListener('hidden.bs.modal', () => {
+          Quagga.stop();
+          toggleModalManual(false);
+          document.getElementById('scannerSuccessOverlay').style.display = 'none';
+          document.getElementById('scannerErrorOverlay').style.display = 'none';
+        });
+      }
+    });
+
+    function initQuagga() {
+      isScannerProcessing = false;
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#scannerView'),
+          constraints: { facingMode: "environment" },
+        },
+        decoder: {
+          readers: ["code_128_reader", "codabar_reader", "code_39_reader"]
+        },
+        locate: true
+      }, function (err) {
+        if (err) {
+          showScannerError("カメラの起動に失敗しました。");
+          return;
+        }
+        Quagga.start();
+      });
+      Quagga.onDetected(onQuaggaDetected);
+    }
+
+    function onQuaggaDetected(data) {
+      if (isScannerProcessing) return;
+      const code = data.codeResult.code;
+
+      // 納品方法に応じた桁数チェック
+      const deliveryMethod = currentScanDeliveryMethod || '';
+      let expectedLength = 0;
+      let carrierName = '';
+
+      if (deliveryMethod.includes('ヤマト')) {
+        expectedLength = 12;
+        carrierName = 'ヤマト';
+      } else if (deliveryMethod.includes('佐川')) {
+        expectedLength = 12;
+        carrierName = '佐川';
+      } else if (deliveryMethod.includes('西濃')) {
+        expectedLength = 10;
+        carrierName = '西濃運輸';
+      }
+
+      // 桁数チェック（納品方法が特定できる場合）
+      if (expectedLength > 0 && code && code.length !== expectedLength) {
+        document.getElementById('scannerStatus').innerText =
+          `${carrierName}の送り状番号は${expectedLength}桁です。再度読み取ってください。(現在: ${code.length}桁)`;
+        setTimeout(() => {
+          document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
+        }, 3000);
+        return;
+      }
+
+      // 簡易バリデーション: 10-12桁
+      if (code && (code.length >= 10 && code.length <= 12)) {
+        // 日本の電話番号（0から始まる10桁/11桁）を誤検知しないための対策
+        if ((code.length === 10 || code.length === 11) && code.startsWith('0')) {
+          return;
+        }
+        isScannerProcessing = true;
+        handleScannerSuccess(code);
+      }
+    }
+
+    function handleScannerSuccess(code) {
+      document.getElementById('scannerBeepSound').play();
+      document.getElementById('modalScannedNo').innerText = code;
+      document.getElementById('scannerSuccessOverlay').style.display = 'flex';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            setTimeout(() => {
+              bootstrap.Modal.getInstance(document.getElementById('scannerModal')).hide();
+              // データ再読み込み
+              setRes();
+            }, 1000);
+          } else showScannerError(res.message);
+        })
+        .updateOrderTrackingStatus(currentScanOrderId, code);
+    }
+
+    async function captureAndOcrModal() {
+      if (isScannerProcessing) return;
+      isScannerProcessing = true;
+      document.getElementById('scannerStatus').innerText = "画像を解析中...";
+      try {
+        const video = document.querySelector('#scannerView video');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) handleScannerSuccess(res.code);
+            else {
+              isScannerProcessing = false;
+              alert("認識不可: " + res.message);
+              document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
+            }
+          })
+          .withFailureHandler(() => {
+            isScannerProcessing = false;
+            alert("OCRエラー");
+          })
+          .recognizeTrackingNumber(base64Data);
+      } catch (e) {
+        isScannerProcessing = false;
+        alert("キャプチャ失敗");
+      }
+    }
+
+    function showScannerError(msg) {
+      isScannerProcessing = true;
+      document.getElementById('scannerErrorMsg').innerText = msg;
+      document.getElementById('scannerErrorOverlay').style.display = 'flex';
+    }
+
+    function retryScanner() {
+      isScannerProcessing = false;
+      document.getElementById('scannerErrorOverlay').style.display = 'none';
+      document.getElementById('scannerSuccessOverlay').style.display = 'none';
+      initQuagga();
+    }
+
+    function toggleModalManual(show) {
+      const area = document.getElementById('modalManualInputArea');
+      if (show) {
+        area.style.display = 'flex';
+        document.getElementById('modalManualNo').focus();
+      } else {
+        area.style.display = 'none';
+      }
+    }
+
+    function submitModalManual() {
+      const code = document.getElementById('modalManualNo').value.trim().replace(/-/g, '');
+      if (code) handleScannerSuccess(code);
+    }
   </script>
+  <audio id="scannerBeepSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+  </audio>
+  <!-- 配送伝票スキャナーモーダル -->
+  <div class="modal fade" id="scannerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content bg-black text-white">
+        <div class="info py-2 bg-primary text-center fw-bold">
+          <span id="scannerTargetName">伝票スキャン</span>
+        </div>
+        <div class="modal-body p-0 position-relative overflow-hidden" style="flex: 1;">
+          <div id="scannerView" class="w-100 h-100"></div>
+          <div class="scanner-overlay">
+            <div class="scanner-region"></div>
+          </div>
+          <!-- 手入力エリア -->
+          <div id="modalManualInputArea" class="manual-input-area p-4">
+            <h3 class="text-center mb-4">送り状番号を入力</h3>
+            <div class="input-group input-group-lg mb-4">
+              <input type="tel" id="modalManualNo" class="form-control text-center" placeholder="123456789012"
+                maxlength="12">
+            </div>
+            <div class="d-grid gap-3">
+              <button onclick="submitModalManual()" class="btn btn-primary py-3">決定</button>
+              <button onclick="toggleModalManual(false)" class="btn btn-outline-light">スキャンに戻る</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer flex-column bg-black border-0 p-3">
+          <div id="scannerStatus" class="mb-3">バーコードを枠内に収めてください</div>
+          <div class="d-flex gap-2 w-100 mb-2">
+            <button onclick="captureAndOcrModal()" class="btn btn-warning flex-grow-1 py-3 text-dark">
+              <i class="bi bi-camera"></i> 写真で読み取る
+            </button>
+          </div>
+          <div class="d-flex gap-2 w-100">
+            <button onclick="toggleModalManual(true)" class="btn btn-primary flex-grow-1 py-3">
+              <i class="bi bi-keyboard"></i> 手入力
+            </button>
+            <button type="button" class="btn btn-outline-light py-3 px-4" data-bs-dismiss="modal">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成功・エラー時のオーバーレイ -->
+  <div id="scannerSuccessOverlay" class="scanner-result-overlay">
+    <h2 class="mb-3">スキャン成功！</h2>
+    <div id="modalScannedNo" class="h1 mb-4"></div>
+    <div class="spinner-border text-light mb-3" role="status"></div>
+    <div>システム更新中...</div>
+  </div>
+  <div id="scannerErrorOverlay" class="scanner-error-overlay">
+    <h2 class="mb-3">エラー</h2>
+    <div id="scannerErrorMsg" class="mb-4"></div>
+    <button onclick="retryScanner()" class="btn btn-light px-5">再試行</button>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

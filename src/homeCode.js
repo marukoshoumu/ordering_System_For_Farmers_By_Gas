@@ -17,9 +17,18 @@ function selectShippingDate() {
   const dateStrings = createDateStrings(dates);
   const dataStructure = initializeDataStructure();
 
+  // 商品単位マップの作成
+  const masterData = getMasterDataCached();
+  const unitMap = {};
+  if (masterData && masterData.products) {
+    masterData.products.forEach(p => {
+      unitMap[p['商品名']] = p['単位'] || '枚';
+    });
+  }
+
   // 必要な日付範囲のみ取得
   const items = getOrdersByDateRange(dates.yesterday, dates.dayAfter3);
-  processItems(items, dates, dataStructure);
+  processItems(items, dates, dataStructure, unitMap);
 
   return JSON.stringify(buildResult(dateStrings, dataStructure));
 }
@@ -37,8 +46,10 @@ function getOrdersByDateRange(startDate, endDate) {
   const values = sheet.getDataRange().getValues();
   const labels = values.shift();
 
-  // 発送日の列インデックスを取得
+  // 列インデックスを取得
   const dateColIndex = labels.indexOf('発送日');
+  const shippedColIndex = labels.indexOf('出荷済');
+  const statusColIndex = labels.indexOf('ステータス');
 
   const startTime = startDate.getTime();
   const endTime = endDate.getTime() + 24 * 60 * 60 * 1000; // 終了日の翌日0時
@@ -50,6 +61,11 @@ function getOrdersByDateRange(startDate, endDate) {
 
     // 日付範囲内のみ追加
     if (shippingTime >= startTime && shippingTime < endTime) {
+      // フィルタリング: キャンセルを除外 (出荷済は含める)
+      const isCancelled = statusColIndex !== -1 && (value[statusColIndex] === 'キャンセル' || value[statusColIndex] === 'cancelled');
+
+      if (isCancelled) continue;
+
       const record = {};
       labels.forEach((label, index) => {
         record[label] = value[index];
@@ -155,7 +171,7 @@ function initializeDataStructure() {
  * @param {Object} dates - 日程オブジェクト
  * @param {Object} dataStructure - 集計用データ構造
  */
-function processItems(items, dates, dataStructure) {
+function processItems(items, dates, dataStructure, unitMap) {
   // 逆順でループ（新しいデータから処理）
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i];
@@ -173,7 +189,7 @@ function processItems(items, dates, dataStructure) {
     else if (itemDate === dates.dayAfter3Str) dateKey = 'dayAfter3';
 
     if (dateKey) {
-      processDateItem(item, dateKey, dataStructure);
+      processDateItem(item, dateKey, dataStructure, unitMap);
     }
   }
 }
@@ -185,7 +201,7 @@ function processItems(items, dates, dataStructure) {
  * @param {string} dateKey - 日付キー（yesterday/today/...)
  * @param {Object} dataStructure - 集計用データ構造
  */
-function processDateItem(item, dateKey, dataStructure) {
+function processDateItem(item, dateKey, dataStructure, unitMap) {
   const lists = dataStructure.lists[dateKey];
   const invoiceTypes = dataStructure.invoiceTypes[dateKey];
 
@@ -195,6 +211,11 @@ function processDateItem(item, dateKey, dataStructure) {
   // リストの処理
   if (lists.has(listKey)) {
     const record = lists.get(listKey);
+
+    // 出荷済ステータスの同期（1つでも未出荷なら未出荷とするか、1つでも出荷済なら出荷済とするか）
+    // 通常は一括出荷なので、論理和（OR）で更新
+    record.shipped = record.shipped || item['出荷済'] === '○' || item['出荷済'] === true;
+
     const existingProduct = record['商品'].find(p => p['商品名'] === item['商品名']);
 
     if (existingProduct) {
@@ -203,6 +224,7 @@ function processDateItem(item, dateKey, dataStructure) {
       record['商品'].push({
         '商品名': item['商品名'],
         '受注数': Number(item['受注数']),
+        '単位': unitMap[item['商品名']] || '枚',
         'メモ': item['メモ'] || ""
       });
     }
@@ -243,12 +265,18 @@ function processDateItem(item, dateKey, dataStructure) {
 
     // 新規レコード作成
     lists.set(listKey, {
+      'orderId': item['受注ID'],
       '顧客名': item['顧客名'],
       '発送先名': item['発送先名'],
       'クール区分': item['クール区分'],
+      'deliveryMethod': deliveryMethod,
+      'trackingNumber': item['追跡番号'] || '',
+      'status': item['ステータス'] || '',
+      'shipped': item['出荷済'] === '○' || item['出荷済'] === true,
       '商品': [{
         '商品名': item['商品名'],
         '受注数': Number(item['受注数']),
+        '単位': unitMap[item['商品名']] || '枚',
         'メモ': item['メモ'] || ""
       }]
     });
@@ -299,9 +327,14 @@ function buildResult(dateStrings, dataStructure) {
 
   const convertListMap = (map) => {
     return Array.from(map.values()).map(record => ({
+      'orderId': record['orderId'],
       '顧客名': record['顧客名'],
       '発送先名': record['発送先名'],
       'クール区分': record['クール区分'],
+      'deliveryMethod': record['deliveryMethod'],
+      'trackingNumber': record['trackingNumber'],
+      'status': record['status'],
+      'shipped': record['shipped'],
       '商品': record['商品']
     }));
   };

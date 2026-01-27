@@ -1,0 +1,505 @@
+<style>
+    body {
+        background-color: #F0F0F0;
+        color: #003366;
+    }
+
+    .container {
+        max-width: 900px;
+    }
+
+    .main_btn {
+        width: 80px;
+        height: 50px;
+        font-size: small;
+        margin: 5px;
+        background-color: #6CA0DC;
+        color: #fff;
+    }
+
+    .main_btn:hover {
+        opacity: 0.8;
+        color: #fff;
+    }
+
+    .second_btn {
+        width: 80px;
+        height: 50px;
+        font-size: small;
+        margin: 5px;
+        background-color: #A2B38B;
+        color: #fff;
+    }
+
+    .second_btn:hover {
+        opacity: 0.8;
+        color: #fff;
+    }
+
+    .info_table {
+        background-color: #B0E0E6;
+        color: #000080;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .today_color {
+        background-color: #B0E3A4 !important;
+    }
+
+    .btn_size {
+        width: 80px;
+        height: 50px;
+        font-size: small;
+        margin: 5px;
+    }
+
+    .customer_dg {
+        display: none;
+    }
+
+    .shippingTo_dg {
+        display: none;
+    }
+
+    .customerSearch_dg {
+        display: none;
+    }
+
+    .shippingToSearch_dg {
+        display: none;
+    }
+
+    .resTable {
+        overflow: auto;
+        width: 100%;
+    }
+
+    .resTable table {
+        margin: 0;
+        border-spacing: 0;
+    }
+
+    .resTable td {
+        white-space: nowrap;
+        border-right: 1px solid #999;
+        border-bottom: 1px solid #999;
+        background: #FFF;
+        padding: 5px;
+        border-width: 1px;
+    }
+
+    .resTable th {
+        white-space: nowrap;
+        border-right: 1px solid #999;
+        border-bottom: 1px solid #999;
+        background: #f2f2f2;
+        position: sticky;
+        top: 0;
+        left: 0;
+    }
+
+    .resTable tr:first-child th {
+        border-top: 1px solid #999;
+    }
+
+    .resTable th:first-child {
+        border-left: 1px solid #999;
+    }
+
+    .resTable tr:first-child th:first-child {
+        z-index: 1;
+    }
+
+    #detailDialog {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border: 1px solid #ccc;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    #overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .no-spin::-webkit-inner-spin-button,
+    .no-spin::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+        -moz-appearance: textfield;
+    }
+
+    /* ===================================
+       ダッシュボード・カード UI
+       =================================== */
+    .dashboard-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .order-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .order-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+
+    .order-card-header {
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .order-card-info-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .order-card-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .shipped-check-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .shipped-check {
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .scan-btn-mini {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        border-radius: 50%;
+        background-color: #0ea5e9;
+        border: none;
+        color: white !important;
+        box-shadow: 0 2px 4px rgba(0, 165, 233, 0.3);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .scan-btn-mini:hover {
+        background-color: #0284c7;
+        transform: scale(1.05);
+    }
+
+    .order-card-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #1e293b;
+        margin: 0;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .order-card-customer {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 2px;
+        display: block;
+    }
+
+    .order-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .product-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .product-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .product-name {
+        font-size: 0.9rem;
+        color: #374151;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .product-quantity {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #0d6efd;
+        margin-left: 12px;
+        white-space: nowrap;
+    }
+
+    .memo-box {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-top: 10px;
+        font-size: 0.8rem;
+        color: #92400e;
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .memo-icon {
+        font-size: 0.9rem;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .cool-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .cool-badge-reizo {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+    }
+
+    .cool-badge-reito {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+    }
+
+    /* 出荷済カードのスタイル */
+    .order-card.shipped {
+        background-color: #f8f9fa;
+        border-color: #e2e8f0;
+        opacity: 0.7;
+    }
+
+    .order-card.shipped .order-card-title {
+        color: #64748b;
+        text-decoration: line-through;
+    }
+
+    .order-card.shipped .cool-badge {
+        opacity: 0.6;
+        background-color: #e2e8f0;
+        color: #94a3b8;
+        border-color: #cbd5e1;
+    }
+
+    .order-card.shipped .product-quantity {
+        color: #94a3b8;
+    }
+
+    .order-card.shipped .memo-box {
+        background-color: #f8fafc;
+        border-left-color: #cbd5e1;
+        color: #94a3b8;
+    }
+
+    /* スキャナー関連スタイル */
+    #scannerModal .modal-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    #scannerView {
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+    }
+
+    #scannerView video,
+    #scannerView canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .scanner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+        display: flex;
+    }
+
+    .scanner-region {
+        border: 3px solid #0d6efd;
+        width: 80%;
+        height: 30%;
+        margin: auto;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        position: relative;
+    }
+
+    .scanner-region::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: rgba(255, 0, 0, 0.5);
+        box-shadow: 0 0 10px red;
+        animation: scan-line 2s infinite ease-in-out;
+    }
+
+    @keyframes scan-line {
+        0%, 100% {
+            transform: translateY(-50px);
+        }
+        50% {
+            transform: translateY(50px);
+        }
+    }
+
+    .scanner-result-overlay,
+    .scanner-error-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-align: center;
+    }
+
+    .scanner-result-overlay {
+        background: rgba(25, 135, 84, 0.95);
+    }
+
+    .scanner-error-overlay {
+        background: rgba(220, 53, 69, 0.95);
+    }
+
+    .manual-input-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 15;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* PC向け行レイアウト */
+    @media (min-width: 768px) {
+        .order-card {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 24px;
+            padding: 12px 24px;
+        }
+
+        .order-card-header {
+            flex: 0 0 250px;
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            padding-right: 0;
+        }
+
+        .order-card-actions {
+            display: flex;
+            flex-direction: row;
+            background: none;
+            padding: 0;
+            gap: 12px;
+        }
+
+        .order-card-body {
+            flex: 1;
+            border-left: 1px solid #f1f5f9;
+            padding-left: 24px;
+        }
+
+        .product-list-item {
+            padding: 2px 0;
+            border-bottom: none;
+        }
+
+        .memo-box {
+            margin-top: 4px;
+            padding: 4px 10px;
+        }
+    }
+
+    /* スマホ用 */
+    @media (max-width: 767px) {
+        .dashboard-grid {
+            gap: 12px;
+        }
+
+        .table {
+            font-size: 0.85rem;
+        }
+    }
+</style>
