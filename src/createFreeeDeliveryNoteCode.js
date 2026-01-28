@@ -11,6 +11,15 @@
  * 3. UTF-8 BOM付きでCSVファイルを出力
  * 4. Googleドライブに保存
  *
+ * 商品マスタから取得する項目:
+ *   - 単位: 商品の単位（kg, 個, 箱など）
+ *   - 税率: 消費税率（8% or 10%）
+ *   - 勘定科目: freeeの勘定科目名
+ *   - 税区分: freeeの税区分
+ *   - 部門: freeeの部門
+ *   - 品目: freeeの品目
+ *   - メモ: 明細行のメモ
+ *
  * @note freee側での事前準備が必要:
  *   - 取引先（顧客）の登録
  *   - 品目（商品）の登録（任意だが推奨）
@@ -311,7 +320,11 @@ function createFreeeDetailRow(order, productInfo, deliveryDate) {
   row[23] = productInfo['単位'] || ''; // 単位（kg, 個, 箱など）
   row[24] = convertTaxRateForFreee(productInfo['税率']); // 税率
   row[26] = deliveryDate;             // 発生日
-  row[27] = productInfo['勘定科目'] || '売上高'; // 勘定科目
+  row[27] = productInfo['勘定科目'] || ''; // 勘定科目
+  row[28] = productInfo['税区分'] || ''; // 税区分
+  row[29] = productInfo['部門'] || '';   // 部門
+  row[30] = productInfo['品目'] || '';   // 品目
+  row[31] = productInfo['メモ'] || '';   // メモ
 
   return row;
 }
@@ -383,7 +396,11 @@ function getProductInfo(productName, productItems) {
   // 商品が見つからない場合のデフォルト値
   return {
     '税率': 8,
-    '勘定科目': '売上高'
+    '勘定科目': '',
+    '税区分': '',
+    '部門': '',
+    '品目': '',
+    'メモ': ''
   };
 }
 
