@@ -1,0 +1,802 @@
+<!--
+  定期便一覧
+
+  機能:
+  - シート「定期受注」の情報を一覧表示
+  - 検索条件: ステータス、顧客名
+  - 操作: 解除、削除、間隔変更、修正、コピー
+-->
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>定期便一覧</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <style>
+    body {
+      background-color: var(--bg-body);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 16px 20px;
+    }
+
+    .card-header h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .filter-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: #666;
+      white-space: nowrap;
+      min-width: 70px;
+    }
+
+    .table-section {
+      padding: 16px 20px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    .order-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .order-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .order-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+    }
+
+    .order-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .order-table tbody td {
+      padding: 10px 8px;
+      vertical-align: middle;
+    }
+
+    .order-table .col-action {
+      width: 200px;
+      text-align: center;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-paused {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-cancelled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .interval-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .action-btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      margin: 2px;
+    }
+
+    .mobile-cards {
+      display: none;
+    }
+
+    .mobile-card {
+      background: #fff;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .mobile-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .mobile-card-body {
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .mobile-card-body .row-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .mobile-card-body .row-item:last-child {
+      border-bottom: none;
+    }
+
+    .mobile-card-actions {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .pc-table {
+        display: none;
+      }
+
+      .mobile-cards {
+        display: block;
+      }
+
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-label {
+        margin-bottom: 4px;
+      }
+    }
+
+    .detail-table {
+      width: 100%;
+      font-size: 0.875rem;
+    }
+
+    .detail-table th {
+      width: 120px;
+      background: #f8f9fa;
+      padding: 8px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .detail-table td {
+      padding: 8px 12px;
+    }
+
+    .product-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .product-list li {
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .product-list li:last-child {
+      border-bottom: none;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <form method="post" action="<?= deployURL ?>">
+      <input type="hidden" name="userRole" value="<?= userRole ?>">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <button type="submit" name="main" value="true" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-house"></i> ホーム
+        </button>
+        <h2 class="mb-0" style="font-size: 1.1rem;">定期便一覧</h2>
+        <div style="width: 80px;"></div>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="card-header">
+        <h1>定期便一覧</h1>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">ステータス:</span>
+            <select id="statusFilter" class="form-select form-select-sm" style="width: 150px;">
+              <option value="">すべて</option>
+              <option value="有効" selected>有効</option>
+              <option value="停止">停止</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">顧客名:</span>
+            <input type="text" id="customerFilter" class="form-control form-control-sm" placeholder="顧客名で検索" style="width: 200px;">
+          </div>
+          <button type="button" id="searchBtn" class="btn btn-primary btn-sm">
+            <i class="bi bi-search"></i> 検索
+          </button>
+          <button type="button" id="clearBtn" class="btn btn-outline-secondary btn-sm">
+            クリア
+          </button>
+        </div>
+      </div>
+
+      <div class="table-section pc-table">
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th>顧客名</th>
+              <th>発送先名</th>
+              <th>間隔</th>
+              <th>次回発送日</th>
+              <th>ステータス</th>
+              <th>最終実行日</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="orderTableBody">
+          </tbody>
+        </table>
+        <div id="noDataMessage" class="text-center text-muted py-4" style="display: none;">
+          該当する定期便がありません
+        </div>
+      </div>
+
+      <div class="mobile-cards" id="mobileCards">
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">定期便詳細</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="intervalModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">間隔・次回日付変更</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="intervalTargetId">
+          <div class="mb-3">
+            <label class="form-label">更新間隔</label>
+            <select id="newInterval" class="form-select">
+              <option value="1">1ヶ月</option>
+              <option value="2">2ヶ月</option>
+              <option value="3">3ヶ月</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">次回発送日</label>
+            <input type="date" id="newNextShippingDate" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">次回納品日</label>
+            <input type="date" id="newNextDeliveryDate" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="confirmIntervalBtn">変更</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    var allOrders = [];
+    var deployURL = '<?= deployURL ?>';
+    var userRole = '<?= userRole ?>';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadOrders();
+      document.getElementById('searchBtn').addEventListener('click', filterOrders);
+      document.getElementById('clearBtn').addEventListener('click', clearFilters);
+      document.getElementById('customerFilter').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') filterOrders();
+      });
+      document.getElementById('confirmIntervalBtn').addEventListener('click', confirmIntervalChange);
+    });
+
+    function loadOrders() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(data) {
+          allOrders = data || [];
+          filterOrders();
+          hideLoading();
+        })
+        .withFailureHandler(function(error) {
+          console.error('データ取得エラー:', error);
+          hideLoading();
+          alert('データの取得に失敗しました');
+        })
+        .getRecurringOrderListData();
+    }
+
+    function filterOrders() {
+      var statusFilter = document.getElementById('statusFilter').value;
+      var customerFilter = document.getElementById('customerFilter').value.toLowerCase();
+      var filtered = allOrders.filter(function(order) {
+        if (statusFilter && order.status !== statusFilter) return false;
+        if (customerFilter && !order.customerName.toLowerCase().includes(customerFilter)) return false;
+        return true;
+      });
+      renderTable(filtered);
+      renderMobileCards(filtered);
+    }
+
+    function clearFilters() {
+      document.getElementById('statusFilter').value = '';
+      document.getElementById('customerFilter').value = '';
+      filterOrders();
+    }
+
+    function renderTable(orders) {
+      var tbody = document.getElementById('orderTableBody');
+      var noDataMsg = document.getElementById('noDataMessage');
+      tbody.textContent = '';
+
+      if (orders.length === 0) {
+        noDataMsg.style.display = 'block';
+        return;
+      }
+
+      noDataMsg.style.display = 'none';
+      orders.forEach(function(order) {
+        var tr = document.createElement('tr');
+        tr.dataset.id = order.id; // 裏でIDを保持
+        tr.style.cursor = 'pointer';
+        tr.onclick = (function(id) { return function(e) {
+          // 操作ボタンクリック時は詳細表示しない
+          if (e.target.closest('.col-action')) return;
+          showDetail(id);
+        }; })(order.id);
+
+        var tdCustomer = document.createElement('td');
+        tdCustomer.textContent = order.customerName;
+        tr.appendChild(tdCustomer);
+
+        var tdShipping = document.createElement('td');
+        tdShipping.textContent = order.shippingToName;
+        tr.appendChild(tdShipping);
+
+        var tdInterval = document.createElement('td');
+        var intervalSpan = document.createElement('span');
+        intervalSpan.className = 'interval-badge';
+        intervalSpan.textContent = order.interval + 'ヶ月';
+        tdInterval.appendChild(intervalSpan);
+        tr.appendChild(tdInterval);
+
+        var tdNextDate = document.createElement('td');
+        tdNextDate.textContent = formatDate(order.nextShippingDate);
+        tr.appendChild(tdNextDate);
+
+        var tdStatus = document.createElement('td');
+        tdStatus.appendChild(createStatusBadge(order.status));
+        tr.appendChild(tdStatus);
+
+        var tdLastExec = document.createElement('td');
+        tdLastExec.textContent = formatDate(order.lastExecutionDate) || '-';
+        tr.appendChild(tdLastExec);
+
+        var tdAction = document.createElement('td');
+        tdAction.className = 'col-action';
+
+        var intervalBtn = document.createElement('button');
+        intervalBtn.className = 'btn btn-outline-primary action-btn';
+        intervalBtn.title = '間隔変更';
+        var intervalIcon = document.createElement('i');
+        intervalIcon.className = 'bi bi-calendar3';
+        intervalBtn.appendChild(intervalIcon);
+        intervalBtn.onclick = (function(id, interval) { return function(e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
+        tdAction.appendChild(intervalBtn);
+
+        if (order.status === '有効') {
+          var pauseBtn = document.createElement('button');
+          pauseBtn.className = 'btn btn-outline-warning action-btn';
+          pauseBtn.title = '停止';
+          var pauseIcon = document.createElement('i');
+          pauseIcon.className = 'bi bi-pause-circle';
+          pauseBtn.appendChild(pauseIcon);
+          pauseBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
+          tdAction.appendChild(pauseBtn);
+        } else if (order.status === '停止') {
+          var resumeBtn = document.createElement('button');
+          resumeBtn.className = 'btn btn-outline-success action-btn';
+          resumeBtn.title = '再開';
+          var resumeIcon = document.createElement('i');
+          resumeIcon.className = 'bi bi-play-circle';
+          resumeBtn.appendChild(resumeIcon);
+          resumeBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
+          tdAction.appendChild(resumeBtn);
+        }
+
+        var deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-outline-danger action-btn';
+        deleteBtn.title = '削除';
+        var deleteIcon = document.createElement('i');
+        deleteIcon.className = 'bi bi-trash';
+        deleteBtn.appendChild(deleteIcon);
+        deleteBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
+        tdAction.appendChild(deleteBtn);
+
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderMobileCards(orders) {
+      var container = document.getElementById('mobileCards');
+      container.textContent = '';
+
+      if (orders.length === 0) {
+        var noData = document.createElement('div');
+        noData.className = 'text-center text-muted py-4';
+        noData.textContent = '該当する定期便がありません';
+        container.appendChild(noData);
+        return;
+      }
+
+      orders.forEach(function(order) {
+        var card = document.createElement('div');
+        card.className = 'mobile-card';
+        card.style.cursor = 'pointer';
+        card.onclick = (function(id) { return function(e) {
+          // アクションボタンクリック時は詳細表示しない
+          if (e.target.closest('.mobile-card-actions')) return;
+          showDetail(id);
+        }; })(order.id);
+
+        var header = document.createElement('div');
+        header.className = 'mobile-card-header';
+
+        var headerLeft = document.createElement('div');
+        var customerName = document.createElement('strong');
+        customerName.textContent = order.customerName;
+        headerLeft.appendChild(customerName);
+        var shippingName = document.createElement('div');
+        shippingName.className = 'text-muted small';
+        shippingName.textContent = order.shippingToName;
+        headerLeft.appendChild(shippingName);
+        header.appendChild(headerLeft);
+        header.appendChild(createStatusBadge(order.status));
+        card.appendChild(header);
+
+        var body = document.createElement('div');
+        body.className = 'mobile-card-body';
+
+        var items = [
+          { label: '更新間隔', value: order.interval + 'ヶ月', isInterval: true },
+          { label: '次回発送日', value: formatDate(order.nextShippingDate) },
+          { label: '最終実行日', value: formatDate(order.lastExecutionDate) || '-' },
+          { label: '商品', value: order.productSummary || '-' }
+        ];
+
+        items.forEach(function(item) {
+          var row = document.createElement('div');
+          row.className = 'row-item';
+          var labelSpan = document.createElement('span');
+          labelSpan.textContent = item.label;
+          row.appendChild(labelSpan);
+          if (item.isInterval) {
+            var intervalSpan = document.createElement('span');
+            intervalSpan.className = 'interval-badge';
+            intervalSpan.textContent = item.value;
+            row.appendChild(intervalSpan);
+          } else {
+            var valueSpan = document.createElement('span');
+            valueSpan.textContent = item.value;
+            row.appendChild(valueSpan);
+          }
+          body.appendChild(row);
+        });
+        card.appendChild(body);
+
+        var actions = document.createElement('div');
+        actions.className = 'mobile-card-actions';
+
+        var intervalBtn = document.createElement('button');
+        intervalBtn.className = 'btn btn-outline-primary btn-sm';
+        intervalBtn.textContent = '間隔変更';
+        intervalBtn.onclick = (function(id, interval) { return function(e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
+        actions.appendChild(intervalBtn);
+
+        if (order.status === '有効') {
+          var pauseBtn = document.createElement('button');
+          pauseBtn.className = 'btn btn-outline-warning btn-sm';
+          pauseBtn.textContent = '停止';
+          pauseBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
+          actions.appendChild(pauseBtn);
+        } else if (order.status === '停止') {
+          var resumeBtn = document.createElement('button');
+          resumeBtn.className = 'btn btn-outline-success btn-sm';
+          resumeBtn.textContent = '再開';
+          resumeBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
+          actions.appendChild(resumeBtn);
+        }
+
+        var deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-outline-danger btn-sm';
+        deleteBtn.textContent = '削除';
+        deleteBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
+        actions.appendChild(deleteBtn);
+
+        card.appendChild(actions);
+        container.appendChild(card);
+      });
+    }
+
+    function createStatusBadge(status) {
+      var span = document.createElement('span');
+      span.className = 'status-badge';
+      if (status === '有効') span.className += ' status-active';
+      else if (status === '停止') span.className += ' status-paused';
+      else if (status === '解除') span.className += ' status-cancelled';
+      span.textContent = status;
+      return span;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return (date.getMonth() + 1) + '/' + date.getDate();
+    }
+
+    function showDetail(id) {
+      var order = allOrders.find(function(o) { return o.id === id; });
+      if (!order) return;
+
+      var modalBody = document.getElementById('detailModalBody');
+      modalBody.textContent = '';
+
+      var table = document.createElement('table');
+      table.className = 'detail-table';
+
+      var rows = [
+        { label: '定期受注ID', value: order.id },
+        { label: '登録日', value: order.registrationDate },
+        { label: '顧客名', value: order.customerName },
+        { label: '発送先', value: order.shippingToName },
+        { label: '納品方法', value: order.deliveryMethod },
+        { label: '更新間隔', value: order.interval + 'ヶ月' },
+        { label: '次回発送日', value: order.nextShippingDate },
+        { label: '次回納品日', value: order.nextDeliveryDate },
+        { label: 'ステータス', value: order.status, isStatus: true },
+        { label: '最終実行日', value: order.lastExecutionDate || '-' },
+        { label: '合計金額', value: '¥' + (order.totalAmount || 0).toLocaleString() }
+      ];
+
+      rows.forEach(function(row) {
+        var tr = document.createElement('tr');
+        var th = document.createElement('th');
+        th.textContent = row.label;
+        tr.appendChild(th);
+        var td = document.createElement('td');
+        if (row.isStatus) {
+          td.appendChild(createStatusBadge(row.value));
+        } else {
+          td.textContent = row.value;
+        }
+        tr.appendChild(td);
+        table.appendChild(tr);
+      });
+
+      var productTr = document.createElement('tr');
+      var productTh = document.createElement('th');
+      productTh.textContent = '商品';
+      productTr.appendChild(productTh);
+      var productTd = document.createElement('td');
+      var products = order.products || [];
+      if (products.length > 0) {
+        var ul = document.createElement('ul');
+        ul.className = 'product-list';
+        products.forEach(function(p) {
+          var li = document.createElement('li');
+          li.textContent = p.product + ' × ' + p.quantity + ' (¥' + p.price.toLocaleString() + ')';
+          ul.appendChild(li);
+        });
+        productTd.appendChild(ul);
+      } else {
+        productTd.textContent = '-';
+      }
+      productTr.appendChild(productTd);
+      table.appendChild(productTr);
+
+      modalBody.appendChild(table);
+      new bootstrap.Modal(document.getElementById('detailModal')).show();
+    }
+
+    function openIntervalModal(id, currentInterval) {
+      // 対象のorderデータを取得
+      var order = allOrders.find(function(o) { return o.id === id; });
+
+      document.getElementById('intervalTargetId').value = id;
+      document.getElementById('newInterval').value = currentInterval;
+
+      // 現在の次回発送日・納品日をセット
+      if (order) {
+        var shippingDate = order.nextShippingDate ? order.nextShippingDate.replace(/\//g, '-') : '';
+        var deliveryDate = order.nextDeliveryDate ? order.nextDeliveryDate.replace(/\//g, '-') : '';
+        document.getElementById('newNextShippingDate').value = shippingDate;
+        document.getElementById('newNextDeliveryDate').value = deliveryDate;
+      }
+
+      new bootstrap.Modal(document.getElementById('intervalModal')).show();
+    }
+
+    function confirmIntervalChange() {
+      var id = document.getElementById('intervalTargetId').value;
+      var newInterval = parseInt(document.getElementById('newInterval').value);
+      var newNextShippingDate = document.getElementById('newNextShippingDate').value;
+      var newNextDeliveryDate = document.getElementById('newNextDeliveryDate').value;
+
+      if (!newNextShippingDate || !newNextDeliveryDate) {
+        alert('次回発送日と次回納品日を入力してください');
+        return;
+      }
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result) {
+            bootstrap.Modal.getInstance(document.getElementById('intervalModal')).hide();
+            loadOrders();
+          } else {
+            alert('変更に失敗しました');
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          alert('エラーが発生しました: ' + error);
+        })
+        .changeRecurringInterval(id, newInterval, newNextShippingDate, newNextDeliveryDate);
+    }
+
+    function pauseOrder(id) {
+      if (!confirm('この定期便を一時停止しますか？')) return;
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result) loadOrders();
+          else alert('一時停止に失敗しました');
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          alert('エラーが発生しました: ' + error);
+        })
+        .pauseRecurringOrder(id);
+    }
+
+    function resumeOrder(id) {
+      if (!confirm('この定期便を再開しますか？')) return;
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result) loadOrders();
+          else alert('再開に失敗しました');
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          alert('エラーが発生しました: ' + error);
+        })
+        .resumeRecurringOrder(id);
+    }
+
+    function deleteOrder(id) {
+      if (!confirm('この定期便を削除しますか？\nこの操作は取り消せません。')) return;
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result) loadOrders();
+          else alert('削除に失敗しました');
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          alert('エラーが発生しました: ' + error);
+        })
+        .deleteRecurringOrder(id);
+    }
+  </script>
+</body>
+
+</html>

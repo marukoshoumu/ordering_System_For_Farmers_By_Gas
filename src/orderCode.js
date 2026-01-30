@@ -1479,6 +1479,20 @@ function getShippingComfirmHTML(e) {
   }
   html += `</div>`;
 
+  // 定期便情報（チェックが入っている場合のみ表示）
+  if (e.parameter.isRecurringOrder === 'true') {
+    const interval = e.parameter.recurringInterval || '1';
+    html += `<div class="mt-3 p-3" style="background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%); border-radius: 8px;">`;
+    html += `  <div style="color: white; font-weight: 600; display: flex; align-items: center; gap: 8px;">`;
+    html += `    <span style="font-size: 1.2rem;">🔄</span>`;
+    html += `    <span>定期便として登録</span>`;
+    html += `    <span style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.85rem;">${interval}ヶ月ごと</span>`;
+    html += `  </div>`;
+    html += `</div>`;
+    html += `<input type="hidden" name="isRecurringOrder" value="true">`;
+    html += `<input type="hidden" name="recurringInterval" value="${interval}">`;
+  }
+
   // その他添付
   if (e.parameter.otherAttach) {
     html += `<div class="confirm-row">`;
@@ -2206,6 +2220,24 @@ function createOrder(e) {
     // 学習処理のエラーは受注処理に影響させない
     Logger.log('自動学習エラー（処理続行）: ' + error.message);
   }
+
+  // 定期便登録処理（新規登録時のみ、編集モードでは実行しない）
+  if (!editOrderId && e.parameter.isRecurringOrder === 'true') {
+    try {
+      const recurringInterval = parseInt(e.parameter.recurringInterval) || 1;
+      // 最初の日程の発送日・納品日を基準にする
+      const baseShippingDate = e.parameter.shippingDate1;
+      const baseDeliveryDate = e.parameter.deliveryDate1;
+
+      if (baseShippingDate && baseDeliveryDate) {
+        createRecurringOrder(e, firstOrderId, baseShippingDate, baseDeliveryDate, recurringInterval);
+        Logger.log('定期便登録完了: 間隔=' + recurringInterval + 'ヶ月, 受注ID=' + firstOrderId);
+      }
+    } catch (error) {
+      // 定期便登録のエラーは受注処理に影響させない
+      Logger.log('定期便登録エラー（処理続行）: ' + error.message);
+    }
+  }
 }
 /**
  * ヤマト運輸B2用CSVデータを「ヤマトCSV」シートに登録
@@ -2310,7 +2342,6 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
     record['品名２'],
     record['荷扱い１'],
     record['荷扱い２'],
-    record['荷扱い３'],
     record['記事'],
     record['コレクト代金引換額（税込）'],
     record['コレクト内消費税額等'],

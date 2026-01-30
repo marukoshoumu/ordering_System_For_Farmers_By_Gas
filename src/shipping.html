@@ -361,6 +361,37 @@
       <input type="hidden" name="tempOrderId" value="<?= tempOrderId ?>">
       <? } ?>
 
+      <!-- 定期便設定（新規登録時のみ表示） -->
+      <? if (!isEditMode) { ?>
+      <div class="recurring-order-section mt-4 mb-4">
+        <div class="card">
+          <div class="card-header bg-info text-white py-2">
+            <label class="form-check-label mb-0" style="cursor: pointer;">
+              <input type="checkbox" class="form-check-input me-2" id="isRecurringOrder" name="isRecurringOrder" value="true" onchange="toggleRecurringOptions()">
+              🔄 定期便として登録する
+            </label>
+          </div>
+          <div class="card-body recurring-options" id="recurringOptions" style="display: none;">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <label for="recurringInterval" class="form-label mb-0">更新間隔:</label>
+              </div>
+              <div class="col-auto">
+                <select class="form-select" id="recurringInterval" name="recurringInterval">
+                  <option value="1">1ヶ月ごと</option>
+                  <option value="2">2ヶ月ごと</option>
+                  <option value="3">3ヶ月ごと</option>
+                </select>
+              </div>
+              <div class="col">
+                <small class="text-muted">※ 発送日を基準に、指定間隔で自動的に受注が作成されます</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <? } ?>
+
       <!-- ボタンエリア（白背景で独立） -->
       <div class="form-actions-area">
         <div class="text-center">
@@ -480,6 +511,23 @@
       // 1行目の場合、発送品名もクリア
       if (rowNum == 1) {
         $('#sendProduct').val('');
+      }
+    }
+
+    /**
+     * 定期便オプションの表示切替
+     *
+     * 「定期便として登録する」チェックボックスの状態に応じて、
+     * 更新間隔の選択オプションを表示/非表示にします。
+     *
+     * @returns {void}
+     */
+    function toggleRecurringOptions() {
+      var isChecked = $('#isRecurringOrder').is(':checked');
+      if (isChecked) {
+        $('#recurringOptions').slideDown(200);
+      } else {
+        $('#recurringOptions').slideUp(200);
       }
     }
 
