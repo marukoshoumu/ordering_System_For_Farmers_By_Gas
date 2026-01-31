@@ -437,11 +437,16 @@ function processRecurringOrders() {
 
   for (let i = 0; i < orders.length; i++) {
     const order = orders[i];
+    // 日付を0:00に正規化
     const nextShippingDate = new Date(order['次回発送日']);
+    nextShippingDate.setHours(0, 0, 0, 0);
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
 
-    // 7日前に受注を作成
-    const diffDays = Math.floor((nextShippingDate - today) / (1000 * 60 * 60 * 24));
-    if (diffDays === 7) {
+    // 7日前に受注を作成（トリガー時刻ズレ対策で6〜7日差を許容）
+    const diffMs = nextShippingDate - todayDate;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays >= 6 && diffDays <= 7) {
       try {
         createOrderFromRecurring(order);
         processedCount++;
