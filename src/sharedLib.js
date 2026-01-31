@@ -479,7 +479,25 @@ function recognizeTrackingNumberShared(base64Data) {
     });
 
     const result = JSON.parse(response.getContentText());
-    const annotations = result.responses[0].textAnnotations;
+
+    if (!result.responses || !Array.isArray(result.responses) || result.responses.length === 0) {
+      const apiError = result.error ? (result.error.message || JSON.stringify(result.error)) : '';
+      if (apiError) Logger.log('Vision API error: ' + apiError);
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+
+    const firstResponse = result.responses[0];
+    if (!firstResponse) {
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+
+    if (firstResponse.error) {
+      const errMsg = firstResponse.error.message || JSON.stringify(firstResponse.error);
+      Logger.log('Vision API response error: ' + errMsg);
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+
+    const annotations = firstResponse.textAnnotations;
 
     if (!annotations || annotations.length === 0) {
       return { success: false, message: '文字が検出されませんでした。' };
