@@ -439,8 +439,9 @@ function processRecurringOrders() {
     const order = orders[i];
     const nextShippingDate = new Date(order['次回発送日']);
 
-    // 次回発送日が今日以前の場合、受注を作成
-    if (nextShippingDate <= today) {
+    // 7日前に受注を作成
+    const diffDays = Math.floor((nextShippingDate - today) / (1000 * 60 * 60 * 24));
+    if (diffDays === 7) {
       try {
         createOrderFromRecurring(order);
         processedCount++;
