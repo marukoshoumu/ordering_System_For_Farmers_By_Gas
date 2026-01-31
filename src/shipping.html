@@ -464,7 +464,7 @@
               var baseDate = new Date(shippingDateInput.value);
               var type = document.getElementById('recurringType').value;
               var subValue = null;
-              if (type === 'weekly' || type.endsWith('week')) {
+              if (type.endsWith('weekly')) {
                 var weekdaySelect = document.getElementById('recurringWeekday');
                 if (weekdaySelect) subValue = weekdaySelect.value;
               } else if (type === 'monthly') {
@@ -484,8 +484,8 @@
               var type = document.getElementById('recurringType').value;
               var subOptions = document.getElementById('recurringSubOptions');
               subOptions.innerHTML = '';
-              if (type === 'weekly' || type.endsWith('week')) {
-                // 曜日セレクト
+              if (type.endsWith('weekly')) {
+                // 曜日セレクト（weekly / biweekly / triweekly）
                 var days = ['月','火','水','木','金','土','日'];
                 var select = document.createElement('select');
                 select.className = 'form-select';
