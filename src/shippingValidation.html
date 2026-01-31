@@ -211,6 +211,30 @@
      */
     function checkBasicValidation() {
       const warnings = [];
+
+      // 定期便の場合、発送日と納品日の整合性をチェック
+      const isRecurringCheckbox = document.getElementById('isRecurringOrder');
+      if (isRecurringCheckbox && isRecurringCheckbox.checked) {
+        const shippingDate1 = document.querySelector('input[name="shippingDate1"]')?.value || document.getElementById('shippingDate1')?.value;
+        const deliveryDate1 = document.querySelector('input[name="deliveryDate1"]')?.value || document.getElementById('deliveryDate1')?.value;
+
+        if (shippingDate1 && deliveryDate1) {
+          const shippingDateObj = new Date(shippingDate1);
+          const deliveryDateObj = new Date(deliveryDate1);
+
+          if (!isNaN(shippingDateObj.getTime()) && !isNaN(deliveryDateObj.getTime())) {
+            if (deliveryDateObj < shippingDateObj) {
+              warnings.push({
+                type: 'critical',
+                icon: '🔴',
+                title: '納品日が発送日より前になっています',
+                detail: '発送日: ' + shippingDate1 + ' → 納品日: ' + deliveryDate1 + '（定期便の計算が正しく行われません）'
+              });
+            }
+          }
+        }
+      }
+
       const products = [];
       for (let i = 1; i <= 10; i++) {
         const product = document.getElementById('product' + i)?.value || '';

@@ -1,4 +1,48 @@
 /**
+ * 間隔オブジェクトを人間が読める形式に変換する
+ * @param {Object|number} intervalObj - 間隔オブジェクトまたは数値
+ * @returns {string} 表示用文字列
+ */
+function formatIntervalForDisplay(intervalObj) {
+  if (!intervalObj) return '1ヶ月ごと';
+
+  // 旧形式（数値のみ）
+  if (typeof intervalObj === 'number' || (typeof intervalObj === 'string' && !intervalObj.startsWith('{'))) {
+    return intervalObj + 'ヶ月ごと';
+  }
+
+  var type = intervalObj.type;
+  var value = intervalObj.value;
+  var weekday = intervalObj.weekday;
+
+  var dayNames = ['', '月', '火', '水', '木', '金', '土', '日'];
+
+  switch (type) {
+    case 'weekly':
+      return '毎週' + (dayNames[value] || '') + '曜日';
+
+    case 'nweek':
+    case 'biweekly':
+    case 'triweekly':
+      var n = Number(value) || 2;
+      return n + '週ごと' + (dayNames[weekday] || '') + '曜日';
+
+    case 'monthly':
+      if (value === 'first') return '毎月初日';
+      if (value === 'last') return '毎月末日';
+      return '毎月' + value + '日';
+
+    case 'nmonth':
+    case '2month':
+    case '3month':
+      return (Number(value) || 1) + 'ヶ月ごと';
+
+    default:
+      return (Number(value) || 1) + 'ヶ月ごと';
+  }
+}
+
+/**
  * 受注シートからヘッダーを取得
  * シートのヘッダーが真実の情報源（Single Source of Truth）
  * @returns {Array} ヘッダー配列
@@ -1481,16 +1525,74 @@ function getShippingComfirmHTML(e) {
 
   // 定期便情報（チェックが入っている場合のみ表示）
   if (e.parameter.isRecurringOrder === 'true') {
-    const interval = e.parameter.recurringInterval || '1';
+    // 個別パラメータから間隔オブジェクトを構築
+    var intervalObj;
+    if (e.parameter.recurringInterval) {
+      // 既にJSON形式で渡されている場合（修正画面からの遷移等）
+      try {
+        intervalObj = JSON.parse(e.parameter.recurringInterval);
+      } catch (ex) {
+        // 旧形式（数値のみ）
+        intervalObj = { type: 'nmonth', value: Number(e.parameter.recurringInterval) || 1 };
+      }
+    } else {
+      // shipping.htmlからの個別パラメータを統合
+      var recType = e.parameter.recurringType || 'monthly';
+      intervalObj = { type: recType };
+
+      if (recType === 'weekly') {
+        intervalObj.value = Number(e.parameter.recurringWeekday) || 1;
+      } else if (recType.endsWith('week')) {
+        // biweekly, triweekly, 4week, etc.
+        var weekNum = recType === 'biweekly' ? 2 : recType === 'triweekly' ? 3 : parseInt(recType.replace('week', '')) || 2;
+        intervalObj.type = 'nweek';
+        intervalObj.value = weekNum;
+        intervalObj.weekday = Number(e.parameter.recurringWeekday) || 1;
+      } else if (recType === 'monthly') {
+        intervalObj.value = e.parameter.recurringMonthDay || 1;
+      } else if (recType === '2month' || recType === '3month') {
+        intervalObj.type = 'nmonth';
+        intervalObj.value = parseInt(recType.replace('month', '')) || 1;
+      } else {
+        intervalObj.value = 1;
+      }
+    }
+
+    var intervalDisplay = formatIntervalForDisplay(intervalObj);
+    var intervalJson = JSON.stringify(intervalObj);
+
+    // 次回発送日・納品日を計算
+    var nextShippingDateDisplay = '-';
+    var nextDeliveryDateDisplay = '-';
+    var baseShippingDateStr = e.parameter.shippingDate1;
+    var baseDeliveryDateStr = e.parameter.deliveryDate1;
+
+    if (baseShippingDateStr && baseDeliveryDateStr) {
+      var baseShippingDate = new Date(baseShippingDateStr);
+      var baseDeliveryDate = new Date(baseDeliveryDateStr);
+      if (!isNaN(baseShippingDate.getTime()) && !isNaN(baseDeliveryDate.getTime())) {
+        var nextShippingDate = calcNextShippingDateFlexible(baseShippingDate, intervalObj);
+        var daysDiff = Math.round((baseDeliveryDate - baseShippingDate) / (1000 * 60 * 60 * 24));
+        var nextDeliveryDate = new Date(nextShippingDate);
+        nextDeliveryDate.setDate(nextDeliveryDate.getDate() + daysDiff);
+        nextShippingDateDisplay = Utilities.formatDate(nextShippingDate, 'JST', 'yyyy/MM/dd');
+        nextDeliveryDateDisplay = Utilities.formatDate(nextDeliveryDate, 'JST', 'yyyy/MM/dd');
+      }
+    }
+
     html += `<div class="mt-3 p-3" style="background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%); border-radius: 8px;">`;
     html += `  <div style="color: white; font-weight: 600; display: flex; align-items: center; gap: 8px;">`;
     html += `    <span style="font-size: 1.2rem;">🔄</span>`;
     html += `    <span>定期便として登録</span>`;
-    html += `    <span style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.85rem;">${interval}ヶ月ごと</span>`;
+    html += `    <span style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.85rem;">${intervalDisplay}</span>`;
+    html += `  </div>`;
+    html += `  <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; margin-top: 8px; padding-left: 28px;">`;
+    html += `    <div>次回発送日: ${nextShippingDateDisplay}</div>`;
+    html += `    <div>次回納品日: ${nextDeliveryDateDisplay}</div>`;
     html += `  </div>`;
     html += `</div>`;
     html += `<input type="hidden" name="isRecurringOrder" value="true">`;
-    html += `<input type="hidden" name="recurringInterval" value="${interval}">`;
+    html += `<input type="hidden" name="recurringInterval" value='${intervalJson}'>`;
   }
 
   // その他添付
@@ -2224,14 +2326,13 @@ function createOrder(e) {
   // 定期便登録処理（新規登録時のみ、編集モードでは実行しない）
   if (!editOrderId && e.parameter.isRecurringOrder === 'true') {
     try {
-      const recurringInterval = parseInt(e.parameter.recurringInterval) || 1;
-      // 最初の日程の発送日・納品日を基準にする
+      // 最初の日程の発送日・納品日を基準にする（createRecurringOrder 内で発送日→納品日の間隔を保持）
       const baseShippingDate = e.parameter.shippingDate1;
       const baseDeliveryDate = e.parameter.deliveryDate1;
 
       if (baseShippingDate && baseDeliveryDate) {
-        createRecurringOrder(e, firstOrderId, baseShippingDate, baseDeliveryDate, recurringInterval);
-        Logger.log('定期便登録完了: 間隔=' + recurringInterval + 'ヶ月, 受注ID=' + firstOrderId);
+        createRecurringOrder(e);
+        Logger.log('定期便登録完了: 受注ID=' + firstOrderId);
       }
     } catch (error) {
       // 定期便登録のエラーは受注処理に影響させない

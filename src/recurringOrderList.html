@@ -353,13 +353,27 @@
           <input type="hidden" id="intervalTargetId">
           <div class="mb-3">
             <label class="form-label">更新間隔</label>
-            <select id="newInterval" class="form-select">
-              <option value="1">1ヶ月</option>
-              <option value="2">2ヶ月</option>
-              <option value="3">3ヶ月</option>
+            <select id="newIntervalType" class="form-select" onchange="onNewIntervalTypeChange()">
+              <option value="monthly">毎月</option>
+              <option value="weekly">毎週</option>
+              <option value="biweekly">2週ごと</option>
+              <option value="triweekly">3週ごと</option>
+              <option value="4week">4週ごと</option>
+              <option value="5week">5週ごと</option>
+              <option value="6week">6週ごと</option>
+              <option value="7week">7週ごと</option>
+              <option value="8week">8週ごと</option>
+              <option value="9week">9週ごと</option>
+              <option value="10week">10週ごと</option>
+              <option value="11week">11週ごと</option>
+              <option value="12week">12週ごと</option>
+              <option value="2month">2ヶ月ごと</option>
+              <option value="3month">3ヶ月ごと</option>
             </select>
+            <div id="newIntervalSubOptions" class="mt-2"></div>
+            <small class="text-muted">※ タイプ・曜日・日付を指定できます</small>
           </div>
-          <div class="mb-3">
+          <div class="mb-3" id="newNextShippingDateRow" style="display:none;">
             <label class="form-label">次回発送日</label>
             <input type="date" id="newNextShippingDate" class="form-control">
           </div>
@@ -381,6 +395,48 @@
     var allOrders = [];
     var deployURL = '<?= deployURL ?>';
     var userRole = '<?= userRole ?>';
+    var originalDaysInterval = 0; // 発送日〜納品日の元々の間隔（日数）
+
+    /**
+     * 間隔オブジェクトを表示用文字列に変換
+     */
+    function formatIntervalForDisplay(intervalObj) {
+      if (!intervalObj) return '1ヶ月ごと';
+      // 旧形式（数値または文字列）
+      if (typeof intervalObj === 'number' || typeof intervalObj === 'string') {
+        var num = parseInt(intervalObj);
+        if (!isNaN(num)) return num + 'ヶ月ごと';
+        // JSON文字列の場合はパース試行
+        try {
+          intervalObj = JSON.parse(intervalObj);
+        } catch (e) {
+          return intervalObj + 'ヶ月ごと';
+        }
+      }
+      var type = intervalObj.type;
+      var value = intervalObj.value;
+      var weekday = intervalObj.weekday;
+      var dayNames = ['', '月', '火', '水', '木', '金', '土', '日'];
+      switch (type) {
+        case 'weekly':
+          return '毎週' + (dayNames[value] || '') + '曜日';
+        case 'nweek':
+        case 'biweekly':
+        case 'triweekly':
+          var n = Number(value) || 2;
+          return n + '週ごと' + (dayNames[weekday] || '') + '曜日';
+        case 'monthly':
+          if (value === 'first') return '毎月初日';
+          if (value === 'last') return '毎月末日';
+          return '毎月' + value + '日';
+        case 'nmonth':
+        case '2month':
+        case '3month':
+          return (Number(value) || 1) + 'ヶ月ごと';
+        default:
+          return (Number(value) || 1) + 'ヶ月ごと';
+      }
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
       loadOrders();
@@ -390,7 +446,130 @@
         if (e.key === 'Enter') filterOrders();
       });
       document.getElementById('confirmIntervalBtn').addEventListener('click', confirmIntervalChange);
+      // モーダル初期化時に間隔タイプUIを初期化
+      if (document.getElementById('newIntervalType')) onNewIntervalTypeChange();
     });
+    // 柔軟な間隔UI制御関数（shipping.htmlのonRecurringTypeChange相当）
+    function onNewIntervalTypeChange() {
+      var type = document.getElementById('newIntervalType').value;
+      var subOptions = document.getElementById('newIntervalSubOptions');
+      subOptions.innerHTML = '';
+      if (type === 'weekly' || type.endsWith('week')) {
+        // 曜日セレクト
+        var days = ['月','火','水','木','金','土','日'];
+        var select = document.createElement('select');
+        select.className = 'form-select';
+        select.id = 'newIntervalWeekday';
+        select.name = 'newIntervalWeekday';
+        days.forEach(function(day, idx) {
+          var opt = document.createElement('option');
+          opt.value = idx+1;
+          opt.text = '毎週' + day + '曜日';
+          select.appendChild(opt);
+        });
+        select.onchange = updateNewNextShippingDate;
+        subOptions.appendChild(select);
+      } else if (type === 'monthly') {
+        // 日付セレクト
+        var select = document.createElement('select');
+        select.className = 'form-select';
+        select.id = 'newIntervalMonthDay';
+        select.name = 'newIntervalMonthDay';
+        for (var i=1; i<=31; i++) {
+          var opt = document.createElement('option');
+          opt.value = i;
+          opt.text = '毎月' + i + '日';
+          select.appendChild(opt);
+        }
+        var optFirst = document.createElement('option');
+        optFirst.value = 'first';
+        optFirst.text = '毎月初日';
+        select.appendChild(optFirst);
+        var optLast = document.createElement('option');
+        optLast.value = 'last';
+        optLast.text = '毎月末日';
+        select.appendChild(optLast);
+        select.onchange = updateNewNextShippingDate;
+        subOptions.appendChild(select);
+      }
+      // 次回発送日入力欄を表示
+      document.getElementById('newNextShippingDateRow').style.display = '';
+      // 間隔タイプ変更時に次回発送日を自動計算
+      updateNewNextShippingDate();
+    }
+
+    /**
+     * 基準日と定期タイプから次回発送日を計算
+     */
+    function calcNextRecurringDate(baseDate, type, subValue) {
+      var d = new Date(baseDate);
+      if (isNaN(d.getTime())) return null;
+
+      if (type === 'weekly') {
+        // 毎週: 発送日から最低7日後の指定曜日
+        var targetDay = Number(subValue) || 1;
+        var currentDay = d.getDay() || 7;
+        var diff = (targetDay - currentDay + 7) % 7;
+        if (diff === 0) diff = 7;
+        // 次回発送日は少なくとも1週間後
+        if (diff < 7) diff += 7;
+        d.setDate(d.getDate() + diff);
+        return d;
+      } else if (type === 'biweekly' || type === 'triweekly' || type.endsWith('week')) {
+        var n = type === 'biweekly' ? 2 : type === 'triweekly' ? 3 : parseInt(type.replace('week', '')) || 2;
+        var weekday = Number(subValue) || 1;
+        var currentDay2 = d.getDay() || 7;
+        var daysToAdd = (weekday - currentDay2 + 7) % 7;
+        if (daysToAdd === 0) daysToAdd = 7 * n;
+        else daysToAdd += 7 * (n - 1);
+        d.setDate(d.getDate() + daysToAdd);
+        return d;
+      } else if (type === 'monthly') {
+        if (subValue === 'first') {
+          d.setMonth(d.getMonth() + 1, 1);
+        } else if (subValue === 'last') {
+          d.setMonth(d.getMonth() + 2, 0);
+        } else {
+          var targetDayOfMonth = Number(subValue) || 1;
+          d.setMonth(d.getMonth() + 1);
+          var lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+          d.setDate(Math.min(targetDayOfMonth, lastDay));
+        }
+        return d;
+      } else if (type === '2month' || type === '3month') {
+        var months = parseInt(type.replace('month', '')) || 1;
+        d.setMonth(d.getMonth() + months);
+        return d;
+      }
+      return null;
+    }
+
+    /**
+     * 間隔変更時に次回発送日を自動計算
+     */
+    function updateNewNextShippingDate() {
+      var baseDateInput = document.getElementById('newNextShippingDate');
+      if (!baseDateInput || !baseDateInput.value) return;
+      var baseDate = new Date(baseDateInput.value);
+      var type = document.getElementById('newIntervalType').value;
+      var subValue = null;
+      if (type === 'weekly' || type.endsWith('week')) {
+        var weekdaySelect = document.getElementById('newIntervalWeekday');
+        if (weekdaySelect) subValue = weekdaySelect.value;
+      } else if (type === 'monthly') {
+        var daySelect = document.getElementById('newIntervalMonthDay');
+        if (daySelect) subValue = daySelect.value;
+      }
+      var nextDate = calcNextRecurringDate(baseDate, type, subValue);
+      if (nextDate) {
+        var yyyy = nextDate.getFullYear();
+        var mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+        var dd = String(nextDate.getDate()).padStart(2, '0');
+        baseDateInput.value = yyyy + '-' + mm + '-' + dd;
+        // 発送日変更に伴い納品日も自動更新
+        updateDeliveryDateFromShipping();
+      }
+    }
 
     function loadOrders() {
       showLoading();
@@ -458,7 +637,7 @@
         var tdInterval = document.createElement('td');
         var intervalSpan = document.createElement('span');
         intervalSpan.className = 'interval-badge';
-        intervalSpan.textContent = order.interval + 'ヶ月';
+        intervalSpan.textContent = formatIntervalForDisplay(order.interval);
         tdInterval.appendChild(intervalSpan);
         tr.appendChild(tdInterval);
 
@@ -561,7 +740,7 @@
         body.className = 'mobile-card-body';
 
         var items = [
-          { label: '更新間隔', value: order.interval + 'ヶ月', isInterval: true },
+          { label: '更新間隔', value: formatIntervalForDisplay(order.interval), isInterval: true },
           { label: '次回発送日', value: formatDate(order.nextShippingDate) },
           { label: '最終実行日', value: formatDate(order.lastExecutionDate) || '-' },
           { label: '商品', value: order.productSummary || '-' }
@@ -654,7 +833,7 @@
         { label: '顧客名', value: order.customerName },
         { label: '発送先', value: order.shippingToName },
         { label: '納品方法', value: order.deliveryMethod },
-        { label: '更新間隔', value: order.interval + 'ヶ月' },
+        { label: '更新間隔', value: formatIntervalForDisplay(order.interval) },
         { label: '次回発送日', value: order.nextShippingDate },
         { label: '次回納品日', value: order.nextDeliveryDate },
         { label: 'ステータス', value: order.status, isStatus: true },
@@ -707,7 +886,49 @@
       var order = allOrders.find(function(o) { return o.id === id; });
 
       document.getElementById('intervalTargetId').value = id;
-      document.getElementById('newInterval').value = currentInterval;
+
+      // 間隔オブジェクトをパースしてUIに反映
+      var intervalObj = currentInterval;
+      if (typeof currentInterval === 'string') {
+        try {
+          intervalObj = JSON.parse(currentInterval);
+        } catch (e) {
+          // 旧形式（数値のみ）
+          intervalObj = { type: 'nmonth', value: parseInt(currentInterval) || 1 };
+        }
+      } else if (typeof currentInterval === 'number') {
+        intervalObj = { type: 'nmonth', value: currentInterval };
+      }
+
+      // タイプを選択（nweek → 元のbiweekly/triweekly/Nweek形式に変換して表示）
+      var typeSelect = document.getElementById('newIntervalType');
+      var typeValue = intervalObj.type;
+      if (typeValue === 'nweek') {
+        var n = intervalObj.value || 2;
+        if (n === 2) typeValue = 'biweekly';
+        else if (n === 3) typeValue = 'triweekly';
+        else typeValue = n + 'week';
+      } else if (typeValue === 'nmonth') {
+        var m = intervalObj.value || 1;
+        if (m === 1) typeValue = 'monthly';
+        else typeValue = m + 'month';
+      }
+      typeSelect.value = typeValue;
+      onNewIntervalTypeChange();
+
+      // サブオプションを設定
+      setTimeout(function() {
+        if (intervalObj.type === 'weekly' && intervalObj.value) {
+          var weekdaySel = document.getElementById('newIntervalWeekday');
+          if (weekdaySel) weekdaySel.value = intervalObj.value;
+        } else if ((intervalObj.type === 'nweek' || typeValue.endsWith('week')) && intervalObj.weekday) {
+          var weekdaySel = document.getElementById('newIntervalWeekday');
+          if (weekdaySel) weekdaySel.value = intervalObj.weekday;
+        } else if (intervalObj.type === 'monthly' && intervalObj.value) {
+          var daySelect = document.getElementById('newIntervalMonthDay');
+          if (daySelect) daySelect.value = intervalObj.value;
+        }
+      }, 50);
 
       // 現在の次回発送日・納品日をセット
       if (order) {
@@ -715,21 +936,92 @@
         var deliveryDate = order.nextDeliveryDate ? order.nextDeliveryDate.replace(/\//g, '-') : '';
         document.getElementById('newNextShippingDate').value = shippingDate;
         document.getElementById('newNextDeliveryDate').value = deliveryDate;
+
+        // 発送日〜納品日の間隔を計算して保存
+        if (shippingDate && deliveryDate) {
+          var shipDateObj = new Date(shippingDate);
+          var delivDateObj = new Date(deliveryDate);
+          originalDaysInterval = Math.round((delivDateObj - shipDateObj) / (1000 * 60 * 60 * 24));
+        } else {
+          originalDaysInterval = 0;
+        }
       }
+
+      // 発送日変更時に納品日を自動更新するイベントを設定
+      var shippingInput = document.getElementById('newNextShippingDate');
+      shippingInput.onchange = function() {
+        updateDeliveryDateFromShipping();
+      };
 
       new bootstrap.Modal(document.getElementById('intervalModal')).show();
     }
 
+    /**
+     * 発送日変更時に納品日を自動更新（元の間隔を維持）
+     */
+    function updateDeliveryDateFromShipping() {
+      var shippingInput = document.getElementById('newNextShippingDate');
+      var deliveryInput = document.getElementById('newNextDeliveryDate');
+      if (!shippingInput.value || originalDaysInterval <= 0) return;
+
+      var newShippingDate = new Date(shippingInput.value);
+      var newDeliveryDate = new Date(newShippingDate);
+      newDeliveryDate.setDate(newDeliveryDate.getDate() + originalDaysInterval);
+
+      var yyyy = newDeliveryDate.getFullYear();
+      var mm = String(newDeliveryDate.getMonth() + 1).padStart(2, '0');
+      var dd = String(newDeliveryDate.getDate()).padStart(2, '0');
+      deliveryInput.value = yyyy + '-' + mm + '-' + dd;
+    }
+
     function confirmIntervalChange() {
       var id = document.getElementById('intervalTargetId').value;
-      var newInterval = parseInt(document.getElementById('newInterval').value);
       var newNextShippingDate = document.getElementById('newNextShippingDate').value;
       var newNextDeliveryDate = document.getElementById('newNextDeliveryDate').value;
 
-      if (!newNextShippingDate || !newNextDeliveryDate) {
-        alert('次回発送日と次回納品日を入力してください');
+      if (!newNextDeliveryDate) {
+        alert('次回納品日を入力してください');
         return;
       }
+
+      // 納品日が発送日より前でないかチェック
+      if (newNextShippingDate && newNextDeliveryDate) {
+        var shippingDateObj = new Date(newNextShippingDate);
+        var deliveryDateObj = new Date(newNextDeliveryDate);
+
+        if (!isNaN(shippingDateObj.getTime()) && !isNaN(deliveryDateObj.getTime())) {
+          if (deliveryDateObj < shippingDateObj) {
+            alert('納品日が発送日より前になっています。\n発送日: ' + newNextShippingDate + '\n納品日: ' + newNextDeliveryDate + '\n\n正しい日付を入力してください。');
+            return;
+          }
+        }
+      }
+
+      // 新形式の間隔オブジェクトを構築
+      var typeSelect = document.getElementById('newIntervalType');
+      var typeValue = typeSelect.value;
+      var intervalObj = { type: typeValue };
+
+      if (typeValue === 'weekly') {
+        var weekdaySel = document.getElementById('newIntervalWeekday');
+        intervalObj.value = weekdaySel ? parseInt(weekdaySel.value) || 1 : 1;
+      } else if (typeValue === 'biweekly' || typeValue === 'triweekly' || typeValue.endsWith('week')) {
+        var n = typeValue === 'biweekly' ? 2 : typeValue === 'triweekly' ? 3 : parseInt(typeValue.replace('week', '')) || 2;
+        intervalObj.type = 'nweek';
+        intervalObj.value = n;
+        var weekdaySel = document.getElementById('newIntervalWeekday');
+        intervalObj.weekday = weekdaySel ? parseInt(weekdaySel.value) || 1 : 1;
+      } else if (typeValue === 'monthly') {
+        var daySelect = document.getElementById('newIntervalMonthDay');
+        intervalObj.value = daySelect ? daySelect.value : 1;
+      } else if (typeValue === '2month' || typeValue === '3month') {
+        intervalObj.type = 'nmonth';
+        intervalObj.value = parseInt(typeValue.replace('month', '')) || 1;
+      } else {
+        intervalObj.value = 1;
+      }
+
+      var intervalJson = JSON.stringify(intervalObj);
 
       showLoading();
       google.script.run
@@ -746,7 +1038,7 @@
           hideLoading();
           alert('エラーが発生しました: ' + error);
         })
-        .changeRecurringInterval(id, newInterval, newNextShippingDate, newNextDeliveryDate);
+        .changeRecurringInterval(id, intervalJson, newNextShippingDate, newNextDeliveryDate);
     }
 
     function pauseOrder(id) {

@@ -31,6 +31,116 @@ function addMonthsWithAdjustment(date, months) {
 }
 
 /**
+ * 柔軟な間隔形式で次回発送日を計算する
+ * @param {Date} baseDate - 基準日
+ * @param {Object} intervalObj - 間隔オブジェクト {type, value, weekday?}
+ * @returns {Date} 次回発送日
+ */
+function calcNextShippingDateFlexible(baseDate, intervalObj) {
+  const d = new Date(baseDate);
+  if (!intervalObj || !intervalObj.type) {
+    // 旧形式（数値のみ）の場合
+    const months = Number(intervalObj) || 1;
+    return addMonthsWithAdjustment(d, months);
+  }
+
+  switch (intervalObj.type) {
+    case 'weekly':
+      // 次の指定曜日（value = 1-7, 1=月曜）
+      var targetDay = Number(intervalObj.value) || 1;
+      var currentDay = d.getDay() || 7; // 日曜=0 → 7
+      var diff = (targetDay - currentDay + 7) % 7;
+      if (diff === 0) diff = 7; // 同じ曜日なら来週
+      d.setDate(d.getDate() + diff);
+      return d;
+
+    case 'nweek':
+    case 'biweekly':
+    case 'triweekly':
+      // n週ごと（value = 週数, weekday = 曜日番号1-7）
+      var n = Number(intervalObj.value) || 2;
+      var weekday = Number(intervalObj.weekday) || 1;
+      var currentDay2 = d.getDay() || 7;
+      var daysToAdd = (weekday - currentDay2 + 7) % 7;
+      if (daysToAdd === 0) daysToAdd = 7 * n;
+      else daysToAdd += 7 * (n - 1);
+      d.setDate(d.getDate() + daysToAdd);
+      return d;
+
+    case 'monthly':
+      // 指定日（value = 1-31, 'first', 'last'）
+      if (intervalObj.value === 'first') {
+        d.setMonth(d.getMonth() + 1, 1);
+      } else if (intervalObj.value === 'last') {
+        d.setMonth(d.getMonth() + 2, 0); // 翌月の0日 = 今月末
+      } else {
+        var targetDayOfMonth = Number(intervalObj.value) || 1;
+        d.setMonth(d.getMonth() + 1);
+        // 月末調整
+        var lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(targetDayOfMonth, lastDay));
+      }
+      return d;
+
+    case 'nmonth':
+    case '2month':
+    case '3month':
+      // nヶ月ごと
+      var months2 = Number(intervalObj.value) || 1;
+      return addMonthsWithAdjustment(d, months2);
+
+    default:
+      // 旧形式互換: 数値として扱う
+      var months3 = Number(intervalObj.value) || Number(intervalObj) || 1;
+      return addMonthsWithAdjustment(d, months3);
+  }
+}
+
+/**
+ * 間隔オブジェクトを人間が読める形式に変換する
+ * @param {Object|number} intervalObj - 間隔オブジェクトまたは数値
+ * @returns {string} 表示用文字列
+ */
+function formatIntervalForDisplay(intervalObj) {
+  if (!intervalObj) return '1ヶ月ごと';
+
+  // 旧形式（数値のみ）
+  if (typeof intervalObj === 'number' || typeof intervalObj === 'string') {
+    return intervalObj + 'ヶ月ごと';
+  }
+
+  var type = intervalObj.type;
+  var value = intervalObj.value;
+  var weekday = intervalObj.weekday;
+
+  var dayNames = ['', '月', '火', '水', '木', '金', '土', '日'];
+
+  switch (type) {
+    case 'weekly':
+      return '毎週' + (dayNames[value] || '') + '曜日';
+
+    case 'nweek':
+    case 'biweekly':
+    case 'triweekly':
+      var n = Number(value) || 2;
+      return n + '週ごと' + (dayNames[weekday] || '') + '曜日';
+
+    case 'monthly':
+      if (value === 'first') return '毎月初日';
+      if (value === 'last') return '毎月末日';
+      return '毎月' + value + '日';
+
+    case 'nmonth':
+    case '2month':
+    case '3month':
+      return (Number(value) || 1) + 'ヶ月ごと';
+
+    default:
+      return (Number(value) || 1) + 'ヶ月ごと';
+  }
+}
+
+/**
  * 定期受注シートのヘッダー定義
  * @returns {Array<string>} ヘッダー配列
  */
@@ -38,7 +148,7 @@ function getRecurringOrderHeaders() {
   return [
     '定期受注ID',       // 一意のID
     '登録日',           // 定期便として登録した日
-    '更新間隔',         // 1, 2, 3（ヶ月）
+    '更新間隔',         // JSON: {type, value, ...} 例: {type:'monthly',value:15} 旧: 1,2,3
     '次回発送日',       // 次に受注を作成する際の発送日
     '次回納品日',       // 次に受注を作成する際の納品日
     'ステータス',       // 有効/停止/解除
@@ -132,12 +242,16 @@ function createRecurringOrder(e) {
     }
   }
 
-  // 次回発送日を計算（現在の発送日 + 間隔月数）
-  const interval = Number(e.parameter.recurringInterval) || 1;
+  // 柔軟な間隔データを受け取る
+  let intervalObj;
+  try {
+    intervalObj = JSON.parse(e.parameter.recurringInterval);
+  } catch {
+    // 旧形式（数値のみ）
+    intervalObj = { type: 'nmonth', value: Number(e.parameter.recurringInterval) || 1 };
+  }
   const baseShippingDate = new Date(e.parameter.shippingDate1);
-  const nextShippingDate = new Date(baseShippingDate);
-  nextShippingDate.setMonth(nextShippingDate.getMonth() + interval);
-
+  const nextShippingDate = calcNextShippingDateFlexible(baseShippingDate, intervalObj);
   // 次回納品日を計算（発送日との差分を維持）
   const baseDeliveryDate = new Date(e.parameter.deliveryDate1);
   const daysDiff = Math.round((baseDeliveryDate - baseShippingDate) / (1000 * 60 * 60 * 24));
@@ -147,7 +261,7 @@ function createRecurringOrder(e) {
   const record = {
     '定期受注ID': recurringId,
     '登録日': dateNow,
-    '更新間隔': interval,
+    '更新間隔': JSON.stringify(intervalObj),
     '次回発送日': Utilities.formatDate(nextShippingDate, 'JST', 'yyyy/MM/dd'),
     '次回納品日': Utilities.formatDate(nextDeliveryDate, 'JST', 'yyyy/MM/dd'),
     'ステータス': '有効',
@@ -225,7 +339,16 @@ function getRecurringOrders(filters) {
     const order = {};
 
     for (let j = 0; j < headers.length; j++) {
-      order[headers[j]] = row[j];
+      if (headers[j] === '更新間隔') {
+        try {
+          order[headers[j]] = JSON.parse(row[j]);
+        } catch {
+          // 旧データは数値
+          order[headers[j]] = { type: 'nmonth', value: Number(row[j]) || 1 };
+        }
+      } else {
+        order[headers[j]] = row[j];
+      }
     }
 
     // フィルター適用
@@ -266,7 +389,15 @@ function getRecurringOrderById(recurringId) {
     if (data[i][idIndex] === recurringId) {
       const order = {};
       for (let j = 0; j < headers.length; j++) {
-        order[headers[j]] = data[i][j];
+        if (headers[j] === '更新間隔') {
+          try {
+            order[headers[j]] = JSON.parse(data[i][j]);
+          } catch {
+            order[headers[j]] = { type: 'nmonth', value: Number(data[i][j]) || 1 };
+          }
+        } else {
+          order[headers[j]] = data[i][j];
+        }
       }
       try {
         order['商品データ'] = JSON.parse(order['商品データJSON'] || '[]');
@@ -360,8 +491,14 @@ function changeRecurringInterval(recurringId, newInterval, nextShippingDate, nex
   const formattedShippingDate = nextShippingDate.replace(/-/g, '/');
   const formattedDeliveryDate = nextDeliveryDate.replace(/-/g, '/');
 
+  let intervalObj;
+  try {
+    intervalObj = (typeof newInterval === 'string') ? JSON.parse(newInterval) : newInterval;
+  } catch {
+    intervalObj = { type: 'nmonth', value: Number(newInterval) || 1 };
+  }
   return updateRecurringOrder(recurringId, {
-    '更新間隔': newInterval,
+    '更新間隔': JSON.stringify(intervalObj),
     '次回発送日': formattedShippingDate,
     '次回納品日': formattedDeliveryDate
   });
@@ -397,8 +534,8 @@ function resumeRecurringOrder(recurringId) {
 
   // 現在の日付から次回発送日を計算（今日 + 間隔月数、月末調整あり）
   const today = new Date();
-  const interval = Number(order['更新間隔']) || 1;
-  const newNextShippingDate = addMonthsWithAdjustment(today, interval);
+  const intervalObj = order['更新間隔'];
+  const newNextShippingDate = calcNextShippingDateFlexible(today, intervalObj);
 
   // 新しい次回納品日を計算（発送日との差分を維持）
   const newNextDeliveryDate = new Date(newNextShippingDate);
@@ -452,14 +589,11 @@ function processRecurringOrders() {
         processedCount++;
 
         // 次回日程を更新
-        const interval = Number(order['更新間隔']) || 1;
-        const newNextShippingDate = new Date(nextShippingDate);
-        newNextShippingDate.setMonth(newNextShippingDate.getMonth() + interval);
-
+        const intervalObj = order['更新間隔'];
+        const newNextShippingDate = calcNextShippingDateFlexible(nextShippingDate, intervalObj);
         const daysDiff = Math.round((new Date(order['次回納品日']) - nextShippingDate) / (1000 * 60 * 60 * 24));
         const newNextDeliveryDate = new Date(newNextShippingDate);
         newNextDeliveryDate.setDate(newNextDeliveryDate.getDate() + daysDiff);
-
         updateRecurringOrder(order['定期受注ID'], {
           '次回発送日': Utilities.formatDate(newNextShippingDate, 'JST', 'yyyy/MM/dd'),
           '次回納品日': Utilities.formatDate(newNextDeliveryDate, 'JST', 'yyyy/MM/dd'),
@@ -1096,8 +1230,14 @@ function updateRecurringOrderFull(e) {
     }
   }
 
+  let intervalObj;
+  try {
+    intervalObj = JSON.parse(e.parameter.recurringInterval);
+  } catch {
+    intervalObj = { type: 'nmonth', value: Number(e.parameter.recurringInterval) || 1 };
+  }
   const updates = {
-    '更新間隔': Number(e.parameter.recurringInterval) || 1,
+    '更新間隔': JSON.stringify(intervalObj),
     '次回発送日': e.parameter.nextShippingDate || '',
     '次回納品日': e.parameter.nextDeliveryDate || '',
     '顧客名': e.parameter.customerName || '',
