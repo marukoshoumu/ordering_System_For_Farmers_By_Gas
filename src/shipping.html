@@ -448,8 +448,11 @@
                 }
                 return d;
               } else if (type === '2month' || type === '3month') {
+                var targetDayOfMonth = d.getDate();
                 var months = parseInt(type.replace('month', '')) || 1;
                 d.setMonth(d.getMonth() + months);
+                var lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+                d.setDate(Math.min(targetDayOfMonth, lastDay));
                 return d;
               }
               return null;
