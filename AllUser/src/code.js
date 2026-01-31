@@ -81,18 +81,14 @@ function updateOrderTrackingStatus(orderId, trackingNumber) {
 }
 
 // ============================================
-// OCR機能（sharedLib.jsを使用）
+// OCR機能（sharedLib.jsを使用・サーバー側のみ）
 // ============================================
 
 /**
- * Vision APIキーを取得
- */
-function getVisionApiKey() {
-  return getVisionApiKeyShared();
-}
-
-/**
- * 画像から追跡番号を認識（OCR）
+ * 画像から追跡番号を認識（OCR）。サーバー側エンドポイント。
+ * クライアントは base64 画像のみ送信し、APIキーはサーバー内で getVisionApiKeyShared により参照される。
+ * @param {string} base64Data - 画像のBase64文字列
+ * @returns {Object} 抽出結果 {success: boolean, code?: string, message: string}
  */
 function recognizeTrackingNumber(base64Data) {
   return recognizeTrackingNumberShared(base64Data);

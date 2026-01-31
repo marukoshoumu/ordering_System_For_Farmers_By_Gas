@@ -389,78 +389,13 @@ function testTrackingNormalization() {
 }
 
 /**
- * Cloud Vision API を使用して画像から追跡番号を抽出する
+ * 画像から追跡番号を認識（OCR）。サーバー側エンドポイント。
+ * クライアントは base64 画像のみ送信。APIキーは sharedLib 内でサーバー側のみ参照。
  * @param {string} base64Data - 画像のBase64文字列
- * @returns {Object} 抽出結果 {success: boolean, code: string, message: string}
+ * @returns {Object} 抽出結果 {success: boolean, code?: string, message: string}
  */
 function recognizeTrackingNumber(base64Data) {
-    const apiKey = getVisionApiKey();
-    if (!apiKey) {
-        return { success: false, message: 'Google Cloud Vision API キーが設定されていません。' };
-    }
-
-    const url = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
-    const requestBody = {
-        requests: [
-            {
-                image: { content: base64Data },
-                features: [{ type: 'TEXT_DETECTION' }]
-            }
-        ]
-    };
-
-    try {
-        const response = UrlFetchApp.fetch(url, {
-            method: 'POST',
-            contentType: 'application/json',
-            payload: JSON.stringify(requestBody),
-            muteHttpExceptions: true
-        });
-
-        const result = JSON.parse(response.getContentText());
-        const annotations = result.responses[0].textAnnotations;
-
-        if (!annotations || annotations.length === 0) {
-            return { success: false, message: '文字が検出されませんでした。' };
-        }
-
-        // 全体の文字列を取得
-        const fullText = annotations[0].description;
-
-        // 配送伝票番号特有のパターンを探す (10〜12桁の数字、またはハイフン区切りの数字)
-        // 例: 1234-5678-9012, 123456789012
-        // 配送伝票番号特有のパターンを探す
-        // 優先順位: 1. ハイフンあり(12桁) 2. ハイフンあり(10桁) 3. 12桁 4. 10桁
-        const patterns = [
-            /\d{4}-\d{4}-\d{4}/, // ヤマト/佐川等 (12桁)
-            /\d{3}-\d{3}-\d{4}/, // 西濃/郵便等 (10桁/11桁)
-            /\d{4}-\d{4}-\d{2}/, // 西濃2
-            /\d{12}/,            // 12桁
-            /\d{11}/,            // 11桁
-            /\d{10}/             // 10桁
-        ];
-
-        let candidates = [];
-        for (const pattern of patterns) {
-            const matches = fullText.match(new RegExp(pattern, 'g'));
-            if (matches) {
-                for (const m of matches) {
-                    const cleaned = m.replace(/-/g, '');
-                    // 日本の電話番号（0から始まる10/11桁）は、他に候補があればスキップ
-                    if ((cleaned.length === 10 || cleaned.length === 11) && cleaned.startsWith('0')) {
-                        continue;
-                    }
-                    // 最初に見つかった有力な候補を返す
-                    return { success: true, code: cleaned };
-                }
-            }
-        }
-
-        return { success: false, message: '認識されたテキストに伝票番号が見つかりませんでした。', rawText: fullText };
-
-    } catch (e) {
-        return { success: false, message: 'API呼び出しエラー: ' + e.toString() };
-    }
+    return recognizeTrackingNumberShared(base64Data);
 }
 
 /**

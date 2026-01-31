@@ -188,14 +188,6 @@ function getGeminiApiKey() {
 }
 
 /**
- * Cloud Vision API キーを取得（未設定時は Gemini API キーを流用）
- * @returns {string} API キー
- */
-function getVisionApiKey() {
-  return getConfig('VISION_API_KEY') || getConfig('GEMINI_API_KEY');
-}
-
-/**
  * アプリケーションの表示用会社名を取得
  * @returns {string} 会社名
  */
