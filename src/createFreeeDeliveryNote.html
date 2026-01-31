@@ -147,7 +147,7 @@
         $("button[id='createFreeeCSV']").text('CSV作成');
         var html = "◆作成ファイル◆<br>";
         for (var ele of res) {
-          html += ele + ".csv" + "<br>";
+          html += escapeHtml(String(ele)) + ".csv" + "<br>";
         }
         $("p[id='res']").html(html);
       }

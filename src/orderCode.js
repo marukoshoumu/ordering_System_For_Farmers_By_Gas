@@ -1,48 +1,4 @@
 /**
- * 間隔オブジェクトを人間が読める形式に変換する
- * @param {Object|number} intervalObj - 間隔オブジェクトまたは数値
- * @returns {string} 表示用文字列
- */
-function formatIntervalForDisplay(intervalObj) {
-  if (!intervalObj) return '1ヶ月ごと';
-
-  // 旧形式（数値のみ）
-  if (typeof intervalObj === 'number' || (typeof intervalObj === 'string' && !intervalObj.startsWith('{'))) {
-    return intervalObj + 'ヶ月ごと';
-  }
-
-  var type = intervalObj.type;
-  var value = intervalObj.value;
-  var weekday = intervalObj.weekday;
-
-  var dayNames = ['', '月', '火', '水', '木', '金', '土', '日'];
-
-  switch (type) {
-    case 'weekly':
-      return '毎週' + (dayNames[value] || '') + '曜日';
-
-    case 'nweek':
-    case 'biweekly':
-    case 'triweekly':
-      var n = Number(value) || 2;
-      return n + '週ごと' + (dayNames[weekday] || '') + '曜日';
-
-    case 'monthly':
-      if (value === 'first') return '毎月初日';
-      if (value === 'last') return '毎月末日';
-      return '毎月' + value + '日';
-
-    case 'nmonth':
-    case '2month':
-    case '3month':
-      return (Number(value) || 1) + 'ヶ月ごと';
-
-    default:
-      return (Number(value) || 1) + 'ヶ月ごと';
-  }
-}
-
-/**
  * 受注シートからヘッダーを取得
  * シートのヘッダーが真実の情報源（Single Source of Truth）
  * @returns {Array} ヘッダー配列

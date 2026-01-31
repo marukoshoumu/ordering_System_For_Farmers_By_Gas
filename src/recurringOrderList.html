@@ -962,7 +962,7 @@
     function updateDeliveryDateFromShipping() {
       var shippingInput = document.getElementById('newNextShippingDate');
       var deliveryInput = document.getElementById('newNextDeliveryDate');
-      if (!shippingInput.value || originalDaysInterval <= 0) return;
+      if (!shippingInput || !shippingInput.value || !deliveryInput || originalDaysInterval < 0) return;
 
       var newShippingDate = new Date(shippingInput.value);
       var newDeliveryDate = new Date(newShippingDate);

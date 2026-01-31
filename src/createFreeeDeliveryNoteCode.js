@@ -400,6 +400,7 @@ function getProductInfo(productName, productItems) {
     '税区分': '',
     '部門': '',
     '品目': '',
+    '単位': '',
     'メモ': ''
   };
 }

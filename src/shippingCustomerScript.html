@@ -47,7 +47,7 @@ function addCustomer() {
     showWarningToast('郵便番号が入力されていません。');
     return false;
   }
-  if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
+  if (!(($('input[id="customerZipcodeDg"]').val() || '').trim().match(/^[0-9]{7}$/))) {
     showWarningToast('郵便番号は7桁の数字で入力して下さい。');
     return false;
   }
@@ -120,7 +120,7 @@ function addShippingTo() {
     showWarningToast('郵便番号が入力されていません。');
     return false;
   }
-  if (!$('input[id="shippingToZipcodeDg"]').val().match(/[0-9]{7}/)) {
+  if (!(($('input[id="shippingToZipcodeDg"]').val() || '').trim().match(/^[0-9]{7}$/))) {
     showWarningToast('郵便番号は7桁の数字で入力して下さい。');
     return false;
   }

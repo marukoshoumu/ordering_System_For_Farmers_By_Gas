@@ -4,6 +4,21 @@
 // shipping.htmlから分離
 // ========================================
 
+/**
+ * HTMLエスケープ（XSS対策）
+ * @param {*} str - 任意の値
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 $(function () {
   $(".customerSearchBtn_open").on("click", function () {
     $(".customerSearch_dg").dialog({
@@ -156,11 +171,17 @@ function dataSearchSuccess(datas) {
     var html = "<table>";
     html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
     for (let i = 0; i < res.length; i++) {
-      var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+      var ec = escapeHtml(res[i]["会社名"] || '');
+      var ep = escapeHtml(res[i]["氏名"] || '');
+      var ez = escapeHtml(res[i]["郵便番号"] || '');
+      var ea1 = escapeHtml(res[i]["住所１"] || '');
+      var ea2 = escapeHtml(res[i]["住所２"] || '');
+      var et = escapeHtml(res[i]["TEL"] || '');
+      var datVal = ec + "|" + ep + "|" + ez + "|" + ea1 + ea2 + "|" + et;
       html += "<tr>";
       html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
-      html += "<td><input style='width:120px;' type='text' id='cust" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
-      html += "<td><input style='width:120px;' type='text' id='ident" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
+      html += "<td><input style='width:120px;' type='text' id='cust" + i + "' value='" + ec + "'readonly ></td>";
+      html += "<td><input style='width:120px;' type='text' id='ident" + i + "'value='" + ep + "' readonly></td>";
       html += "</tr>";
     }
     html += "</table>";
@@ -333,11 +354,17 @@ function dataShippingToSearchSuccess(datas) {
     var html = "<table>";
     html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
     for (let i = 0; i < res.length; i++) {
-      var datVal = res[i]["会社名"] + "|" + res[i]["氏名"] + "|" + res[i]["郵便番号"] + "|" + res[i]["住所１"] + res[i]["住所２"] + "|" + res[i]["TEL"];
+      var ec = escapeHtml(res[i]["会社名"] || '');
+      var ep = escapeHtml(res[i]["氏名"] || '');
+      var ez = escapeHtml(res[i]["郵便番号"] || '');
+      var ea1 = escapeHtml(res[i]["住所１"] || '');
+      var ea2 = escapeHtml(res[i]["住所２"] || '');
+      var et = escapeHtml(res[i]["TEL"] || '');
+      var datVal = ec + "|" + ep + "|" + ez + "|" + ea1 + ea2 + "|" + et;
       html += "<tr>";
       html += "<td><button type='button' id='nameShipTo" + i + "' data-val='" + datVal + "' onclick='applyShippingToName(" + i + ")'>選択</button></td>";
-      html += "<td><input style='width:120px;' type='text' id='custShipTo" + i + "' value='" + res[i]["会社名"] + "'readonly ></td>";
-      html += "<td><input style='width:120px;' type='text' id='identShipTo" + i + "'value='" + res[i]["氏名"] + "' readonly></td>";
+      html += "<td><input style='width:120px;' type='text' id='custShipTo" + i + "' value='" + ec + "'readonly ></td>";
+      html += "<td><input style='width:120px;' type='text' id='identShipTo" + i + "'value='" + ep + "' readonly></td>";
       html += "</tr>";
     }
     html += "</table>";
