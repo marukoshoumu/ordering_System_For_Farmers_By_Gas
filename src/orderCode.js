@@ -2350,8 +2350,7 @@ function createOrder(e) {
  * @param {Array} orderHeaders - 受注シートのヘッダー配列
  */
 function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
-  Logger.log(e);
-  Logger.log(records);
+  Logger.log('addRecordYamato: sheet=' + sheetName + ', deliveryId=' + (deliveryId || '') + ', recordsCount=' + (records ? records.length : 0) + ', orderHeadersCount=' + (orderHeaders ? orderHeaders.length : 0));
   const adds = [];
   var record = [];
   // 受注データから値を取得（ヘッダー名でアクセス）
@@ -2476,8 +2475,7 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
  * @param {Array} orderHeaders - 受注シートのヘッダー配列
  */
 function addRecordSagawa(sheetName, records, e, deliveryId, orderHeaders) {
-  Logger.log(e);
-  Logger.log(records);
+  Logger.log('addRecordSagawa: sheet=' + sheetName + ', deliveryId=' + (deliveryId || '') + ', recordsCount=' + (records ? records.length : 0) + ', orderHeadersCount=' + (orderHeaders ? orderHeaders.length : 0));
   const adds = [];
   var record = [];
   // 受注データから値を取得（ヘッダー名でアクセス）
