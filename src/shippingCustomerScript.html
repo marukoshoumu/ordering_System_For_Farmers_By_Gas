@@ -1,0 +1,289 @@
+<script>
+// ========================================
+// 顧客・発送先ダイアログ初期化と登録
+// shipping.htmlから分離
+// ========================================
+
+$(function () {
+  $(".customerInsertBtn_open").on("click", function () {
+    $(".customer_dg").dialog({
+      title: "顧客新規登録",
+      height: "500",
+      modal: true,
+      buttons: {
+        "キャンセル": function () {
+          $(this).dialog("close");
+        },
+        "登録": function () {
+          addCustomer();
+        },
+      },
+    });
+  });
+});
+$(function () {
+  $(".shippingToInsertBtn_open").on("click", function () {
+    $(".shippingTo_dg").dialog({
+      title: "発送先新規登録",
+      height: "500",
+      modal: true,
+      buttons: {
+        "キャンセル": function () {
+          $(this).dialog("close");
+        },
+        "登録": function () {
+          addShippingTo();
+        },
+      },
+    });
+  });
+});
+function addCustomer() {
+  if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
+    showWarningToast('会社名または氏名が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="customerZipcodeDg"]').val()) {
+    showWarningToast('郵便番号が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
+    showWarningToast('郵便番号は7桁の数字で入力して下さい。');
+    return false;
+  }
+  if (!$('input[id="customerAddress1Dg"]').val()) {
+    showWarningToast('住所１が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="customerTelDg"]').val()) {
+    showWarningToast('電話番号が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
+    showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
+    return false;
+  }
+  if ($('input[id="customerPhoneDg"]').val()) {
+    if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
+      showWarningToast('携帯電話は10~11桁の数字で入力して下さい。');
+      return false;
+    }
+  }
+  if ($('input[id="customerFaxDg"]').val()) {
+    if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
+      showWarningToast('ＦＡＸは10~11桁の数字で入力して下さい。');
+      return false;
+    }
+  }
+  if ($('input[id="customerMailDg"]').val()) {
+    if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
+      showWarningToast('メールアドレスは正しい形式で入力して下さい。');
+      return false;
+    }
+  }
+  var record = {};
+  record['customerClassDg'] = $('select[id="customerClassDg"]').val();
+  record['customerNameDg'] = $('input[id="customerNameDg"]').val();
+  record['customerShowNameDg'] = $('input[id="customerShowNameDg"]').val();
+  record['customerFuriganaDg'] = $('input[id="customerFuriganaDg"]').val();
+  record['customerDepDg'] = $('input[id="customerDepDg"]').val();
+  record['customerPostDg'] = $('input[id="customerPostDg"]').val();
+  record['customerIdentDg'] = $('input[id="customerIdentDg"]').val();
+  record['customerZipcodeDg'] = $('input[id="customerZipcodeDg"]').val();
+  record['customerAddress1Dg'] = $('input[id="customerAddress1Dg"]').val();
+  record['customerAddress2Dg'] = $('input[id="customerAddress2Dg"]').val();
+  record['customerTelDg'] = $('input[id="customerTelDg"]').val();
+  record['customerPhoneDg'] = $('input[id="customerPhoneDg"]').val();
+  record['customerFaxDg'] = $('input[id="customerFaxDg"]').val();
+  record['customerMailDg'] = $('input[id="customerMailDg"]').val();
+  record['customerBillDg'] = $('select[id="customerBillDg"]').val();
+  record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
+  record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
+  record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
+
+  const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
+  if (checkAddFlg) {
+    if ($('input[name=customerSameDg]').prop("checked")) {
+      google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
+    }
+    else {
+      google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomer(JSON.stringify(record));
+    }
+  }
+}
+function addShippingTo() {
+  if (!$('input[id="shippingToNameDg"]').val() && !$('input[id="shippingToIdentDg"]').val()) {
+    showWarningToast('会社名または氏名が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="shippingToZipcodeDg"]').val()) {
+    showWarningToast('郵便番号が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="shippingToZipcodeDg"]').val().match(/[0-9]{7}/)) {
+    showWarningToast('郵便番号は7桁の数字で入力して下さい。');
+    return false;
+  }
+  if (!$('input[id="shippingToAddress1Dg"]').val()) {
+    showWarningToast('住所１が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="shippingToTelDg"]').val()) {
+    showWarningToast('電話番号が入力されていません。');
+    return false;
+  }
+  if (!$('input[id="shippingToTelDg"]').val().match(/^0\d{9,10}$/)) {
+    showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
+    return false;
+  }
+  if ($('input[id="shippingToMailDg"]').val()) {
+    if (!$('input[id="shippingToMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
+      showWarningToast('メールアドレスは正しい形式で入力して下さい。');
+      return false;
+    }
+  }
+  var record = {};
+  record['shippingToClassDg'] = $('select[id="shippingToClassDg"]').val();
+  record['shippingToNameDg'] = $('input[id="shippingToNameDg"]').val();
+  record['shippingToDepDg'] = $('input[id="shippingToDepDg"]').val();
+  record['shippingToPostDg'] = $('input[id="shippingToPostDg"]').val();
+  record['shippingToIdentDg'] = $('input[id="shippingToIdentDg"]').val();
+  record['shippingToZipcodeDg'] = $('input[id="shippingToZipcodeDg"]').val();
+  record['shippingToAddress1Dg'] = $('input[id="shippingToAddress1Dg"]').val();
+  record['shippingToAddress2Dg'] = $('input[id="shippingToAddress2Dg"]').val();
+  record['shippingToTelDg'] = $('input[id="shippingToTelDg"]').val();
+  record['shippingToPhoneDg'] = $('input[id="shippingToPhoneDg"]').val();
+  record['shippingToFaxDg'] = $('input[id="shippingToFaxDg"]').val();
+  record['shippingToMailDg'] = $('input[id="shippingToMailDg"]').val();
+  record['shippingToBillDg'] = $('select[id="shippingToBillDg"]').val();
+  record['shippingToDepositDateDg'] = $('select[id="shippingToDepositDateDg"]').val();
+  record['shippingToMemoDg'] = $('input[id="shippingToMemoDg"]').val();
+
+  const checkAddFlg = window.confirm('発送先情報を登録してもよろしいですか？');
+  if (checkAddFlg) {
+    google.script.run.withSuccessHandler(dataAddSuccessShippingTo).withFailureHandler(dataAddFail).addShippingTo(JSON.stringify(record));
+  }
+}
+function getAddress() {
+  var postalCode = document.getElementById("customerZipcodeDg").value;
+  var record = {};
+  record['postalCode'] = postalCode;
+  google.script.run.withSuccessHandler(dataPostSuccess).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
+}
+
+function dataPostSuccess(data) {
+  if (data) {
+    var res = JSON.parse(data);
+    $('input[id="customerAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
+  }
+}
+function getShippingToAddress() {
+  var postalCode = document.getElementById("shippingToZipcodeDg").value;
+  var record = {};
+  record['postalCode'] = postalCode;
+  google.script.run.withSuccessHandler(dataPostSuccessShippingTo).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
+}
+
+function dataPostSuccessShippingTo(data) {
+  if (data) {
+    var res = JSON.parse(data);
+    $('input[id="shippingToAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
+  }
+}
+
+function dataAddFail() {
+  showInfoToast("該当データがありませんでした。");
+}
+function addFail() {
+  showErrorToast("処理に失敗しました。");
+}
+
+function dataAddSuccess() {
+  showSuccessToast("登録しました。");
+
+  const companyName = $('input[id="customerNameDg"]').val();
+  const personName = $('input[id="customerIdentDg"]').val();
+  const zipcode = $('input[id="customerZipcodeDg"]').val();
+  const address1 = $('input[id="customerAddress1Dg"]').val();
+  const address2 = $('input[id="customerAddress2Dg"]').val();
+  const tel = $('input[id="customerTelDg"]').val();
+
+  // 手動選択データを保存
+  manualCustomerSelection = {
+    companyName: companyName,
+    personName: personName,
+    displayName: companyName || personName,
+    zipcode: zipcode,
+    address: address1 + address2,
+    address1: address1,
+    address2: address2,
+    tel: tel,
+    source: 'manual_registration'
+  };
+  console.log('手動登録した顧客データを保存:', manualCustomerSelection);
+
+  if (companyName) {
+    $('input[id="customerName"]').val(companyName + "　" + personName);
+  }
+  else {
+    $('input[id="customerName"]').val(personName);
+  }
+  $('input[id="customerZipcode"]').val(zipcode);
+  $('input[id="customerAddress"]').val(address1 + address2);
+  $('input[id="customerTel"]').val(tel);
+
+  // AIモーダルの表示を更新
+  updateManualSelectionDisplay();
+
+  if ($('input[name=customerSameDg]').prop("checked")) {
+    if ($('input[id="customerNameDg"]').val()) {
+      $('input[id="shippingToName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
+    }
+    else {
+      $('input[id="shippingToName"]').val($('input[id="customerIdentDg"]').val());
+    }
+    $('input[id="shippingToZipcode"]').val($('input[id="customerZipcodeDg"]').val());
+    $('input[id="shippingToAddress"]').val($('input[id="customerAddress1Dg"]').val() + $('input[id="customerAddress2Dg"]').val());
+    $('input[id="shippingToTel"]').val($('input[id="customerTelDg"]').val());
+  }
+  $(".customer_dg").dialog("close");
+}
+function dataAddSuccessShippingTo() {
+  showSuccessToast("登録しました。");
+
+  const companyName = $('input[id="shippingToNameDg"]').val();
+  const personName = $('input[id="shippingToIdentDg"]').val();
+  const zipcode = $('input[id="shippingToZipcodeDg"]').val();
+  const address1 = $('input[id="shippingToAddress1Dg"]').val();
+  const address2 = $('input[id="shippingToAddress2Dg"]').val();
+  const tel = $('input[id="shippingToTelDg"]').val();
+
+  // 手動選択データを保存
+  manualShippingToSelection = {
+    companyName: companyName,
+    personName: personName,
+    zipcode: zipcode,
+    address: address1 + address2,
+    address1: address1,
+    address2: address2,
+    tel: tel,
+    source: 'manual_registration'
+  };
+  console.log('手動登録した発送先データを保存:', manualShippingToSelection);
+
+  if (companyName) {
+    $('input[id="shippingToName"]').val(companyName + "　" + personName);
+  }
+  else {
+    $('input[id="shippingToName"]').val(personName);
+  }
+  $('input[id="shippingToZipcode"]').val(zipcode);
+  $('input[id="shippingToAddress"]').val(address1 + address2);
+  $('input[id="shippingToTel"]').val(tel);
+
+  // AIモーダルの表示を更新
+  updateManualSelectionDisplay();
+
+  $(".shippingTo_dg").dialog("close");
+}
+</script>

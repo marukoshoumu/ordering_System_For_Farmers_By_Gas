@@ -2197,6 +2197,7 @@ function createOrder(e) {
   for (let dateIndex = 1; dateIndex <= dateCount; dateIndex++) {
     const shippingDate = e.parameter['shippingDate' + dateIndex];
     const deliveryDate = e.parameter['deliveryDate' + dateIndex];
+    if (!shippingDate) continue;  // 空の出荷日はスキップ（受注・納品ID作成しない）
     const deliveryNoteText = e.parameter['deliveryNoteText' + dateIndex] || '';
 
     // 納品ID（日程ごとに別ID）

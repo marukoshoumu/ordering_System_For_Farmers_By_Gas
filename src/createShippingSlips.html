@@ -95,15 +95,15 @@
       }
     }
     function openUrlYamato() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
     }
     function openUrlSagawa() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
     }
     function sendFail() {
       showErrorToast("処理に失敗しました。");  
     }
-    function sendSucces(url) {
+    function sendSuccess(url) {
       window.open(url);
     }
 

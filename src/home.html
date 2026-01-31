@@ -415,31 +415,31 @@
   </div>
   <script>
     function openUrlQuotaion() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('見積書');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('見積書');
     }
     function openUrlProduct() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('商品');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrl('商品');
     }
     function openUrlCustomer() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('顧客情報');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrl('顧客情報');
     }
     function openUrlBill() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('請求書');
     }
     function openUrlFreeeCSV() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
     }
     function openUrlDelivered() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('納品書');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('納品書');
     }
     function openUrlYamato() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト');
     }
     function openUrlSagawa() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('佐川');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('佐川');
     }
     function openUrlShipp() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrl('受注');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrl('受注');
     }
 
     // アコーディオン開閉
@@ -489,7 +489,7 @@
     function sendFail() {
       showErrorToast("処理に失敗しました。");
     }
-    function sendSucces(url) {
+    function sendSuccess(url) {
       window.open(url);
     }
     function setRes() {

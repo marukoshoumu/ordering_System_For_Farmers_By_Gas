@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品マスタ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <style>
+    body {
+      background-color: var(--bg-body, #f5f7fa);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      background: var(--brand-primary, #4a90a4);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .filter-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .table-section {
+      padding: 16px 20px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    .product-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .product-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .product-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .product-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .product-table tbody td {
+      padding: 10px 8px;
+      vertical-align: middle;
+    }
+
+    .product-table .col-category { width: 100px; }
+    .product-table .col-name { min-width: 150px; }
+    .product-table .col-price,
+    .product-table .col-stock { text-align: right; width: 80px; }
+    .product-table .col-unit,
+    .product-table .col-abbr { width: 60px; }
+    .product-table .col-action { width: 100px; text-align: center; }
+
+    .product-cards { display: none; }
+
+    .product-card {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .product-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .product-card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 0;
+      color: #333;
+    }
+
+    .product-card-category {
+      font-size: 0.75rem;
+      color: #666;
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .product-card-body {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .product-card-item { display: flex; flex-direction: column; }
+    .product-card-label { font-size: 0.7rem; color: #999; }
+    .product-card-value { color: #333; font-weight: 500; }
+
+    .product-card-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .product-card-buttons button { flex: 1; }
+
+    .result-count {
+      padding: 8px 0;
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .result-count strong {
+      color: var(--brand-primary, #4a90a4);
+      font-size: 1.1rem;
+    }
+
+    .modal-header {
+      background: var(--brand-primary, #4a90a4);
+      color: white;
+    }
+
+    .modal-section { margin-bottom: 20px; }
+
+    .modal-section-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #333;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--brand-primary, #4a90a4);
+    }
+
+    .form-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .add-category-btn { padding: 6px 12px; font-size: 0.85rem; }
+
+    @media (max-width: 768px) {
+      .main-container { padding: 8px; }
+      .filter-row { flex-direction: column; align-items: stretch; }
+      .filter-group { width: 100%; }
+      .filter-group .form-control,
+      .filter-group .form-select { flex: 1; }
+      .product-table-wrapper { display: none; }
+      .product-cards { display: block; }
+      .card-header { flex-direction: column; gap: 12px; align-items: stretch; }
+      .card-header h1 { text-align: center; }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loading-overlay.hidden { display: none; }
+  </style>
+</head>
+
+<body>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status"></div>
+      <div class="mt-2">読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <form id="navForm" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="userRole" value="<?= userRole ?>">
+    </form>
+
+    <div class="card">
+      <div class="card-header">
+        <h1><i class="bi bi-box-seam me-2"></i>商品マスタ</h1>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
+            <i class="bi bi-house"></i> ホーム
+          </button>
+          <button type="button" class="btn btn-success btn-sm" onclick="openAddModal()">
+            <i class="bi bi-plus-lg"></i> 新規登録
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label class="filter-label">分類:</label>
+            <select class="form-select form-select-sm" id="filterCategory" style="width: 150px;">
+              <option value="">全て</option>
+            </select>
+          </div>
+          <div class="filter-group flex-grow-1">
+            <label class="filter-label">検索:</label>
+            <input type="text" class="form-control form-control-sm" id="filterKeyword" placeholder="商品名・略称で検索">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="searchProducts()">
+            <i class="bi bi-search"></i> 検索
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilter()">
+            <i class="bi bi-x-lg"></i> クリア
+          </button>
+        </div>
+      </div>
+
+      <div class="table-section">
+        <div class="result-count">
+          <span id="resultCount">検索結果: <strong>0</strong> 件</span>
+        </div>
+
+        <div class="product-table-wrapper">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th class="col-category">分類</th>
+                <th class="col-name">商品名</th>
+                <th class="col-price">価格</th>
+                <th class="col-unit">単位</th>
+                <th class="col-abbr">略称</th>
+                <th class="col-stock">在庫</th>
+                <th class="col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody id="productTableBody">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="product-cards" id="productCards">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品登録/編集モーダル -->
+  <div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="productModalTitle">商品登録</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editRowIndex">
+
+          <div class="modal-section">
+            <div class="modal-section-title">基本情報</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">商品分類 <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <select class="form-select" id="productCategory" required>
+                    <option value="">選択してください</option>
+                  </select>
+                  <button type="button" class="btn btn-outline-primary add-category-btn" onclick="openCategoryModal()">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">商品名 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="productName" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">略称</label>
+                <input type="text" class="form-control" id="productAbbr">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">送り状品名</label>
+                <input type="text" class="form-control" id="productInvoiceName">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">価格情報</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">価格（P）</label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="productPrice" min="0" onchange="calcMargin()">
+                  <span class="input-group-text">円</span>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">商品原価（V）</label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="productCost" min="0" onchange="calcMargin()">
+                  <span class="input-group-text">円</span>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">粗利（M）</label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="productMargin" readonly>
+                  <span class="input-group-text">円</span>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">税率</label>
+                <select class="form-select" id="productTaxRate">
+                  <option value="">選択</option>
+                  <option value="8%">8%</option>
+                  <option value="10%">10%</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">在庫・単位</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">在庫数</label>
+                <input type="number" class="form-control" id="productStock" min="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">単位</label>
+                <input type="text" class="form-control" id="productUnit" placeholder="例: 個、袋、kg">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">freee連携</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">勘定科目</label>
+                <input type="text" class="form-control" id="productAccountTitle">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">税区分</label>
+                <input type="text" class="form-control" id="productTaxCategory">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">部門</label>
+                <input type="text" class="form-control" id="productDepartment">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">品目</label>
+                <input type="text" class="form-control" id="productItem">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">メモ</label>
+                <input type="text" class="form-control" id="productMemo">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">その他</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">備考</label>
+                <textarea class="form-control" id="productNote" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" onclick="saveProduct()">
+            <i class="bi bi-check-lg"></i> 保存
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品分類追加モーダル -->
+  <div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">商品分類を追加</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">分類名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="newCategoryName" placeholder="例: 米、野菜">
+          <small class="text-muted">分類IDは自動採番されます</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="addCategory()">
+            <i class="bi bi-plus-lg"></i> 追加
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">削除確認</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>この商品を削除しますか？</p>
+          <p class="fw-bold" id="deleteProductName"></p>
+          <input type="hidden" id="deleteRowIndex">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">
+            <i class="bi bi-trash"></i> 削除
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let products = [];
+    let categories = [];
+    let productModal, categoryModal, deleteModal;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      productModal = new bootstrap.Modal(document.getElementById('productModal'));
+      categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
+      deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+      loadCategories();
+      loadProducts();
+
+      document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchProducts();
+        }
+      });
+    });
+
+    function goHome() {
+      const form = document.getElementById('navForm');
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'main';
+      input.value = 'true';
+      form.appendChild(input);
+      form.submit();
+    }
+
+    function loadCategories() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          categories = JSON.parse(data);
+          updateCategorySelects();
+        })
+        .withFailureHandler(function(e) {
+          console.error('カテゴリ取得エラー:', e);
+        })
+        .getProductCategoriesData();
+    }
+
+    function updateCategorySelects() {
+      const filterSelect = document.getElementById('filterCategory');
+      const modalSelect = document.getElementById('productCategory');
+
+      // Clear existing options using DOM methods
+      while (filterSelect.options.length > 1) {
+        filterSelect.remove(1);
+      }
+      while (modalSelect.options.length > 1) {
+        modalSelect.remove(1);
+      }
+
+      // Add options using DOM methods
+      categories.forEach(function(c) {
+        const filterOpt = document.createElement('option');
+        filterOpt.value = c.name;
+        filterOpt.textContent = c.name;
+        filterSelect.appendChild(filterOpt);
+
+        const modalOpt = document.createElement('option');
+        modalOpt.value = c.name;
+        modalOpt.textContent = c.name;
+        modalSelect.appendChild(modalOpt);
+      });
+    }
+
+    function loadProducts() {
+      showLoading(true);
+
+      const filters = {
+        category: document.getElementById('filterCategory').value,
+        keyword: document.getElementById('filterKeyword').value
+      };
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          products = JSON.parse(data);
+          renderProducts();
+          showLoading(false);
+        })
+        .withFailureHandler(function(e) {
+          console.error('商品取得エラー:', e);
+          showLoading(false);
+          showErrorToast('商品の読み込みに失敗しました');
+        })
+        .getProductListData(filters);
+    }
+
+    function searchProducts() {
+      loadProducts();
+    }
+
+    function clearFilter() {
+      document.getElementById('filterCategory').value = '';
+      document.getElementById('filterKeyword').value = '';
+      loadProducts();
+    }
+
+    function renderProducts() {
+      const tbody = document.getElementById('productTableBody');
+      const cards = document.getElementById('productCards');
+      const countEl = document.getElementById('resultCount');
+
+      // Update count using textContent
+      countEl.textContent = '';
+      countEl.appendChild(document.createTextNode('検索結果: '));
+      const strong = document.createElement('strong');
+      strong.textContent = products.length;
+      countEl.appendChild(strong);
+      countEl.appendChild(document.createTextNode(' 件'));
+
+      // Clear existing content
+      tbody.textContent = '';
+      cards.textContent = '';
+
+      // Build PC table using DOM methods
+      products.forEach(function(p) {
+        const tr = document.createElement('tr');
+        tr.addEventListener('click', function() { openEditModal(p.rowIndex); });
+
+        const tdCategory = document.createElement('td');
+        tdCategory.className = 'col-category';
+        tdCategory.textContent = p.category || '';
+        tr.appendChild(tdCategory);
+
+        const tdName = document.createElement('td');
+        tdName.className = 'col-name';
+        tdName.textContent = p.name || '';
+        tr.appendChild(tdName);
+
+        const tdPrice = document.createElement('td');
+        tdPrice.className = 'col-price';
+        tdPrice.textContent = formatNumber(p.price);
+        tr.appendChild(tdPrice);
+
+        const tdUnit = document.createElement('td');
+        tdUnit.className = 'col-unit';
+        tdUnit.textContent = p.unit || '';
+        tr.appendChild(tdUnit);
+
+        const tdAbbr = document.createElement('td');
+        tdAbbr.className = 'col-abbr';
+        tdAbbr.textContent = p.abbr || '';
+        tr.appendChild(tdAbbr);
+
+        const tdStock = document.createElement('td');
+        tdStock.className = 'col-stock';
+        tdStock.textContent = p.stock || '-';
+        tr.appendChild(tdStock);
+
+        const tdAction = document.createElement('td');
+        tdAction.className = 'col-action';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-outline-primary btn-sm me-1';
+        editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+        editBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openEditModal(p.rowIndex);
+        });
+        tdAction.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-outline-danger btn-sm';
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openDeleteModal(p.rowIndex, p.name);
+        });
+        tdAction.appendChild(deleteBtn);
+
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+      });
+
+      // Build mobile cards using DOM methods
+      products.forEach(function(p) {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+
+        const header = document.createElement('div');
+        header.className = 'product-card-header';
+
+        const headerContent = document.createElement('div');
+        const title = document.createElement('h3');
+        title.className = 'product-card-title';
+        title.textContent = p.name || '';
+        headerContent.appendChild(title);
+
+        const categoryBadge = document.createElement('span');
+        categoryBadge.className = 'product-card-category';
+        categoryBadge.textContent = p.category || '';
+        headerContent.appendChild(categoryBadge);
+
+        header.appendChild(headerContent);
+        card.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'product-card-body';
+
+        const items = [
+          { label: '価格', value: formatNumber(p.price) + '円' },
+          { label: '単位', value: p.unit || '-' },
+          { label: '略称', value: p.abbr || '-' },
+          { label: '在庫', value: p.stock || '-' }
+        ];
+
+        items.forEach(function(item) {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'product-card-item';
+
+          const label = document.createElement('span');
+          label.className = 'product-card-label';
+          label.textContent = item.label;
+          itemDiv.appendChild(label);
+
+          const value = document.createElement('span');
+          value.className = 'product-card-value';
+          value.textContent = item.value;
+          itemDiv.appendChild(value);
+
+          body.appendChild(itemDiv);
+        });
+
+        card.appendChild(body);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'product-card-buttons';
+
+        const editBtnMobile = document.createElement('button');
+        editBtnMobile.className = 'btn btn-outline-primary btn-sm';
+        editBtnMobile.innerHTML = '<i class="bi bi-pencil"></i> 編集';
+        editBtnMobile.addEventListener('click', function() { openEditModal(p.rowIndex); });
+        buttons.appendChild(editBtnMobile);
+
+        const deleteBtnMobile = document.createElement('button');
+        deleteBtnMobile.className = 'btn btn-outline-danger btn-sm';
+        deleteBtnMobile.innerHTML = '<i class="bi bi-trash"></i> 削除';
+        deleteBtnMobile.addEventListener('click', function() { openDeleteModal(p.rowIndex, p.name); });
+        buttons.appendChild(deleteBtnMobile);
+
+        card.appendChild(buttons);
+        cards.appendChild(card);
+      });
+    }
+
+    function openAddModal() {
+      document.getElementById('productModalTitle').textContent = '商品登録';
+      document.getElementById('editRowIndex').value = '';
+      clearModalForm();
+      productModal.show();
+    }
+
+    function openEditModal(rowIndex) {
+      document.getElementById('productModalTitle').textContent = '商品編集';
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(product) {
+          if (product) {
+            document.getElementById('editRowIndex').value = product.rowIndex;
+            document.getElementById('productCategory').value = product.category;
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productAbbr').value = product.abbr;
+            document.getElementById('productInvoiceName').value = product.invoiceName;
+            document.getElementById('productPrice').value = product.price || '';
+            document.getElementById('productCost').value = product.cost || '';
+            document.getElementById('productMargin').value = product.margin || '';
+            document.getElementById('productTaxRate').value = product.taxRate;
+            document.getElementById('productStock').value = product.stock || '';
+            document.getElementById('productUnit').value = product.unit;
+            document.getElementById('productAccountTitle').value = product.accountTitle;
+            document.getElementById('productTaxCategory').value = product.taxCategory;
+            document.getElementById('productDepartment').value = product.department;
+            document.getElementById('productItem').value = product.item;
+            document.getElementById('productMemo').value = product.memo;
+            document.getElementById('productNote').value = product.note;
+            productModal.show();
+          } else {
+            showErrorToast('商品情報の取得に失敗しました');
+          }
+          showLoading(false);
+        })
+        .withFailureHandler(function(e) {
+          console.error('商品詳細取得エラー:', e);
+          showLoading(false);
+          showErrorToast('商品情報の取得に失敗しました');
+        })
+        .getProductDetail(rowIndex);
+    }
+
+    function clearModalForm() {
+      document.getElementById('productCategory').value = '';
+      document.getElementById('productName').value = '';
+      document.getElementById('productAbbr').value = '';
+      document.getElementById('productInvoiceName').value = '';
+      document.getElementById('productPrice').value = '';
+      document.getElementById('productCost').value = '';
+      document.getElementById('productMargin').value = '';
+      document.getElementById('productTaxRate').value = '';
+      document.getElementById('productStock').value = '';
+      document.getElementById('productUnit').value = '';
+      document.getElementById('productAccountTitle').value = '';
+      document.getElementById('productTaxCategory').value = '';
+      document.getElementById('productDepartment').value = '';
+      document.getElementById('productItem').value = '';
+      document.getElementById('productMemo').value = '';
+      document.getElementById('productNote').value = '';
+    }
+
+    function calcMargin() {
+      const price = Number(document.getElementById('productPrice').value) || 0;
+      const cost = Number(document.getElementById('productCost').value) || 0;
+      document.getElementById('productMargin').value = price - cost;
+    }
+
+    function saveProduct() {
+      const category = document.getElementById('productCategory').value;
+      const name = document.getElementById('productName').value;
+
+      if (!category) {
+        showErrorToast('商品分類を選択してください');
+        return;
+      }
+      if (!name) {
+        showErrorToast('商品名を入力してください');
+        return;
+      }
+
+      const data = {
+        category: category,
+        name: name,
+        abbr: document.getElementById('productAbbr').value,
+        invoiceName: document.getElementById('productInvoiceName').value,
+        price: document.getElementById('productPrice').value,
+        cost: document.getElementById('productCost').value,
+        taxRate: document.getElementById('productTaxRate').value,
+        stock: document.getElementById('productStock').value,
+        unit: document.getElementById('productUnit').value,
+        accountTitle: document.getElementById('productAccountTitle').value,
+        taxCategory: document.getElementById('productTaxCategory').value,
+        department: document.getElementById('productDepartment').value,
+        item: document.getElementById('productItem').value,
+        memo: document.getElementById('productMemo').value,
+        note: document.getElementById('productNote').value
+      };
+
+      const rowIndex = document.getElementById('editRowIndex').value;
+
+      showLoading(true);
+
+      if (rowIndex) {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            showLoading(false);
+            if (result.success) {
+              showSuccessToast(result.message);
+              productModal.hide();
+              loadProducts();
+            } else {
+              showErrorToast(result.message);
+            }
+          })
+          .withFailureHandler(function(e) {
+            showLoading(false);
+            showErrorToast('更新に失敗しました');
+          })
+          .updateProduct(Number(rowIndex), data);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            showLoading(false);
+            if (result.success) {
+              showSuccessToast(result.message);
+              productModal.hide();
+              loadProducts();
+            } else {
+              showErrorToast(result.message);
+            }
+          })
+          .withFailureHandler(function(e) {
+            showLoading(false);
+            showErrorToast('登録に失敗しました');
+          })
+          .addProduct(data);
+      }
+    }
+
+    function openCategoryModal() {
+      document.getElementById('newCategoryName').value = '';
+      categoryModal.show();
+    }
+
+    function addCategory() {
+      const name = document.getElementById('newCategoryName').value.trim();
+
+      if (!name) {
+        showErrorToast('分類名を入力してください');
+        return;
+      }
+
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showLoading(false);
+          if (result.success) {
+            showSuccessToast(result.message);
+            categoryModal.hide();
+
+            categories.push(result.category);
+            updateCategorySelects();
+
+            document.getElementById('productCategory').value = result.category.name;
+          } else {
+            showErrorToast(result.message);
+          }
+        })
+        .withFailureHandler(function(e) {
+          showLoading(false);
+          showErrorToast('分類の追加に失敗しました');
+        })
+        .addProductCategory(name);
+    }
+
+    function openDeleteModal(rowIndex, productName) {
+      document.getElementById('deleteRowIndex').value = rowIndex;
+      document.getElementById('deleteProductName').textContent = productName;
+      deleteModal.show();
+    }
+
+    function confirmDelete() {
+      const rowIndex = document.getElementById('deleteRowIndex').value;
+
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showLoading(false);
+          if (result.success) {
+            showSuccessToast(result.message);
+            deleteModal.hide();
+            loadProducts();
+          } else {
+            showErrorToast(result.message);
+          }
+        })
+        .withFailureHandler(function(e) {
+          showLoading(false);
+          showErrorToast('削除に失敗しました');
+        })
+        .deleteProduct(Number(rowIndex));
+    }
+
+    function showLoading(show) {
+      const overlay = document.getElementById('loadingOverlay');
+      if (show) {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function formatNumber(num) {
+      if (num === null || num === undefined || num === '') return '-';
+      return Number(num).toLocaleString();
+    }
+  </script>
+</body>
+
+</html>

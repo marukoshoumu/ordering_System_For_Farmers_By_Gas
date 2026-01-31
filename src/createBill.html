@@ -104,12 +104,12 @@
     var masterDataLoaded = false;
 
     function openUrlBill() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('請求書'); 
     }
     function sendFail() {
       showErrorToast("処理に失敗しました。");  
     }
-    function sendSucces(url) {
+    function sendSuccess(url) {
       window.open(url);
     }
     function setToday() {

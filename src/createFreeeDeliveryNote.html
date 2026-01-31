@@ -104,12 +104,12 @@
     var masterDataLoaded = false;
 
     function openUrlFreeeCSV() {
-      google.script.run.withSuccessHandler(sendSucces).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('freee納品書CSV');
     }
     function sendFail() {
       showErrorToast("処理に失敗しました。");
     }
-    function sendSucces(url) {
+    function sendSuccess(url) {
       window.open(url);
     }
     function setTodayDate() {
