@@ -9,3 +9,6 @@ node_modules*
 *.credentials.json
 service-account*.json.DS_Store
 .DS_Store
+
+# ナレッジに移行したドキュメント（GitHubには含めない）
+docs/
