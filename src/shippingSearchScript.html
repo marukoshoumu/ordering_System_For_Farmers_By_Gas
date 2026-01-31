@@ -165,32 +165,70 @@ function customerSearch() {
   dataSearchSuccess(JSON.stringify(results));
 }
 
-function dataSearchSuccess(datas) {
-  var res = JSON.parse(datas);
-  if (res && res.length > 0) {
-    var html = "<table>";
-    html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
-    for (let i = 0; i < res.length; i++) {
-      var ec = escapeHtml(res[i]["会社名"] || '');
-      var ep = escapeHtml(res[i]["氏名"] || '');
-      var ez = escapeHtml(res[i]["郵便番号"] || '');
-      var ea1 = escapeHtml(res[i]["住所１"] || '');
-      var ea2 = escapeHtml(res[i]["住所２"] || '');
-      var et = escapeHtml(res[i]["TEL"] || '');
-      var datVal = ec + "|" + ep + "|" + ez + "|" + ea1 + ea2 + "|" + et;
-      html += "<tr>";
-      html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
-      html += "<td><input style='width:120px;' type='text' id='cust" + i + "' value='" + ec + "'readonly ></td>";
-      html += "<td><input style='width:120px;' type='text' id='ident" + i + "'value='" + ep + "' readonly></td>";
-      html += "</tr>";
-    }
-    html += "</table>";
-    $("#resCustArea").html(html);
+/**
+ * 検索結果をHTMLに描画（顧客・発送先共通）
+ * JSON.parseのtry/catch、ユーザー制御フィールドのescapeHtmlでXSS対策。
+ * @param {string} datas - JSON文字列（検索結果配列）
+ * @param {Object} options - { targetSelector, nameIdPrefix, rowIdPrefix, identIdPrefix, applyCallback }
+ */
+function renderSearchResults(datas, options) {
+  var targetSelector = options.targetSelector || '#resCustArea';
+  var nameIdPrefix = options.nameIdPrefix || 'nameCust';
+  var rowIdPrefix = options.rowIdPrefix || 'cust';
+  var identIdPrefix = options.identIdPrefix || 'ident';
+  var applyCallback = options.applyCallback || 'applyName';
+
+  var res;
+  try {
+    res = JSON.parse(datas);
+  } catch (e) {
+    showInfoToast('データの読み込みに失敗しました。');
+    $(targetSelector).html('');
+    return;
   }
-  else {
+
+  if (!res || res.length === 0) {
     showInfoToast('該当データがありませんでした。');
-    $("#resCustArea").html('');
+    $(targetSelector).html('');
+    return;
   }
+
+  var html = "<table>";
+  html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+  for (let i = 0; i < res.length; i++) {
+    var ec = escapeHtml(res[i]["会社名"] || '');
+    var ep = escapeHtml(res[i]["氏名"] || '');
+    var ez = escapeHtml(res[i]["郵便番号"] || '');
+    var ea1 = escapeHtml(res[i]["住所１"] || '');
+    var ea2 = escapeHtml(res[i]["住所２"] || '');
+    var et = escapeHtml(res[i]["TEL"] || '');
+    var dataValObj = {
+      companyName: res[i]["会社名"] || '',
+      personName: res[i]["氏名"] || '',
+      zipcode: res[i]["郵便番号"] || '',
+      address: (res[i]["住所１"] || '') + (res[i]["住所２"] || ''),
+      tel: res[i]["TEL"] || ''
+    };
+    var dataValStr = JSON.stringify(dataValObj);
+    var dataValEscaped = escapeHtml(dataValStr);
+    html += "<tr>";
+    html += "<td><button type='button' id='" + escapeHtml(nameIdPrefix) + i + "' data-val='" + dataValEscaped + "' onclick='" + escapeHtml(applyCallback) + "(" + i + ")'>選択</button></td>";
+    html += "<td><input style='width:120px;' type='text' id='" + escapeHtml(rowIdPrefix) + i + "' value='" + ec + "' readonly></td>";
+    html += "<td><input style='width:120px;' type='text' id='" + escapeHtml(identIdPrefix) + i + "' value='" + ep + "' readonly></td>";
+    html += "</tr>";
+  }
+  html += "</table>";
+  $(targetSelector).html(html);
+}
+
+function dataSearchSuccess(datas) {
+  renderSearchResults(datas, {
+    targetSelector: '#resCustArea',
+    nameIdPrefix: 'nameCust',
+    rowIdPrefix: 'cust',
+    identIdPrefix: 'ident',
+    applyCallback: 'applyName'
+  });
 }
 /**
  * 検索結果から顧客を選択してフォームに適用
@@ -199,14 +237,14 @@ function dataSearchSuccess(datas) {
  * AI解析との統合のため、手動選択データ（manualCustomerSelection）を保存します。
  *
  * 処理フロー:
- * 1. ボタンのdata-val属性から顧客情報を取得（パイプ区切り）
+ * 1. ボタンのdata-val属性から顧客情報を取得（JSON）
  * 2. 検索ダイアログを閉じる
  * 3. manualCustomerSelectionに保存（source: 'manual_search'）
  * 4. 顧客フォームに会社名・氏名・郵便番号・住所・電話番号を入力
  * 5. AIモーダルの表示を更新
  *
- * データ形式（パイプ区切り）:
- * - 会社名|氏名|郵便番号|住所|電話番号
+ * データ形式（data-valにJSON）:
+ * - { companyName, personName, zipcode, address, tel }
  *
  * AI解析との統合:
  * - manualCustomerSelectionを保存することで、AI解析結果より手動選択を優先
@@ -219,15 +257,26 @@ function dataSearchSuccess(datas) {
  */
 function applyName(num) {
   var nameVal = 'nameCust' + num;
-  var dataVal = $('button[id="' + nameVal + '"]').data('val');
-  var dataSp = dataVal.split('|');
+  var dataVal = $('button[id="' + nameVal + '"]').attr('data-val');
+  if (!dataVal) {
+    $(".customerSearch_dg").dialog("close");
+    return;
+  }
+  var parsed;
+  try {
+    parsed = JSON.parse(dataVal);
+  } catch (e) {
+    showInfoToast('データの読み込みに失敗しました。');
+    $(".customerSearch_dg").dialog("close");
+    return;
+  }
   $(".customerSearch_dg").dialog("close");
 
-  const companyName = dataSp[0];
-  const personName = dataSp[1];
-  const zipcode = dataSp[2];
-  const address = dataSp[3];
-  const tel = dataSp[4];
+  const companyName = parsed.companyName;
+  const personName = parsed.personName;
+  const zipcode = parsed.zipcode;
+  const address = parsed.address;
+  const tel = parsed.tel;
 
   // 手動選択データを保存
   manualCustomerSelection = {
@@ -349,31 +398,13 @@ function shippingToSearch() {
 }
 
 function dataShippingToSearchSuccess(datas) {
-  var res = JSON.parse(datas);
-  if (res && res.length > 0) {
-    var html = "<table>";
-    html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
-    for (let i = 0; i < res.length; i++) {
-      var ec = escapeHtml(res[i]["会社名"] || '');
-      var ep = escapeHtml(res[i]["氏名"] || '');
-      var ez = escapeHtml(res[i]["郵便番号"] || '');
-      var ea1 = escapeHtml(res[i]["住所１"] || '');
-      var ea2 = escapeHtml(res[i]["住所２"] || '');
-      var et = escapeHtml(res[i]["TEL"] || '');
-      var datVal = ec + "|" + ep + "|" + ez + "|" + ea1 + ea2 + "|" + et;
-      html += "<tr>";
-      html += "<td><button type='button' id='nameShipTo" + i + "' data-val='" + datVal + "' onclick='applyShippingToName(" + i + ")'>選択</button></td>";
-      html += "<td><input style='width:120px;' type='text' id='custShipTo" + i + "' value='" + ec + "'readonly ></td>";
-      html += "<td><input style='width:120px;' type='text' id='identShipTo" + i + "'value='" + ep + "' readonly></td>";
-      html += "</tr>";
-    }
-    html += "</table>";
-    $("#resShippingToArea").html(html);
-  }
-  else {
-    showInfoToast('該当データがありませんでした。');
-    $("#resShippingToArea").html('');
-  }
+  renderSearchResults(datas, {
+    targetSelector: '#resShippingToArea',
+    nameIdPrefix: 'nameShipTo',
+    rowIdPrefix: 'custShipTo',
+    identIdPrefix: 'identShipTo',
+    applyCallback: 'applyShippingToName'
+  });
 }
 /**
  * 検索結果から発送先を選択してフォームに適用
@@ -382,14 +413,14 @@ function dataShippingToSearchSuccess(datas) {
  * AI解析との統合のため、手動選択データ（manualShippingToSelection）を保存します。
  *
  * 処理フロー:
- * 1. ボタンのdata-val属性から発送先情報を取得（パイプ区切り）
+ * 1. ボタンのdata-val属性から発送先情報を取得（JSON）
  * 2. 検索ダイアログを閉じる
  * 3. manualShippingToSelectionに保存（source: 'manual_search'）
  * 4. 発送先フォームに会社名・氏名・郵便番号・住所・電話番号を入力
  * 5. AIモーダルの表示を更新
  *
- * データ形式（パイプ区切り）:
- * - 会社名|氏名|郵便番号|住所|電話番号
+ * データ形式（data-valにJSON）:
+ * - { companyName, personName, zipcode, address, tel }
  *
  * AI解析との統合:
  * - manualShippingToSelectionを保存することで、AI解析結果より手動選択を優先
@@ -403,15 +434,26 @@ function dataShippingToSearchSuccess(datas) {
  */
 function applyShippingToName(num) {
   var nameVal = 'nameShipTo' + num;
-  var dataVal = $('button[id="' + nameVal + '"]').data('val');
-  var dataSp = dataVal.split('|');
+  var dataVal = $('button[id="' + nameVal + '"]').attr('data-val');
+  if (!dataVal) {
+    $(".shippingToSearch_dg").dialog("close");
+    return;
+  }
+  var parsed;
+  try {
+    parsed = JSON.parse(dataVal);
+  } catch (e) {
+    showInfoToast('データの読み込みに失敗しました。');
+    $(".shippingToSearch_dg").dialog("close");
+    return;
+  }
   $(".shippingToSearch_dg").dialog("close");
 
-  const companyName = dataSp[0];
-  const personName = dataSp[1];
-  const zipcode = dataSp[2];
-  const address = dataSp[3];
-  const tel = dataSp[4];
+  const companyName = parsed.companyName;
+  const personName = parsed.personName;
+  const zipcode = parsed.zipcode;
+  const address = parsed.address;
+  const tel = parsed.tel;
 
   // 手動選択データを保存
   manualShippingToSelection = {
