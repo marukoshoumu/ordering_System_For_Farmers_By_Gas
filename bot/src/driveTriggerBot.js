@@ -217,11 +217,6 @@ function moveFileToFolder(file, targetFolder) {
         }
       }
       
-      // フォールバックエラー時にnewFileが存在する場合、重複ファイルの可能性を警告
-      if (newFile) {
-        Logger.log('可能な重複: コピーが残っています: ' + newFile.getName() + ' - フォールバックエラー: ' + fallbackError.toString());
-      }
-      
       // エラーを伝播して呼び出し元に失敗を通知
       return false;
     }

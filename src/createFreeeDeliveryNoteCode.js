@@ -46,19 +46,46 @@
 function createFreeeDeliveryNote(datas) {
   const data = JSON.parse(datas);
   const customerName = data['customerName'];
-  const targetFrom = Utilities.formatDate(new Date(data['targetDateFrom']), 'JST', 'yyyy/MM/dd');
-  const targetTo = Utilities.formatDate(new Date(data['targetDateTo']), 'JST', 'yyyy/MM/dd');
+  
+  // Validate and parse targetDateFrom
+  const dateFromObj = new Date(data['targetDateFrom']);
+  if (isNaN(dateFromObj.getTime())) {
+    throw new Error('無効な開始日が指定されました: ' + data['targetDateFrom']);
+  }
+  const targetFrom = Utilities.formatDate(dateFromObj, 'JST', 'yyyy/MM/dd');
+  
+  // Validate and parse targetDateTo
+  const dateToObj = new Date(data['targetDateTo']);
+  if (isNaN(dateToObj.getTime())) {
+    throw new Error('無効な終了日が指定されました: ' + data['targetDateTo']);
+  }
+  const targetTo = Utilities.formatDate(dateToObj, 'JST', 'yyyy/MM/dd');
 
   // 受注データを取得
   const items = getAllRecords('受注');
 
   // 期間と顧客でフィルタリング（発送日ベース）
+  const invalidDates = [];
   const targetLists = items.filter(function(target) {
-    const shippingDate = Utilities.formatDate(new Date(target['発送日']), 'JST', 'yyyy/MM/dd');
+    // Validate shipping date before formatting
+    const shippingDateObj = new Date(target['発送日']);
+    if (isNaN(shippingDateObj.getTime())) {
+      invalidDates.push({
+        orderId: target['受注ID'] || '不明',
+        shippingDate: target['発送日']
+      });
+      return false; // Skip invalid dates
+    }
+    const shippingDate = Utilities.formatDate(shippingDateObj, 'JST', 'yyyy/MM/dd');
     const isInPeriod = shippingDate >= targetFrom && shippingDate <= targetTo;
     const isTargetCustomer = customerName === '' || target['顧客名'] === customerName;
     return isInPeriod && isTargetCustomer;
   });
+  
+  // Log invalid dates if any were found
+  if (invalidDates.length > 0) {
+    Logger.log('無効な発送日が見つかりました（スキップされました）: ' + JSON.stringify(invalidDates));
+  }
 
   if (targetLists.length === 0) {
     return null;

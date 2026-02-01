@@ -684,6 +684,16 @@
       html += `</tr></tbody></table>`;
       $(idName).html(html);
     }
+    // HTMLエスケープ関数
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function createProductHtml(res, dateVal, idName, colorFlg) {
       if (!res || res.length === 0) {
         $(idName).html('<div class="alert alert-light text-center py-4 border-dashed" style="border: 2px dashed #e5e7eb; color: #94a3b8; border-radius: 12px;"><i class="bi bi-info-circle me-2"></i>' + dateVal + 'の発送予定はありません</div>');
@@ -720,13 +730,16 @@
         const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
 
         // アクション（スキャン・チェックボックス・ステータス）
+        const escapedOrderId = escapeHtml(order.orderId);
+        const escapedRecipientName = escapeHtml(order.発送先名 || '');
+        const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
         const actionsHtml = `
           <div class="order-card-actions">
             <div class="shipped-check-wrapper">
-              <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${order.orderId}', this.checked)" title="出荷済チェック">
+              <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${escapedOrderId}', this.checked)" title="出荷済チェック">
               ${statusBadgeHtml}
             </div>
-            <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${order.orderId}', '${order.発送先名}', '${order.deliveryMethod}')" title="伝票スキャン">
+            <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${escapedOrderId}', '${escapedRecipientName}', '${escapedDeliveryMethod}')" title="伝票スキャン">
               <i class="bi bi-upc-scan"></i>
             </button>
           </div>
@@ -735,8 +748,8 @@
         // ヘッダー（発送先情報）
         html += `<div class="order-card-header">`;
         html += `<div class="order-card-info-main">`;
-        html += `<h4 class="order-card-title">${order['発送先名']} 様</h4>`;
-        html += `<span class="order-card-customer">依頼主: ${order['顧客名']}</span>`;
+        html += `<h4 class="order-card-title">${escapeHtml(order['発送先名'] || '')} 様</h4>`;
+        html += `<span class="order-card-customer">依頼主: ${escapeHtml(order['顧客名'] || '')}</span>`;
 
         // クール区分バッジ
         if (coolBadge) {
@@ -755,12 +768,12 @@
           const p = order['商品'][j];
           const unit = p['単位'] || '枚';
           html += `<div class="product-list-item">`;
-          html += `<span class="product-name">${p['商品名']}</span>`;
-          html += `<span class="product-quantity">${p['受注数']} ${unit}</span>`;
+          html += `<span class="product-name">${escapeHtml(p['商品名'] || '')}</span>`;
+          html += `<span class="product-quantity">${escapeHtml(String(p['受注数'] || ''))} ${escapeHtml(unit)}</span>`;
           html += `</div>`;
 
           if (p['メモ']) {
-            combinedMemo.push(p['メモ']);
+            combinedMemo.push(escapeHtml(p['メモ']));
           }
         }
 
@@ -798,13 +811,14 @@
     // 配送ステータスバッジ
     function getStatusBadge(status) {
       if (!status) return '';
+      const escapedStatus = escapeHtml(status);
       let badgeClass = 'bg-secondary';
       if (status === '配達完了') badgeClass = 'bg-success';
       else if (status === '発送済' || status === '配達中') badgeClass = 'bg-primary';
       else if (status === '不在/持戻') badgeClass = 'bg-warning text-dark';
       else if (status.includes('エラー')) badgeClass = 'bg-danger';
 
-      return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${status}</span>`;
+      return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
     }
 
     // 出荷済ステータスの更新
@@ -917,13 +931,50 @@
 
       // 簡易バリデーション: 10-12桁
       if (code && (code.length >= 10 && code.length <= 12)) {
-        // 日本の電話番号（0から始まる10桁/11桁）を誤検知しないための対策
-        if ((code.length === 10 || code.length === 11) && code.startsWith('0')) {
-          return;
+        // 日本の電話番号を誤検知しないための対策
+        // 電話番号パターン: 0から始まり、10桁または11桁、数字のみ
+        if (isJapanesePhoneNumber(code)) {
+          return; // 電話番号と判定された場合はスキップ
         }
         isScannerProcessing = true;
         handleScannerSuccess(code);
       }
+    }
+
+    // 日本の電話番号かどうかを判定する関数
+    function isJapanesePhoneNumber(code) {
+      if (!code || typeof code !== 'string') return false;
+      
+      // 10桁または11桁で、0から始まる数字のみ
+      if ((code.length === 10 || code.length === 11) && code.startsWith('0')) {
+        // 数字のみかチェック
+        if (!/^\d+$/.test(code)) return false;
+        
+        // 日本の電話番号の主要パターン
+        // 固定電話: 0X-XXXX-XXXX (10桁) または 0XX-XXXX-XXXX (11桁)
+        // 携帯電話: 090-XXXX-XXXX, 080-XXXX-XXXX, 070-XXXX-XXXX (11桁)
+        // IP電話: 050-XXXX-XXXX (11桁)
+        
+        // 10桁の場合: 0X-XXXX-XXXX 形式（固定電話）
+        if (code.length === 10) {
+          // 2桁目のエリアコードが0-9で、全体が数字
+          return /^0[1-9]\d{8}$/.test(code);
+        }
+        
+        // 11桁の場合: 携帯電話、IP電話、または長距離固定電話
+        if (code.length === 11) {
+          // 携帯電話: 090, 080, 070 で始まる
+          if (/^0[789]0\d{8}$/.test(code)) return true;
+          // IP電話: 050 で始まる
+          if (/^050\d{8}$/.test(code)) return true;
+          // 固定電話（長距離）: 0XX-XXXX-XXXX 形式
+          if (/^0[1-9]\d{9}$/.test(code)) return true;
+        }
+        
+        return false;
+      }
+      
+      return false;
     }
 
     function handleScannerSuccess(code) {

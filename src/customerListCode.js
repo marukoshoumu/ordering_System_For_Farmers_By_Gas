@@ -623,23 +623,43 @@ function findShippingToByCustomer(companyName, personName, zipcode) {
  */
 function updateCustomerShippingTo(customerRowIndex, customerData) {
   try {
-    // まず顧客情報を更新
+    // 更新前に元の顧客情報を取得（発送先検索用）
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      ss = SpreadsheetApp.openById(getMasterSpreadsheetId());
+    }
+    var customerSheet = ss.getSheetByName('顧客情報');
+    
+    if (!customerSheet) {
+      return { success: false, message: '顧客情報シートが見つかりません' };
+    }
+    
+    var validation = normalizeAndValidateRowIndex(customerRowIndex, customerSheet);
+    if (!validation.success) {
+      return { success: false, message: validation.message };
+    }
+    var rowIndex = validation.rowIndex;
+    
+    // 元の顧客データを取得
+    var originalRow = customerSheet.getRange(rowIndex, 1, 1, 19).getValues()[0];
+    var originalCompanyName = (originalRow[3] || '').toString().trim();
+    var originalPersonName = (originalRow[6] || '').toString().trim();
+    var originalZipcode = (originalRow[7] || '').toString().trim();
+    
+    // 元の値で発送先情報を検索
+    var shippingTo = findShippingToByCustomer(originalCompanyName, originalPersonName, originalZipcode);
+    
+    // 顧客情報を更新
     var customerResult = updateCustomer(customerRowIndex, customerData);
     if (!customerResult.success) {
       return customerResult;
     }
 
-    // 発送先情報を検索
+    // 更新後の値で発送先情報を検索（新規作成または更新用）
     var companyName = (customerData.companyName || '').toString().trim();
     var personName = (customerData.personName || '').toString().trim();
     var zipcode = (customerData.zipcode || '').toString().trim();
 
-    var shippingTo = findShippingToByCustomer(companyName, personName, zipcode);
-
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) {
-      ss = SpreadsheetApp.openById(getMasterSpreadsheetId());
-    }
     var shippingToSheet = ss.getSheetByName('発送先情報');
     var shippingToBkSheet = ss.getSheetByName('発送先情報BK');
 

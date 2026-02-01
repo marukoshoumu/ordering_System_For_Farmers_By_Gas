@@ -263,7 +263,8 @@ function makeQuoutation(fileData, quotationHeaders) {
 
   // 見積書データ設定
   pdfSheet.getRange(3, 12).setValue(getQuotationValue(fileData[0], '作成日', quotationHeaders));
-  const customerName = getQuotationValue(fileData[0], '顧客名', quotationHeaders).split('　')[0];
+  const rawCustomerName = getQuotationValue(fileData[0], '顧客名', quotationHeaders);
+  const customerName = rawCustomerName ? rawCustomerName.split('　')[0] : '';
   pdfSheet.getRange(5, 2).setValue(customerName);
   pdfSheet.getRange(12, 2).setValue('納品場所：' + getQuotationValue(fileData[0], '納品先名', quotationHeaders));
   pdfSheet.getRange(13, 2).setValue('納入方法：' + getQuotationValue(fileData[0], '納品方法', quotationHeaders));

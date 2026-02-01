@@ -37,14 +37,22 @@
       const lastShippingDate = lastShippingInput.value;
       const lastDeliveryDate = lastDeliveryInput.value;
 
+      // ローカルタイムゾーンで日付をフォーマットするヘルパー関数
+      function formatLocalDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
       // 1日後の日付を計算
       const nextShipping = new Date(lastShippingDate);
       nextShipping.setDate(nextShipping.getDate() + 1);
-      const nextShippingStr = nextShipping.toISOString().split('T')[0];
+      const nextShippingStr = formatLocalDate(nextShipping);
 
       const nextDelivery = new Date(lastDeliveryDate);
       nextDelivery.setDate(nextDelivery.getDate() + 1);
-      const nextDeliveryStr = nextDelivery.toISOString().split('T')[0];
+      const nextDeliveryStr = formatLocalDate(nextDelivery);
 
       // XSS対策: innerHTMLの代わりにDOM要素を個別に作成
       const newRow = document.createElement('div');

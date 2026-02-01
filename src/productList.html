@@ -859,27 +859,51 @@
       const stockStr = document.getElementById('productStock').value.trim();
       const taxRateStr = document.getElementById('productTaxRate').value.trim();
 
-      const price = parseFloat(priceStr);
-      if (!isFinite(price) || price < 0) {
-        showErrorToast('商品価格は0以上の数値を入力してください');
+      // Validate price (required)
+      let price = null;
+      if (priceStr !== '') {
+        price = parseFloat(priceStr);
+        if (!isFinite(price) || price < 0) {
+          showErrorToast('商品価格は0以上の数値を入力してください');
+          return;
+        }
+      } else {
+        showErrorToast('商品価格を入力してください');
         return;
       }
 
-      const cost = parseFloat(costStr);
-      if (!isFinite(cost) || cost < 0) {
-        showErrorToast('原価は0以上の数値を入力してください');
-        return;
+      // Validate cost (optional)
+      let cost = null;
+      if (costStr !== '') {
+        cost = parseFloat(costStr);
+        if (!isFinite(cost) || cost < 0) {
+          showErrorToast('原価は0以上の数値を入力してください');
+          return;
+        }
       }
 
-      const stock = parseFloat(stockStr);
-      if (!isFinite(stock) || stock < 0) {
-        showErrorToast('在庫数は0以上の数値を入力してください');
-        return;
+      // Validate stock (optional)
+      let stock = null;
+      if (stockStr !== '') {
+        stock = parseFloat(stockStr);
+        if (!isFinite(stock) || stock < 0) {
+          showErrorToast('在庫数は0以上の数値を入力してください');
+          return;
+        }
       }
 
-      const taxRate = parseFloat(taxRateStr);
-      if (!isFinite(taxRate) || taxRate < 0) {
-        showErrorToast('消費税率は0以上の数値を入力してください');
+      // Validate tax rate (required, comes from select with "8%" or "10%")
+      let taxRate = null;
+      if (taxRateStr !== '') {
+        // Strip trailing '%' if present and convert to number
+        const taxRateNumStr = taxRateStr.replace(/%$/, '');
+        taxRate = parseFloat(taxRateNumStr);
+        if (!isFinite(taxRate) || taxRate < 0) {
+          showErrorToast('消費税率は0以上の数値を入力してください');
+          return;
+        }
+      } else {
+        showErrorToast('消費税率を選択してください');
         return;
       }
 

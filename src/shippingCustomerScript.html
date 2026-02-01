@@ -193,11 +193,13 @@ function dataPostSuccessShippingTo(data) {
   }
 }
 
-function dataAddFail() {
-  showInfoToast("該当データがありませんでした。");
+function dataAddFail(e) {
+  const errorMessage = e && e.message ? e.message : "登録に失敗しました。";
+  showErrorToast(errorMessage);
 }
-function addFail() {
-  showErrorToast("処理に失敗しました。");
+function addFail(e) {
+  const errorMessage = e && e.message ? e.message : "処理に失敗しました。";
+  showErrorToast(errorMessage);
 }
 
 function dataAddSuccess() {

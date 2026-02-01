@@ -929,10 +929,30 @@
       }
 
       showLoading(true);
-      google.script.run
-        .withSuccessHandler(handleSaveSuccess)
-        .withFailureHandler(handleSaveFailure)
-        [functionName].apply(null, args);
+      // Use explicit conditional calls instead of dynamic apply
+      if (functionName === 'updateCustomerShippingTo') {
+        google.script.run
+          .withSuccessHandler(handleSaveSuccess)
+          .withFailureHandler(handleSaveFailure)
+          .updateCustomerShippingTo(args[0], args[1]);
+      } else if (functionName === 'updateCustomer') {
+        google.script.run
+          .withSuccessHandler(handleSaveSuccess)
+          .withFailureHandler(handleSaveFailure)
+          .updateCustomer(args[0], args[1]);
+      } else if (functionName === 'addCustomerShippingToFromList') {
+        google.script.run
+          .withSuccessHandler(handleSaveSuccess)
+          .withFailureHandler(handleSaveFailure)
+          .addCustomerShippingToFromList(args[0]);
+      } else if (functionName === 'addCustomerFromList') {
+        google.script.run
+          .withSuccessHandler(handleSaveSuccess)
+          .withFailureHandler(handleSaveFailure)
+          .addCustomerFromList(args[0]);
+      } else {
+        handleSaveFailure(new Error('Unknown function: ' + functionName));
+      }
     }
 
     function openDeleteModal(rowIndex, customerName) {

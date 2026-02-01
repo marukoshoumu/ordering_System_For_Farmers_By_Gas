@@ -218,6 +218,16 @@
             $(idName).html(html);
         }
 
+        // HTMLエスケープ関数
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // カード形式の商品表示（スキャン・出荷済チェック付き）
         function createProductHtml(res, dateVal, idName, colorFlg) {
             if (!res || res.length === 0) {
@@ -255,13 +265,16 @@
                 const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
 
                 // アクション（スキャン・チェックボックス・ステータス）
+                const escapedOrderId = escapeHtml(order.orderId);
+                const escapedRecipientName = escapeHtml(order['発送先名'] || '');
+                const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
                 const actionsHtml = `
                     <div class="order-card-actions">
                         <div class="shipped-check-wrapper">
-                            <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${order.orderId}', this.checked)" title="出荷済チェック">
+                            <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${escapedOrderId}', this.checked)" title="出荷済チェック">
                             ${statusBadgeHtml}
                         </div>
-                        <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${order.orderId}', '${order['発送先名']}', '${order.deliveryMethod}')" title="伝票スキャン">
+                        <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${escapedOrderId}', '${escapedRecipientName}', '${escapedDeliveryMethod}')" title="伝票スキャン">
                             <i class="bi bi-upc-scan"></i>
                         </button>
                     </div>
@@ -270,8 +283,8 @@
                 // ヘッダー（発送先情報）
                 html += `<div class="order-card-header">`;
                 html += `<div class="order-card-info-main">`;
-                html += `<h4 class="order-card-title">${order['発送先名']} 様</h4>`;
-                html += `<span class="order-card-customer">依頼主: ${order['顧客名']}</span>`;
+                html += `<h4 class="order-card-title">${escapeHtml(order['発送先名'] || '')} 様</h4>`;
+                html += `<span class="order-card-customer">依頼主: ${escapeHtml(order['顧客名'] || '')}</span>`;
 
                 // クール区分バッジ
                 if (coolBadge) {
@@ -318,13 +331,14 @@
         // 配送ステータスバッジ
         function getStatusBadge(status) {
             if (!status) return '';
+            const escapedStatus = escapeHtml(status);
             let badgeClass = 'bg-secondary';
             if (status === '配達完了') badgeClass = 'bg-success';
             else if (status === '発送済' || status === '配達中') badgeClass = 'bg-primary';
             else if (status === '不在/持戻') badgeClass = 'bg-warning text-dark';
             else if (status.includes('エラー')) badgeClass = 'bg-danger';
 
-            return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${status}</span>`;
+            return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
         }
 
         // 出荷済ステータスの更新
