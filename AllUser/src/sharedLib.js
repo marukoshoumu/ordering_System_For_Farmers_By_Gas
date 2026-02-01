@@ -72,6 +72,55 @@ function formatDateWithWeekdayShared(date, weekdays) {
   return `${formattedDate} (${weekday})`;
 }
 
+/**
+ * 間隔オブジェクトを人間が読める形式に変換する（定期便・受注で共有）
+ * @param {Object|number|string} intervalObj - 間隔オブジェクト、数値、または文字列
+ * @returns {string} 表示用文字列
+ */
+function formatIntervalForDisplay(intervalObj) {
+  if (!intervalObj) return '1ヶ月ごと';
+
+  // 旧形式（数値のみ、または JSON でない文字列）
+  if (typeof intervalObj === 'number') {
+    return intervalObj + 'ヶ月ごと';
+  }
+  if (typeof intervalObj === 'string' && !intervalObj.startsWith('{')) {
+    return intervalObj + 'ヶ月ごと';
+  }
+  if (typeof intervalObj === 'string') {
+    try {
+      intervalObj = JSON.parse(intervalObj);
+    } catch (e) {
+      return intervalObj + 'ヶ月ごと';
+    }
+  }
+
+  var type = intervalObj.type;
+  var value = intervalObj.value;
+  var weekday = intervalObj.weekday;
+  var dayNames = ['', '月', '火', '水', '木', '金', '土', '日'];
+
+  switch (type) {
+    case 'weekly':
+      return '毎週' + (dayNames[value] || '') + '曜日';
+    case 'nweek':
+    case 'biweekly':
+    case 'triweekly':
+      var n = Number(value) || 2;
+      return n + '週ごと' + (dayNames[weekday] || '') + '曜日';
+    case 'monthly':
+      if (value === 'first') return '毎月初日';
+      if (value === 'last') return '毎月末日';
+      return '毎月' + value + '日';
+    case 'nmonth':
+    case '2month':
+    case '3month':
+      return (Number(value) || 1) + 'ヶ月ごと';
+    default:
+      return (Number(value) || 1) + 'ヶ月ごと';
+  }
+}
+
 // ============================================
 // データ構造初期化
 // ============================================
@@ -372,22 +421,30 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
     throw new Error('必要な列が見つかりません');
   }
 
-  // 該当する受注IDの全行をメモリ内のデータ配列で更新
+  // 該当する受注IDの全行を更新
   let updatedCount = 0;
+  const numRows = data.length - 1; // ヘッダー行を除く
+  const startRow = 2; // データ行の開始行（1-indexed）
+  
+  // 出荷済み列の値を2D配列として取得
+  const updatedColumnArray = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][orderIdCol] === orderId) {
-      data[i][shippedCol] = shippedValue;
+      updatedColumnArray.push([shippedValue]);
       updatedCount++;
+    } else {
+      updatedColumnArray.push([data[i][shippedCol]]);
     }
+  }
+  
+  // 一度にすべての変更を書き戻す
+  if (updatedCount > 0) {
+    sheet.getRange(startRow, shippedCol + 1, numRows, 1).setValues(updatedColumnArray);
   }
 
   if (updatedCount === 0) {
     throw new Error('該当する受注IDが見つかりません: ' + orderId);
   }
-
-  // 一度に書き戻し（出荷済列のみ更新）
-  const shippedColumnValues = data.slice(1).map(row => [row[shippedCol]]);
-  sheet.getRange(2, shippedCol + 1, data.length - 1, 1).setValues(shippedColumnValues);
 
   return { success: true, updatedRows: updatedCount };
 }
@@ -483,13 +540,25 @@ function recognizeTrackingNumberShared(base64Data) {
     });
 
     const result = JSON.parse(response.getContentText());
-    
-    // result.responses の存在と有効性をチェック
-    if (!result.responses || !Array.isArray(result.responses) || result.responses.length === 0 || result.responses[0] == null) {
+
+    if (!result.responses || !Array.isArray(result.responses) || result.responses.length === 0) {
+      const apiError = result.error ? (result.error.message || JSON.stringify(result.error)) : '';
+      if (apiError) Logger.log('Vision API error: ' + apiError);
       return { success: false, message: '文字が検出されませんでした。' };
     }
-    
-    const annotations = result.responses[0].textAnnotations;
+
+    const firstResponse = result.responses[0];
+    if (!firstResponse) {
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+
+    if (firstResponse.error) {
+      const errMsg = firstResponse.error.message || JSON.stringify(firstResponse.error);
+      Logger.log('Vision API response error: ' + errMsg);
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+
+    const annotations = firstResponse.textAnnotations;
 
     if (!annotations || annotations.length === 0) {
       return { success: false, message: '文字が検出されませんでした。' };
@@ -565,4 +634,30 @@ function getProductUnitMapShared(ss) {
     Logger.log('商品単位取得エラー: ' + e.toString());
   }
   return unitMap;
+}
+
+// ============================================
+// 行インデックス検証ユーティリティ
+// ============================================
+
+/**
+ * rowIndexを正規化して検証する
+ * @param {*} rowIndex - 行番号（数値または文字列）
+ * @param {Sheet} sheet - シートオブジェクト
+ * @returns {Object} { success: boolean, rowIndex?: number, message?: string }
+ */
+function normalizeAndValidateRowIndex(rowIndex, sheet) {
+  var normalized = Number(rowIndex);
+  if (!isFinite(normalized)) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+
+  normalized = Math.floor(normalized);
+  var maxRow = sheet.getLastRow();
+
+  if (normalized < 2 || normalized > maxRow) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+
+  return { success: true, rowIndex: normalized };
 }
