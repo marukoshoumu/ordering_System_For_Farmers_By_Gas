@@ -570,6 +570,32 @@ function doPost(e) {
       .setTitle('商品マスタ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
+  // 顧客マスタ一覧画面（admin専用、viewerはアクセス不可）
+  else if (e.parameter.customerList) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
+    const template = HtmlService.createTemplateFromFile('customerList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
+    return template.evaluate()
+      .setTitle('顧客マスタ')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  // 発送先マスタ一覧画面（admin専用、viewerはアクセス不可）
+  else if (e.parameter.shippingToList) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
+    const template = HtmlService.createTemplateFromFile('shippingToList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
+    return template.evaluate()
+      .setTitle('発送先マスタ')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   else {
     const template = HtmlService.createTemplateFromFile('error');
     template.deployURL = ScriptApp.getService().getUrl();

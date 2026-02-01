@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顧客マスタ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
+  <style>
+    body {
+      background-color: var(--bg-body, #f5f7fa);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      background: var(--brand-primary, #4a90a4);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .filter-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .table-section {
+      padding: 16px 20px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    .customer-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .customer-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .customer-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .customer-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .customer-table tbody td {
+      padding: 10px 8px;
+      vertical-align: middle;
+    }
+
+    .customer-table .col-class { width: 100px; }
+    .customer-table .col-showname { min-width: 120px; }
+    .customer-table .col-company { min-width: 120px; }
+    .customer-table .col-name { width: 100px; }
+    .customer-table .col-tel { width: 120px; }
+    .customer-table .col-email { min-width: 150px; }
+    .customer-table .col-action { width: 100px; text-align: center; }
+
+    .customer-cards { display: none; }
+
+    .customer-card {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .customer-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .customer-card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 0;
+      color: #333;
+    }
+
+    .customer-card-category {
+      font-size: 0.75rem;
+      color: #666;
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .customer-card-body {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .customer-card-item { display: flex; flex-direction: column; }
+    .customer-card-label { font-size: 0.7rem; color: #999; }
+    .customer-card-value { color: #333; font-weight: 500; }
+
+    .customer-card-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .customer-card-buttons button { flex: 1; }
+
+    .result-count {
+      padding: 8px 0;
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .result-count strong {
+      color: var(--brand-primary, #4a90a4);
+      font-size: 1.1rem;
+    }
+
+    .modal-header {
+      background: var(--brand-primary, #4a90a4);
+      color: white;
+    }
+
+    .modal-section { margin-bottom: 20px; }
+
+    .modal-section-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #333;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--brand-primary, #4a90a4);
+    }
+
+    .form-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    @media (max-width: 768px) {
+      .main-container { padding: 8px; }
+      .filter-row { flex-direction: column; align-items: stretch; }
+      .filter-group { width: 100%; }
+      .filter-group .form-control,
+      .filter-group .form-select { flex: 1; }
+      .customer-table-wrapper { display: none; }
+      .customer-cards { display: block; }
+      .card-header { flex-direction: column; gap: 12px; align-items: stretch; }
+      .card-header h1 { text-align: center; }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loading-overlay.hidden { display: none; }
+  </style>
+</head>
+
+<body>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status"></div>
+      <div class="mt-2">読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <form id="navForm" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="userRole" value="<?= userRole ?>">
+    </form>
+
+    <div class="card">
+      <div class="card-header">
+        <h1><i class="bi bi-people me-2"></i>顧客マスタ</h1>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
+            <i class="bi bi-house"></i> ホーム
+          </button>
+          <button type="button" class="btn btn-success btn-sm" onclick="openAddModal()">
+            <i class="bi bi-plus-lg"></i> 新規登録
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label class="filter-label">分類:</label>
+            <select class="form-select form-select-sm" id="filterCategory" style="width: 150px;">
+              <option value="">全て</option>
+              <option value="1">一次卸し・大口</option>
+              <option value="2">小売店</option>
+              <option value="3">飲食店・ホテル</option>
+              <option value="4">地元飲食店</option>
+              <option value="5">通信販売</option>
+              <option value="6">一般販売</option>
+              <option value="7">その他</option>
+              <option value="8">職域</option>
+            </select>
+          </div>
+          <div class="filter-group flex-grow-1">
+            <label class="filter-label">検索:</label>
+            <input type="text" class="form-control form-control-sm" id="filterKeyword" placeholder="表示名・会社名・氏名・フリガナで検索">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="searchCustomers()">
+            <i class="bi bi-search"></i> 検索
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilter()">
+            <i class="bi bi-x-lg"></i> クリア
+          </button>
+        </div>
+      </div>
+
+      <div class="table-section">
+        <div class="result-count">
+          <span id="resultCount">検索結果: <strong>0</strong> 件</span>
+        </div>
+
+        <div class="customer-table-wrapper">
+          <table class="customer-table">
+            <thead>
+              <tr>
+                <th class="col-class">分類</th>
+                <th class="col-showname">表示名</th>
+                <th class="col-company">会社名</th>
+                <th class="col-name">氏名</th>
+                <th class="col-tel">TEL</th>
+                <th class="col-email">メールアドレス</th>
+                <th class="col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody id="customerTableBody">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="customer-cards" id="customerCards">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 顧客登録/編集モーダル -->
+  <div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="customerModalTitle">顧客登録</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editRowIndex">
+
+          <div class="modal-section">
+            <div class="modal-section-title">基本情報</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">顧客分類</label>
+                <select class="form-select" id="customerClass">
+                  <option value="">選択してください</option>
+                  <option value="1">一次卸し・大口</option>
+                  <option value="2">小売店</option>
+                  <option value="3">飲食店・ホテル</option>
+                  <option value="4">地元飲食店</option>
+                  <option value="5">通信販売</option>
+                  <option value="6">一般販売</option>
+                  <option value="7">その他</option>
+                  <option value="8">職域</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">会社名</label>
+                <input type="text" class="form-control" id="customerCompanyName">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">表示名</label>
+                <input type="text" class="form-control" id="customerShowName">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">フリガナ</label>
+                <input type="text" class="form-control" id="customerFurigana">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">部署</label>
+                <input type="text" class="form-control" id="customerDepartment">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">役職</label>
+                <input type="text" class="form-control" id="customerPost">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">氏名</label>
+                <input type="text" class="form-control" id="customerPersonName">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">連絡先</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">郵便番号 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="customerZipcode" maxlength="7" placeholder="1234567" onchange="getCustomerAddress()">
+              </div>
+              <div class="col-md-8">
+                <label class="form-label">住所１ <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="customerAddress1">
+              </div>
+              <div class="col-12">
+                <label class="form-label">住所２</label>
+                <input type="text" class="form-control" id="customerAddress2">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">TEL <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="customerTel" maxlength="11" placeholder="09012345678">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">携帯電話</label>
+                <input type="text" class="form-control" id="customerPhone" maxlength="11">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">FAX</label>
+                <input type="text" class="form-control" id="customerFax" maxlength="11">
+              </div>
+              <div class="col-12">
+                <label class="form-label">メールアドレス</label>
+                <input type="email" class="form-control" id="customerEmail">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">請求情報</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">請求書有無</label>
+                <select class="form-select" id="customerBill">
+                  <option value=""></option>
+                  <option value="有">有</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">入金期日</label>
+                <select class="form-select" id="customerDepositDate">
+                  <option value="翌末日">翌末日</option>
+                  <option value="２週間後">２週間後</option>
+                  <option value="翌々中日">翌々中日</option>
+                  <option value="翌々末日">翌々末日</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">消費税の表示方法</label>
+                <select class="form-select" id="customerTaxDisplay">
+                  <option value="">（未設定）</option>
+                  <option value="内税">内税</option>
+                  <option value="外税">外税</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <div class="modal-section-title">その他</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">備考</label>
+                <textarea class="form-control" id="customerMemo" rows="2"></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="customerSameShippingTo" name="customerSameShippingTo">
+                  <label class="form-check-label" for="customerSameShippingTo">発送先同上</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" onclick="saveCustomer()">
+            <i class="bi bi-check-lg"></i> 保存
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">削除確認</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>この顧客を削除しますか？</p>
+          <p class="fw-bold" id="deleteCustomerName"></p>
+          <input type="hidden" id="deleteRowIndex">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">
+            <i class="bi bi-trash"></i> 削除
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let customers = [];
+    let customerModal, deleteModal;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+      deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+      loadCustomers();
+
+      document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchCustomers();
+        }
+      });
+    });
+
+    function goHome() {
+      const form = document.getElementById('navForm');
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'main';
+      input.value = 'true';
+      form.appendChild(input);
+      form.submit();
+    }
+
+    function loadCustomers() {
+      showLoading(true);
+
+      const filters = {
+        category: document.getElementById('filterCategory').value,
+        keyword: document.getElementById('filterKeyword').value
+      };
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          customers = JSON.parse(data);
+          renderCustomers();
+          showLoading(false);
+        })
+        .withFailureHandler(function(e) {
+          console.error('顧客取得エラー:', e);
+          showLoading(false);
+          showErrorToast('顧客の読み込みに失敗しました');
+        })
+        .getCustomerListData(filters);
+    }
+
+    function searchCustomers() {
+      loadCustomers();
+    }
+
+    function clearFilter() {
+      document.getElementById('filterCategory').value = '';
+      document.getElementById('filterKeyword').value = '';
+      loadCustomers();
+    }
+
+    function renderCustomers() {
+      const tbody = document.getElementById('customerTableBody');
+      const cards = document.getElementById('customerCards');
+      const countEl = document.getElementById('resultCount');
+
+      countEl.textContent = '';
+      countEl.appendChild(document.createTextNode('検索結果: '));
+      const strong = document.createElement('strong');
+      strong.textContent = customers.length;
+      countEl.appendChild(strong);
+      countEl.appendChild(document.createTextNode(' 件'));
+
+      tbody.textContent = '';
+      cards.textContent = '';
+
+      customers.forEach(function(c) {
+        const tr = document.createElement('tr');
+        tr.addEventListener('click', function() { openEditModal(c.rowIndex); });
+
+        const tdClass = document.createElement('td');
+        tdClass.className = 'col-class';
+        tdClass.textContent = c.className || '';
+        tr.appendChild(tdClass);
+
+        const tdShowName = document.createElement('td');
+        tdShowName.className = 'col-showname';
+        tdShowName.textContent = c.showName || '';
+        tr.appendChild(tdShowName);
+
+        const tdCompany = document.createElement('td');
+        tdCompany.className = 'col-company';
+        tdCompany.textContent = c.companyName || '';
+        tr.appendChild(tdCompany);
+
+        const tdName = document.createElement('td');
+        tdName.className = 'col-name';
+        tdName.textContent = c.personName || '';
+        tr.appendChild(tdName);
+
+        const tdTel = document.createElement('td');
+        tdTel.className = 'col-tel';
+        tdTel.textContent = c.tel || '';
+        tr.appendChild(tdTel);
+
+        const tdEmail = document.createElement('td');
+        tdEmail.className = 'col-email';
+        tdEmail.textContent = c.email || '';
+        tr.appendChild(tdEmail);
+
+        const tdAction = document.createElement('td');
+        tdAction.className = 'col-action';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-outline-primary btn-sm me-1';
+        const editIcon = document.createElement('i');
+        editIcon.className = 'bi bi-pencil';
+        editBtn.appendChild(editIcon);
+        editBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openEditModal(c.rowIndex);
+        });
+        tdAction.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-outline-danger btn-sm';
+        const deleteIcon = document.createElement('i');
+        deleteIcon.className = 'bi bi-trash';
+        deleteBtn.appendChild(deleteIcon);
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openDeleteModal(c.rowIndex, c.showName || c.companyName || c.personName);
+        });
+        tdAction.appendChild(deleteBtn);
+
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+      });
+
+      customers.forEach(function(c) {
+        const card = document.createElement('div');
+        card.className = 'customer-card';
+
+        const header = document.createElement('div');
+        header.className = 'customer-card-header';
+
+        const headerContent = document.createElement('div');
+        const title = document.createElement('h3');
+        title.className = 'customer-card-title';
+        title.textContent = c.showName || c.companyName || c.personName || '';
+        headerContent.appendChild(title);
+
+        const categoryBadge = document.createElement('span');
+        categoryBadge.className = 'customer-card-category';
+        categoryBadge.textContent = c.className || '';
+        headerContent.appendChild(categoryBadge);
+
+        header.appendChild(headerContent);
+        card.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'customer-card-body';
+
+        const items = [
+          { label: '会社名', value: c.companyName || '-' },
+          { label: '氏名', value: c.personName || '-' },
+          { label: 'TEL', value: c.tel || '-' },
+          { label: 'メール', value: c.email || '-' }
+        ];
+
+        items.forEach(function(item) {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'customer-card-item';
+
+          const label = document.createElement('span');
+          label.className = 'customer-card-label';
+          label.textContent = item.label;
+          itemDiv.appendChild(label);
+
+          const value = document.createElement('span');
+          value.className = 'customer-card-value';
+          value.textContent = item.value;
+          itemDiv.appendChild(value);
+
+          body.appendChild(itemDiv);
+        });
+
+        card.appendChild(body);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'customer-card-buttons';
+
+        const editBtnMobile = document.createElement('button');
+        editBtnMobile.className = 'btn btn-outline-primary btn-sm';
+        const editIconMobile = document.createElement('i');
+        editIconMobile.className = 'bi bi-pencil';
+        editBtnMobile.appendChild(editIconMobile);
+        editBtnMobile.appendChild(document.createTextNode(' 編集'));
+        editBtnMobile.addEventListener('click', function() { openEditModal(c.rowIndex); });
+        buttons.appendChild(editBtnMobile);
+
+        const deleteBtnMobile = document.createElement('button');
+        deleteBtnMobile.className = 'btn btn-outline-danger btn-sm';
+        const deleteIconMobile = document.createElement('i');
+        deleteIconMobile.className = 'bi bi-trash';
+        deleteBtnMobile.appendChild(deleteIconMobile);
+        deleteBtnMobile.appendChild(document.createTextNode(' 削除'));
+        deleteBtnMobile.addEventListener('click', function() { openDeleteModal(c.rowIndex, c.showName || c.companyName || c.personName); });
+        buttons.appendChild(deleteBtnMobile);
+
+        card.appendChild(buttons);
+        cards.appendChild(card);
+      });
+    }
+
+    function openAddModal() {
+      document.getElementById('customerModalTitle').textContent = '顧客登録';
+      document.getElementById('editRowIndex').value = '';
+      clearModalForm();
+      customerModal.show();
+    }
+
+    function openEditModal(rowIndex) {
+      document.getElementById('customerModalTitle').textContent = '顧客編集';
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(customer) {
+          if (customer) {
+            var c = {
+              rowIndex: customer.rowIndex,
+              class: customer['顧客分類'] ?? customer.class,
+              showName: customer['表示名'] ?? customer.showName,
+              furigana: customer['フリガナ'] ?? customer.furigana,
+              companyName: customer['会社名'] ?? customer.companyName,
+              department: customer['部署'] ?? customer.department,
+              post: customer['役職'] ?? customer.post,
+              personName: customer['氏名'] ?? customer.personName,
+              zipcode: customer['郵便番号'] ?? customer.zipcode,
+              address1: customer['住所１'] ?? customer.address1,
+              address2: customer['住所２'] ?? customer.address2,
+              tel: customer['TEL'] ?? customer.tel,
+              phone: customer['携帯電話'] ?? customer.phone,
+              fax: customer['FAX'] ?? customer.fax,
+              email: customer['メールアドレス'] ?? customer.email,
+              bill: customer['請求書有無'] ?? customer.bill,
+              depositDate: customer['入金期日'] ?? customer.depositDate,
+              taxDisplay: customer['消費税の表示方法'] ?? customer.taxDisplay,
+              memo: customer['備考'] ?? customer.memo
+            };
+            document.getElementById('editRowIndex').value = c.rowIndex;
+            document.getElementById('customerClass').value = c.class ?? '';
+            document.getElementById('customerShowName').value = c.showName ?? '';
+            document.getElementById('customerFurigana').value = c.furigana ?? '';
+            document.getElementById('customerCompanyName').value = c.companyName ?? '';
+            document.getElementById('customerDepartment').value = c.department ?? '';
+            document.getElementById('customerPost').value = c.post ?? '';
+            document.getElementById('customerPersonName').value = c.personName ?? '';
+            document.getElementById('customerZipcode').value = c.zipcode ?? '';
+            document.getElementById('customerAddress1').value = c.address1 ?? '';
+            document.getElementById('customerAddress2').value = c.address2 ?? '';
+            document.getElementById('customerTel').value = c.tel ?? '';
+            document.getElementById('customerPhone').value = c.phone ?? '';
+            document.getElementById('customerFax').value = c.fax ?? '';
+            document.getElementById('customerEmail').value = c.email ?? '';
+            document.getElementById('customerBill').value = c.bill ?? '';
+            document.getElementById('customerDepositDate').value = c.depositDate ?? '翌末日';
+            document.getElementById('customerTaxDisplay').value = c.taxDisplay ?? '';
+            document.getElementById('customerMemo').value = c.memo ?? '';
+            customerModal.show();
+          } else {
+            showErrorToast('顧客情報の取得に失敗しました');
+          }
+          showLoading(false);
+        })
+        .withFailureHandler(function(e) {
+          console.error('顧客詳細取得エラー:', e);
+          showLoading(false);
+          showErrorToast('顧客情報の取得に失敗しました');
+        })
+        .getCustomerDetail(rowIndex);
+    }
+
+    function clearModalForm() {
+      document.getElementById('customerClass').value = '';
+      document.getElementById('customerShowName').value = '';
+      document.getElementById('customerFurigana').value = '';
+      document.getElementById('customerCompanyName').value = '';
+      document.getElementById('customerDepartment').value = '';
+      document.getElementById('customerPost').value = '';
+      document.getElementById('customerPersonName').value = '';
+      document.getElementById('customerZipcode').value = '';
+      document.getElementById('customerAddress1').value = '';
+      document.getElementById('customerAddress2').value = '';
+      document.getElementById('customerTel').value = '';
+      document.getElementById('customerPhone').value = '';
+      document.getElementById('customerFax').value = '';
+      document.getElementById('customerEmail').value = '';
+      document.getElementById('customerBill').value = '';
+      document.getElementById('customerDepositDate').value = '翌末日';
+      document.getElementById('customerTaxDisplay').value = '';
+      document.getElementById('customerMemo').value = '';
+      document.getElementById('customerSameShippingTo').checked = false;
+    }
+
+    function getCustomerAddress() {
+      const zipcode = document.getElementById('customerZipcode').value.trim();
+      if (!/^\d{7}$/.test(zipcode)) return;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result) {
+            const addr = JSON.parse(result);
+            document.getElementById('customerAddress1').value =
+              (addr.address1 || '') + (addr.address2 || '') + (addr.address3 || '');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('住所取得エラー:', error);
+        })
+        .getAddressFromPostalCode(JSON.stringify({ postalCode: zipcode }));
+    }
+
+    function saveCustomer() {
+      const companyName = document.getElementById('customerCompanyName').value.trim();
+      const personName = document.getElementById('customerPersonName').value.trim();
+
+      if (!companyName && !personName) {
+        showErrorToast('会社名または氏名を入力してください');
+        return;
+      }
+
+      const zipcode = document.getElementById('customerZipcode').value.trim();
+      if (!zipcode) {
+        showErrorToast('郵便番号を入力してください');
+        return;
+      }
+      if (!/^\d{7}$/.test(zipcode)) {
+        showErrorToast('郵便番号は7桁の数字で入力してください');
+        return;
+      }
+
+      const address1 = document.getElementById('customerAddress1').value.trim();
+      if (!address1) {
+        showErrorToast('住所１を入力してください');
+        return;
+      }
+
+      const tel = document.getElementById('customerTel').value.trim();
+      if (!tel) {
+        showErrorToast('電話番号を入力してください');
+        return;
+      }
+      if (!/^0\d{9,10}$/.test(tel)) {
+        showErrorToast('電話番号は10〜11桁の数字で入力してください');
+        return;
+      }
+
+      const phone = document.getElementById('customerPhone').value.trim();
+      if (phone && !/^0\d{9,10}$/.test(phone)) {
+        showErrorToast('携帯電話は10〜11桁の数字で入力してください');
+        return;
+      }
+
+      const fax = document.getElementById('customerFax').value.trim();
+      if (fax && !/^0\d{9,10}$/.test(fax)) {
+        showErrorToast('FAXは10〜11桁の数字で入力してください');
+        return;
+      }
+
+      const email = document.getElementById('customerEmail').value.trim();
+      if (email && !/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/.test(email)) {
+        showErrorToast('メールアドレスは正しい形式で入力してください');
+        return;
+      }
+
+      const data = {
+        class: document.getElementById('customerClass').value,
+        showName: document.getElementById('customerShowName').value,
+        furigana: document.getElementById('customerFurigana').value,
+        companyName: companyName,
+        department: document.getElementById('customerDepartment').value,
+        post: document.getElementById('customerPost').value,
+        personName: personName,
+        zipcode: zipcode,
+        address1: address1,
+        address2: document.getElementById('customerAddress2').value,
+        tel: tel,
+        phone: phone,
+        fax: fax,
+        email: email,
+        bill: document.getElementById('customerBill').value,
+        depositDate: document.getElementById('customerDepositDate').value,
+        taxDisplay: document.getElementById('customerTaxDisplay').value,
+        memo: document.getElementById('customerMemo').value
+      };
+
+      const rowIndex = document.getElementById('editRowIndex').value;
+      const sameShippingTo = document.getElementById('customerSameShippingTo').checked;
+
+      showLoading(true);
+
+      if (rowIndex) {
+        // 編集時
+        if (sameShippingTo) {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              showLoading(false);
+              if (result.success) {
+                showSuccessToast(result.message);
+                customerModal.hide();
+                loadCustomers();
+              } else {
+                showErrorToast(result.message);
+              }
+            })
+            .withFailureHandler(function(e) {
+              showLoading(false);
+              showErrorToast('更新に失敗しました');
+            })
+            .updateCustomerShippingTo(Number(rowIndex), data);
+        } else {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              showLoading(false);
+              if (result.success) {
+                showSuccessToast(result.message);
+                customerModal.hide();
+                loadCustomers();
+              } else {
+                showErrorToast(result.message);
+              }
+            })
+            .withFailureHandler(function(e) {
+              showLoading(false);
+              showErrorToast('更新に失敗しました');
+            })
+            .updateCustomer(Number(rowIndex), data);
+        }
+      } else {
+        // 新規登録時
+        if (sameShippingTo) {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              showLoading(false);
+              if (result.success) {
+                showSuccessToast(result.message);
+                customerModal.hide();
+                loadCustomers();
+              } else {
+                showErrorToast(result.message);
+              }
+            })
+            .withFailureHandler(function(e) {
+              showLoading(false);
+              showErrorToast('登録に失敗しました');
+            })
+            .addCustomerShippingToFromList(data);
+        } else {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              showLoading(false);
+              if (result.success) {
+                showSuccessToast(result.message);
+                customerModal.hide();
+                loadCustomers();
+              } else {
+                showErrorToast(result.message);
+              }
+            })
+            .withFailureHandler(function(e) {
+              showLoading(false);
+              showErrorToast('登録に失敗しました');
+            })
+            .addCustomerFromList(data);
+        }
+      }
+    }
+
+    function openDeleteModal(rowIndex, customerName) {
+      document.getElementById('deleteRowIndex').value = rowIndex;
+      document.getElementById('deleteCustomerName').textContent = customerName;
+      deleteModal.show();
+    }
+
+    function confirmDelete() {
+      const rowIndex = document.getElementById('deleteRowIndex').value;
+
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showLoading(false);
+          if (result.success) {
+            showSuccessToast(result.message);
+            deleteModal.hide();
+            loadCustomers();
+          } else {
+            showErrorToast(result.message);
+          }
+        })
+        .withFailureHandler(function(e) {
+          showLoading(false);
+          showErrorToast('削除に失敗しました');
+        })
+        .deleteCustomer(Number(rowIndex));
+    }
+
+    function showLoading(show) {
+      const overlay = document.getElementById('loadingOverlay');
+      if (show) {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+  </script>
+</body>
+
+</html>
