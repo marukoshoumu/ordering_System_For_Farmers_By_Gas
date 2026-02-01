@@ -853,6 +853,10 @@
 
     function initQuagga() {
       isScannerProcessing = false;
+      // Remove any previously registered handler before adding a new one
+      if (typeof Quagga !== 'undefined' && Quagga.offDetected) {
+        Quagga.offDetected(onQuaggaDetected);
+      }
       Quagga.init({
         inputStream: {
           name: "Live",
@@ -871,7 +875,10 @@
         }
         Quagga.start();
       });
-      Quagga.onDetected(onQuaggaDetected);
+      // Safely register the handler after ensuring previous one is removed
+      if (typeof Quagga !== 'undefined' && Quagga.onDetected) {
+        Quagga.onDetected(onQuaggaDetected);
+      }
     }
 
     function onQuaggaDetected(data) {

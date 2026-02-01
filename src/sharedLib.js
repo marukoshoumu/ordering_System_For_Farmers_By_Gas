@@ -423,11 +423,23 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
 
   // 該当する受注IDの全行を更新
   let updatedCount = 0;
+  const numRows = data.length - 1; // ヘッダー行を除く
+  const startRow = 2; // データ行の開始行（1-indexed）
+  
+  // 出荷済み列の値を2D配列として取得
+  const updatedColumnArray = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][orderIdCol] === orderId) {
-      sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
+      updatedColumnArray.push([shippedValue]);
       updatedCount++;
+    } else {
+      updatedColumnArray.push([data[i][shippedCol]]);
     }
+  }
+  
+  // 一度にすべての変更を書き戻す
+  if (updatedCount > 0) {
+    sheet.getRange(startRow, shippedCol + 1, numRows, 1).setValues(updatedColumnArray);
   }
 
   if (updatedCount === 0) {

@@ -4,6 +4,11 @@
 // shipping.htmlから分離
 // ========================================
 
+// グローバル変数宣言: 手動選択データ（AI解析との統合用）
+// 複数のスクリプト間で共有されるため、windowオブジェクトに明示的に定義
+var manualCustomerSelection = null;
+var manualShippingToSelection = null;
+
 /**
  * HTMLエスケープ（XSS対策）
  * @param {*} str - 任意の値
@@ -279,7 +284,7 @@ function applyName(num) {
   const tel = parsed.tel;
 
   // 手動選択データを保存
-  manualCustomerSelection = {
+  window.manualCustomerSelection = {
     companyName: companyName,
     personName: personName,
     displayName: companyName || personName,
@@ -288,7 +293,7 @@ function applyName(num) {
     tel: tel,
     source: 'manual_search'
   };
-  console.log('検索から選択した顧客データを保存:', manualCustomerSelection);
+  console.log('検索から選択した顧客データを保存:', window.manualCustomerSelection);
 
   if (companyName) {
     $('input[id="customerName"]').val(companyName + "　" + personName);
@@ -456,7 +461,7 @@ function applyShippingToName(num) {
   const tel = parsed.tel;
 
   // 手動選択データを保存
-  manualShippingToSelection = {
+  window.manualShippingToSelection = {
     companyName: companyName,
     personName: personName,
     zipcode: zipcode,
@@ -464,7 +469,7 @@ function applyShippingToName(num) {
     tel: tel,
     source: 'manual_search'
   };
-  console.log('検索から選択した発送先データを保存:', manualShippingToSelection);
+  console.log('検索から選択した発送先データを保存:', window.manualShippingToSelection);
 
   if (companyName) {
     $('input[id="shippingToName"]').val(companyName + "　" + personName);

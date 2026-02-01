@@ -47,9 +47,9 @@ function calcNextShippingDateFlexible(baseDate, intervalObj) {
   switch (intervalObj.type) {
     case 'weekly':
       // 次の指定曜日（value = 1-7, 1=月曜）
-      var targetDay = Number(intervalObj.value) || 1;
-      var currentDay = d.getDay() || 7; // 日曜=0 → 7
-      var diff = (targetDay - currentDay + 7) % 7;
+      const targetDay = Number(intervalObj.value) || 1;
+      const currentDay = d.getDay() || 7; // 日曜=0 → 7
+      let diff = (targetDay - currentDay + 7) % 7;
       if (diff === 0) diff = 7; // 同じ曜日なら来週
       d.setDate(d.getDate() + diff);
       return d;
@@ -58,10 +58,10 @@ function calcNextShippingDateFlexible(baseDate, intervalObj) {
     case 'biweekly':
     case 'triweekly':
       // n週ごと（value = 週数, weekday = 曜日番号1-7）
-      var n = Number(intervalObj.value) || 2;
-      var weekday = Number(intervalObj.weekday) || 1;
-      var currentDay2 = d.getDay() || 7;
-      var daysToAdd = (weekday - currentDay2 + 7) % 7;
+      const n = Number(intervalObj.value) || 2;
+      const weekday = Number(intervalObj.weekday) || 1;
+      const currentDay2 = d.getDay() || 7;
+      let daysToAdd = (weekday - currentDay2 + 7) % 7;
       if (daysToAdd === 0) daysToAdd = 7 * n;
       else daysToAdd += 7 * (n - 1);
       d.setDate(d.getDate() + daysToAdd);
@@ -74,10 +74,10 @@ function calcNextShippingDateFlexible(baseDate, intervalObj) {
       } else if (intervalObj.value === 'last') {
         d.setMonth(d.getMonth() + 2, 0); // 翌月の0日 = 今月末
       } else {
-        var targetDayOfMonth = Number(intervalObj.value) || 1;
+        const targetDayOfMonth = Number(intervalObj.value) || 1;
         d.setMonth(d.getMonth() + 1);
         // 月末調整
-        var lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         d.setDate(Math.min(targetDayOfMonth, lastDay));
       }
       return d;
@@ -86,12 +86,12 @@ function calcNextShippingDateFlexible(baseDate, intervalObj) {
     case '2month':
     case '3month':
       // nヶ月ごと
-      var months2 = Number(intervalObj.value) || 1;
+      const months2 = Number(intervalObj.value) || 1;
       return addMonthsWithAdjustment(d, months2);
 
     default:
       // 旧形式互換: 数値として扱う
-      var months3 = Number(intervalObj.value) || Number(intervalObj) || 1;
+      const months3 = Number(intervalObj.value) || Number(intervalObj) || 1;
       return addMonthsWithAdjustment(d, months3);
   }
 }

@@ -2161,8 +2161,8 @@ function createOrder(e) {
 
     // 紐付け受注IDの設定
     let linkedOrderId = '';
-    if (dateIndex === 1) {
-      firstOrderId = deliveryId;  // 最初の受注IDを保持
+    if (!firstOrderId && shippingDate) {
+      firstOrderId = deliveryId;  // 最初の非空出荷日の受注IDを保持
     } else {
       linkedOrderId = firstOrderId;  // 2つ目以降は最初のIDを紐付け
     }

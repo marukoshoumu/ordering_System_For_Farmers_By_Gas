@@ -649,7 +649,9 @@
 
         const editBtn = document.createElement('button');
         editBtn.className = 'btn btn-outline-primary btn-sm me-1';
-        editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+        const editIcon = document.createElement('i');
+        editIcon.className = 'bi bi-pencil';
+        editBtn.appendChild(editIcon);
         editBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           openEditModal(p.rowIndex);
@@ -658,7 +660,9 @@
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn btn-outline-danger btn-sm';
-        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        const deleteIcon = document.createElement('i');
+        deleteIcon.className = 'bi bi-trash';
+        deleteBtn.appendChild(deleteIcon);
         deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           openDeleteModal(p.rowIndex, p.name);

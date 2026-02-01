@@ -372,17 +372,39 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
     throw new Error('必要な列が見つかりません');
   }
 
-  // 該当する受注IDの全行を更新
-  let updatedCount = 0;
+  // 該当する受注IDの全行を更新（バッチ処理で最適化）
+  const matchingRowIndices = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][orderIdCol] === orderId) {
-      sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
-      updatedCount++;
+      matchingRowIndices.push(i);
     }
   }
 
+  const updatedCount = matchingRowIndices.length;
   if (updatedCount === 0) {
     throw new Error('該当する受注IDが見つかりません: ' + orderId);
+  }
+
+  // バッチ更新: 2D配列を作成して一度に更新
+  const valuesArray = matchingRowIndices.map(() => [shippedValue]);
+  
+  // 連続する行をグループ化してバッチ更新
+  let startIdx = 0;
+  while (startIdx < matchingRowIndices.length) {
+    let endIdx = startIdx;
+    // 連続する行を見つける
+    while (endIdx + 1 < matchingRowIndices.length && 
+           matchingRowIndices[endIdx + 1] === matchingRowIndices[endIdx] + 1) {
+      endIdx++;
+    }
+    
+    const startRow = matchingRowIndices[startIdx] + 1; // +1 for 1-based indexing
+    const numRows = endIdx - startIdx + 1;
+    const batchValues = valuesArray.slice(startIdx, endIdx + 1);
+    
+    sheet.getRange(startRow, shippedCol + 1, numRows, 1).setValues(batchValues);
+    
+    startIdx = endIdx + 1;
   }
 
   return { success: true, updatedRows: updatedCount };

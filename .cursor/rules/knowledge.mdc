@@ -1,0 +1,37 @@
+---
+description: ナレッジベース参照 - 直近のナレッジを参照する
+globs: 
+alwaysApply: false
+---
+
+# ナレッジベース参照
+
+このプロジェクト（農家向け受注管理システム）の詳細ナレッジは以下で管理されている。
+
+- **パス**: `${KNOWLEDGE_DIR:-$HOME/knowledge}` (環境変数 `KNOWLEDGE_DIR` が設定されていない場合は `$HOME/knowledge` を使用)
+- **ordering-system 用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` (環境変数 `ORDERING_PROJECT_DIR` が設定されていない場合は `$KNOWLEDGE_DIR/projects/ordering-system/` を使用)
+
+## セッション開始時・設計判断時
+
+1. **まず参照**: プロジェクトルートの `KNOWLEDGE_REFERENCE.md` で直近のステータス・セッション要約を確認する。
+2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `_README.md` または `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` 内のドキュメントを参照する。
+3. **エージェント用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}AGENT.md` でクイックスタート、`SKILLS.md` で頻出タスクパターンを確認する。
+
+## 主なドキュメント
+
+- 現在のステータス: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}CURRENT_STATUS.md`
+- セッション履歴: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}sessions/`
+- 機能・設計: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}docs/`
+
+## 環境変数の設定
+
+これらのパスをカスタマイズするには、以下の環境変数を設定してください：
+
+- `KNOWLEDGE_DIR`: ナレッジベースのルートディレクトリ（デフォルト: `$HOME/knowledge`）
+- `ORDERING_PROJECT_DIR`: ordering-system プロジェクトのディレクトリ（デフォルト: `$KNOWLEDGE_DIR/projects/ordering-system/`）
+
+例（`.env` またはシェル設定ファイル）:
+```bash
+export KNOWLEDGE_DIR="/path/to/your/knowledge"
+export ORDERING_PROJECT_DIR="/path/to/your/ordering-system"
+```

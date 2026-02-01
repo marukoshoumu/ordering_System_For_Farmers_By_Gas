@@ -343,10 +343,19 @@ function createFreeeDetailRow(order, productInfo, deliveryDate) {
 function convertTaxRateForFreee(taxRate) {
   const rate = Number(taxRate);
 
-  if (rate > 8) {
+  // Handle NaN explicitly - return null as safe default for invalid input
+  if (isNaN(rate)) {
+    return null;
+  }
+
+  // Explicit mapping: only return known rates
+  if (rate === 10) {
     return '10%';
-  } else {
+  } else if (rate === 8) {
     return '8% (軽減税率)'; // 半角スペース1個 + 半角カッコ
+  } else {
+    // Return null for unknown rates to avoid misclassification
+    return null;
   }
 }
 

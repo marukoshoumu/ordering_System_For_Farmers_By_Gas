@@ -138,8 +138,12 @@ function getOrderByOrderId(orderId) {
     return dateA - dateB;
   });
 
-  // 最初のグループの最初の行を基本情報として使用
-  const matchingRows = orderGroups[0].rows;
+  // 親グループを優先的に選択（親IDと一致するグループを探す）
+  const parentGroup = orderGroups.find(g => g.orderId === parentId);
+  const selectedGroup = parentGroup || orderGroups[0];
+
+  // 選択されたグループの最初の行を基本情報として使用
+  const matchingRows = selectedGroup.rows;
   const firstRow = matchingRows[0];
 
   // 納品方法を先に取得（ヤマト/佐川の判定に使用）

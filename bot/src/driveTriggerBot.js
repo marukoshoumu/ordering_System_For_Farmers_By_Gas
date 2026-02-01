@@ -195,6 +195,8 @@ function moveFileToFolder(file, targetFolder) {
     Logger.log('ファイル移動エラー: ' + error.toString());
     
     // 方法2: フォールバック - コピーして元ファイルをゴミ箱に移動
+    // 注意: この方法では、file.setTrashed() または newFile.setTrashed() が権限エラーなどで失敗すると、
+    // 元ファイルとコピーファイルの両方が残り、重複ファイルが発生する可能性があります。
     let newFile = null;
     try {
       newFile = file.makeCopy(file.getName(), targetFolder);
@@ -205,13 +207,19 @@ function moveFileToFolder(file, targetFolder) {
       Logger.log('フォールバック移動も失敗: ' + fallbackError.toString());
       
       // setTrashedが失敗した場合、作成したコピーを削除してクリーンアップ
+      // 注意: このクリーンアップも失敗すると、重複ファイルが残る可能性があります
       if (newFile) {
         try {
           newFile.setTrashed(true);
           Logger.log('作成したコピーファイルを削除しました: ' + newFile.getName());
         } catch (cleanupError) {
-          Logger.log('コピーファイルの削除に失敗: ' + cleanupError.toString());
+          Logger.log('可能な重複: コピーが残っています: ' + newFile.getName() + ' - ' + cleanupError.toString());
         }
+      }
+      
+      // フォールバックエラー時にnewFileが存在する場合、重複ファイルの可能性を警告
+      if (newFile) {
+        Logger.log('可能な重複: コピーが残っています: ' + newFile.getName() + ' - フォールバックエラー: ' + fallbackError.toString());
       }
       
       // エラーを伝播して呼び出し元に失敗を通知
@@ -981,15 +989,6 @@ function normalizeTelForMatch(tel) {
   if (!tel) return '';
   const normalized = String(tel).replace(/[^0-9]/g, '');
   return (normalized.length >= 10 && normalized.length <= 11) ? normalized : '';
-}
-
-/**
- * 郵便番号正規化
- */
-function normalizeZipcodeForMatch(zipcode) {
-  if (!zipcode) return '';
-  const normalized = String(zipcode).replace(/[^0-9]/g, '');
-  return normalized.length === 7 ? normalized : '';
 }
 
 /**
