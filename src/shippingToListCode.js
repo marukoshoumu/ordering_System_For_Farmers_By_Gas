@@ -311,12 +311,63 @@ function deleteShippingTo(rowIndex) {
     }
     rowIndex = validation.rowIndex;
 
-    // メインシートから削除
-    sheet.deleteRow(rowIndex);
+    // 行データをキャッシュ（ロールバック用）
+    var cachedMainRow = null;
+    var cachedBkRow = null;
+    var mainDeletePerformed = false;
+    var bkDeletePerformed = false;
 
-    // BKシートからも削除
-    if (sheetBk) {
-      sheetBk.deleteRow(rowIndex);
+    try {
+      // メインシートの行データをキャッシュ
+      var mainLastCol = sheet.getLastColumn();
+      if (mainLastCol > 0) {
+        cachedMainRow = sheet.getRange(rowIndex, 1, 1, mainLastCol).getValues();
+      }
+
+      // BKシートの行データをキャッシュ（存在する場合）
+      if (sheetBk) {
+        var bkLastCol = sheetBk.getLastColumn();
+        if (bkLastCol > 0) {
+          cachedBkRow = sheetBk.getRange(rowIndex, 1, 1, bkLastCol).getValues();
+        }
+      }
+
+      // アトミック削除: BKシートから先に削除（存在する場合）
+      if (sheetBk) {
+        try {
+          sheetBk.deleteRow(rowIndex);
+          bkDeletePerformed = true;
+        } catch (bkError) {
+          Logger.log('BKシート削除エラー: ' + bkError.message);
+          throw bkError; // BK削除失敗時は処理を中断
+        }
+      }
+
+      // メインシートから削除
+      try {
+        sheet.deleteRow(rowIndex);
+        mainDeletePerformed = true;
+      } catch (mainError) {
+        Logger.log('メインシート削除エラー: ' + mainError.message);
+        
+        // メインシート削除失敗時はBKシートを復元
+        if (bkDeletePerformed && sheetBk && cachedBkRow) {
+          try {
+            sheetBk.insertRowBefore(rowIndex);
+            var bkRange = sheetBk.getRange(rowIndex, 1, 1, cachedBkRow[0].length);
+            bkRange.setValues(cachedBkRow);
+            Logger.log('BKシートをロールバックしました');
+          } catch (rollbackError) {
+            Logger.log('BKシートロールバックエラー: ' + rollbackError.message);
+            // ロールバック失敗も含めて元のエラーを再スロー
+          }
+        }
+        throw mainError; // エラーを再スローして呼び出し元で処理可能にする
+      }
+
+    } catch (deleteError) {
+      Logger.log('deleteShippingTo 削除処理エラー: ' + deleteError.message);
+      throw deleteError; // エラーを再スロー
     }
 
     // キャッシュを更新
