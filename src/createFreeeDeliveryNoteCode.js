@@ -336,16 +336,16 @@ function createFreeeDetailRow(order, productInfo, deliveryDate) {
  * freeeでは「8% (軽減税率)」「10%」という文字列形式が必要。
  *
  * @param {number|string} taxRate - 商品マスタの税率（8 or 10）
- * @returns {string} freee形式の税率（"8% (軽減税率)" or "10%"）
+ * @returns {string} freee形式の税率（"8% (軽減税率)" or "10%"）。無効な値の場合は空文字列を返す
  *
  * @note スペースは半角1個、カッコは半角
  */
 function convertTaxRateForFreee(taxRate) {
   const rate = Number(taxRate);
 
-  // Handle NaN explicitly - return null as safe default for invalid input
+  // Handle NaN explicitly - return empty string as safe default for invalid input
   if (isNaN(rate)) {
-    return null;
+    return '';
   }
 
   // Explicit mapping: only return known rates
@@ -354,8 +354,8 @@ function convertTaxRateForFreee(taxRate) {
   } else if (rate === 8) {
     return '8% (軽減税率)'; // 半角スペース1個 + 半角カッコ
   } else {
-    // Return null for unknown rates to avoid misclassification
-    return null;
+    // Return empty string for unknown rates to avoid misclassification
+    return '';
   }
 }
 

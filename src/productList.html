@@ -729,13 +729,19 @@
 
         const editBtnMobile = document.createElement('button');
         editBtnMobile.className = 'btn btn-outline-primary btn-sm';
-        editBtnMobile.innerHTML = '<i class="bi bi-pencil"></i> 編集';
+        const editIconMobile = document.createElement('i');
+        editIconMobile.className = 'bi bi-pencil';
+        editBtnMobile.appendChild(editIconMobile);
+        editBtnMobile.appendChild(document.createTextNode(' 編集'));
         editBtnMobile.addEventListener('click', function() { openEditModal(p.rowIndex); });
         buttons.appendChild(editBtnMobile);
 
         const deleteBtnMobile = document.createElement('button');
         deleteBtnMobile.className = 'btn btn-outline-danger btn-sm';
-        deleteBtnMobile.innerHTML = '<i class="bi bi-trash"></i> 削除';
+        const deleteIconMobile = document.createElement('i');
+        deleteIconMobile.className = 'bi bi-trash';
+        deleteBtnMobile.appendChild(deleteIconMobile);
+        deleteBtnMobile.appendChild(document.createTextNode(' 削除'));
         deleteBtnMobile.addEventListener('click', function() { openDeleteModal(p.rowIndex, p.name); });
         buttons.appendChild(deleteBtnMobile);
 
@@ -847,15 +853,45 @@
         return;
       }
 
+      // Validate numeric fields
+      const priceStr = document.getElementById('productPrice').value.trim();
+      const costStr = document.getElementById('productCost').value.trim();
+      const stockStr = document.getElementById('productStock').value.trim();
+      const taxRateStr = document.getElementById('productTaxRate').value.trim();
+
+      const price = parseFloat(priceStr);
+      if (!isFinite(price) || price < 0) {
+        showErrorToast('商品価格は0以上の数値を入力してください');
+        return;
+      }
+
+      const cost = parseFloat(costStr);
+      if (!isFinite(cost) || cost < 0) {
+        showErrorToast('原価は0以上の数値を入力してください');
+        return;
+      }
+
+      const stock = parseFloat(stockStr);
+      if (!isFinite(stock) || stock < 0) {
+        showErrorToast('在庫数は0以上の数値を入力してください');
+        return;
+      }
+
+      const taxRate = parseFloat(taxRateStr);
+      if (!isFinite(taxRate) || taxRate < 0) {
+        showErrorToast('消費税率は0以上の数値を入力してください');
+        return;
+      }
+
       const data = {
         category: category,
         name: name,
         abbr: document.getElementById('productAbbr').value,
         invoiceName: document.getElementById('productInvoiceName').value,
-        price: document.getElementById('productPrice').value,
-        cost: document.getElementById('productCost').value,
-        taxRate: document.getElementById('productTaxRate').value,
-        stock: document.getElementById('productStock').value,
+        price: price,
+        cost: cost,
+        taxRate: taxRate,
+        stock: stock,
         unit: document.getElementById('productUnit').value,
         accountTitle: document.getElementById('productAccountTitle').value,
         taxCategory: document.getElementById('productTaxCategory').value,

@@ -8,8 +8,14 @@ alwaysApply: false
 
 このプロジェクト（農家向け受注管理システム）の詳細ナレッジは以下で管理されている。
 
-- **パス**: `${KNOWLEDGE_DIR:-$HOME/knowledge}` (環境変数 `KNOWLEDGE_DIR` が設定されていない場合は `$HOME/knowledge` を使用)
-- **ordering-system 用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` (環境変数 `ORDERING_PROJECT_DIR` が設定されていない場合は `$KNOWLEDGE_DIR/projects/ordering-system/` を使用)
+- **パス**: 環境変数形式: `${KNOWLEDGE_DIR:-$HOME/knowledge}` または `$HOME/knowledge`
+  - プロジェクトルートからの相対パス: `<project-root>/knowledge` または `./knowledge`
+  - リポジトリルートからの相対パス: `projects/ordering-system` なども使用可能
+- **ordering-system 用**: 環境変数形式: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` または `$HOME/knowledge/projects/ordering-system/`
+  - プロジェクトルートからの相対パス: `<project-root>/knowledge/projects/ordering-system/` または `./knowledge/projects/ordering-system/`
+  - リポジトリルートからの相対パス: `projects/ordering-system/` なども使用可能
+
+**注意**: 共有ナレッジディレクトリを使用する場合、`.gitignore` と競合しないことを確認してください。リポジトリ内にナレッジディレクトリを作成する場合は、`.gitignore` に適切な設定を追加することを検討してください。
 
 ## セッション開始時・設計判断時
 

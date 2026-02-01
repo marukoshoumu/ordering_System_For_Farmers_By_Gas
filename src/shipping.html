@@ -479,16 +479,22 @@
               }
               // 次回発送日入力欄を表示
               document.getElementById('recurringNextDateRow').style.display = '';
-              // 定期タイプ変更時に次回発送日を自動計算
-              updateRecurringNextDate();
+              // 定期タイプ変更時に次回発送日を自動計算（shippingDate1が存在し値がある場合のみ）
+              var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
+              if (shippingDateInput && shippingDateInput.value) {
+                updateRecurringNextDate();
+              }
             }
             // 初期化
             document.addEventListener('DOMContentLoaded', function() {
-              if (document.getElementById('recurringType')) onRecurringTypeChange();
-              // 発送日変更時に次回発送日を自動計算
               var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
+              // 発送日変更時に次回発送日を自動計算
               if (shippingDateInput) {
                 shippingDateInput.addEventListener('change', updateRecurringNextDate);
+              }
+              // shippingDate1が存在し、値がある場合のみonRecurringTypeChangeを呼び出す
+              if (document.getElementById('recurringType') && shippingDateInput && shippingDateInput.value) {
+                onRecurringTypeChange();
               }
             });
             </script>

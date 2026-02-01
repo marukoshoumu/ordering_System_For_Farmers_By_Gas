@@ -6,8 +6,8 @@
 
 // グローバル変数宣言: 手動選択データ（AI解析との統合用）
 // 複数のスクリプト間で共有されるため、windowオブジェクトに明示的に定義
-var manualCustomerSelection = null;
-var manualShippingToSelection = null;
+window.manualCustomerSelection = null;
+window.manualShippingToSelection = null;
 
 /**
  * HTMLエスケープ（XSS対策）

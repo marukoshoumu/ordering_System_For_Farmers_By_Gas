@@ -853,31 +853,33 @@
 
     function initQuagga() {
       isScannerProcessing = false;
-      // Remove any previously registered handler before adding a new one
-      if (typeof Quagga !== 'undefined' && Quagga.offDetected) {
-        Quagga.offDetected(onQuaggaDetected);
-      }
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#scannerView'),
-          constraints: { facingMode: "environment" },
-        },
-        decoder: {
-          readers: ["code_128_reader", "codabar_reader", "code_39_reader"]
-        },
-        locate: true
-      }, function (err) {
-        if (err) {
-          showScannerError("カメラの起動に失敗しました。");
-          return;
-        }
-        Quagga.start();
-      });
-      // Safely register the handler after ensuring previous one is removed
-      if (typeof Quagga !== 'undefined' && Quagga.onDetected) {
-        Quagga.onDetected(onQuaggaDetected);
+      if (typeof Quagga !== 'undefined') {
+        Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#scannerView'),
+            constraints: { facingMode: "environment" },
+          },
+          decoder: {
+            readers: ["code_128_reader", "codabar_reader", "code_39_reader"]
+          },
+          locate: true
+        }, function (err) {
+          if (err) {
+            showScannerError("カメラの起動に失敗しました。");
+            return;
+          }
+          Quagga.start();
+          // Remove any previously registered handler before adding a new one
+          if (Quagga.offDetected) {
+            Quagga.offDetected(onQuaggaDetected);
+          }
+          // Register the handler only after successful initialization
+          if (Quagga.onDetected) {
+            Quagga.onDetected(onQuaggaDetected);
+          }
+        });
       }
     }
 
