@@ -211,6 +211,28 @@ function addProduct(data) {
 }
 
 /**
+ * rowIndexを正規化して検証する
+ * @param {*} rowIndex - 行番号（数値または文字列）
+ * @param {Sheet} sheet - シートオブジェクト
+ * @returns {Object} { success: boolean, rowIndex?: number, message?: string }
+ */
+function normalizeAndValidateRowIndex(rowIndex, sheet) {
+  var normalized = Number(rowIndex);
+  if (!isFinite(normalized)) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+  
+  normalized = Math.floor(normalized);
+  var maxRow = sheet.getLastRow();
+  
+  if (normalized < 2 || normalized > maxRow) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+  
+  return { success: true, rowIndex: normalized };
+}
+
+/**
  * 商品を更新する
  * @param {number} rowIndex - 行番号
  * @param {Object} data - 商品データ
@@ -228,11 +250,11 @@ function updateProduct(rowIndex, data) {
       return { success: false, message: '商品シートが見つかりません' };
     }
 
-    rowIndex = Math.floor(Number(rowIndex));
-    var maxRow = sheet.getLastRow();
-    if (!isFinite(rowIndex) || !Number.isInteger(rowIndex) || rowIndex < 2 || rowIndex > maxRow) {
-      return { success: false, message: '無効なrowIndex' };
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
+    if (!validation.success) {
+      return { success: false, message: validation.message };
     }
+    rowIndex = validation.rowIndex;
 
     var dateNow = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd');
 
@@ -295,10 +317,11 @@ function deleteProduct(rowIndex) {
       return { success: false, message: '商品シートが見つかりません' };
     }
 
-    var lastRow = sheet.getLastRow();
-    if (!Number.isInteger(rowIndex) || !isFinite(rowIndex) || rowIndex <= 1 || rowIndex > lastRow) {
-      return { success: false, message: 'Invalid row index' };
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
+    if (!validation.success) {
+      return { success: false, message: validation.message };
     }
+    rowIndex = validation.rowIndex;
 
     sheet.deleteRow(rowIndex);
 
@@ -485,10 +508,11 @@ function getProductDetail(rowIndex) {
       return null;
     }
 
-    var lastRow = sheet.getLastRow();
-    if (!Number.isInteger(rowIndex) || !isFinite(rowIndex) || rowIndex < 2 || rowIndex > lastRow) {
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
+    if (!validation.success) {
       return null;
     }
+    rowIndex = validation.rowIndex;
 
     var headers = getProductSheetHeaders();
     var values = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
