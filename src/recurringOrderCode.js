@@ -725,7 +725,7 @@ function createYamatoCsvFromRecurring(recurringOrder, deliveryId) {
   yamatoRecord['伝票番号'] = '';
   yamatoRecord['出荷予定日'] = shippingDate;
   yamatoRecord['お届け予定（指定）日'] = deliveryDate;
-  yamatoRecord['配達時間帯'] = getCodeFromMaster(deliveryTimes, recurringOrder['配達時間帯']);
+  yamatoRecord['配達時間帯'] = getCodeFromMaster(deliveryTimes, recurringOrder['配達時間帯'], '時間指定');
   yamatoRecord['お届け先コード'] = '';
   yamatoRecord['お届け先電話番号'] = recurringOrder['発送先電話番号'] || '';
   yamatoRecord['お届け先電話番号枝番'] = '';
@@ -932,7 +932,7 @@ function createSagawaCsvFromRecurring(recurringOrder, deliveryId) {
   sagawaRecord['スピード指定'] = '000';
   sagawaRecord['クール便指定'] = getCodeFromMaster(coolClss, recurringOrder['クール区分']);
   sagawaRecord['配達日'] = deliveryDate;
-  sagawaRecord['配達指定時間帯'] = getCodeFromMaster(deliveryTimes, recurringOrder['配達時間帯']);
+  sagawaRecord['配達指定時間帯'] = getCodeFromMaster(deliveryTimes, recurringOrder['配達時間帯'], '時間指定');
   sagawaRecord['配達指定時間（時分）'] = '';
   sagawaRecord['代引金額'] = recurringOrder['代引総額'] || '';
   sagawaRecord['消費税'] = recurringOrder['代引内税'] || '';

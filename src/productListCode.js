@@ -443,6 +443,14 @@ function addProductCategory(categoryName) {
  */
 function deleteProductCategory(rowIndex) {
   try {
+    // rowIndexを整数に変換
+    rowIndex = parseInt(rowIndex, 10);
+    
+    // NaNチェック
+    if (isNaN(rowIndex)) {
+      return { success: false, message: '無効な行番号' };
+    }
+    
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) {
       ss = SpreadsheetApp.openById(getMasterSpreadsheetId());

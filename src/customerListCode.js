@@ -646,19 +646,13 @@ function updateCustomerShippingTo(customerRowIndex, customerData) {
     var originalPersonName = (originalRow[6] || '').toString().trim();
     var originalZipcode = (originalRow[7] || '').toString().trim();
     
-    // 元の値で発送先情報を検索
-    var shippingTo = findShippingToByCustomer(originalCompanyName, originalPersonName, originalZipcode);
-    
-    // 顧客情報を更新
-    var customerResult = updateCustomer(customerRowIndex, customerData);
-    if (!customerResult.success) {
-      return customerResult;
-    }
-
     // 更新後の値で発送先情報を検索（新規作成または更新用）
     var companyName = (customerData.companyName || '').toString().trim();
     var personName = (customerData.personName || '').toString().trim();
     var zipcode = (customerData.zipcode || '').toString().trim();
+
+    // 元の値で発送先情報を検索
+    var shippingTo = findShippingToByCustomer(originalCompanyName, originalPersonName, originalZipcode);
 
     var shippingToSheet = ss.getSheetByName('発送先情報');
     var shippingToBkSheet = ss.getSheetByName('発送先情報BK');
@@ -680,40 +674,90 @@ function updateCustomerShippingTo(customerRowIndex, customerData) {
       customerData.memo || ''
     ];
 
-    if (shippingTo.found) {
-      // 既存の発送先情報を更新
-      var shippingToRowIndex = shippingTo.rowIndex;
+    // 発送先情報を先に更新（原子性を保つため）
+    try {
+      if (shippingTo.found) {
+        // 既存の発送先情報を更新
+        var shippingToRowIndex = shippingTo.rowIndex;
 
-      shippingToSheet.getRange(shippingToRowIndex, 1, 1, shippingToRow.length)
-        .setNumberFormat('@')
-        .setValues([shippingToRow])
-        .setBorder(true, true, true, true, true, true);
-
-      if (shippingToBkSheet) {
-        shippingToBkSheet.getRange(shippingToRowIndex, 1, 1, shippingToRow.length)
+        shippingToSheet.getRange(shippingToRowIndex, 1, 1, shippingToRow.length)
           .setNumberFormat('@')
           .setValues([shippingToRow])
           .setBorder(true, true, true, true, true, true);
-      }
-    } else {
-      // 新規作成
-      var shippingToLastRow = shippingToSheet.getLastRow();
-      var shippingToBkLastRow = shippingToBkSheet ? shippingToBkSheet.getLastRow() : 0;
 
-      shippingToSheet.getRange(shippingToLastRow + 1, 1, 1, shippingToRow.length)
-        .setNumberFormat('@')
-        .setValues([shippingToRow])
-        .setBorder(true, true, true, true, true, true);
+        if (shippingToBkSheet) {
+          shippingToBkSheet.getRange(shippingToRowIndex, 1, 1, shippingToRow.length)
+            .setNumberFormat('@')
+            .setValues([shippingToRow])
+            .setBorder(true, true, true, true, true, true);
+        }
+      } else {
+        // 新規作成
+        var shippingToLastRow = shippingToSheet.getLastRow();
+        var shippingToBkLastRow = shippingToBkSheet ? shippingToBkSheet.getLastRow() : 0;
 
-      if (shippingToBkSheet) {
-        shippingToBkSheet.getRange(shippingToBkLastRow + 1, 1, 1, shippingToRow.length)
+        shippingToSheet.getRange(shippingToLastRow + 1, 1, 1, shippingToRow.length)
           .setNumberFormat('@')
           .setValues([shippingToRow])
           .setBorder(true, true, true, true, true, true);
+
+        if (shippingToBkSheet) {
+          shippingToBkSheet.getRange(shippingToBkLastRow + 1, 1, 1, shippingToRow.length)
+            .setNumberFormat('@')
+            .setValues([shippingToRow])
+            .setBorder(true, true, true, true, true, true);
+        }
       }
+    } catch (shippingError) {
+      // 発送先情報の更新に失敗した場合はエラーを返す（顧客情報はまだ更新されていない）
+      return { success: false, message: '発送先情報の更新に失敗しました: ' + shippingError.message };
     }
 
-    // キャッシュを更新
+    // 発送先情報の更新が成功したら顧客情報を更新
+    var customerResult = updateCustomer(customerRowIndex, customerData);
+    if (!customerResult.success) {
+      // 顧客情報の更新に失敗した場合は発送先情報をロールバック
+      try {
+        if (shippingTo.found) {
+          // 元の値で発送先情報を復元
+          var originalShippingToRow = [
+            originalCompanyName,
+            originalRow[4] || '', // department
+            originalPersonName,
+            originalZipcode,
+            originalRow[8] || '', // address1
+            originalRow[9] || '', // address2
+            originalRow[10] || '', // tel
+            originalRow[11] || '', // email
+            originalRow[12] || ''  // memo
+          ];
+          var shippingToRowIndex = shippingTo.rowIndex;
+          shippingToSheet.getRange(shippingToRowIndex, 1, 1, originalShippingToRow.length)
+            .setNumberFormat('@')
+            .setValues([originalShippingToRow])
+            .setBorder(true, true, true, true, true, true);
+          if (shippingToBkSheet) {
+            shippingToBkSheet.getRange(shippingToRowIndex, 1, 1, originalShippingToRow.length)
+              .setNumberFormat('@')
+              .setValues([originalShippingToRow])
+              .setBorder(true, true, true, true, true, true);
+          }
+        } else {
+          // 新規作成した場合は削除
+          var shippingToLastRow = shippingToSheet.getLastRow();
+          shippingToSheet.deleteRow(shippingToLastRow);
+          if (shippingToBkSheet) {
+            var shippingToBkLastRow = shippingToBkSheet.getLastRow();
+            shippingToBkSheet.deleteRow(shippingToBkLastRow);
+          }
+        }
+      } catch (rollbackError) {
+        Logger.log('ロールバックエラー: ' + rollbackError.message);
+      }
+      return customerResult;
+    }
+
+    // キャッシュを更新（両方の更新が成功した後）
     try {
       refreshMasterDataCache();
     } catch (e) {

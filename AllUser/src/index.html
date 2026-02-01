@@ -186,10 +186,11 @@
 
             // ヘッダー作成
             Object.entries(grouped).forEach(([method, items]) => {
+                const escapedMethod = escapeHtml(method);
                 if (method === 'ヤマト' || method === '佐川') {
-                    html += `<th colspan="${items.length}" class="${colorFlg ? 'today_color' : ''}" scope="col">${method}</th>`;
+                    html += `<th colspan="${items.length}" class="${colorFlg ? 'today_color' : ''}" scope="col">${escapedMethod}</th>`;
                 } else {
-                    html += `<th rowspan="2" class="${colorFlg ? 'today_color' : ''}" scope="col" style="vertical-align: middle;">${method}</th>`;
+                    html += `<th rowspan="2" class="${colorFlg ? 'today_color' : ''}" scope="col" style="vertical-align: middle;">${escapedMethod}</th>`;
                 }
             });
 
@@ -200,7 +201,8 @@
             Object.entries(grouped).forEach(([method, items]) => {
                 if (method === 'ヤマト' || method === '佐川') {
                     items.forEach(item => {
-                        html += `<th class="${colorFlg ? 'today_color' : ''}" scope="col">${item['クール区分'] || '常温'}</th>`;
+                        const coolType = escapeHtml(item['クール区分'] || '常温');
+                        html += `<th class="${colorFlg ? 'today_color' : ''}" scope="col">${coolType}</th>`;
                     });
                 }
             });
@@ -210,7 +212,8 @@
             html += `<tbody class="table-group-divider"><tr>`;
             Object.entries(grouped).forEach(([method, items]) => {
                 items.forEach(item => {
-                    html += `<td scope="col" class="text-center fw-bold text-primary">${item['個数']}件</td>`;
+                    const count = escapeHtml(String(item['個数'] || ''));
+                    html += `<td scope="col" class="text-center fw-bold text-primary">${count}件</td>`;
                 });
             });
 
@@ -271,10 +274,10 @@
                 const actionsHtml = `
                     <div class="order-card-actions">
                         <div class="shipped-check-wrapper">
-                            <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${escapedOrderId}', this.checked)" title="出荷済チェック">
+                            <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} data-order-id="${escapedOrderId}" title="出荷済チェック">
                             ${statusBadgeHtml}
                         </div>
-                        <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${escapedOrderId}', '${escapedRecipientName}', '${escapedDeliveryMethod}')" title="伝票スキャン">
+                        <button type="button" class="btn btn-sm scan-btn-mini" data-order-id="${escapedOrderId}" data-recipient-name="${escapedRecipientName}" data-delivery-method="${escapedDeliveryMethod}" title="伝票スキャン">
                             <i class="bi bi-upc-scan"></i>
                         </button>
                     </div>
@@ -301,14 +304,16 @@
 
                 for (let j = 0; j < order['商品'].length; j++) {
                     const p = order['商品'][j];
-                    const unit = p['単位'] || '枚';
+                    const unit = escapeHtml(p['単位'] || '枚');
+                    const productName = escapeHtml(p['商品名'] || '');
+                    const quantity = escapeHtml(String(p['受注数'] || ''));
                     html += `<div class="product-list-item">`;
-                    html += `<span class="product-name">${p['商品名']}</span>`;
-                    html += `<span class="product-quantity">${p['受注数']} ${unit}</span>`;
+                    html += `<span class="product-name">${productName}</span>`;
+                    html += `<span class="product-quantity">${quantity} ${unit}</span>`;
                     html += `</div>`;
 
                     if (p['メモ']) {
-                        combinedMemo.push(p['メモ']);
+                        combinedMemo.push(escapeHtml(p['メモ']));
                     }
                 }
 
@@ -397,6 +402,30 @@
                     if (overlay) overlay.style.display = 'none';
                 });
             }
+
+            // イベント委譲: 出荷済チェックボックス
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.classList.contains('shipped-check')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+                    const isChecked = e.target.checked;
+                    if (orderId) {
+                        updateShippedStatus(orderId, isChecked);
+                    }
+                }
+            });
+
+            // イベント委譲: スキャンボタン
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.closest('.scan-btn-mini')) {
+                    const button = e.target.closest('.scan-btn-mini');
+                    const orderId = button.getAttribute('data-order-id');
+                    const recipientName = button.getAttribute('data-recipient-name') || '';
+                    const deliveryMethod = button.getAttribute('data-delivery-method') || '';
+                    if (orderId) {
+                        openScannerDialog(orderId, recipientName, deliveryMethod);
+                    }
+                }
+            });
         });
 
         function initQuagga() {

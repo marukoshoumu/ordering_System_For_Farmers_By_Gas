@@ -110,11 +110,10 @@ function checkNewFiles() {
           const moved = moveFileToFolder(file, errorFolder);
           if (moved) {
             Logger.log(`エラーフォルダに移動: ${fileName}`);
-            errorCount++;
           } else {
             Logger.log(`エラーフォルダ移動失敗: ${fileName}`);
-            errorCount++;
           }
+          errorCount++;
         }
       }
     }

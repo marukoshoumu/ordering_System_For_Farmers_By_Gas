@@ -547,7 +547,10 @@
       var customerFilter = document.getElementById('customerFilter').value.toLowerCase();
       var filtered = allOrders.filter(function(order) {
         if (statusFilter && order.status !== statusFilter) return false;
-        if (customerFilter && !order.customerName.toLowerCase().includes(customerFilter)) return false;
+        if (customerFilter) {
+          var customerName = (order.customerName || '').toString();
+          if (!customerName.toLowerCase().includes(customerFilter)) return false;
+        }
         return true;
       });
       renderTable(filtered);

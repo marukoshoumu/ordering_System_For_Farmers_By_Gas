@@ -9,6 +9,11 @@
 window.manualCustomerSelection = null;
 window.manualShippingToSelection = null;
 
+// マスタデータキャッシュ変数（loadMasterDataForSearchで使用）
+let cachedCustomers = [];
+let cachedShippingTos = [];
+let masterDataLoaded = false;
+
 /**
  * HTMLエスケープ（XSS対策）
  * @param {*} str - 任意の値
