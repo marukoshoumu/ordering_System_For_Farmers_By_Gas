@@ -479,6 +479,12 @@ function recognizeTrackingNumberShared(base64Data) {
     });
 
     const result = JSON.parse(response.getContentText());
+    
+    // result.responses の存在と有効性をチェック
+    if (!result.responses || !Array.isArray(result.responses) || result.responses.length === 0 || result.responses[0] == null) {
+      return { success: false, message: '文字が検出されませんでした。' };
+    }
+    
     const annotations = result.responses[0].textAnnotations;
 
     if (!annotations || annotations.length === 0) {
