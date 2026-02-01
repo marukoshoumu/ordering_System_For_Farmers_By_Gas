@@ -754,23 +754,43 @@
       google.script.run
         .withSuccessHandler(function(product) {
           if (product) {
-            document.getElementById('editRowIndex').value = product.rowIndex;
-            document.getElementById('productCategory').value = product.category;
-            document.getElementById('productName').value = product.name;
-            document.getElementById('productAbbr').value = product.abbr;
-            document.getElementById('productInvoiceName').value = product.invoiceName;
-            document.getElementById('productPrice').value = product.price || '';
-            document.getElementById('productCost').value = product.cost || '';
-            document.getElementById('productMargin').value = product.margin || '';
-            document.getElementById('productTaxRate').value = product.taxRate;
-            document.getElementById('productStock').value = product.stock || '';
-            document.getElementById('productUnit').value = product.unit;
-            document.getElementById('productAccountTitle').value = product.accountTitle;
-            document.getElementById('productTaxCategory').value = product.taxCategory;
-            document.getElementById('productDepartment').value = product.department;
-            document.getElementById('productItem').value = product.item;
-            document.getElementById('productMemo').value = product.memo;
-            document.getElementById('productNote').value = product.note;
+            // Normalize: getProductDetail returns Japanese keys; form expects English
+            var p = {
+              rowIndex: product.rowIndex,
+              category: product['商品分類'] ?? product.category,
+              name: product['商品名'] ?? product.name,
+              abbr: product['略称'] ?? product.abbr,
+              invoiceName: product['送り状品名'] ?? product.invoiceName,
+              price: product['価格（P)'] ?? product.price,
+              cost: product['商品原価（V）'] ?? product.cost,
+              margin: product['粗利（M)'] ?? product.margin,
+              taxRate: product['税率'] ?? product.taxRate,
+              stock: product['在庫数'] ?? product.stock,
+              unit: product['単位'] ?? product.unit,
+              accountTitle: product['勘定科目'] ?? product.accountTitle,
+              taxCategory: product['税区分'] ?? product.taxCategory,
+              department: product['部門'] ?? product.department,
+              item: product['品目'] ?? product.item,
+              memo: product['メモ'] ?? product.memo,
+              note: product['備考'] ?? product.note
+            };
+            document.getElementById('editRowIndex').value = p.rowIndex;
+            document.getElementById('productCategory').value = p.category ?? '';
+            document.getElementById('productName').value = p.name ?? '';
+            document.getElementById('productAbbr').value = p.abbr ?? '';
+            document.getElementById('productInvoiceName').value = p.invoiceName ?? '';
+            document.getElementById('productPrice').value = p.price ?? '';
+            document.getElementById('productCost').value = p.cost ?? '';
+            document.getElementById('productMargin').value = p.margin ?? '';
+            document.getElementById('productTaxRate').value = p.taxRate ?? '';
+            document.getElementById('productStock').value = p.stock ?? '';
+            document.getElementById('productUnit').value = p.unit ?? '';
+            document.getElementById('productAccountTitle').value = p.accountTitle ?? '';
+            document.getElementById('productTaxCategory').value = p.taxCategory ?? '';
+            document.getElementById('productDepartment').value = p.department ?? '';
+            document.getElementById('productItem').value = p.item ?? '';
+            document.getElementById('productMemo').value = p.memo ?? '';
+            document.getElementById('productNote').value = p.note ?? '';
             productModal.show();
           } else {
             showErrorToast('商品情報の取得に失敗しました');

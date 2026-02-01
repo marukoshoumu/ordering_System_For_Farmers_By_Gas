@@ -228,6 +228,12 @@ function updateProduct(rowIndex, data) {
       return { success: false, message: '商品シートが見つかりません' };
     }
 
+    rowIndex = Math.floor(Number(rowIndex));
+    var maxRow = sheet.getLastRow();
+    if (!isFinite(rowIndex) || !Number.isInteger(rowIndex) || rowIndex < 2 || rowIndex > maxRow) {
+      return { success: false, message: '無効なrowIndex' };
+    }
+
     var dateNow = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd');
 
     // 粗利を計算

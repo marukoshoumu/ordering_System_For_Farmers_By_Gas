@@ -557,6 +557,19 @@ function doPost(e) {
       .setTitle('定期便一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
+  // 商品マスタ一覧画面（viewerはアクセス不可）
+  else if (e.parameter.productList) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
+    const template = HtmlService.createTemplateFromFile('productList');
+    template.deployURL = ScriptApp.getService().getUrl();
+    template.userRole = userRole;
+    return template.evaluate()
+      .setTitle('商品マスタ')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   else {
     const template = HtmlService.createTemplateFromFile('error');
     template.deployURL = ScriptApp.getService().getUrl();
