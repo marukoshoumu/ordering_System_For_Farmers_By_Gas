@@ -35,3 +35,4 @@ alwaysApply: false
 export KNOWLEDGE_DIR="/path/to/your/knowledge"
 export ORDERING_PROJECT_DIR="/path/to/your/ordering-system"
 ```
+
