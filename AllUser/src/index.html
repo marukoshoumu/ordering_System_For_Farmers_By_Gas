@@ -154,14 +154,6 @@
             document.getElementById('detailDialog').style.display = 'block';
         }
 
-        // 詳細ダイアログを閉じるボタンのクリックイベント
-        document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('closeDialogButton').addEventListener('click', function () {
-                document.getElementById('detailDialog').style.display = 'none';
-                document.getElementById('overlay').style.display = 'none';
-            });
-        });
-
         window.onload = function () {
             setRes();
         };
@@ -374,8 +366,21 @@
                 scannerModalEl.addEventListener('hidden.bs.modal', () => {
                     Quagga.stop();
                     toggleModalManual(false);
-                    document.getElementById('scannerSuccessOverlay').style.display = 'none';
-                    document.getElementById('scannerErrorOverlay').style.display = 'none';
+                    const scannerSuccessOverlay = document.getElementById('scannerSuccessOverlay');
+                    const scannerErrorOverlay = document.getElementById('scannerErrorOverlay');
+                    if (scannerSuccessOverlay) scannerSuccessOverlay.style.display = 'none';
+                    if (scannerErrorOverlay) scannerErrorOverlay.style.display = 'none';
+                });
+            }
+
+            // 詳細ダイアログを閉じるボタンのクリックイベント
+            const closeDialogButton = document.getElementById('closeDialogButton');
+            if (closeDialogButton) {
+                closeDialogButton.addEventListener('click', function () {
+                    const detailDialog = document.getElementById('detailDialog');
+                    const overlay = document.getElementById('overlay');
+                    if (detailDialog) detailDialog.style.display = 'none';
+                    if (overlay) overlay.style.display = 'none';
                 });
             }
         });
