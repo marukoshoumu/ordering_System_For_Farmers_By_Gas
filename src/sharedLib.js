@@ -635,3 +635,29 @@ function getProductUnitMapShared(ss) {
   }
   return unitMap;
 }
+
+// ============================================
+// 行インデックス検証ユーティリティ
+// ============================================
+
+/**
+ * rowIndexを正規化して検証する
+ * @param {*} rowIndex - 行番号（数値または文字列）
+ * @param {Sheet} sheet - シートオブジェクト
+ * @returns {Object} { success: boolean, rowIndex?: number, message?: string }
+ */
+function normalizeAndValidateRowIndex(rowIndex, sheet) {
+  var normalized = Number(rowIndex);
+  if (!isFinite(normalized)) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+
+  normalized = Math.floor(normalized);
+  var maxRow = sheet.getLastRow();
+
+  if (normalized < 2 || normalized > maxRow) {
+    return { success: false, message: '無効なrowIndex' };
+  }
+
+  return { success: true, rowIndex: normalized };
+}

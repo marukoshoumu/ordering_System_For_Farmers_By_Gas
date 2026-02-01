@@ -883,83 +883,56 @@
       const rowIndex = document.getElementById('editRowIndex').value;
       const sameShippingTo = document.getElementById('customerSameShippingTo').checked;
 
-      showLoading(true);
-
+      // Determine RPC function name and arguments based on rowIndex and sameShippingTo
+      let functionName;
+      let args;
+      let errorMessage;
+      
       if (rowIndex) {
         // 編集時
+        errorMessage = '更新に失敗しました';
         if (sameShippingTo) {
-          google.script.run
-            .withSuccessHandler(function(result) {
-              showLoading(false);
-              if (result.success) {
-                showSuccessToast(result.message);
-                customerModal.hide();
-                loadCustomers();
-              } else {
-                showErrorToast(result.message);
-              }
-            })
-            .withFailureHandler(function(e) {
-              showLoading(false);
-              showErrorToast('更新に失敗しました');
-            })
-            .updateCustomerShippingTo(Number(rowIndex), data);
+          functionName = 'updateCustomerShippingTo';
+          args = [Number(rowIndex), data];
         } else {
-          google.script.run
-            .withSuccessHandler(function(result) {
-              showLoading(false);
-              if (result.success) {
-                showSuccessToast(result.message);
-                customerModal.hide();
-                loadCustomers();
-              } else {
-                showErrorToast(result.message);
-              }
-            })
-            .withFailureHandler(function(e) {
-              showLoading(false);
-              showErrorToast('更新に失敗しました');
-            })
-            .updateCustomer(Number(rowIndex), data);
+          functionName = 'updateCustomer';
+          args = [Number(rowIndex), data];
         }
       } else {
         // 新規登録時
+        errorMessage = '登録に失敗しました';
         if (sameShippingTo) {
-          google.script.run
-            .withSuccessHandler(function(result) {
-              showLoading(false);
-              if (result.success) {
-                showSuccessToast(result.message);
-                customerModal.hide();
-                loadCustomers();
-              } else {
-                showErrorToast(result.message);
-              }
-            })
-            .withFailureHandler(function(e) {
-              showLoading(false);
-              showErrorToast('登録に失敗しました');
-            })
-            .addCustomerShippingToFromList(data);
+          functionName = 'addCustomerShippingToFromList';
+          args = [data];
         } else {
-          google.script.run
-            .withSuccessHandler(function(result) {
-              showLoading(false);
-              if (result.success) {
-                showSuccessToast(result.message);
-                customerModal.hide();
-                loadCustomers();
-              } else {
-                showErrorToast(result.message);
-              }
-            })
-            .withFailureHandler(function(e) {
-              showLoading(false);
-              showErrorToast('登録に失敗しました');
-            })
-            .addCustomerFromList(data);
+          functionName = 'addCustomerFromList';
+          args = [data];
         }
       }
+
+      // Shared success handler
+      function handleSaveSuccess(result) {
+        showLoading(false);
+        if (result.success) {
+          showSuccessToast(result.message);
+          customerModal.hide();
+          loadCustomers();
+        } else {
+          showErrorToast(result.message);
+        }
+      }
+
+      // Shared failure handler
+      function handleSaveFailure(e) {
+        showLoading(false);
+        showErrorToast(errorMessage);
+      }
+
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(handleSaveSuccess)
+        .withFailureHandler(handleSaveFailure)
+        [functionName].apply(null, args);
     }
 
     function openDeleteModal(rowIndex, customerName) {

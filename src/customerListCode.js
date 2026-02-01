@@ -149,27 +149,6 @@ function getCustomerListData(filters) {
   return JSON.stringify(result);
 }
 
-/**
- * rowIndexを正規化して検証する（productListCode.jsからコピー）
- * @param {*} rowIndex - 行番号（数値または文字列）
- * @param {Sheet} sheet - シートオブジェクト
- * @returns {Object} { success: boolean, rowIndex?: number, message?: string }
- */
-function normalizeAndValidateCustomerRowIndex(rowIndex, sheet) {
-  var normalized = Number(rowIndex);
-  if (!isFinite(normalized)) {
-    return { success: false, message: '無効なrowIndex' };
-  }
-
-  normalized = Math.floor(normalized);
-  var maxRow = sheet.getLastRow();
-
-  if (normalized < 2 || normalized > maxRow) {
-    return { success: false, message: '無効なrowIndex' };
-  }
-
-  return { success: true, rowIndex: normalized };
-}
 
 /**
  * 顧客を新規登録する（customerListCode用ラッパー）
@@ -286,7 +265,7 @@ function updateCustomer(rowIndex, data) {
       return { success: false, message: '顧客情報シートが見つかりません' };
     }
 
-    var validation = normalizeAndValidateCustomerRowIndex(rowIndex, sheet);
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
     if (!validation.success) {
       return { success: false, message: validation.message };
     }
@@ -404,7 +383,7 @@ function deleteCustomer(rowIndex) {
       return { success: false, message: '顧客情報シートが見つかりません' };
     }
 
-    var validation = normalizeAndValidateCustomerRowIndex(rowIndex, sheet);
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
     if (!validation.success) {
       return { success: false, message: validation.message };
     }
@@ -450,7 +429,7 @@ function getCustomerDetail(rowIndex) {
       return null;
     }
 
-    var validation = normalizeAndValidateCustomerRowIndex(rowIndex, sheet);
+    var validation = normalizeAndValidateRowIndex(rowIndex, sheet);
     if (!validation.success) {
       return null;
     }
@@ -582,7 +561,7 @@ function addCustomerShippingToFromList(data) {
  * @param {string} companyName - 会社名
  * @param {string} personName - 氏名
  * @param {string} zipcode - 郵便番号
- * @returns {Object|null} { rowIndex: number, data: Object } または null
+ * @returns {Object} { found: boolean, rowIndex?: number, data?: Object, reason?: string, error?: string }
  */
 function findShippingToByCustomer(companyName, personName, zipcode) {
   try {
@@ -593,12 +572,12 @@ function findShippingToByCustomer(companyName, personName, zipcode) {
     var sheet = ss.getSheetByName('発送先情報');
 
     if (!sheet) {
-      return null;
+      return { found: false, reason: 'no_sheet' };
     }
 
     var data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
-      return null;
+      return { found: false, reason: 'no_data' };
     }
 
     // 会社名・氏名・郵便番号で一致する発送先を検索
@@ -612,6 +591,7 @@ function findShippingToByCustomer(companyName, personName, zipcode) {
           rowPersonName === personName &&
           rowZipcode === zipcode) {
         return {
+          found: true,
           rowIndex: i + 1, // ヘッダー行を考慮
           data: {
             companyName: rowCompanyName,
@@ -628,10 +608,10 @@ function findShippingToByCustomer(companyName, personName, zipcode) {
       }
     }
 
-    return null;
+    return { found: false, reason: 'not_found' };
   } catch (error) {
     Logger.log('findShippingToByCustomer error: ' + error.message);
-    return null;
+    return { found: false, error: error.message };
   }
 }
 
@@ -680,7 +660,7 @@ function updateCustomerShippingTo(customerRowIndex, customerData) {
       customerData.memo || ''
     ];
 
-    if (shippingTo) {
+    if (shippingTo.found) {
       // 既存の発送先情報を更新
       var shippingToRowIndex = shippingTo.rowIndex;
 
