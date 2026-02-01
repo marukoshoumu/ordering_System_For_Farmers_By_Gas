@@ -728,8 +728,8 @@ function updateCustomerShippingTo(customerRowIndex, customerData) {
             originalRow[8] || '', // address1
             originalRow[9] || '', // address2
             originalRow[10] || '', // tel
-            originalRow[11] || '', // email
-            originalRow[12] || ''  // memo
+            originalRow[13] || '', // email
+            originalRow[17] || ''  // memo
           ];
           var shippingToRowIndex = shippingTo.rowIndex;
           shippingToSheet.getRange(shippingToRowIndex, 1, 1, originalShippingToRow.length)

@@ -325,6 +325,11 @@
                 style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
             </button>
             <? } ?>
+            <? if (userRole === 'admin') { ?>
+            <button type="submit" class="btn menu-btn" name="productList" value="true">🛍️ 商品マスタ</button>
+            <button type="submit" class="btn menu-btn" name="customerList" value="true">👥 顧客マスタ</button>
+            <button type="submit" class="btn menu-btn" name="shippingToList" value="true">📦 発送先マスタ</button>
+            <? } ?>
           </div>
         </div>
 
@@ -351,11 +356,6 @@
             <span class="menu-arrow">▼</span>
           </div>
           <div class="menu-content">
-            <? if (userRole === 'admin') { ?>
-            <button type="submit" class="btn menu-btn-sub" name="productList" value="true">🛍️ 商品マスタ</button>
-            <button type="submit" class="btn menu-btn-sub" name="customerList" value="true">👥 顧客マスタ</button>
-            <button type="submit" class="btn menu-btn-sub" name="shippingToList" value="true">📦 発送先マスタ</button>
-            <? } ?>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlProduct()">🛍️ 商品情報</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlCustomer()">👥 顧客情報</button>
             <button type="button" class="btn menu-btn-sub" onclick="openUrlShipp()">📑 受注シート</button>
