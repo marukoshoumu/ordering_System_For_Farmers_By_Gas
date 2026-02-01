@@ -48,7 +48,6 @@ function getOrdersByDateRange(startDate, endDate) {
 
   // 列インデックスを取得
   const dateColIndex = labels.indexOf('発送日');
-  const shippedColIndex = labels.indexOf('出荷済');
   const statusColIndex = labels.indexOf('ステータス');
 
   const startTime = startDate.getTime();
