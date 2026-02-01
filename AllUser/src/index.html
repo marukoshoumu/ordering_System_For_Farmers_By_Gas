@@ -155,9 +155,11 @@
         }
 
         // 詳細ダイアログを閉じるボタンのクリックイベント
-        document.getElementById('closeDialogButton').addEventListener('click', function () {
-            document.getElementById('detailDialog').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('closeDialogButton').addEventListener('click', function () {
+                document.getElementById('detailDialog').style.display = 'none';
+                document.getElementById('overlay').style.display = 'none';
+            });
         });
 
         window.onload = function () {
