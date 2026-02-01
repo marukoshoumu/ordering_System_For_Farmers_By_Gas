@@ -97,14 +97,24 @@ function checkNewFiles() {
         
         if (success) {
           // 処理成功: バックアップフォルダに移動
-          moveFileToFolder(file, backupFolder);
-          Logger.log(`バックアップに移動: ${fileName}`);
-          processedCount++;
+          const moved = moveFileToFolder(file, backupFolder);
+          if (moved) {
+            Logger.log(`バックアップに移動: ${fileName}`);
+            processedCount++;
+          } else {
+            Logger.log(`バックアップ移動失敗: ${fileName}`);
+            errorCount++;
+          }
         } else {
           // 処理失敗: エラーフォルダに移動
-          moveFileToFolder(file, errorFolder);
-          Logger.log(`エラーフォルダに移動: ${fileName}`);
-          errorCount++;
+          const moved = moveFileToFolder(file, errorFolder);
+          if (moved) {
+            Logger.log(`エラーフォルダに移動: ${fileName}`);
+            errorCount++;
+          } else {
+            Logger.log(`エラーフォルダ移動失敗: ${fileName}`);
+            errorCount++;
+          }
         }
       }
     }
@@ -172,21 +182,40 @@ function getOrCreateErrorFolder() {
  * 注意: DriveApp.removeFile/addFileは共有ドライブや権限設定によって
  * Access deniedエラーが発生することがある。
  * file.moveTo()を使用するか、エラー時はコピー＋削除にフォールバック。
+ * @param {File} file - 移動するファイル
+ * @param {Folder} targetFolder - 移動先フォルダ
+ * @returns {boolean} 移動成功ならtrue、失敗ならfalse
  */
 function moveFileToFolder(file, targetFolder) {
   try {
     // 方法1: moveTo()を使用（GAS の新しいAPI）
     file.moveTo(targetFolder);
+    return true;
   } catch (error) {
     Logger.log('ファイル移動エラー: ' + error.toString());
     
     // 方法2: フォールバック - コピーして元ファイルをゴミ箱に移動
+    let newFile = null;
     try {
-      const newFile = file.makeCopy(file.getName(), targetFolder);
+      newFile = file.makeCopy(file.getName(), targetFolder);
       file.setTrashed(true);
       Logger.log('フォールバック方法でファイルを移動しました: ' + file.getName());
+      return true;
     } catch (fallbackError) {
       Logger.log('フォールバック移動も失敗: ' + fallbackError.toString());
+      
+      // setTrashedが失敗した場合、作成したコピーを削除してクリーンアップ
+      if (newFile) {
+        try {
+          newFile.setTrashed(true);
+          Logger.log('作成したコピーファイルを削除しました: ' + newFile.getName());
+        } catch (cleanupError) {
+          Logger.log('コピーファイルの削除に失敗: ' + cleanupError.toString());
+        }
+      }
+      
+      // エラーを伝播して呼び出し元に失敗を通知
+      return false;
     }
   }
 }
