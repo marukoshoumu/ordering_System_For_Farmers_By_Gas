@@ -3,6 +3,9 @@
  * 
  * 初回セットアップ時に必要なシートとマスタデータを自動作成します。
  * GASエディタから実行: initializeMasterSpreadsheet() または initializeLineBotSpreadsheet()
+ * 
+ * CSVインポート機能:
+ * - importCompanyDataFromCSV(csvData): 会社名シートへのCSVインポート
  */
 
 /**
@@ -168,9 +171,14 @@ function getOrderSheetHeadersForInit() {
   return [
     '受注ID',
     '受注日',
-    '発送日',
-    '納品日',
+    '商品分類',
+    '商品名',
+    '受注数',
+    '販売価格',
     '顧客名',
+    '顧客郵便番号',
+    '顧客住所',
+    '顧客電話番号',
     '発送先名',
     '発送先郵便番号',
     '発送先住所',
@@ -179,6 +187,8 @@ function getOrderSheetHeadersForInit() {
     '発送元郵便番号',
     '発送元住所',
     '発送元電話番号',
+    '発送日',
+    '納品日',
     '受付方法',
     '受付者',
     '納品方法',
@@ -198,16 +208,16 @@ function getOrderSheetHeadersForInit() {
     '代引総額',
     '代引内税',
     '発行枚数',
-    '社内メモ',
     '送り状備考欄',
     '納品書備考欄',
     'メモ',
-    '納品書テキスト',
-    '商品データJSON',
+    '小計',
     '出荷済',
+    'ステータス',
     '追跡番号',
+    '社内メモ',
     '紐付け受注ID',
-    '小計'
+    '納品書テキスト'
   ];
 }
 
@@ -693,4 +703,391 @@ function insertMasterDataIfEmpty(ss, sheetName, data) {
     sheet.getRange(2, 1, data.length, data[0].length).setValues(data);
     Logger.log('シート「' + sheetName + '」に初期データを投入しました。行数: ' + data.length);
   }
+}
+
+// ========================================
+// CSVインポート機能
+// ========================================
+
+/**
+ * 汎用CSVインポート関数（重複チェック機能付き）
+ * 
+ * CSVデータ（JSON形式）を指定されたシートにインポートします。
+ * シートが存在しない場合は作成し、ヘッダーに基づいてデータをマッピングします。
+ * 重複チェック関数が提供された場合は、重複データをスキップします。
+ * 
+ * 処理フロー:
+ * 1. マスタスプレッドシートを開く
+ * 2. 指定されたシートを取得（存在しない場合は作成）
+ * 3. CSVデータをパースして配列に変換
+ * 4. 既存データを取得（重複チェック用）
+ * 5. 重複チェック関数でフィルタリング
+ * 6. ヘッダー定義に基づいてデータ行をマッピング
+ * 7. データ行をシートに追加
+ * 
+ * @param {string} sheetName - シート名
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @param {Array<string>} headers - ヘッダー配列（シートの列順）
+ * @param {Function} duplicateCheckFn - 重複チェック関数（既存データ配列、新規レコード）=> boolean
+ * @param {boolean} overwrite - 上書きモード（trueの場合、既存データを削除してから追加）
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number, skippedCount: number }
+ * 
+ * @example
+ * // 会社名シートへのインポート（上書き）
+ * const csvData = JSON.stringify([
+ *   { 名前: '株式会社サンプル', 電話番号: '03-1234-5678', 郵便番号: '100-0001', 住所: '東京都千代田区千代田1-1-1' }
+ * ]);
+ * const result = importDataFromCSV('受注管理システム', csvData, ['名前', '電話番号', '郵便番号', '住所'], null, true);
+ */
+function importDataFromCSV(sheetName, csvData, headers, duplicateCheckFn, overwrite) {
+  try {
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (!masterSpreadsheetId) {
+      return {
+        success: false,
+        message: 'MASTER_SPREADSHEET_ID が設定されていません。スクリプトプロパティを確認してください。'
+      };
+    }
+
+    const ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    
+    // シートを取得（存在しない場合は作成）
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      if (headers && headers.length > 0) {
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        
+        // ヘッダー行のスタイル設定
+        const headerRange = sheet.getRange(1, 1, 1, headers.length);
+        headerRange.setBackground('#4285f4');
+        headerRange.setFontColor('#ffffff');
+        headerRange.setFontWeight('bold');
+        headerRange.setHorizontalAlignment('center');
+        sheet.setFrozenRows(1);
+      }
+      
+      Logger.log('シート「' + sheetName + '」を作成しました。');
+    }
+
+    // CSVデータをパース
+    const data = JSON.parse(csvData);
+    if (!Array.isArray(data) || data.length === 0) {
+      return {
+        success: false,
+        message: 'CSVデータが空です。'
+      };
+    }
+
+    // 上書きモードの場合、既存データを削除（ヘッダー行は残す）
+    if (overwrite) {
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+        Logger.log('シート「' + sheetName + '」の既存データを削除しました。');
+      }
+    }
+
+    // 既存データを取得（重複チェック用）
+    let existingRecords = [];
+    if (duplicateCheckFn && !overwrite) {
+      try {
+        existingRecords = getAllRecords(sheetName);
+      } catch (e) {
+        Logger.log('既存データの取得に失敗しました（新規シートの可能性）: ' + e.toString());
+        existingRecords = [];
+      }
+    }
+
+    // 重複チェックとデータ行の変換
+    const rows = [];
+    let skippedCount = 0;
+    
+    for (const record of data) {
+      // 重複チェック
+      if (duplicateCheckFn && !overwrite) {
+        const isDuplicate = duplicateCheckFn(existingRecords, record);
+        if (isDuplicate) {
+          skippedCount++;
+          continue;
+        }
+      }
+      
+      // データ行を配列に変換（ヘッダー順にマッピング）
+      const row = headers.map(function(header) {
+        return record[header] || '';
+      });
+      rows.push(row);
+    }
+
+    // シートに追加
+    if (rows.length > 0) {
+      const lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length).setValues(rows);
+      Logger.log('シート「' + sheetName + '」に' + rows.length + '件のデータをインポートしました。');
+      if (skippedCount > 0) {
+        Logger.log('重複により' + skippedCount + '件をスキップしました。');
+      }
+    } else if (skippedCount > 0) {
+      Logger.log('すべてのデータが重複のため、インポートされませんでした。');
+    }
+
+    return {
+      success: true,
+      message: 'CSVデータのインポートが完了しました。',
+      importedCount: rows.length,
+      skippedCount: skippedCount
+    };
+  } catch (error) {
+    Logger.log('CSVインポートエラー: ' + error.toString());
+    return {
+      success: false,
+      message: 'CSVインポート中にエラーが発生しました: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * 会社名シートへのCSVインポート（上書きモード）
+ * 
+ * CSVデータ（JSON形式）を会社名シート（COMPANY_DISPLAY_NAMEプロパティの値と同じ名前）にインポートします。
+ * 会社名シートは1件のみを想定しているため、既存データを削除してから追加します。
+ * CSV形式: 名前,電話番号,郵便番号,住所
+ * 
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number }
+ */
+function importCompanyDataFromCSV(csvData) {
+  const companyDisplayName = getCompanyDisplayName();
+  const headers = getCompanySheetHeaders();
+  // 会社名シートは上書きモード（既存データを削除してから追加）
+  return importDataFromCSV(companyDisplayName, csvData, headers, null, true);
+}
+
+/**
+ * 商品シートへのCSVインポート（重複チェック付き）
+ * 
+ * CSVデータ（JSON形式）を商品シートにインポートします。
+ * 商品名が既に存在する場合は重複としてスキップします。
+ * 
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number, skippedCount: number }
+ */
+function importProductDataFromCSV(csvData) {
+  const headers = getProductSheetHeaders();
+  
+  // 商品名で重複チェック
+  function checkProductDuplicate(existingRecords, newRecord) {
+    const productName = newRecord['商品名'] || '';
+    if (!productName) {
+      return false; // 商品名が空の場合は重複とみなさない
+    }
+    return existingRecords.some(function(existing) {
+      return existing['商品名'] === productName;
+    });
+  }
+  
+  return importDataFromCSV('商品', csvData, headers, checkProductDuplicate, false);
+}
+
+/**
+ * 顧客情報シートへのCSVインポート（重複チェック付き、BKシート登録対応）
+ * 
+ * CSVデータ（JSON形式）を顧客情報シートにインポートします。
+ * 会社名+氏名が既に存在する場合は重複としてスキップします。
+ * メインシートとBKシートの両方に登録します。
+ * 
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number, skippedCount: number }
+ */
+function importCustomerDataFromCSV(csvData) {
+  const headers = getCustomerSheetHeaders();
+  
+  // 会社名+氏名で重複チェック（発送先情報と同じロジック）
+  function checkCustomerDuplicate(existingRecords, newRecord) {
+    const companyName = newRecord['会社名'] || '';
+    const personName = newRecord['氏名'] || '';
+    
+    if (!companyName || !personName) {
+      return false; // 会社名または氏名が空の場合は重複とみなさない
+    }
+    
+    return existingRecords.some(function(existing) {
+      return existing['会社名'] === companyName && existing['氏名'] === personName;
+    });
+  }
+  
+  // 顧客情報はBKシートにも登録する必要があるため、専用の処理を実行
+  return importCustomerDataFromCSVWithBackup(csvData, headers, checkCustomerDuplicate);
+}
+
+/**
+ * 顧客情報シートへのCSVインポート（BKシート登録対応）
+ * 
+ * メインシートとBKシートの両方に登録します。
+ * 
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @param {Array<string>} headers - ヘッダー配列
+ * @param {Function} duplicateCheckFn - 重複チェック関数
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number, skippedCount: number }
+ */
+function importCustomerDataFromCSVWithBackup(csvData, headers, duplicateCheckFn) {
+  try {
+    const masterSpreadsheetId = getMasterSpreadsheetId();
+    if (!masterSpreadsheetId) {
+      return {
+        success: false,
+        message: 'MASTER_SPREADSHEET_ID が設定されていません。スクリプトプロパティを確認してください。'
+      };
+    }
+
+    const ss = SpreadsheetApp.openById(masterSpreadsheetId);
+    
+    // メインシートを取得（存在しない場合は作成）
+    let sheet = ss.getSheetByName('顧客情報');
+    if (!sheet) {
+      sheet = ss.insertSheet('顧客情報');
+      if (headers && headers.length > 0) {
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        
+        // ヘッダー行のスタイル設定
+        const headerRange = sheet.getRange(1, 1, 1, headers.length);
+        headerRange.setBackground('#4285f4');
+        headerRange.setFontColor('#ffffff');
+        headerRange.setFontWeight('bold');
+        headerRange.setHorizontalAlignment('center');
+        sheet.setFrozenRows(1);
+      }
+      
+      Logger.log('シート「顧客情報」を作成しました。');
+    }
+
+    // BKシートを取得（存在しない場合は作成）
+    let sheetBk = ss.getSheetByName('顧客情報BK');
+    if (!sheetBk) {
+      sheetBk = ss.insertSheet('顧客情報BK');
+      if (headers && headers.length > 0) {
+        sheetBk.getRange(1, 1, 1, headers.length).setValues([headers]);
+        
+        // ヘッダー行のスタイル設定
+        const headerRangeBk = sheetBk.getRange(1, 1, 1, headers.length);
+        headerRangeBk.setBackground('#4285f4');
+        headerRangeBk.setFontColor('#ffffff');
+        headerRangeBk.setFontWeight('bold');
+        headerRangeBk.setHorizontalAlignment('center');
+        sheetBk.setFrozenRows(1);
+      }
+      
+      Logger.log('シート「顧客情報BK」を作成しました。');
+    }
+
+    // CSVデータをパース
+    const data = JSON.parse(csvData);
+    if (!Array.isArray(data) || data.length === 0) {
+      return {
+        success: false,
+        message: 'CSVデータが空です。'
+      };
+    }
+
+    // 既存データを取得（重複チェック用）
+    let existingRecords = [];
+    if (duplicateCheckFn) {
+      try {
+        existingRecords = getAllRecords('顧客情報');
+      } catch (e) {
+        Logger.log('既存データの取得に失敗しました（新規シートの可能性）: ' + e.toString());
+        existingRecords = [];
+      }
+    }
+
+    // 重複チェックとデータ行の変換
+    const rows = [];
+    let skippedCount = 0;
+    
+    for (const record of data) {
+      // 重複チェック
+      if (duplicateCheckFn) {
+        const isDuplicate = duplicateCheckFn(existingRecords, record);
+        if (isDuplicate) {
+          skippedCount++;
+          continue;
+        }
+      }
+      
+      // データ行を配列に変換（ヘッダー順にマッピング）
+      const row = headers.map(function(header) {
+        return record[header] || '';
+      });
+      rows.push(row);
+    }
+
+    // メインシートとBKシートの両方に追加
+    if (rows.length > 0) {
+      const lastRow = sheet.getLastRow();
+      const lastBkRow = sheetBk.getLastRow();
+      
+      // メインシートに追加
+      sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length)
+        .setNumberFormat('@')
+        .setValues(rows)
+        .setBorder(true, true, true, true, true, true);
+      
+      // BKシートに追加
+      sheetBk.getRange(lastBkRow + 1, 1, rows.length, rows[0].length)
+        .setNumberFormat('@')
+        .setValues(rows)
+        .setBorder(true, true, true, true, true, true);
+      
+      Logger.log('シート「顧客情報」に' + rows.length + '件のデータをインポートしました。');
+      Logger.log('シート「顧客情報BK」に' + rows.length + '件のデータをインポートしました。');
+      if (skippedCount > 0) {
+        Logger.log('重複により' + skippedCount + '件をスキップしました。');
+      }
+    } else if (skippedCount > 0) {
+      Logger.log('すべてのデータが重複のため、インポートされませんでした。');
+    }
+
+    return {
+      success: true,
+      message: 'CSVデータのインポートが完了しました。',
+      importedCount: rows.length,
+      skippedCount: skippedCount
+    };
+  } catch (error) {
+    Logger.log('CSVインポートエラー: ' + error.toString());
+    return {
+      success: false,
+      message: 'CSVインポート中にエラーが発生しました: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * 発送先情報シートへのCSVインポート（重複チェック付き）
+ * 
+ * CSVデータ（JSON形式）を発送先情報シートにインポートします。
+ * 会社名+氏名が既に存在する場合は重複としてスキップします。
+ * 
+ * @param {string} csvData - JSON形式の文字列（CSVから変換されたデータ配列）
+ * @returns {Object} 実行結果 { success: boolean, message: string, importedCount: number, skippedCount: number }
+ */
+function importShippingToDataFromCSV(csvData) {
+  const headers = getShippingToSheetHeaders();
+  
+  // 会社名+氏名で重複チェック（既存のregisterNewCustomerToMasterと同じロジック）
+  function checkShippingToDuplicate(existingRecords, newRecord) {
+    const companyName = newRecord['会社名'] || '';
+    const personName = newRecord['氏名'] || '';
+    
+    if (!companyName || !personName) {
+      return false; // 会社名または氏名が空の場合は重複とみなさない
+    }
+    
+    return existingRecords.some(function(existing) {
+      return existing['会社名'] === companyName && existing['氏名'] === personName;
+    });
+  }
+  
+  return importDataFromCSV('発送先情報', csvData, headers, checkShippingToDuplicate, false);
 }

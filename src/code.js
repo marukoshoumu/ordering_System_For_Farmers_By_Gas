@@ -469,6 +469,18 @@ function doPost(e) {
     htmlOutput.setTitle('受注CSV取込');
     return htmlOutput;
   }
+  else if (e.parameter.masterImport) {
+    const userRole = e.parameter.userRole || 'admin';
+    if (userRole === 'viewer') {
+      return redirectToHome(userRole);
+    }
+    const template = HtmlService.createTemplateFromFile('masterImport');
+    template.deployURL = ScriptApp.getService().getUrl();
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('一括マスタ登録');
+    return htmlOutput;
+  }
   else if (e.parameter.quotation) {
     const userRole = e.parameter.userRole || 'admin';
     if (userRole === 'viewer') {
