@@ -57,7 +57,13 @@ function getProductList(filters) {
     return [];
   }
 
-  let result = products;
+  // フィルター適用前に、rowIndexを設定（フィルター前のインデックスを使用）
+  var productsWithRowIndex = products.map(function(p, index) {
+    p.rowIndex = index + 2; // ヘッダー行を考慮（indexは0始まり、スプレッドシートは2行目から）
+    return p;
+  });
+
+  let result = productsWithRowIndex;
 
   // フィルター適用
   if (filters) {
@@ -77,13 +83,8 @@ function getProductList(filters) {
     }
   }
 
-  // 行番号を付与（編集・削除時に使用）
-  return result.map(function(p) {
-    // 元のインデックスを取得するため、productsから検索
-    var originalIndex = products.indexOf(p);
-    p.rowIndex = originalIndex + 2; // ヘッダー行を考慮
-    return p;
-  });
+  // rowIndexは既に設定済みなので、そのまま返す
+  return result;
 }
 
 /**
@@ -221,14 +222,14 @@ function normalizeAndValidateRowIndex(rowIndex, sheet) {
   if (!isFinite(normalized)) {
     return { success: false, message: '無効なrowIndex' };
   }
-  
+
   normalized = Math.floor(normalized);
   var maxRow = sheet.getLastRow();
-  
+
   if (normalized < 2 || normalized > maxRow) {
     return { success: false, message: '無効なrowIndex' };
   }
-  
+
   return { success: true, rowIndex: normalized };
 }
 
@@ -527,7 +528,12 @@ function getProductDetail(rowIndex) {
 
     var product = {};
     for (var i = 0; i < headers.length; i++) {
-      product[headers[i]] = values[i];
+      var value = values[i];
+      // DateオブジェクトはGASのシリアライズで問題が起きるため文字列に変換
+      if (value instanceof Date) {
+        value = formatDateValue(value);
+      }
+      product[headers[i]] = value;
     }
     product.rowIndex = rowIndex;
 

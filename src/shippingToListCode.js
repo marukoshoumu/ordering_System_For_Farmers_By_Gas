@@ -434,7 +434,12 @@ function getShippingToDetail(rowIndex) {
 
     var shippingTo = {};
     for (var i = 0; i < headers.length; i++) {
-      shippingTo[headers[i]] = values[i];
+      var value = values[i];
+      // DateオブジェクトはGASのシリアライズで問題が起きるため文字列に変換
+      if (value instanceof Date) {
+        value = Utilities.formatDate(value, 'JST', 'yyyy/MM/dd');
+      }
+      shippingTo[headers[i]] = value;
     }
     shippingTo.rowIndex = rowIndex;
 

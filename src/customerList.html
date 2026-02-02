@@ -108,12 +108,9 @@
       vertical-align: middle;
     }
 
-    .customer-table .col-class { width: 100px; }
-    .customer-table .col-showname { min-width: 120px; }
-    .customer-table .col-company { min-width: 120px; }
-    .customer-table .col-name { width: 100px; }
-    .customer-table .col-tel { width: 120px; }
-    .customer-table .col-email { min-width: 150px; }
+    .customer-table .col-company { min-width: 150px; }
+    .customer-table .col-name { width: 120px; }
+    .customer-table .col-address { min-width: 250px; }
     .customer-table .col-action { width: 100px; text-align: center; }
 
     .customer-cards { display: none; }
@@ -215,31 +212,10 @@
       .card-header h1 { text-align: center; }
     }
 
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    .loading-overlay.hidden { display: none; }
   </style>
 </head>
 
 <body>
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="text-center">
-      <div class="spinner-border text-primary" role="status"></div>
-      <div class="mt-2">読み込み中...</div>
-    </div>
-  </div>
-
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="userRole" value="<?= userRole ?>">
@@ -296,12 +272,9 @@
           <table class="customer-table">
             <thead>
               <tr>
-                <th class="col-class">分類</th>
-                <th class="col-showname">表示名</th>
                 <th class="col-company">会社名</th>
                 <th class="col-name">氏名</th>
-                <th class="col-tel">TEL</th>
-                <th class="col-email">メールアドレス</th>
+                <th class="col-address">住所</th>
                 <th class="col-action">操作</th>
               </tr>
             </thead>
@@ -513,7 +486,7 @@
     }
 
     function loadCustomers() {
-      showLoading(true);
+      showLoading('顧客を読み込み中...');
 
       const filters = {
         category: document.getElementById('filterCategory').value,
@@ -524,11 +497,11 @@
         .withSuccessHandler(function(data) {
           customers = JSON.parse(data);
           renderCustomers();
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
           console.error('顧客取得エラー:', e);
-          showLoading(false);
+          hideLoading();
           showErrorToast('顧客の読み込みに失敗しました');
         })
         .getCustomerListData(filters);
@@ -563,16 +536,6 @@
         const tr = document.createElement('tr');
         tr.addEventListener('click', function() { openEditModal(c.rowIndex); });
 
-        const tdClass = document.createElement('td');
-        tdClass.className = 'col-class';
-        tdClass.textContent = c.className || '';
-        tr.appendChild(tdClass);
-
-        const tdShowName = document.createElement('td');
-        tdShowName.className = 'col-showname';
-        tdShowName.textContent = c.showName || '';
-        tr.appendChild(tdShowName);
-
         const tdCompany = document.createElement('td');
         tdCompany.className = 'col-company';
         tdCompany.textContent = c.companyName || '';
@@ -583,15 +546,10 @@
         tdName.textContent = c.personName || '';
         tr.appendChild(tdName);
 
-        const tdTel = document.createElement('td');
-        tdTel.className = 'col-tel';
-        tdTel.textContent = c.tel || '';
-        tr.appendChild(tdTel);
-
-        const tdEmail = document.createElement('td');
-        tdEmail.className = 'col-email';
-        tdEmail.textContent = c.email || '';
-        tr.appendChild(tdEmail);
+        const tdAddress = document.createElement('td');
+        tdAddress.className = 'col-address';
+        tdAddress.textContent = (c.address1 || '') + (c.address2 || '');
+        tr.appendChild(tdAddress);
 
         const tdAction = document.createElement('td');
         tdAction.className = 'col-action';
@@ -614,7 +572,7 @@
         deleteBtn.appendChild(deleteIcon);
         deleteBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          openDeleteModal(c.rowIndex, c.showName || c.companyName || c.personName);
+          openDeleteModal(c.rowIndex, c.companyName || c.personName);
         });
         tdAction.appendChild(deleteBtn);
 
@@ -707,7 +665,7 @@
 
     function openEditModal(rowIndex) {
       document.getElementById('customerModalTitle').textContent = '顧客編集';
-      showLoading(true);
+      showLoading('顧客情報を取得中...');
 
       google.script.run
         .withSuccessHandler(function(customer) {
@@ -756,11 +714,11 @@
           } else {
             showErrorToast('顧客情報の取得に失敗しました');
           }
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
           console.error('顧客詳細取得エラー:', e);
-          showLoading(false);
+          hideLoading();
           showErrorToast('顧客情報の取得に失敗しました');
         })
         .getCustomerDetail(rowIndex);
@@ -912,7 +870,7 @@
 
       // Shared success handler
       function handleSaveSuccess(result) {
-        showLoading(false);
+        hideLoading();
         if (result.success) {
           showSuccessToast(result.message);
           customerModal.hide();
@@ -924,11 +882,11 @@
 
       // Shared failure handler
       function handleSaveFailure(e) {
-        showLoading(false);
+        hideLoading();
         showErrorToast(errorMessage);
       }
 
-      showLoading(true);
+      showLoading('顧客を保存中...');
       // Use explicit conditional calls instead of dynamic apply
       if (functionName === 'updateCustomerShippingTo') {
         google.script.run
@@ -964,11 +922,11 @@
     function confirmDelete() {
       const rowIndex = document.getElementById('deleteRowIndex').value;
 
-      showLoading(true);
+      showLoading('削除中...');
 
       google.script.run
         .withSuccessHandler(function(result) {
-          showLoading(false);
+          hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
             deleteModal.hide();
@@ -978,20 +936,12 @@
           }
         })
         .withFailureHandler(function(e) {
-          showLoading(false);
+          hideLoading();
           showErrorToast('削除に失敗しました');
         })
         .deleteCustomer(Number(rowIndex));
     }
 
-    function showLoading(show) {
-      const overlay = document.getElementById('loadingOverlay');
-      if (show) {
-        overlay.classList.remove('hidden');
-      } else {
-        overlay.classList.add('hidden');
-      }
-    }
   </script>
 </body>
 

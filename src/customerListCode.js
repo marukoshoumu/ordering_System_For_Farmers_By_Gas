@@ -440,7 +440,12 @@ function getCustomerDetail(rowIndex) {
 
     var customer = {};
     for (var i = 0; i < headers.length; i++) {
-      customer[headers[i]] = values[i];
+      var value = values[i];
+      // DateオブジェクトはGASのシリアライズで問題が起きるため文字列に変換
+      if (value instanceof Date) {
+        value = Utilities.formatDate(value, 'JST', 'yyyy/MM/dd');
+      }
+      customer[headers[i]] = value;
     }
     customer.rowIndex = rowIndex;
 

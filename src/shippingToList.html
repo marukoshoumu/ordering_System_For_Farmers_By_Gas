@@ -108,11 +108,9 @@
       vertical-align: middle;
     }
 
-    .shippingto-table .col-company { min-width: 120px; }
-    .shippingto-table .col-name { width: 100px; }
-    .shippingto-table .col-address { min-width: 200px; }
-    .shippingto-table .col-tel { width: 120px; }
-    .shippingto-table .col-email { min-width: 150px; }
+    .shippingto-table .col-company { min-width: 150px; }
+    .shippingto-table .col-name { width: 120px; }
+    .shippingto-table .col-address { min-width: 300px; }
     .shippingto-table .col-action { width: 100px; text-align: center; }
 
     .shippingto-cards { display: none; }
@@ -205,31 +203,10 @@
       .card-header h1 { text-align: center; }
     }
 
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    .loading-overlay.hidden { display: none; }
   </style>
 </head>
 
 <body>
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="text-center">
-      <div class="spinner-border text-primary" role="status"></div>
-      <div class="mt-2">読み込み中...</div>
-    </div>
-  </div>
-
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="userRole" value="<?= userRole ?>">
@@ -275,8 +252,6 @@
                 <th class="col-company">会社名</th>
                 <th class="col-name">氏名</th>
                 <th class="col-address">住所</th>
-                <th class="col-tel">TEL</th>
-                <th class="col-email">メールアドレス</th>
                 <th class="col-action">操作</th>
               </tr>
             </thead>
@@ -418,7 +393,7 @@
     }
 
     function loadShippingTos() {
-      showLoading(true);
+      showLoading('発送先を読み込み中...');
 
       const filters = {
         keyword: document.getElementById('filterKeyword').value
@@ -428,11 +403,11 @@
         .withSuccessHandler(function(data) {
           shippingTos = JSON.parse(data);
           renderShippingTos();
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
           console.error('発送先取得エラー:', e);
-          showLoading(false);
+          hideLoading();
           showErrorToast('発送先の読み込みに失敗しました');
         })
         .getShippingToListData(filters);
@@ -481,16 +456,6 @@
         const address = (s.address1 || '') + (s.address2 || '');
         tdAddress.textContent = address;
         tr.appendChild(tdAddress);
-
-        const tdTel = document.createElement('td');
-        tdTel.className = 'col-tel';
-        tdTel.textContent = s.tel || '';
-        tr.appendChild(tdTel);
-
-        const tdEmail = document.createElement('td');
-        tdEmail.className = 'col-email';
-        tdEmail.textContent = s.email || '';
-        tr.appendChild(tdEmail);
 
         const tdAction = document.createElement('td');
         tdAction.className = 'col-action';
@@ -602,7 +567,7 @@
 
     function openEditModal(rowIndex) {
       document.getElementById('shippingToModalTitle').textContent = '発送先編集';
-      showLoading(true);
+      showLoading('発送先情報を取得中...');
 
       google.script.run
         .withSuccessHandler(function(shippingTo) {
@@ -633,11 +598,11 @@
           } else {
             showErrorToast('発送先情報の取得に失敗しました');
           }
-          showLoading(false);
+          hideLoading();
         })
         .withFailureHandler(function(e) {
           console.error('発送先詳細取得エラー:', e);
-          showLoading(false);
+          hideLoading();
           showErrorToast('発送先情報の取得に失敗しました');
         })
         .getShippingToDetail(rowIndex);
@@ -728,12 +693,12 @@
 
       const rowIndex = document.getElementById('editRowIndex').value;
 
-      showLoading(true);
+      showLoading('発送先を保存中...');
 
       if (rowIndex) {
         google.script.run
           .withSuccessHandler(function(result) {
-            showLoading(false);
+            hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
               shippingToModal.hide();
@@ -743,14 +708,14 @@
             }
           })
           .withFailureHandler(function(e) {
-            showLoading(false);
+            hideLoading();
             showErrorToast('更新に失敗しました');
           })
           .updateShippingTo(Number(rowIndex), data);
       } else {
         google.script.run
           .withSuccessHandler(function(result) {
-            showLoading(false);
+            hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
               shippingToModal.hide();
@@ -760,7 +725,7 @@
             }
           })
           .withFailureHandler(function(e) {
-            showLoading(false);
+            hideLoading();
             showErrorToast('登録に失敗しました');
           })
           .addShippingToFromList(data);
@@ -776,11 +741,11 @@
     function confirmDelete() {
       const rowIndex = document.getElementById('deleteRowIndex').value;
 
-      showLoading(true);
+      showLoading('削除中...');
 
       google.script.run
         .withSuccessHandler(function(result) {
-          showLoading(false);
+          hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
             deleteModal.hide();
@@ -790,20 +755,12 @@
           }
         })
         .withFailureHandler(function(e) {
-          showLoading(false);
+          hideLoading();
           showErrorToast('削除に失敗しました');
         })
         .deleteShippingTo(Number(rowIndex));
     }
 
-    function showLoading(show) {
-      const overlay = document.getElementById('loadingOverlay');
-      if (show) {
-        overlay.classList.remove('hidden');
-      } else {
-        overlay.classList.add('hidden');
-      }
-    }
   </script>
 </body>
 
