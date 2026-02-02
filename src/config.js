@@ -234,8 +234,9 @@ const CONFIG = {
 // ========================================
 
 /**
- * 自社情報を顧客マスタから取得（発送元情報用）
- * COMPANY_DISPLAY_NAME と同じ名前の顧客レコードを取得
+ * 自社情報を取得（発送元情報用）
+ * COMPANY_DISPLAY_NAME プロパティの値と同じ名前のシートから発送元情報を取得
+ * シート構造: 名前、電話番号、郵便番号、住所
  */
 function getCompanyRecordForShipping() {
   const companyName = getCompanyDisplayName();

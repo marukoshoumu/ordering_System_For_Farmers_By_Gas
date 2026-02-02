@@ -753,18 +753,18 @@
         }
       }
     }
-    function babaChange() {
-      $('button[id="babaBtn"]').text('反映中..');
-      google.script.run.withSuccessHandler(babaChengeSuccess).getCompanyRecordForShipping();
+    function companyChange() {
+      $('button[id="companyBtn"]').text('反映中..');
+      google.script.run.withSuccessHandler(companyChangeSuccess).getCompanyRecordForShipping();
     }
-    function babaChengeSuccess(datas) {
+    function companyChangeSuccess(datas) {
       var data = JSON.parse(datas);
       $('input[id="shippingFromName"]').val(data[0]['名前']);
       $('input[id="shippingFromZipcode"]').val(data[0]['郵便番号']);
       $('input[id="shippingFromAddress"]').val(data[0]['住所']);
       $('input[id="shippingFromTel"]').val(data[0]['電話番号']);
       var companyDisplayName = '<?= getCompanyDisplayName() ?>';
-      $('button[id="babaBtn"]').text(companyDisplayName);
+      $('button[id="companyBtn"]').text(companyDisplayName);
     }
     /**
      * 依頼先（顧客）情報を発送元にコピー

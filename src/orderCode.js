@@ -159,10 +159,12 @@ function getMasterDataCached() {
     }
 
     // キャッシュがなければ取得
-    const shippingFromRecords = getAllRecords('発送元情報') || [];
+    // 会社名シート（COMPANY_DISPLAY_NAMEプロパティの値と同じ名前）から発送元情報を取得
+    const companyDisplayName = getCompanyDisplayName();
+    const shippingFromRecords = getAllRecords(companyDisplayName) || [];
     const shippingFromList = shippingFromRecords.map(function (r) {
       return {
-        name: r['発送元名'] || r['名前'] || '',
+        name: r['名前'] || '',
         zipcode: r['郵便番号'] || '',
         address: r['住所'] || '',
         tel: r['電話番号'] || ''
@@ -573,7 +575,7 @@ function getshippingHTML(e, alert = '') {
 <div class="confirm-section section-shipping-from"><div class="section-header">
   <div class="section-header-row">
     <span class="section-header-label">🏭 発送元情報</span>
-    <button type="button" id="babaBtn" onclick="babaChange()" title="${companyDisplayName}の情報を入力">🌿 ${companyDisplayName}</button>
+    <button type="button" id="companyBtn" onclick="companyChange()" title="${companyDisplayName}の情報を入力">🌿 ${companyDisplayName}</button>
     <button type="button" id="custCopyBtn" onclick="custCopy()" title="顧客情報をコピー">📋 顧客</button>
     <button type="button" id="sendCopyBtn" onclick="sendCopy()" title="発送先情報をコピー">📋 発送先</button>
   </div>
