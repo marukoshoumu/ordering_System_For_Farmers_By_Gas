@@ -500,7 +500,59 @@
 2. clasp push でGASにデプロイ
 3. ウェブアプリとして公開
 
+### 2-1. AllUser版のデプロイ（別プロジェクト）
+AllUser版を別のGoogle Apps Scriptプロジェクトとしてデプロイする場合：
+
+1. **共通コードの同期**
+   ```bash
+   ./sync-shared.sh
+   ```
+   - メインシステムの`sharedLib.js`をAllUserにコピー
+
+2. **AllUser用プロジェクトの作成**
+   - Google Apps Scriptで新しいプロジェクトを作成
+   - `AllUser/src/`内のファイルをアップロード：
+     - `code.js`
+     - `sharedLib.js`
+     - `index.html`
+     - `css.html`
+     - `appsscript.json`（重要：権限設定を含む）
+
+3. **マニフェストファイルの設定（重要）**
+   - プロジェクト設定で「マニフェストファイルをエディタで表示する」にチェック
+   - `appsscript.json`に以下の権限が含まれていることを確認：
+     ```json
+     "oauthScopes": [
+       "https://www.googleapis.com/auth/spreadsheets",
+       "https://www.googleapis.com/auth/script.external_request"
+     ]
+     ```
+   - 保存
+
+4. **権限の承認（重要）**
+   - エディタでテスト関数を実行して権限を承認：
+     ```javascript
+     function testAuth() {
+       const response = UrlFetchApp.fetch('https://www.google.com');
+       Logger.log('権限確認完了');
+     }
+     ```
+   - 「実行」→ 権限承認ダイアログで「許可」をクリック
+   - **これを行わないとスキャン機能が動作しません**
+
+5. **ウェブアプリとして公開**
+   - 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」
+   - 設定：
+     - 次のユーザーとして実行: 「自分」
+     - アクセスできるユーザー: 「全員」（または適切な設定）
+   - デプロイしてURLを取得
+
+詳細はナレッジベースの `docs/alluser-deployment-guide.md` を参照してください。
+（プロジェクト内の `AllUser/デプロイ手順.md` は簡易版です）
+
 ### 3. スクリプトプロパティの設定
+
+#### メインシステム用
 | プロパティ名 | 説明 | 必須 |
 |-------------|------|------|
 | `GEMINI_API_KEY` | Gemini APIキー | ✅ |
@@ -508,6 +560,12 @@
 | `LINE_BOT_SPREADSHEET_ID` | LINE Bot用スプレッドシートID | ✅ |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINEチャネルアクセストークン | ⚪ |
 | `LINE_USER_IDS` | 通知先LINEユーザーID（カンマ区切り） | ⚪ |
+
+#### AllUser版用
+| プロパティ名 | 説明 | 必須 |
+|-------------|------|------|
+| `MASTER_SPREADSHEET_ID` | 受注管理スプレッドシートのID | ✅ |
+| `VISION_API_KEY` | OCR機能用（Cloud Vision APIキー） | ⚪ |
 
 ### 4. トリガーの設定（オプション）
 ```javascript
