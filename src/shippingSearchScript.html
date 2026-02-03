@@ -10,9 +10,10 @@ window.manualCustomerSelection = null;
 window.manualShippingToSelection = null;
 
 // マスタデータキャッシュ変数（loadMasterDataForSearchで使用）
-let cachedCustomers = [];
-let cachedShippingTos = [];
-let masterDataLoaded = false;
+// 他ファイル（shipping.html等）からの参照のため window に明示的に定義
+window.cachedCustomers = [];
+window.cachedShippingTos = [];
+window.masterDataLoaded = false;
 
 /**
  * HTMLエスケープ（XSS対策）
@@ -63,9 +64,9 @@ $(document).on("click", ".customerSearchBtn_open", function () {
  * - 高速化率: 60倍
  *
  * キャッシュデータ:
- * - cachedCustomers: 全顧客マスタ配列
- * - cachedShippingTos: 全発送先マスタ配列
- * - masterDataLoaded: ロード完了フラグ
+ * - window.cachedCustomers: 全顧客マスタ配列
+ * - window.cachedShippingTos: 全発送先マスタ配列
+ * - window.masterDataLoaded: ロード完了フラグ
  *
  * フォールバック:
  * - ロード失敗時は、検索時に旧方式（サーバー検索）にフォールバック
@@ -84,10 +85,10 @@ function loadMasterDataForSearch() {
     .withSuccessHandler(function (data) {
       try {
         const masterData = JSON.parse(data);
-        cachedCustomers = masterData.customers || [];
-        cachedShippingTos = masterData.shippingTos || [];
-        masterDataLoaded = true;
-        console.log('マスタデータロード完了:', cachedCustomers.length + '件の顧客, ' + cachedShippingTos.length + '件の発送先');
+        window.cachedCustomers = masterData.customers || [];
+        window.cachedShippingTos = masterData.shippingTos || [];
+        window.masterDataLoaded = true;
+        console.log('マスタデータロード完了:', window.cachedCustomers.length + '件の顧客, ' + window.cachedShippingTos.length + '件の発送先');
       } catch (e) {
         console.error('マスタデータのパースに失敗:', e);
       }
@@ -132,7 +133,7 @@ function customerSearch() {
   }
 
   // キャッシュが読み込まれていない場合は旧方式にフォールバック
-  if (!masterDataLoaded) {
+  if (!window.masterDataLoaded) {
     console.warn('マスタデータ未ロード - 旧方式で検索します');
     $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
     var record = {};
@@ -148,7 +149,7 @@ function customerSearch() {
   var searchClass = $('select[id="customerSearchClassDg"]').val();
   var key = $('input[id="customerSearchKeyDg"]').val();
 
-  var results = cachedCustomers.filter(function (customer) {
+  var results = window.cachedCustomers.filter(function (customer) {
     // 顧客分類フィルタ
     if (searchClass && customer['顧客分類'] !== searchClass) {
       return false;
@@ -374,7 +375,7 @@ function shippingToSearch() {
   }
 
   // キャッシュが読み込まれていない場合は旧方式にフォールバック
-  if (!masterDataLoaded) {
+  if (!window.masterDataLoaded) {
     console.warn('マスタデータ未ロード - 旧方式で検索します');
     $("#resShippingToArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
     var record = {};
@@ -388,7 +389,7 @@ function shippingToSearch() {
   var bunrui = $('select[id="shippingToSearchBunruiDg"]').val();
   var key = $('input[id="shippingToSearchKeyDg"]').val();
 
-  var results = cachedShippingTos.filter(function (shippingTo) {
+  var results = window.cachedShippingTos.filter(function (shippingTo) {
     // 検索対象カラムを決定
     var targetValue = '';
     if (bunrui == "1") {
