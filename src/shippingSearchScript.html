@@ -29,22 +29,21 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-$(function () {
-  $(".customerSearchBtn_open").on("click", function () {
-    $(".customerSearch_dg").dialog({
-      title: "顧客検索",
-      width: "400",
-      height: "500",
-      modal: true,
-      buttons: {
-        "キャンセル": function () {
-          $(this).dialog("close");
-        },
-        "検索": function () {
-          customerSearch();
-        },
+// 顧客検索ダイアログを開く（イベント委譲で動的要素に対応）
+$(document).on("click", ".customerSearchBtn_open", function () {
+  $(".customerSearch_dg").dialog({
+    title: "顧客検索",
+    width: "400",
+    height: "500",
+    modal: true,
+    buttons: {
+      "キャンセル": function () {
+        $(this).dialog("close");
       },
-    });
+      "検索": function () {
+        customerSearch();
+      },
+    },
   });
 });
 
@@ -313,22 +312,21 @@ function applyName(num) {
   // AIモーダルの表示を更新
   updateManualSelectionDisplay();
 }
-$(function () {
-  $(".shippingToSearchBtn_open").on("click", function () {
-    $(".shippingToSearch_dg").dialog({
-      title: "発送先検索",
-      width: "400",
-      height: "500",
-      modal: true,
-      buttons: {
-        "キャンセル": function () {
-          $(this).dialog("close");
-        },
-        "検索": function () {
-          shippingToSearch();
-        },
+// 発送先検索ダイアログを開く（イベント委譲で動的要素に対応）
+$(document).on("click", ".shippingToSearchBtn_open", function () {
+  $(".shippingToSearch_dg").dialog({
+    title: "発送先検索",
+    width: "400",
+    height: "500",
+    modal: true,
+    buttons: {
+      "キャンセル": function () {
+        $(this).dialog("close");
       },
-    });
+      "検索": function () {
+        shippingToSearch();
+      },
+    },
   });
 });
 

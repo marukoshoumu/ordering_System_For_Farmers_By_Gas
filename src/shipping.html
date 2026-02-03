@@ -525,9 +525,8 @@
     // ========================================
     // 検索パフォーマンス改善: マスタデータキャッシュ
     // ========================================
-    var cachedCustomers = [];
-    var cachedShippingTos = [];
-    var masterDataLoaded = false;
+    // NOTE: cachedCustomers, cachedShippingTos, masterDataLoaded は
+    // shippingSearchScript.html で宣言されているため、ここでは宣言しない
 
     var oriproduct = $('select[id="product1"]').html();
     var oriquantity = $('select[id="quantity1"]').html();

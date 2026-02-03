@@ -28,6 +28,7 @@ alwaysApply: false
 - 現在のステータス: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}CURRENT_STATUS.md`
 - セッション履歴: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}sessions/`
 - 機能・設計: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}docs/`
+- プロンプトのコツ（魔法の言葉7選）: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}docs/prompt-magic-words.md`（詳細は `$KNOWLEDGE_DIR/personal/learnings/prompt-magic-words.md`）
 
 ## 環境変数の設定
 
