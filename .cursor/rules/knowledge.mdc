@@ -19,7 +19,7 @@ alwaysApply: false
 
 ## セッション開始時・設計判断時
 
-1. **まず参照**: プロジェクトルートの `KNOWLEDGE_REFERENCE.md` で直近のステータス・セッション要約を確認する。
+1. **まず参照**: ナレッジ側 `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}KNOWLEDGE_REFERENCE.md` または `CURRENT_STATUS.md` で直近のステータス・セッション要約を確認する（ナレッジはプロジェクト外の `$HOME/knowledge` 等に保存）。
 2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `_README.md` または `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` 内のドキュメントを参照する。
 3. **エージェント用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}AGENT.md` でクイックスタート、`SKILLS.md` で頻出タスクパターンを確認する。
 
