@@ -275,6 +275,16 @@
       flex-direction: column;
       justify-content: center;
     }
+
+    /* 予定日超過カード（受注一覧と同様） */
+    .order-card.overdue-row {
+      background-color: #ffebee !important;
+      border-left: 4px solid #f44336;
+    }
+    .order-card.overdue-row .order-card-title,
+    .order-card.overdue-row .order-card-customer {
+      color: #c62828;
+    }
   </style>
 </head>
 
@@ -724,8 +734,13 @@
           coolBadge = '<span class="cool-badge bg-warning text-dark" style="font-size:0.6rem">' + coolCls + '</span>';
         }
 
-        const isShipped = order['shipped'] === true;
-        html += `<div class="order-card shadow-sm ${isShipped ? 'shipped' : ''}">`;
+        const isShipped = order['shipped'] === true || order['shipped'] === '○';
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const shipDate = order.shippingDate ? new Date(order.shippingDate) : null;
+        if (shipDate) shipDate.setHours(0, 0, 0, 0);
+        const isOverdue = !isShipped && shipDate && shipDate.getTime() < todayStart.getTime();
+        html += `<div class="order-card shadow-sm ${isShipped ? 'shipped' : ''} ${isOverdue ? 'overdue-row' : ''}">`;
 
         // ステータスバッジを生成
         const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
@@ -750,6 +765,9 @@
         html += `<div class="order-card-header">`;
         html += `<div class="order-card-info-main">`;
         html += `<h4 class="order-card-title">${escapeHtml(order['発送先名'] || '')} 様</h4>`;
+        if (isOverdue) {
+          html += `<span class="badge bg-danger ms-1" style="font-size:0.65rem">予定日超過</span>`;
+        }
         html += `<span class="order-card-customer">依頼主: ${escapeHtml(order['顧客名'] || '')}</span>`;
 
         // クール区分バッジ
