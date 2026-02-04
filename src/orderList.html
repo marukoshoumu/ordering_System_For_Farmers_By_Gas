@@ -978,14 +978,14 @@
         <div class="d-flex align-items-center gap-2">
           <? if (userRole !== 'viewer') { ?>
           <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-            <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
+            <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
             <button type="submit" formnovalidate class="btn btn-light btn-sm" name="shipping" value="true">
               <i class="bi bi-plus-circle me-1"></i>注文新規登録
             </button>
           </form>
           <? } ?>
           <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-            <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
+            <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
             <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
               <i class="bi bi-house"></i> ホーム
             </button>
@@ -1313,6 +1313,7 @@
 
   <!-- 操作用の隠しフォーム -->
   <form id="actionForm" method="POST" action="<?= deployURL ?>" style="display: none;">
+    <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
     <input type="hidden" name="shipping" value="true">
     <input type="hidden" name="editOrderId" id="actionOrderIdInput" value="">
     <input type="hidden" name="editMode" id="actionEditModeInput" value="">
@@ -1332,7 +1333,7 @@
 
   <script>
     // グローバル変数
-    const userRole = '<?= userRole || "admin" ?>';  // ユーザー権限
+    const userRole = '<?= userRole || "viewer" ?>';  // ユーザー権限（表示用・最小権限でフォールバック）
     let selectedDestination = null;
     let selectedCustomer = null;
     let orderData = [];

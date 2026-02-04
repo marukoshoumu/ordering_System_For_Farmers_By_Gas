@@ -295,8 +295,8 @@
       <?= getCompanyDisplayName() ?>
     </h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
-      <!-- 権限情報を引き継ぐ -->
-      <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
+      <!-- セッション引き継ぎ（権限はサーバー側セッションで検証） -->
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
 
       <!-- アコーディオンメニュー -->
       <div class="menu-accordion">

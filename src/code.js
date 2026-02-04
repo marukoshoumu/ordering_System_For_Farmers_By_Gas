@@ -86,6 +86,50 @@ function getLoginHTML(alert = '') {
   return html;
 }
 
+/** セッション有効期限（秒）6時間 */
+var SESSION_TTL_SEC = 6 * 60 * 60;
+
+/**
+ * サーバー側セッションからユーザー情報を取得する。認証・権限はクライアント送信値に依存せずここで検証する。
+ * @param {string} sessionId - ログイン時に発行されたセッションID
+ * @returns {{ userRole: string, loginId: string } | null} セッションがあれば { userRole, loginId }、なければ null
+ */
+function getSession(sessionId) {
+  if (!sessionId || typeof sessionId !== 'string') return null;
+  try {
+    const cache = CacheService.getScriptCache();
+    const raw = cache.get('session_' + sessionId);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * ログイン成功時にセッションを保存する。
+ * @param {string} sessionId - Utilities.getUuid() 等で生成したID
+ * @param {string} userRole - ユーザー権限（admin/viewer）
+ * @param {string} loginId - ログインID
+ */
+function setSession(sessionId, userRole, loginId) {
+  if (!sessionId) return;
+  const cache = CacheService.getScriptCache();
+  cache.put('session_' + sessionId, JSON.stringify({ userRole: userRole || 'viewer', loginId: loginId || '' }), SESSION_TTL_SEC);
+}
+
+/**
+ * POSTリクエストからセッションを解決し、サーバー側で確定した userRole と sessionId を返す。
+ * セッションが無い場合は最小権限（viewer）とする。
+ * @param {Object} e - POST イベント（e.parameter を使用）
+ * @returns {{ userRole: string, sessionId: string }}
+ */
+function resolveSessionFromPost(e) {
+  const sessionId = (e.parameter && e.parameter.sessionId) ? String(e.parameter.sessionId).trim() : '';
+  const session = getSession(sessionId);
+  const userRole = (session && session.userRole) ? session.userRole : 'viewer';
+  return { userRole: userRole, sessionId: sessionId };
+}
+
 /**
  * POSTリクエスト処理（ログイン認証・画面遷移ルーティング）
  *
@@ -126,7 +170,7 @@ function getLoginHTML(alert = '') {
  * @param {string} e.parameter.login - ログインボタン押下フラグ
  * @param {string} e.parameter.loginId - ログインID
  * @param {string} e.parameter.loginPass - ログインパスワード
- * @param {string} e.parameter.userRole - ユーザー権限（admin/viewer）
+ * @param {string} e.parameter.sessionId - セッションID（ログイン後発行、権限はサーバー側セッションで検証）
  * @param {string} e.parameter.tempOrderId - 仮受注ID（AI取込一覧から遷移時）
  * @param {string} e.parameter.redirectTo - リダイレクト先（aiImportList/shipping）
  * @param {string} e.parameter.editOrderId - 編集対象の受注ID
@@ -164,20 +208,23 @@ function doPost(e) {
       htmlOutput.setTitle('ログイン画面');
       return htmlOutput;
     }
-    // ログイン成功 - 権限情報を取得
-    const userRole = user['権限'] || 'admin';  // デフォルトは管理者
+    // ログイン成功 - 権限情報を取得しサーバー側セッションを発行（クライアントの userRole 送信に依存しない）
+    const userRole = user['権限'] || 'admin';  // デフォルトは管理者（passシートから取得）
+    const sessionId = Utilities.getUuid();
+    setSession(sessionId, userRole, e.parameter.loginId);
     const tempOrderId = e.parameter.tempOrderId || '';
     const redirectTo = e.parameter.redirectTo || '';
 
     // viewerの場合、AI取込一覧へのアクセスを制限
     if (userRole === 'viewer' && (redirectTo === 'aiImportList' || tempOrderId)) {
-      return redirectToHome(userRole);
+      return redirectToHome(userRole, sessionId);
     }
 
     // tempOrderIdがあれば受注画面へ直接遷移
     if (tempOrderId) {
       const template = HtmlService.createTemplateFromFile('shipping');
       template.deployURL = ScriptApp.getService().getUrl();
+      template.sessionId = sessionId;
       template.isEditMode = false;
       template.editOrderId = '';
       template.tempOrderId = tempOrderId;
@@ -202,6 +249,7 @@ function doPost(e) {
     if (redirectTo === 'aiImportList') {
       const template = HtmlService.createTemplateFromFile('aiImportList');
       template.deployURL = ScriptApp.getService().getUrl();
+      template.sessionId = sessionId;
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('AI取込一覧');
@@ -211,6 +259,7 @@ function doPost(e) {
     if (redirectTo === 'shipping') {
       const template = HtmlService.createTemplateFromFile('shipping');
       template.deployURL = ScriptApp.getService().getUrl();
+      template.sessionId = sessionId;
       template.isEditMode = false;
       template.editOrderId = '';
       template.tempOrderId = '';
@@ -233,6 +282,7 @@ function doPost(e) {
 
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = sessionId;
     template.userRole = userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -240,37 +290,40 @@ function doPost(e) {
     return htmlOutput;
   }
   else if (e.parameter.main || e.parameter.mainTop) {
-    // ホーム画面への遷移
-    const userRole = e.parameter.userRole || 'admin';  // パラメータから取得、なければadmin
+    // ホーム画面への遷移（権限はセッションから取得、送信値は使わない）
+    const _s = resolveSessionFromPost(e);
     const template = HtmlService.createTemplateFromFile('home');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('ホーム画面');
     return htmlOutput;
   }
-  // 電話受注モード
+  // 電話受注モード（権限はセッションで検証）
   else if (e.parameter.phoneOrder) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('phoneOrder');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
     htmlOutput.setTitle('電話受注モード');
     return htmlOutput;
   }
-  // 「受注」ボタンが押されたらshipping.htmlを返す
+  // 「受注」ボタンが押されたらshipping.htmlを返す（権限はセッションで検証）
   else if (e.parameter.shipping) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
 
     // 編集モードの設定
     const editOrderId = e.parameter.editOrderId || '';
@@ -317,16 +370,17 @@ function doPost(e) {
     htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面（AI入力）');
     return htmlOutput;
   }
-  // 「受注確認」ボタンが押されたらconfirm.htmlを返す
+  // 「受注確認」ボタンが押されたらconfirm.htmlを返す（権限はセッションで検証）
   else if (e.parameter.shippingComfirm) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     if (isZero(e)) {
       const template = HtmlService.createTemplateFromFile('shipping');
       const alert = '少なくとも1個以上注文してください。';
       template.deployURL = ScriptApp.getService().getUrl();
+      template.sessionId = _s.sessionId;
       template.shippingHTML = getshippingHTML(e, alert);
       template.autoOpenAI = false;
       template.aiAnalysisResult = '';
@@ -349,6 +403,7 @@ function doPost(e) {
 
     const template = HtmlService.createTemplateFromFile('shippingComfirm');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     // 編集モードの設定を追加
     const editOrderId = e.parameter.editOrderId || '';
     const editMode = e.parameter.editMode === 'true';
@@ -370,14 +425,15 @@ function doPost(e) {
     htmlOutput.setTitle('確認画面');
     return htmlOutput;
   }
-  // 確認画面で「修正する」ボタンが押されたらform.htmlを返す
+  // 確認画面で「修正する」ボタンが押されたらform.htmlを返す（権限はセッションで検証）
   else if (e.parameter.shippingModify) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
 
     // 編集モードの設定を追加
     const editOrderId = e.parameter.editOrderId || '';
@@ -406,102 +462,110 @@ function doPost(e) {
     htmlOutput.setTitle(editMode ? '受注修正画面' : '受注画面');
     return htmlOutput;
   }
-  // 確認画面で「受注する」ボタンが押されたらcomplete画面へ
+  // 確認画面で「受注する」ボタンが押されたらcomplete画面へ（権限はセッションで検証）
   else if (e.parameter.shippingSubmit) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     createOrder(e);
     //updateZaiko(e);
     const template = HtmlService.createTemplateFromFile('shippingComplete');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('受注完了');
     return htmlOutput;
   }
   else if (e.parameter.createShippingSlips) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('createShippingSlips');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('発注伝票作成');
     return htmlOutput;
   }
   else if (e.parameter.createBill) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('createBill');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('請求書作成');
     return htmlOutput;
   }
   else if (e.parameter.createFreeeDeliveryNote) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('createFreeeDeliveryNote');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('freee納品書CSV作成');
     return htmlOutput;
   }
   else if (e.parameter.csvImport) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('csvImport');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('受注CSV取込');
     return htmlOutput;
   }
   else if (e.parameter.masterImport) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('masterImport');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('一括マスタ登録');
     return htmlOutput;
   }
   else if (e.parameter.quotation) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('quotation');
     template.deployURL = ScriptApp.getService().getUrl();
+    template.sessionId = _s.sessionId;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('見積書作成');
     return htmlOutput;
   }
   else if (e.parameter.salesDashboard) {
-    const userRole = e.parameter.userRole || '';
+    const _s = resolveSessionFromPost(e);
 
-    // admin権限チェック
-    if (userRole !== 'admin') {
+    // admin権限はセッションで検証（送信値は使わない）
+    if (_s.userRole !== 'admin') {
       const errorTemplate = HtmlService.createTemplateFromFile('error');
       errorTemplate.errorMessage = 'この機能はadmin権限が必要です。';
       errorTemplate.deployURL = ScriptApp.getService().getUrl();
-      errorTemplate.userRole = userRole;
+      errorTemplate.userRole = _s.userRole;
+      errorTemplate.sessionId = _s.sessionId;
       return errorTemplate.evaluate()
         .setTitle('アクセス拒否')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -509,25 +573,28 @@ function doPost(e) {
 
     const template = HtmlService.createTemplateFromFile('salesDashboard');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('売上ダッシュボード')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   else if (e.parameter.orderList) {
-    const userRole = e.parameter.userRole || 'admin';
+    const _s = resolveSessionFromPost(e);
     const template = HtmlService.createTemplateFromFile('HeatmapOrderList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('製造数一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   else if (e.parameter.orderListPage) {
-    const userRole = e.parameter.userRole || 'admin';
+    const _s = resolveSessionFromPost(e);
     const template = HtmlService.createTemplateFromFile('orderList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
 
     // 検索条件引継用
     template.prevPeriod = e.parameter.prevPeriod || '';
@@ -542,68 +609,72 @@ function doPost(e) {
       .setTitle('受注一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // AI取込一覧画面（viewerはアクセス不可）
+  // AI取込一覧画面（viewerはアクセス不可、権限はセッションで検証）
   else if (e.parameter.aiImportList) {
-    const userRole = e.parameter.userRole || 'admin';
-    // viewerの不正アクセスをブロック
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('aiImportList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('AI取込一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // 定期便一覧画面（viewerはアクセス不可）
+  // 定期便一覧画面（viewerはアクセス不可、権限はセッションで検証）
   else if (e.parameter.recurringOrderList) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('recurringOrderList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('定期便一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // 商品マスタ一覧画面（viewerはアクセス不可）
+  // 商品マスタ一覧画面（viewerはアクセス不可、権限はセッションで検証）
   else if (e.parameter.productList) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('productList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('商品マスタ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // 顧客マスタ一覧画面（admin専用、viewerはアクセス不可）
+  // 顧客マスタ一覧画面（viewerはアクセス不可、権限はセッションで検証）
   else if (e.parameter.customerList) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('customerList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('顧客マスタ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
-  // 発送先マスタ一覧画面（admin専用、viewerはアクセス不可）
+  // 発送先マスタ一覧画面（viewerはアクセス不可、権限はセッションで検証）
   else if (e.parameter.shippingToList) {
-    const userRole = e.parameter.userRole || 'admin';
-    if (userRole === 'viewer') {
-      return redirectToHome(userRole);
+    const _s = resolveSessionFromPost(e);
+    if (_s.userRole === 'viewer') {
+      return redirectToHome(_s.userRole, _s.sessionId);
     }
     const template = HtmlService.createTemplateFromFile('shippingToList');
     template.deployURL = ScriptApp.getService().getUrl();
-    template.userRole = userRole;
+    template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     return template.evaluate()
       .setTitle('発送先マスタ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -1033,12 +1104,14 @@ function isZero(e) {
 /**
  * ホーム画面にリダイレクト（権限不足時）
  * @param {string} userRole - ユーザー権限（admin/viewer）
+ * @param {string} [sessionId] - セッションID（フォーム引き継ぎ用）
  * @returns {HtmlOutput} ホーム画面
  */
-function redirectToHome(userRole) {
+function redirectToHome(userRole, sessionId) {
   const template = HtmlService.createTemplateFromFile('home');
   template.deployURL = ScriptApp.getService().getUrl();
-  template.userRole = userRole || 'admin';
+  template.sessionId = sessionId || '';
+  template.userRole = userRole || 'viewer';
   const htmlOutput = template.evaluate();
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   htmlOutput.setTitle('ホーム画面');
