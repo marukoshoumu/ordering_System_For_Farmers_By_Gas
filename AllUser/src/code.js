@@ -49,11 +49,11 @@ function selectShippingDate() {
   // 商品単位マップの作成
   const unitMap = getProductUnitMapShared(ss);
 
-  // 必要な日付範囲のみ取得
-  const items = getOrdersByDateRangeShared(ss, dates.yesterday, dates.dayAfter3);
+  // 昨日〜明々後日 + 発送日超過（未出荷・非キャンセルで発送日が今日より前）のみ取得（超過は当日分として表示・先頭表示）
+  const items = getOrdersByDateRangeShared(ss, dates.yesterday, dates.dayAfter3, true);
   processItemsShared(items, dates, dataStructure, unitMap);
 
-  return JSON.stringify(buildResultShared(dateStrings, dataStructure));
+  return JSON.stringify(buildResultShared(dateStrings, dataStructure, dates));
 }
 
 // ============================================

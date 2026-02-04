@@ -26,51 +26,58 @@ function selectShippingDate() {
     });
   }
 
-  // 必要な日付範囲のみ取得
-  const items = getOrdersByDateRange(dates.yesterday, dates.dayAfter3);
+  // 昨日〜明々後日 + 発送日超過（未出荷・非キャンセルで発送日が今日より前）のみ取得（受注一覧の「予定日超過を含む」と同様の例外追加方式）
+  const items = getOrdersByDateRange(dates.yesterday, dates.dayAfter3, true);
   processItems(items, dates, dataStructure, unitMap);
 
-  return JSON.stringify(buildResult(dateStrings, dataStructure));
+  return JSON.stringify(buildResult(dateStrings, dataStructure, dates));
 }
 
 /**
  * 指定された日付範囲の受注レコードを取得
- * 
+ * 受注一覧の getOrderListData と同様に、includeOverdue 時は「期間内」OR「予定日超過」のみを含める（期間を一括で拡張しない）。
+ *
  * @param {Date} startDate - 開始日
  * @param {Date} endDate - 終了日
+ * @param {boolean} [includeOverdue=false] - true の場合、発送日が今日より前で未出荷・非キャンセルの行も含める（当日分として表示するため）
  * @returns {Array<Object>} - ラベルをキーとしたレコードの配列
  */
-function getOrdersByDateRange(startDate, endDate) {
+function getOrdersByDateRange(startDate, endDate, includeOverdue) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('受注');
   const values = sheet.getDataRange().getValues();
   const labels = values.shift();
 
-  // 列インデックスを取得
   const dateColIndex = labels.indexOf('発送日');
   const statusColIndex = labels.indexOf('ステータス');
+  const shippedColIndex = labels.indexOf('出荷済');
 
   const startTime = startDate.getTime();
   const endTime = endDate.getTime() + 24 * 60 * 60 * 1000; // 終了日の翌日0時
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTime = today.getTime();
+
   const records = [];
   for (const value of values) {
+    const isCancelled = statusColIndex !== -1 && (value[statusColIndex] === 'キャンセル' || value[statusColIndex] === 'cancelled');
+    if (isCancelled) continue;
+
     const shippingDate = new Date(value[dateColIndex]);
     const shippingTime = shippingDate.getTime();
+    const isShipped = shippedColIndex !== -1 && (value[shippedColIndex] === '○' || value[shippedColIndex] === true);
+    const isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
 
-    // 日付範囲内のみ追加
-    if (shippingTime >= startTime && shippingTime < endTime) {
-      // フィルタリング: キャンセルを除外 (出荷済は含める)
-      const isCancelled = statusColIndex !== -1 && (value[statusColIndex] === 'キャンセル' || value[statusColIndex] === 'cancelled');
+    // 期間内 または 予定日超過（例外）のみ含める
+    const inRange = shippingTime >= startTime && shippingTime < endTime;
+    if (!inRange && !isOverdueRow) continue;
 
-      if (isCancelled) continue;
-
-      const record = {};
-      labels.forEach((label, index) => {
-        record[label] = value[index];
-      });
-      records.push(record);
-    }
+    const record = {};
+    labels.forEach((label, index) => {
+      record[label] = value[index];
+    });
+    records.push(record);
   }
 
   return records;
@@ -180,12 +187,24 @@ function processItems(items, dates, dataStructure, unitMap) {
     const itemDate = Utilities.formatDate(new Date(item['発送日']), 'JST', 'yyyy/MM/dd');
     let dateKey = null;
 
-    // どの日付に該当するか判定
-    if (itemDate === dates.yesterdayStr) dateKey = 'yesterday';
-    else if (itemDate === dates.todayStr) dateKey = 'today';
-    else if (itemDate === dates.tomorrowStr) dateKey = 'tomorrow';
-    else if (itemDate === dates.dayAfter2Str) dateKey = 'dayAfter2';
-    else if (itemDate === dates.dayAfter3Str) dateKey = 'dayAfter3';
+    // 予定日超過判定（受注一覧と同様：発送日が今日より前かつ未出荷かつ非キャンセル → 当日分として表示）
+    const isCancelled = item['ステータス'] === 'キャンセル' || item['ステータス'] === 'cancelled';
+    const isShipped = item['出荷済'] === '○' || item['出荷済'] === true;
+    const isOverdue = !isShipped && !isCancelled && itemDate < dates.todayStr;
+
+    if (isOverdue) {
+      dateKey = 'today';
+    } else if (itemDate === dates.yesterdayStr) {
+      dateKey = 'yesterday';
+    } else if (itemDate === dates.todayStr) {
+      dateKey = 'today';
+    } else if (itemDate === dates.tomorrowStr) {
+      dateKey = 'tomorrow';
+    } else if (itemDate === dates.dayAfter2Str) {
+      dateKey = 'dayAfter2';
+    } else if (itemDate === dates.dayAfter3Str) {
+      dateKey = 'dayAfter3';
+    }
 
     if (dateKey) {
       processDateItem(item, dateKey, dataStructure, unitMap);
@@ -262,7 +281,7 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
     // 合計カウントも発行枚数ベースに
     dataStructure.counts[dateKey]++;
 
-    // 新規レコード作成
+    // 新規レコード作成（発送日は超過を先頭表示するソート用に保持）
     lists.set(listKey, {
       'orderId': item['受注ID'],
       '顧客名': item['顧客名'],
@@ -272,6 +291,7 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
       'trackingNumber': item['追跡番号'] || '',
       'status': item['ステータス'] || '',
       'shipped': item['出荷済'] === '○' || item['出荷済'] === true,
+      'shippingDate': item['発送日'],
       '商品': [{
         '商品名': item['商品名'],
         '受注数': Number(item['受注数']),
@@ -284,12 +304,13 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
 
 /**
  * 集計済みデータ構造から最終的なレスポンス配列を構築
- * 
+ *
  * @param {Object} dateStrings - 表示用日付文字列
  * @param {Object} dataStructure - 集計済みデータ構造
+ * @param {Object} [dates] - 日程オブジェクト（今日リストで超過を先頭ソートする場合に使用）
  * @returns {Array} - クライアント側に返すデータの配列
  */
-function buildResult(dateStrings, dataStructure) {
+function buildResult(dateStrings, dataStructure, dates) {
   const cnt = {
     '昨日': dataStructure.counts.yesterday,
     '今日': dataStructure.counts.today,
@@ -324,8 +345,14 @@ function buildResult(dateStrings, dataStructure) {
     });
   };
 
-  const convertListMap = (map) => {
-    return Array.from(map.values()).map(record => ({
+  const todayStart = dates ? (function () {
+    const t = new Date(dates.today.getTime());
+    t.setHours(0, 0, 0, 0);
+    return t.getTime();
+  })() : null;
+
+  const convertListMap = (map, sortOverdueFirst) => {
+    let arr = Array.from(map.values()).map(record => ({
       'orderId': record['orderId'],
       '顧客名': record['顧客名'],
       '発送先名': record['発送先名'],
@@ -334,8 +361,22 @@ function buildResult(dateStrings, dataStructure) {
       'trackingNumber': record['trackingNumber'],
       'status': record['status'],
       'shipped': record['shipped'],
+      'shippingDate': record['shippingDate'] || null,
       '商品': record['商品']
     }));
+    if (sortOverdueFirst && todayStart != null) {
+      arr = arr.sort((a, b) => {
+        const aTime = a.shippingDate ? new Date(a.shippingDate).getTime() : 0;
+        const bTime = b.shippingDate ? new Date(b.shippingDate).getTime() : 0;
+        const aOver = aTime > 0 && aTime < todayStart;
+        const bOver = bTime > 0 && bTime < todayStart;
+        if (aOver && !bOver) return -1;
+        if (!aOver && bOver) return 1;
+        if (aOver && bOver) return aTime - bTime;
+        return 0;
+      });
+    }
+    return arr;
   };
 
   return [
@@ -344,7 +385,7 @@ function buildResult(dateStrings, dataStructure) {
     convertMapToArray(dataStructure.invoiceTypes.yesterday),
     convertListMap(dataStructure.lists.yesterday),
     convertMapToArray(dataStructure.invoiceTypes.today),
-    convertListMap(dataStructure.lists.today),
+    convertListMap(dataStructure.lists.today, true),
     convertMapToArray(dataStructure.invoiceTypes.tomorrow),
     convertListMap(dataStructure.lists.tomorrow),
     convertMapToArray(dataStructure.invoiceTypes.dayAfter2),
