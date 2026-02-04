@@ -110,6 +110,17 @@ function updateOrderShippedStatus(orderId, shippedValue) {
   return updateOrderShippedStatusShared(ss, normalizedOrderId, normalizedShippedValue);
 }
 
+/**
+ * 注文のステータスを更新（発送前/収穫待ち/出荷済み）
+ * @param {string} orderId - 受注ID
+ * @param {string} newStatus - 新しいステータス（'発送前'/'収穫待ち'/'出荷済み'）
+ * @returns {Object} 実行結果
+ */
+function updateOrderStatus(orderId, newStatus) {
+  const ss = getSpreadsheet();
+  return updateOrderStatusShared(ss, orderId, newStatus);
+}
+
 // ============================================
 // 追跡番号更新（sharedLib.jsを使用）
 // ============================================

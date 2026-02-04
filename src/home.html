@@ -281,6 +281,7 @@
       background-color: #ffebee !important;
       border-left: 4px solid #f44336;
     }
+
     .order-card.overdue-row .order-card-title,
     .order-card.overdue-row .order-card-customer {
       color: #c62828;
@@ -528,42 +529,46 @@
     }
     function setTable(datas) {
       var res = JSON.parse(datas);
-      var cntHtml = `<p class="info_table">発送件数</p>`;
-      cntHtml += `<table class="table table-bordered">
-      <thead>
-        <tr class="table-primary">
-      `;
-      // cntHtml += `<th scope="col">${res[0]['昨日']}</th>`;
-      cntHtml += `<th style="background-color: #B0E3A4;" scope="col">${res[0]['今日']}</th>`;
-      cntHtml += `<th scope="col">${res[0]['明日']}</th>`;
-      cntHtml += `<th scope="col">${res[0]['明後日']}</th>`;
-      cntHtml += `<th scope="col">${res[0]['明々後日']}</th>`;
-      cntHtml += `</tr>
-      </thead>`;
-      cntHtml += `<tbody class="table-group-divider">
-            <tr>`;
-      // cntHtml += `<td scope="col">${res[1]['昨日']}件</td>`;
+      $("#cntRes").html("");
+      let cntHtml = `<table class="table table-bordered text-center" style="table-layout: fixed;">`;
+      cntHtml += `<thead><tr>`;
+
+      // ヘッダー行 - 今日は緑、他はブルーグレー系
+      cntHtml += `<th class="today_color" scope="col">${res[0]['今日']}</th>`;
+      cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明日']}</th>`;
+      cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明後日']}</th>`;
+      cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明々後日']}</th>`;
+      cntHtml += `</tr></thead><tbody><tr>`;
+
+      // 件数行
       cntHtml += `<td scope="col">${res[1]['今日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['明日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['明後日']}件</td>`;
       cntHtml += `<td scope="col">${res[1]['明々後日']}件</td>`;
-      cntHtml += `</tr>
-      </tbody>
-      </table>
-      `;
-      $("#cntRes").html(cntHtml);
-      // if (res[2]) {
-      //   createInvoiceHtml(res[2], res[0]['昨日'], "#invoiceYesterdayRes");
-      // }
-      // else {
-      //   $("#invoiceYesterdayRes").html('');
-      // }
-      // if (res[3]) {
-      //   createProductHtml(res[3], res[0]['昨日'], "#yesterdayRes");
-      // }
-      // else {
-      //   $("#yesterdayRes").html('');
-      // }
+      cntHtml += `</tr></tbody></table>`;
+
+      // ステータスバッジ表示エリア（テーブルの下に表示）
+      let statusBadges = '';
+      const overdueCount = res[1]['超過'] || 0;
+      const harvestWaitingCount = res[1]['収穫待ち'] || 0;
+
+      if (overdueCount > 0) {
+        statusBadges += `<span class="badge bg-danger me-2" style="font-size:0.85rem;">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i>発送日超過: ${overdueCount}件
+                </span>`;
+      }
+
+      if (harvestWaitingCount > 0) {
+        statusBadges += `<span class="badge bg-warning text-dark me-2" style="font-size:0.85rem;">
+                    <i class="bi bi-flower1 me-1"></i>収穫待ち: ${harvestWaitingCount}件
+                </span>`;
+      }
+
+      if (statusBadges) {
+        statusBadges = `<div class="mt-2 text-center">${statusBadges}</div>`;
+      }
+
+      $("#cntRes").html(cntHtml + statusBadges);
       if (res[4]) {
         createInvoiceHtml(res[4], res[0]['今日'], "#invoiceTodayRes", true);
       }
@@ -745,19 +750,32 @@
         // ステータスバッジを生成
         const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
 
-        // アクション（スキャン・チェックボックス・ステータス）
+        // アクション（スキャン・チェックボックス・ステータス・編集）
         const escapedOrderId = escapeHtml(order.orderId);
-        const escapedRecipientName = escapeHtml(order.発送先名 || '');
+        const escapedRecipientName = escapeHtml(order['発送先名'] || '');
         const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
+        // 商品情報をデータ属性として持たせる
+        const productData = order['商品'].map(p => ({
+          name: p['商品名'],
+          count: p['受注数']
+        }));
+        const productDataJson = escapeHtml(JSON.stringify(productData));
+
+        // 現在のステータスを判定
+        const currentStatus = order.status || (isShipped ? '出荷済み' : '発送前');
+        const isHarvestWaiting = currentStatus === '収穫待ち';
+
         const actionsHtml = `
-          <div class="order-card-actions">
-            <div class="shipped-check-wrapper">
-              <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} onchange="updateShippedStatus('${escapedOrderId}', this.checked)" title="出荷済チェック">
-              ${statusBadgeHtml}
-            </div>
-            <button type="button" class="btn btn-sm scan-btn-mini" onclick="openScannerDialog('${escapedOrderId}', '${escapedRecipientName}', '${escapedDeliveryMethod}')" title="伝票スキャン">
+          <div class="order-card-actions" style="flex-direction: column; gap: 5px; align-items: stretch;">
+            <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
+              <option value="発送前" ${currentStatus === '発送前' ? 'selected' : ''}>発送前</option>
+              <option value="収穫待ち" ${currentStatus === '収穫待ち' ? 'selected' : ''}>🌱待ち</option>
+              <option value="出荷済み" ${currentStatus === '出荷済み' ? 'selected' : ''}>✓済</option>
+            </select>
+            <button type="button" class="btn btn-sm scan-btn-mini" data-order-id="${escapedOrderId}" data-recipient-name="${escapedRecipientName}" data-delivery-method="${escapedDeliveryMethod}" title="伝票スキャン" style="width: 100%;">
               <i class="bi bi-upc-scan"></i>
             </button>
+            ${statusBadgeHtml}
           </div>
         `;
 
@@ -782,7 +800,24 @@
         // 商品リスト
         html += `<div class="order-card-body">`;
         let combinedMemo = [];
-        const seenMemos = new Set(); // 同一注文内で同じメモを複数回表示しない
+
+        // バックエンドですでに集約済みのメモがあればそれを使用
+        if (order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos'])) {
+          combinedMemo = order['aggregatedMemos'];
+        } else {
+          // 下位互換性（念のため残す）
+          const seenMemos = new Set();
+          for (let j = 0; j < order['商品'].length; j++) {
+            const p = order['商品'][j];
+            if (p['メモ']) {
+              const rawMemo = String(p['メモ']).trim();
+              if (rawMemo && !seenMemos.has(rawMemo)) {
+                seenMemos.add(rawMemo);
+                combinedMemo.push(escapeHtml(p['メモ']));
+              }
+            }
+          }
+        }
 
         for (let j = 0; j < order['商品'].length; j++) {
           const p = order['商品'][j];
@@ -791,17 +826,9 @@
           html += `<span class="product-name">${escapeHtml(p['商品名'] || '')}</span>`;
           html += `<span class="product-quantity">${escapeHtml(String(p['受注数'] || ''))} ${escapeHtml(unit)}</span>`;
           html += `</div>`;
-
-          if (p['メモ']) {
-            const rawMemo = String(p['メモ']).trim();
-            if (rawMemo && !seenMemos.has(rawMemo)) {
-              seenMemos.add(rawMemo);
-              combinedMemo.push(escapeHtml(p['メモ']));
-            }
-          }
         }
 
-        // メモがあれば表示（重複は1回のみ）
+        // メモがあれば表示
         if (combinedMemo.length > 0) {
           html += `<div class="memo-box">`;
           html += `<span class="memo-icon">📌</span>`;
@@ -837,15 +864,15 @@
       if (!status) return '';
       const escapedStatus = escapeHtml(status);
       let badgeClass = 'bg-secondary';
-      if (status === '配達完了') badgeClass = 'bg-success';
+      if (status === '配達完了' || status === '出荷済み') badgeClass = 'bg-success';
       else if (status === '発送済' || status === '配達中') badgeClass = 'bg-primary';
-      else if (status === '不在/持戻') badgeClass = 'bg-warning text-dark';
+      else if (status === '不在/持戻' || status === '収穫待ち') badgeClass = 'bg-warning text-dark';
       else if (status.includes('エラー')) badgeClass = 'bg-danger';
 
-      return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
+      return `<span class="badge ${badgeClass} mt-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
     }
 
-    // 出荷済ステータスの更新
+    // 出荷済ステータスの更新 (旧版互換用 - 非推奨)
     function updateShippedStatus(orderId, isChecked) {
       const shippedValue = isChecked ? '○' : '';
       google.script.run
@@ -858,6 +885,38 @@
           google.script.run.withSuccessHandler(setTable).selectShippingDate();
         })
         .updateOrderShippedStatus(orderId, shippedValue);
+    }
+
+    // ステータス更新（発送前/収穫待ち/出荷済み）
+    function toggleLoading(show) {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.style.display = show ? 'flex' : 'none';
+      }
+    }
+
+    function updateOrderStatusUI(orderId, newStatus) {
+      // 選択肢のdisableで処理中を表現
+      const selectElem = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
+      if (selectElem) selectElem.disabled = true;
+
+      toggleLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function () {
+          // ダッシュボードをリフレッシュ
+          google.script.run.withSuccessHandler(function (res) {
+            setTable(res);
+            toggleLoading(false);
+          }).selectShippingDate();
+        })
+        .withFailureHandler(function (error) {
+          alert('ステータス更新エラー: ' + error.message);
+          if (selectElem) selectElem.disabled = false;
+          toggleLoading(false);
+          google.script.run.withSuccessHandler(setTable).selectShippingDate();
+        })
+        .updateOrderStatus(orderId, newStatus);
     }
 
     // スキャナー関連の変数
@@ -889,6 +948,15 @@
           document.getElementById('scannerErrorOverlay').style.display = 'none';
         });
       }
+
+      // ステータス選択のイベント委譲（動的要素対応）
+      document.body.addEventListener('change', function (e) {
+        if (e.target.classList.contains('status-select')) {
+          const orderId = e.target.getAttribute('data-order-id');
+          const newStatus = e.target.value;
+          updateOrderStatusUI(orderId, newStatus);
+        }
+      });
     });
 
     function initQuagga() {
@@ -968,23 +1036,23 @@
     // 日本の電話番号かどうかを判定する関数
     function isJapanesePhoneNumber(code) {
       if (!code || typeof code !== 'string') return false;
-      
+
       // 10桁または11桁で、0から始まる数字のみ
       if ((code.length === 10 || code.length === 11) && code.startsWith('0')) {
         // 数字のみかチェック
         if (!/^\d+$/.test(code)) return false;
-        
+
         // 日本の電話番号の主要パターン
         // 固定電話: 0X-XXXX-XXXX (10桁) または 0XX-XXXX-XXXX (11桁)
         // 携帯電話: 090-XXXX-XXXX, 080-XXXX-XXXX, 070-XXXX-XXXX (11桁)
         // IP電話: 050-XXXX-XXXX (11桁)
-        
+
         // 10桁の場合: 0X-XXXX-XXXX 形式（固定電話）
         if (code.length === 10) {
           // 2桁目のエリアコードが0-9で、全体が数字
           return /^0[1-9]\d{8}$/.test(code);
         }
-        
+
         // 11桁の場合: 携帯電話、IP電話、または長距離固定電話
         if (code.length === 11) {
           // 携帯電話: 090, 080, 070 で始まる
@@ -994,10 +1062,10 @@
           // 固定電話（長距離）: 0XX-XXXX-XXXX 形式
           if (/^0[1-9]\d{9}$/.test(code)) return true;
         }
-        
+
         return false;
       }
-      
+
       return false;
     }
 
@@ -1138,6 +1206,108 @@
     <button onclick="retryScanner()" class="btn btn-light px-5">再試行</button>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- 編集モーダル -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">注文内容の編集</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editOrderId">
+
+          <div class="mb-3">
+            <label for="editShippingDate" class="form-label">発送日</label>
+            <input type="date" class="form-control" id="editShippingDate">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">商品・数量</label>
+            <select class="form-select mb-2" id="editProductSelect" onchange="onEditProductChange()">
+              <!-- JSで生成 -->
+            </select>
+            <input type="number" class="form-control" id="editQuantity" step="0.1">
+            <div class="form-text">未定の場合は空白にするか、数値を入力してください。</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" onclick="submitEditOrder()">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 編集モーダル関連
+    let currentProductData = [];
+
+    function openEditModal(orderId, productJson, currentDate) {
+      document.getElementById('editOrderId').value = orderId;
+      document.getElementById('editShippingDate').value = currentDate;
+
+      try {
+        currentProductData = JSON.parse(productJson);
+      } catch (e) {
+        currentProductData = [];
+      }
+
+      const select = document.getElementById('editProductSelect');
+      select.innerHTML = '';
+
+      currentProductData.forEach((p, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.text = p.name;
+        select.appendChild(option);
+      });
+
+      if (currentProductData.length > 0) {
+        // 初期選択
+        document.getElementById('editQuantity').value = currentProductData[0].count;
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+      modal.show();
+    }
+
+    function onEditProductChange() {
+      const index = document.getElementById('editProductSelect').value;
+      if (currentProductData[index]) {
+        document.getElementById('editQuantity').value = currentProductData[index].count;
+      }
+    }
+
+    function submitEditOrder() {
+      const orderId = document.getElementById('editOrderId').value;
+      const newDate = document.getElementById('editShippingDate').value;
+
+      const index = document.getElementById('editProductSelect').value;
+      const product = currentProductData[index];
+      if (!product) return;
+
+      const newQuantity = document.getElementById('editQuantity').value;
+
+      // ローディング表示等は省略し、即実行
+      google.script.run
+        .withSuccessHandler(() => {
+          bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+          setRes(); // リロード
+        })
+        .withFailureHandler((e) => {
+          alert('更新エラー: ' + e.message);
+        })
+        .updateOrderDateAndQuantity(orderId, product.name, newDate, newQuantity);
+    }
+  </script>
+  <div id="loadingOverlay"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; flex-direction:column;">
+    <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="mt-2 text-white fw-bold">処理中...</div>
+  </div>
 </body>
 
 </html>

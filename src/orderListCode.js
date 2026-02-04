@@ -65,14 +65,14 @@ function getOrderListData(params) {
     const shippingDateRaw = row[shippingDateCol];
     const isShippedRow = row[shippedCol] === '○' || row[shippedCol] === true;
     const isCancelledRow = statusCol >= 0 && (row[statusCol] === 'キャンセル' || row[statusCol] === 'cancelled');
-    
+
     if (shippingDateRaw) {
       const shipDate = new Date(shippingDateRaw);
       shipDate.setHours(0, 0, 0, 0);
-      
+
       // 予定日超過かどうかを判定
       const isOverdueRow = !isShippedRow && !isCancelledRow && shipDate < today;
-      
+
       // includeOverdueがtrueで予定日超過の場合は期間条件を無視
       if (!(includeOverdue && isOverdueRow)) {
         if (startDate && shipDate < startDate) continue;
@@ -140,7 +140,7 @@ function getOrderListData(params) {
 
       // 基本条件による判定
       let matchesBasicCondition = false;
-      
+
       if (shippingStatus === 'all') {
         matchesBasicCondition = true;
       } else if (shippingStatus === 'shipped') {
@@ -155,7 +155,7 @@ function getOrderListData(params) {
       if (includeOverdue) {
         return matchesBasicCondition || isOverdue;
       }
-      
+
       // includeOverdueがfalseの場合、基本条件のみ
       return matchesBasicCondition;
     });
@@ -165,29 +165,29 @@ function getOrderListData(params) {
   orders.sort((a, b) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // 予定日超過判定
     const isShippedA = a.shipped === '○' || a.shipped === true;
     const isCancelledA = a.status === 'キャンセル' || a.status === 'cancelled';
     const shippingDateA = a.shippingDateRaw ? new Date(a.shippingDateRaw) : null;
     const isOverdueA = !isShippedA && !isCancelledA && shippingDateA && shippingDateA < today;
-    
+
     const isShippedB = b.shipped === '○' || b.shipped === true;
     const isCancelledB = b.status === 'キャンセル' || b.status === 'cancelled';
     const shippingDateB = b.shippingDateRaw ? new Date(b.shippingDateRaw) : null;
     const isOverdueB = !isShippedB && !isCancelledB && shippingDateB && shippingDateB < today;
-    
+
     // 1. 予定日超過を優先（超過が先頭）
     if (isOverdueA && !isOverdueB) return -1;
     if (!isOverdueA && isOverdueB) return 1;
-    
+
     // 2. 発送日昇順
     const dateA = a.shippingDateRaw ? new Date(a.shippingDateRaw) : new Date(0);
     const dateB = b.shippingDateRaw ? new Date(b.shippingDateRaw) : new Date(0);
     if (dateA.getTime() !== dateB.getTime()) {
       return dateA - dateB;
     }
-    
+
     // 3. 顧客名順
     return (a.customerName || '').localeCompare(b.customerName || '');
   });
@@ -475,6 +475,55 @@ function bulkUncancelOrders(orderIds) {
   for (let i = 1; i < data.length; i++) {
     if (orderIdSet.has(data[i][orderIdCol])) {
       sheet.getRange(i + 1, statusCol + 1).setValue('');  // ステータスを空にする
+      updatedCount++;
+    }
+  }
+
+  return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
+}
+
+/**
+ * 複数受注のステータスを一括更新（収穫待ち等に使用）
+ * @param {Array<string>} orderIds - 受注IDの配列
+ * @param {string} newStatus - 新しいステータス（'発送前'/'収穫待ち'/'出荷済み'等）
+ * @returns {Object} - 更新結果
+ */
+function bulkUpdateOrderStatus(orderIds, newStatus) {
+  if (!orderIds || orderIds.length === 0) {
+    throw new Error('受注IDが指定されていません');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const orderIdCol = headers.indexOf('受注ID');
+  let statusCol = headers.indexOf('ステータス');
+  const shippedCol = headers.indexOf('出荷済');
+
+  if (orderIdCol === -1) {
+    throw new Error('受注ID列が見つかりません');
+  }
+
+  // ステータス列がなければ追加
+  if (statusCol === -1) {
+    statusCol = headers.length;
+    sheet.getRange(1, statusCol + 1).setValue('ステータス');
+  }
+
+  const orderIdSet = new Set(orderIds);
+  let updatedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (orderIdSet.has(data[i][orderIdCol])) {
+      sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
+      // 出荷済みの場合は出荷済フラグも更新
+      if (newStatus === '出荷済み' && shippedCol !== -1) {
+        sheet.getRange(i + 1, shippedCol + 1).setValue('○');
+      } else if (newStatus !== '出荷済み' && shippedCol !== -1) {
+        sheet.getRange(i + 1, shippedCol + 1).setValue('');
+      }
       updatedCount++;
     }
   }

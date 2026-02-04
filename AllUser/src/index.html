@@ -84,28 +84,46 @@
         }
         function setTable(datas) {
             var res = JSON.parse(datas);
-            var cntHtml = `<p class="info_table">発送件数</p>`;
-            cntHtml += `<table class="table table-bordered">
-      <thead>
-        <tr class="table-primary">
-      `;
-            cntHtml += `<th style="background-color: #B0E3A4;" scope="col">${res[0]['今日']}</th>`;
-            cntHtml += `<th scope="col">${res[0]['明日']}</th>`;
-            cntHtml += `<th scope="col">${res[0]['明後日']}</th>`;
-            cntHtml += `<th scope="col">${res[0]['明々後日']}</th>`;
-            cntHtml += `</tr>
-      </thead>`;
-            cntHtml += `<tbody class="table-group-divider">
-            <tr>`;
+            $("#cntRes").html("");
+            let cntHtml = `<table class="table table-bordered text-center" style="table-layout: fixed;">`;
+            cntHtml += `<thead><tr>`;
+
+            // ヘッダー行 - 今日は緑、他はブルーグレー系
+            cntHtml += `<th class="today_color" scope="col">${res[0]['今日']}</th>`;
+            cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明日']}</th>`;
+            cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明後日']}</th>`;
+            cntHtml += `<th style="background-color: #B0E0E6;" scope="col">${res[0]['明々後日']}</th>`;
+            cntHtml += `</tr></thead><tbody><tr>`;
+
+            // 件数行
             cntHtml += `<td scope="col">${res[1]['今日']}件</td>`;
             cntHtml += `<td scope="col">${res[1]['明日']}件</td>`;
             cntHtml += `<td scope="col">${res[1]['明後日']}件</td>`;
             cntHtml += `<td scope="col">${res[1]['明々後日']}件</td>`;
-            cntHtml += `</tr>
-      </tbody>
-      </table>
-      `;
-            $("#cntRes").html(cntHtml);
+            cntHtml += `</tr></tbody></table>`;
+
+            // ステータスバッジ表示エリア（テーブルの下に表示）
+            let statusBadges = '';
+            const overdueCount = res[1]['超過'] || 0;
+            const harvestWaitingCount = res[1]['収穫待ち'] || 0;
+
+            if (overdueCount > 0) {
+                statusBadges += `<span class="badge bg-danger me-2" style="font-size:0.85rem;">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i>発送日超過: ${overdueCount}件
+                </span>`;
+            }
+
+            if (harvestWaitingCount > 0) {
+                statusBadges += `<span class="badge bg-warning text-dark me-2" style="font-size:0.85rem;">
+                    <i class="bi bi-flower1 me-1"></i>収穫待ち: ${harvestWaitingCount}件
+                </span>`;
+            }
+
+            if (statusBadges) {
+                statusBadges = `<div class="mt-2 text-center">${statusBadges}</div>`;
+            }
+
+            $("#cntRes").html(cntHtml + statusBadges);
 
             if (res[4]) {
                 createInvoiceHtml(res[4], res[0]['今日'], "#invoiceTodayRes", true);
@@ -282,19 +300,24 @@
                 // ステータスバッジを生成
                 const statusBadgeHtml = order.status ? getStatusBadge(order.status) : '';
 
-                // アクション（スキャン・チェックボックス・ステータス）
+                // アクション（スキャン・チェックボックス・ステータス・編集）
                 const escapedOrderId = escapeHtml(order.orderId);
                 const escapedRecipientName = escapeHtml(order['発送先名'] || '');
                 const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
+
+                const currentStatus = order.status || (isShipped ? '出荷済み' : '発送前');
+
                 const actionsHtml = `
-                    <div class="order-card-actions">
-                        <div class="shipped-check-wrapper">
-                            <input type="checkbox" class="shipped-check form-check-input" ${isShipped ? 'checked' : ''} data-order-id="${escapedOrderId}" title="出荷済チェック">
-                            ${statusBadgeHtml}
-                        </div>
-                        <button type="button" class="btn btn-sm scan-btn-mini" data-order-id="${escapedOrderId}" data-recipient-name="${escapedRecipientName}" data-delivery-method="${escapedDeliveryMethod}" title="伝票スキャン">
+                    <div class="order-card-actions" style="flex-direction: column; gap: 5px; align-items: stretch;">
+                        <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
+                            <option value="発送前" ${currentStatus === '発送前' ? 'selected' : ''}>発送前</option>
+                            <option value="収穫待ち" ${currentStatus === '収穫待ち' ? 'selected' : ''}>🌱待ち</option>
+                            <option value="出荷済み" ${currentStatus === '出荷済み' ? 'selected' : ''}>✓済</option>
+                        </select>
+                        <button type="button" class="btn btn-sm scan-btn-mini" data-order-id="${escapedOrderId}" data-recipient-name="${escapedRecipientName}" data-delivery-method="${escapedDeliveryMethod}" title="伝票スキャン" style="width: 100%;">
                             <i class="bi bi-upc-scan"></i>
                         </button>
+                        ${statusBadgeHtml}
                     </div>
                 `;
 
@@ -319,7 +342,23 @@
                 // 商品リスト
                 html += `<div class="order-card-body">`;
                 let combinedMemo = [];
-                const seenMemos = new Set();
+
+                // バックエンドですでに集約済みのメモがあればそれを使用
+                if (order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos'])) {
+                    combinedMemo = order['aggregatedMemos'];
+                } else {
+                    const seenMemos = new Set();
+                    for (let j = 0; j < order['商品'].length; j++) {
+                        const p = order['商品'][j];
+                        if (p['メモ']) {
+                            const rawMemo = String(p['メモ']).trim();
+                            if (rawMemo && !seenMemos.has(rawMemo)) {
+                                seenMemos.add(rawMemo);
+                                combinedMemo.push(escapeHtml(p['メモ']));
+                            }
+                        }
+                    }
+                }
 
                 for (let j = 0; j < order['商品'].length; j++) {
                     const p = order['商品'][j];
@@ -330,17 +369,9 @@
                     html += `<span class="product-name">${productName}</span>`;
                     html += `<span class="product-quantity">${quantity} ${unit}</span>`;
                     html += `</div>`;
-
-                    if (p['メモ']) {
-                        const rawMemo = String(p['メモ']).trim();
-                        if (rawMemo && !seenMemos.has(rawMemo)) {
-                            seenMemos.add(rawMemo);
-                            combinedMemo.push(escapeHtml(p['メモ']));
-                        }
-                    }
                 }
 
-                // メモがあれば表示（重複は1回のみ）
+                // メモがあれば表示
                 if (combinedMemo.length > 0) {
                     html += `<div class="memo-box">`;
                     html += `<span class="memo-icon">📌</span>`;
@@ -361,12 +392,12 @@
             if (!status) return '';
             const escapedStatus = escapeHtml(status);
             let badgeClass = 'bg-secondary';
-            if (status === '配達完了') badgeClass = 'bg-success';
+            if (status === '配達完了' || status === '出荷済み') badgeClass = 'bg-success';
             else if (status === '発送済' || status === '配達中') badgeClass = 'bg-primary';
-            else if (status === '不在/持戻') badgeClass = 'bg-warning text-dark';
+            else if (status === '不在/持戻' || status === '収穫待ち') badgeClass = 'bg-warning text-dark';
             else if (status.includes('エラー')) badgeClass = 'bg-danger';
 
-            return `<span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
+            return `<span class="badge ${badgeClass} mt-1" style="font-size: 0.65rem;">${escapedStatus}</span>`;
         }
 
         // 出荷済ステータスの更新
@@ -614,7 +645,8 @@
                     <div id="modalManualInputArea" class="manual-input-area p-4">
                         <h3 class="text-center mb-4">送り状番号を入力</h3>
                         <div class="input-group input-group-lg mb-4">
-                            <input type="tel" id="modalManualNo" class="form-control text-center" placeholder="123456789012" maxlength="12">
+                            <input type="tel" id="modalManualNo" class="form-control text-center"
+                                placeholder="123456789012" maxlength="12">
                         </div>
                         <div class="d-grid gap-3">
                             <button onclick="submitModalManual()" class="btn btn-primary py-3">決定</button>
@@ -633,7 +665,8 @@
                         <button onclick="toggleModalManual(true)" class="btn btn-primary flex-grow-1 py-3">
                             <i class="bi bi-keyboard"></i> 手入力
                         </button>
-                        <button type="button" class="btn btn-outline-light py-3 px-4" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-outline-light py-3 px-4"
+                            data-bs-dismiss="modal">キャンセル</button>
                     </div>
                 </div>
             </div>
@@ -654,6 +687,77 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <script>
+        // ローディング表示切り替え
+        function toggleLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+            }
+        }
+
+        // ステータス更新UI
+        function updateOrderStatusUI(orderId, newStatus) {
+            const selectElem = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
+            if (selectElem) selectElem.disabled = true;
+
+            toggleLoading(true);
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    // ダッシュボードリフレッシュ (executeSearchを使わず直接ロードしてSpinner制御)
+                    google.script.run.withSuccessHandler(function (res) {
+                        setTable(res);
+                        toggleLoading(false);
+                    }).selectShippingDate();
+                })
+                .withFailureHandler(function (error) {
+                    alert('ステータス更新エラー: ' + error.message);
+                    if (selectElem) selectElem.disabled = false;
+                    toggleLoading(false);
+                    executeSearch();
+                })
+                .updateOrderStatus(orderId, newStatus);
+        }
+
+        // ステータス選択のイベント委譲
+        document.body.addEventListener('change', function (e) {
+            if (e.target.classList.contains('status-select')) {
+                const orderId = e.target.getAttribute('data-order-id');
+                const newStatus = e.target.value;
+                updateOrderStatusUI(orderId, newStatus);
+            }
+        });
+
+        // 検索実行
+        function executeSearch() {
+            // ローディング表示
+            document.getElementById('cntRes').innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+            google.script.run
+                .withSuccessHandler(setTable)
+                .withFailureHandler(function (e) {
+                    document.getElementById('cntRes').innerHTML = '<div class="alert alert-danger">データ取得エラー: ' + e.message + '</div>';
+                })
+                .selectShippingDate();
+        }
+
+        // 初期ロード
+        window.onload = function () {
+            executeSearch();
+        };
+
+        // Modal関連は削除
+    </script>
+    <div id="loadingOverlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; flex-direction:column;">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2 text-white fw-bold">処理中...</div>
+    </div>
 </body>
 
 </html>

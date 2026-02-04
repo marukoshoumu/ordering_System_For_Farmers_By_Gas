@@ -728,6 +728,18 @@
       color: white !important;
     }
 
+    /* キャンセル解除ボタンのスタイル強化 */
+    .btn-outline-success {
+      border-color: #56f127 !important;
+      color: #56f127 !important;
+      background-color: rgba(13, 202, 240, 0.1) !important;
+    }
+
+    .btn-outline-success:hover {
+      background-color: #56f127 !important;
+      color: white !important;
+    }
+
     /* フィルターセクションのボタン強化 */
     .filter-section .btn-group {
       gap: 6px;
@@ -1084,6 +1096,9 @@
             <button type="button" class="btn btn-warning btn-sm" onclick="bulkCancelOrders()">
               <i class="bi bi-x-circle me-1"></i>一括キャンセル
             </button>
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="bulkSetHarvestWaiting()">
+              <i class="bi bi-flower1 me-1"></i>収穫待ち
+            </button>
             <button type="button" class="btn btn-outline-info btn-sm" onclick="bulkUncancelOrders()">
               <i class="bi bi-arrow-counterclockwise me-1"></i>キャンセル解除
             </button>
@@ -1364,7 +1379,7 @@
         const radio = document.querySelector(`input[name="shippingStatus"][value="${prevStatus}"]`);
         if (radio) radio.checked = true;
       }
-      
+
       // 予定日超過を含む：引き継ぎがある場合はその値、ない場合はデフォルトでON
       if (prevIncludeOverdue !== '') {
         document.getElementById('includeOverdue').checked = prevIncludeOverdue === 'true';
@@ -1676,7 +1691,7 @@
       // 出荷状態フィルター取得
       const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
       const shippingStatus = shippingStatusElement ? shippingStatusElement.value : 'all';
-      
+
       // 予定日超過を含むチェックボックスの状態取得
       const includeOverdue = document.getElementById('includeOverdue').checked;
 
@@ -2679,7 +2694,32 @@
         .bulkCancelOrders(orderIds);
     }
 
-    // 一括削除
+    // 一括収穫待ち設定
+    function bulkSetHarvestWaiting() {
+      const orderIds = getSelectedOrderIds();
+      if (orderIds.length === 0) {
+        alert('受注を選択してください');
+        return;
+      }
+
+      if (!confirm(orderIds.length + '件の受注を「収穫待ち」に設定しますか？\n\n※収穫待ちの注文は、収穫でき次第対応が必要です。')) {
+        return;
+      }
+
+      showLoading('収穫待ち設定中...');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          showSuccessToast(orderIds.length + '件を収穫待ちに設定しました');
+          executeSearch();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('収穫待ち設定エラー: ' + error.message);
+        })
+        .bulkUpdateOrderStatus(orderIds, '収穫待ち');
+    }
+
     function bulkDeleteOrders() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {

@@ -26,11 +26,20 @@ function selectShippingDate() {
     });
   }
 
-  // 昨日〜明々後日 + 発送日超過（未出荷・非キャンセルで発送日が今日より前）のみ取得（受注一覧の「予定日超過を含む」と同様の例外追加方式）
+  // 昨日〜明々後日 + 発送日超過（未出荷・非キャンセルで発送日が今日より前）を取得
   const items = getOrdersByDateRange(dates.yesterday, dates.dayAfter3, true);
   processItems(items, dates, dataStructure, unitMap);
 
   return JSON.stringify(buildResult(dateStrings, dataStructure, dates));
+}
+/**
+ * 注文のステータスを更新（発送前/収穫待ち/出荷済み）
+ * @param {string} orderId - 受注ID
+ * @param {string} newStatus - 新しいステータス
+ */
+function updateOrderStatus(orderId, newStatus) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return updateOrderStatusShared(ss, orderId, newStatus);
 }
 
 /**
@@ -61,22 +70,41 @@ function getOrdersByDateRange(startDate, endDate, includeOverdue) {
 
   const records = [];
   for (const value of values) {
-    const isCancelled = statusColIndex !== -1 && (value[statusColIndex] === 'キャンセル' || value[statusColIndex] === 'cancelled');
+    const status = statusColIndex !== -1 ? value[statusColIndex] : '';
+    const isCancelled = status === 'キャンセル' || status === 'cancelled';
     if (isCancelled) continue;
 
-    const shippingDate = new Date(value[dateColIndex]);
+    const rawDate = value[dateColIndex];
+
+    let inRange = false;
+    let isOverdueRow = false;
+    const isHarvestWaiting = status === '収穫待ち';
+
+    const shippingDate = new Date(rawDate);
     const shippingTime = shippingDate.getTime();
     const isShipped = shippedColIndex !== -1 && (value[shippedColIndex] === '○' || value[shippedColIndex] === true);
-    const isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
 
-    // 期間内 または 予定日超過（例外）のみ含める
-    const inRange = shippingTime >= startTime && shippingTime < endTime;
+    // 期間内チェック
+    if (!isNaN(shippingTime)) {
+      inRange = shippingTime >= startTime && shippingTime < endTime;
+      // 超過判定: 発送日が今日より前 かつ 未出荷
+      isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
+    }
+
+    // 期間内 または 予定日超過のみ含める
     if (!inRange && !isOverdueRow) continue;
 
     const record = {};
     labels.forEach((label, index) => {
       record[label] = value[index];
     });
+    // 超過・収穫待ちフラグを付与
+    if (isOverdueRow) {
+      record._isOverdue = true;
+    }
+    if (isHarvestWaiting) {
+      record._isHarvestWaiting = true;
+    }
     records.push(record);
   }
 
@@ -166,6 +194,13 @@ function initializeDataStructure() {
       tomorrow: 0,
       dayAfter2: 0,
       dayAfter3: 0
+    },
+    // 超過・収穫待ち件数カウント用（UI表示用）
+    overdueCounts: {
+      today: 0
+    },
+    harvestWaitingCounts: {
+      total: 0
     }
   };
 }
@@ -184,8 +219,14 @@ function processItems(items, dates, dataStructure, unitMap) {
 
     if (item['商品名'] === '送料') continue;
 
-    const itemDate = Utilities.formatDate(new Date(item['発送日']), 'JST', 'yyyy/MM/dd');
+    // 収穫待ちカウント（全日程横断）
+    if (item._isHarvestWaiting) {
+      dataStructure.harvestWaitingCounts.total++;
+    }
+
     let dateKey = null;
+
+    const itemDate = Utilities.formatDate(new Date(item['発送日']), 'JST', 'yyyy/MM/dd');
 
     // 予定日超過判定（受注一覧と同様：発送日が今日より前かつ未出荷かつ非キャンセル → 当日分として表示）
     const isCancelled = item['ステータス'] === 'キャンセル' || item['ステータス'] === 'cancelled';
@@ -194,6 +235,8 @@ function processItems(items, dates, dataStructure, unitMap) {
 
     if (isOverdue) {
       dateKey = 'today';
+      // 超過件数をカウント（別集計）
+      dataStructure.overdueCounts.today++;
     } else if (itemDate === dates.yesterdayStr) {
       dateKey = 'yesterday';
     } else if (itemDate === dates.todayStr) {
@@ -246,6 +289,12 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
         'メモ': item['メモ'] || ""
       });
     }
+
+    // メモの集約（重複排除）
+    if (item['メモ'] && String(item['メモ']).trim() !== "") {
+      record.uniqueMemos.add(String(item['メモ']).trim());
+    }
+
   } else {
     // 納品方法の集約処理
     let deliveryMethod = item['納品方法'];
@@ -281,6 +330,12 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
     // 合計カウントも発行枚数ベースに
     dataStructure.counts[dateKey]++;
 
+    // メモ初期化
+    const uniqueMemos = new Set();
+    if (item['メモ'] && String(item['メモ']).trim() !== "") {
+      uniqueMemos.add(String(item['メモ']).trim());
+    }
+
     // 新規レコード作成（発送日は超過を先頭表示するソート用に保持）
     lists.set(listKey, {
       'orderId': item['受注ID'],
@@ -297,7 +352,8 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
         '受注数': Number(item['受注数']),
         '単位': unitMap[item['商品名']] || '枚',
         'メモ': item['メモ'] || ""
-      }]
+      }],
+      'uniqueMemos': uniqueMemos // Setとして保持
     });
   }
 }
@@ -316,7 +372,9 @@ function buildResult(dateStrings, dataStructure, dates) {
     '今日': dataStructure.counts.today,
     '明日': dataStructure.counts.tomorrow,
     '明後日': dataStructure.counts.dayAfter2,
-    '明々後日': dataStructure.counts.dayAfter3
+    '明々後日': dataStructure.counts.dayAfter3,
+    '超過': dataStructure.overdueCounts.today,
+    '収穫待ち': dataStructure.harvestWaitingCounts.total
   };
 
   // Mapを配列に変換（ソート機能付き）
@@ -362,7 +420,8 @@ function buildResult(dateStrings, dataStructure, dates) {
       'status': record['status'],
       'shipped': record['shipped'],
       'shippingDate': record['shippingDate'] || null,
-      '商品': record['商品']
+      '商品': record['商品'],
+      'aggregatedMemos': Array.from(record.uniqueMemos || [])
     }));
     if (sortOverdueFirst && todayStart != null) {
       arr = arr.sort((a, b) => {

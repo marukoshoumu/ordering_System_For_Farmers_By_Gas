@@ -152,6 +152,12 @@ function initializeDataStructureShared() {
       tomorrow: 0,
       dayAfter2: 0,
       dayAfter3: 0
+    },
+    overdueCounts: {
+      today: 0
+    },
+    harvestWaitingCounts: {
+      total: 0
     }
   };
 }
@@ -187,22 +193,39 @@ function getOrdersByDateRangeShared(ss, startDate, endDate, includeOverdue) {
 
   const records = [];
   for (const value of values) {
-    const isCancelled = statusColIndex !== -1 && (value[statusColIndex] === 'キャンセル' || value[statusColIndex] === 'cancelled');
+    const status = statusColIndex !== -1 ? value[statusColIndex] : '';
+    const isCancelled = status === 'キャンセル' || status === 'cancelled';
     if (isCancelled) continue;
 
-    const shippingDate = new Date(value[dateColIndex]);
+    const rawDate = value[dateColIndex];
+
+    let inRange = false;
+    let isOverdueRow = false;
+    const isHarvestWaiting = status === '収穫待ち';
+
+    const shippingDate = new Date(rawDate);
     const shippingTime = shippingDate.getTime();
     const isShipped = shippedColIndex !== -1 && (value[shippedColIndex] === '○' || value[shippedColIndex] === true);
-    const isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
 
-    // 期間内 または 予定日超過（例外）のみ含める
-    const inRange = shippingTime >= startTime && shippingTime < endTime;
+    // 期間内チェック
+    if (!isNaN(shippingTime)) {
+      inRange = shippingTime >= startTime && shippingTime < endTime;
+      isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
+    }
+
+    // 期間内 または 予定日超過のみ含める
     if (!inRange && !isOverdueRow) continue;
 
     const record = {};
     labels.forEach((label, index) => {
       record[label] = value[index];
     });
+    if (isOverdueRow) {
+      record._isOverdue = true;
+    }
+    if (isHarvestWaiting) {
+      record._isHarvestWaiting = true;
+    }
     records.push(record);
   }
 
@@ -224,8 +247,14 @@ function processItemsShared(items, dates, dataStructure, unitMap) {
 
     if (item['商品名'] === '送料') continue;
 
-    const itemDate = Utilities.formatDate(new Date(item['発送日']), 'JST', 'yyyy/MM/dd');
+    // 収穫待ちカウント（全日程横断）
+    if (item._isHarvestWaiting) {
+      dataStructure.harvestWaitingCounts.total++;
+    }
+
     let dateKey = null;
+
+    const itemDate = Utilities.formatDate(new Date(item['発送日']), 'JST', 'yyyy/MM/dd');
 
     // 予定日超過判定（発送日が今日より前かつ未出荷かつ非キャンセル → 当日分として表示）
     const isCancelled = item['ステータス'] === 'キャンセル' || item['ステータス'] === 'cancelled';
@@ -234,6 +263,7 @@ function processItemsShared(items, dates, dataStructure, unitMap) {
 
     if (isOverdue) {
       dateKey = 'today';
+      dataStructure.overdueCounts.today++;
     } else if (itemDate === dates.yesterdayStr) {
       dateKey = 'yesterday';
     } else if (itemDate === dates.todayStr) {
@@ -287,6 +317,12 @@ function processDateItemShared(item, dateKey, dataStructure, unitMap) {
         'メモ': item['メモ'] || ""
       });
     }
+
+    // メモの集約（重複排除）
+    if (item['メモ'] && String(item['メモ']).trim() !== "") {
+      record.uniqueMemos.add(String(item['メモ']).trim());
+    }
+
   } else {
     // 納品方法の集約処理
     let deliveryMethod = item['納品方法'];
@@ -322,6 +358,12 @@ function processDateItemShared(item, dateKey, dataStructure, unitMap) {
     // 合計カウントも発行枚数ベースに
     dataStructure.counts[dateKey]++;
 
+    // メモ初期化
+    const uniqueMemos = new Set();
+    if (item['メモ'] && String(item['メモ']).trim() !== "") {
+      uniqueMemos.add(String(item['メモ']).trim());
+    }
+
     // 新規レコード作成（発送日は超過を先頭表示するソート用に保持）
     lists.set(listKey, {
       'orderId': item['受注ID'],
@@ -338,7 +380,8 @@ function processDateItemShared(item, dateKey, dataStructure, unitMap) {
         '受注数': Number(item['受注数']),
         '単位': unitMap[item['商品名']] || '枚',
         'メモ': item['メモ'] || ""
-      }]
+      }],
+      'uniqueMemos': uniqueMemos
     });
   }
 }
@@ -357,7 +400,9 @@ function buildResultShared(dateStrings, dataStructure, dates) {
     '今日': dataStructure.counts.today,
     '明日': dataStructure.counts.tomorrow,
     '明後日': dataStructure.counts.dayAfter2,
-    '明々後日': dataStructure.counts.dayAfter3
+    '明々後日': dataStructure.counts.dayAfter3,
+    '超過': dataStructure.overdueCounts.today,
+    '収穫待ち': dataStructure.harvestWaitingCounts.total
   };
 
   // Mapを配列に変換（ソート機能付き）
@@ -403,7 +448,8 @@ function buildResultShared(dateStrings, dataStructure, dates) {
       'status': record['status'],
       'shipped': record['shipped'],
       'shippingDate': record['shippingDate'] || null,
-      '商品': record['商品']
+      '商品': record['商品'],
+      'aggregatedMemos': Array.from(record.uniqueMemos || [])
     }));
     if (sortOverdueFirst && todayStart != null) {
       arr = arr.sort((a, b) => {
@@ -465,7 +511,7 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
   let updatedCount = 0;
   const numRows = data.length - 1; // ヘッダー行を除く
   const startRow = 2; // データ行の開始行（1-indexed）
-  
+
   // 出荷済み列の値を2D配列として取得
   const updatedColumnArray = [];
   for (let i = 1; i < data.length; i++) {
@@ -476,10 +522,72 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
       updatedColumnArray.push([data[i][shippedCol]]);
     }
   }
-  
+
   // 一度にすべての変更を書き戻す
   if (updatedCount > 0) {
     sheet.getRange(startRow, shippedCol + 1, numRows, 1).setValues(updatedColumnArray);
+  }
+
+  if (updatedCount === 0) {
+    throw new Error('該当する受注IDが見つかりません: ' + orderId);
+  }
+
+  return { success: true, updatedRows: updatedCount };
+}
+
+/**
+ * 受注のステータスを更新（発送前/収穫待ち/出荷済み）
+ *
+ * @param {Spreadsheet} ss - スプレッドシートオブジェクト
+ * @param {string} orderId - 受注ID
+ * @param {string} newStatus - 新しいステータス（'発送前'/'収穫待ち'/'出荷済み'）
+ * @returns {Object} - 更新結果
+ */
+function updateOrderStatusShared(ss, orderId, newStatus) {
+  const sheet = ss.getSheetByName('受注');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // 列インデックスを取得
+  const orderIdCol = headers.indexOf('受注ID');
+  const statusCol = headers.indexOf('ステータス');
+  const shippedCol = headers.indexOf('出荷済');
+
+  if (orderIdCol === -1 || statusCol === -1) {
+    throw new Error('必要な列が見つかりません');
+  }
+
+  // 該当する受注IDの全行を更新
+  let updatedCount = 0;
+  const numRows = data.length - 1;
+  const startRow = 2;
+
+  // ステータス列と出荷済列の値を2D配列として取得
+  const statusColumnArray = [];
+  const shippedColumnArray = [];
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][orderIdCol] === orderId) {
+      statusColumnArray.push([newStatus]);
+      // 出荷済みの場合は出荷済チェックも更新
+      if (newStatus === '出荷済み') {
+        shippedColumnArray.push(['○']);
+      } else {
+        shippedColumnArray.push(['']);
+      }
+      updatedCount++;
+    } else {
+      statusColumnArray.push([data[i][statusCol]]);
+      shippedColumnArray.push([data[i][shippedCol] || '']);
+    }
+  }
+
+  // 一度にすべての変更を書き戻す
+  if (updatedCount > 0) {
+    sheet.getRange(startRow, statusCol + 1, numRows, 1).setValues(statusColumnArray);
+    if (shippedCol !== -1) {
+      sheet.getRange(startRow, shippedCol + 1, numRows, 1).setValues(shippedColumnArray);
+    }
   }
 
   if (updatedCount === 0) {
