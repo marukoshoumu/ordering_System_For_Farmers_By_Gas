@@ -65,8 +65,8 @@ function getShippingToList(filters) {
     if (filters.keyword && filters.keyword !== '') {
       var keyword = filters.keyword.toLowerCase();
       result = result.filter(function(s) {
-        var companyName = (s['会社名'] || '').toLowerCase();
-        var personName = (s['氏名'] || '').toLowerCase();
+        var companyName = String(s['会社名'] || '').toLowerCase();
+        var personName = String(s['氏名'] || '').toLowerCase();
         return companyName.indexOf(keyword) !== -1 ||
                personName.indexOf(keyword) !== -1;
       });

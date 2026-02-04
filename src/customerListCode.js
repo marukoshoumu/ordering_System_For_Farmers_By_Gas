@@ -93,10 +93,10 @@ function getCustomerList(filters) {
     if (filters.keyword && filters.keyword !== '') {
       var keyword = filters.keyword.toLowerCase();
       result = result.filter(function(c) {
-        var showName = (c['表示名'] || '').toLowerCase();
-        var companyName = (c['会社名'] || '').toLowerCase();
-        var personName = (c['氏名'] || '').toLowerCase();
-        var furigana = (c['フリガナ'] || '').toLowerCase();
+        var showName = String(c['表示名'] || '').toLowerCase();
+        var companyName = String(c['会社名'] || '').toLowerCase();
+        var personName = String(c['氏名'] || '').toLowerCase();
+        var furigana = String(c['フリガナ'] || '').toLowerCase();
         return showName.indexOf(keyword) !== -1 ||
                companyName.indexOf(keyword) !== -1 ||
                personName.indexOf(keyword) !== -1 ||
