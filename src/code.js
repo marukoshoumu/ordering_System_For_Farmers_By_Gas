@@ -87,7 +87,7 @@ function getLoginHTML(alert = '') {
 }
 
 /** セッション有効期限（秒）6時間 */
-var SESSION_TTL_SEC = 6 * 60 * 60;
+const SESSION_TTL_SEC = 6 * 60 * 60;
 
 /**
  * サーバー側セッションからユーザー情報を取得する。認証・権限はクライアント送信値に依存せずここで検証する。
