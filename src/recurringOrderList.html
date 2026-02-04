@@ -398,6 +398,13 @@
     var originalDaysInterval = 0; // 発送日〜納品日の元々の間隔（日数）
 
     /**
+     * 週単位の間隔タイプかどうかを判定する（毎週・2週ごと・3週ごと・N週ごと）
+     */
+    function isWeekBasedInterval(type) {
+      return type === 'weekly' || type === 'biweekly' || type === 'triweekly' || (typeof type === 'string' && type.endsWith('week'));
+    }
+
+    /**
      * 間隔オブジェクトを表示用文字列に変換
      */
     function formatIntervalForDisplay(intervalObj) {
@@ -454,7 +461,7 @@
       var type = document.getElementById('newIntervalType').value;
       var subOptions = document.getElementById('newIntervalSubOptions');
       subOptions.innerHTML = '';
-      if (type === 'weekly' || type === 'biweekly' || type === 'triweekly' || type.endsWith('week')) {
+      if (isWeekBasedInterval(type)) {
         // 曜日セレクト（biweekly/triweekly は "week" で終わらないため明示）
         var days = ['月','火','水','木','金','土','日'];
         var select = document.createElement('select');
@@ -508,7 +515,7 @@
       var baseDate = new Date(baseDateInput.value);
       var type = document.getElementById('newIntervalType').value;
       var subValue = null;
-      if (type === 'weekly' || type === 'biweekly' || type === 'triweekly' || type.endsWith('week')) {
+      if (isWeekBasedInterval(type)) {
         var weekdaySelect = document.getElementById('newIntervalWeekday');
         if (weekdaySelect) subValue = weekdaySelect.value;
       } else if (type === 'monthly') {
