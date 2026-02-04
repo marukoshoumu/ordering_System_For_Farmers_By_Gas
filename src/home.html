@@ -764,6 +764,7 @@
         // 商品リスト
         html += `<div class="order-card-body">`;
         let combinedMemo = [];
+        const seenMemos = new Set(); // 同一注文内で同じメモを複数回表示しない
 
         for (let j = 0; j < order['商品'].length; j++) {
           const p = order['商品'][j];
@@ -774,11 +775,15 @@
           html += `</div>`;
 
           if (p['メモ']) {
-            combinedMemo.push(escapeHtml(p['メモ']));
+            const rawMemo = String(p['メモ']).trim();
+            if (rawMemo && !seenMemos.has(rawMemo)) {
+              seenMemos.add(rawMemo);
+              combinedMemo.push(escapeHtml(p['メモ']));
+            }
           }
         }
 
-        // メモがあれば表示
+        // メモがあれば表示（重複は1回のみ）
         if (combinedMemo.length > 0) {
           html += `<div class="memo-box">`;
           html += `<span class="memo-icon">📌</span>`;
