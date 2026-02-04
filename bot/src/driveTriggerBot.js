@@ -24,7 +24,7 @@ const MASTER_SPREADSHEET_ID = PropertiesService.getScriptProperties().getPropert
 
 // Gemini API設定
 const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-const GEMINI_VISION_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+const GEMINI_VISION_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 // ========== トリガー設定用関数 ==========
 
