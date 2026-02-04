@@ -118,6 +118,22 @@ function setSession(sessionId, userRole, loginId) {
 }
 
 /**
+ * ログアウト時にセッションをキャッシュから明示的に削除する。setSession と同じキー（session_ + sessionId）を使用。
+ * @param {string} sessionId - 削除するセッションID
+ * @returns {boolean} sessionId が有効な場合に削除して true、無効な場合は false
+ */
+function deleteSession(sessionId) {
+  if (!sessionId || typeof sessionId !== 'string') return false;
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove('session_' + sessionId);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
  * POSTリクエストからセッションを解決し、サーバー側で確定した userRole と sessionId を返す。
  * セッションが無い場合は最小権限（viewer）とする。
  * @param {Object} e - POST イベント（e.parameter を使用）
@@ -137,6 +153,7 @@ function resolveSessionFromPost(e) {
  * ログイン認証、画面遷移、権限チェックを一元管理するルーティング関数です。
  *
  * 主要な処理分岐:
+ * - e.parameter.logout: ログアウト処理 → セッション削除後にログイン画面を表示
  * - e.parameter.login: ログイン認証処理 → 成功時にホーム画面またはリダイレクト先へ遷移
  * - e.parameter.main / mainTop: ホーム画面表示
  * - e.parameter.phoneOrder: 電話受注モード（viewer権限不可）
@@ -190,6 +207,17 @@ function resolveSessionFromPost(e) {
  */
 function doPost(e) {
   Logger.log(e);
+  if (e.parameter.logout) {
+    const sessionId = (e.parameter.sessionId) ? String(e.parameter.sessionId).trim() : '';
+    deleteSession(sessionId);
+    const template = HtmlService.createTemplateFromFile('login');
+    template.deployURL = ScriptApp.getService().getUrl();
+    template.loginHTML = getLoginHTML('');
+    const htmlOutput = template.evaluate();
+    htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    htmlOutput.setTitle('ログイン画面');
+    return htmlOutput;
+  }
   if (e.parameter.login) {
     const items = getAllRecords('pass');
     // 入力されたIDとパスワードに一致するユーザーを検索
