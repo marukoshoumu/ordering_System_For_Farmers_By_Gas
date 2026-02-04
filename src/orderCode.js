@@ -1502,14 +1502,20 @@ function getShippingComfirmHTML(e) {
 
       if (recType === 'weekly') {
         intervalObj.value = Number(e.parameter.recurringWeekday) || 1;
-      } else if (recType.endsWith('week')) {
-        // biweekly, triweekly, 4week, etc.
+      } else if (recType === 'biweekly' || recType === 'triweekly' || recType.endsWith('week')) {
+        // biweekly, triweekly は "week" で終わらないため明示的に含める。4week, 5week... は endsWith('week')
         var weekNum = recType === 'biweekly' ? 2 : recType === 'triweekly' ? 3 : parseInt(recType.replace('week', '')) || 2;
         intervalObj.type = 'nweek';
         intervalObj.value = weekNum;
         intervalObj.weekday = Number(e.parameter.recurringWeekday) || 1;
       } else if (recType === 'monthly') {
-        intervalObj.value = e.parameter.recurringMonthDay || 1;
+        // 毎月X日(1-31) / 毎月初日('first') / 毎月末日('last') をそのまま渡す
+        var monthDay = e.parameter.recurringMonthDay;
+        if (monthDay === 'first' || monthDay === 'last') {
+          intervalObj.value = monthDay;
+        } else {
+          intervalObj.value = Number(monthDay) || 1;
+        }
       } else if (recType === '2month' || recType === '3month') {
         intervalObj.type = 'nmonth';
         intervalObj.value = parseInt(recType.replace('month', '')) || 1;
