@@ -785,14 +785,31 @@
       .getProductCategories();
   }
   
+  // カテゴリの表示名を取得（オブジェクトの場合は .name、文字列の場合はそのまま）
+  function getCategoryName(cat) {
+    return typeof cat === 'object' && cat !== null && cat.name != null ? String(cat.name) : String(cat);
+  }
+
   function renderCategoryList() {
     const container = document.getElementById('categoryList');
-    container.innerHTML = categories.map((cat, index) => `
+    container.innerHTML = categories.map((cat, index) => {
+      const name = getCategoryName(cat);
+      return `
       <div class="multi-select-item">
-        <input type="checkbox" id="cat${index}" value="${cat}" onchange="updateSelectedCategories()">
-        <label for="cat${index}">${cat}</label>
+        <input type="checkbox" id="cat${index}" value="${escapeHtmlAttr(name)}" onchange="updateSelectedCategories()">
+        <label for="cat${index}">${escapeHtml(name)}</label>
       </div>
-    `).join('');
+    `;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function escapeHtmlAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
   }
   
   // イベントリスナー設定
@@ -878,15 +895,16 @@
     }
     
     container.innerHTML = selectedCategories.map(cat => `
-      <span class="selected-tag">
-        ${cat}
-        <i class="bi bi-x remove" onclick="removeCategory('${cat}')"></i>
+      <span class="selected-tag" data-category="${escapeHtmlAttr(cat)}">
+        ${escapeHtml(cat)}
+        <i class="bi bi-x remove" onclick="removeCategory(this.parentElement.getAttribute('data-category'))"></i>
       </span>
     `).join('');
   }
   
   function removeCategory(cat) {
-    const checkbox = document.querySelector(`#categoryList input[value="${cat}"]`);
+    const list = document.querySelectorAll('#categoryList input[type="checkbox"]');
+    const checkbox = Array.from(list).find(input => input.value === cat);
     if (checkbox) {
       checkbox.checked = false;
       updateSelectedCategories();
