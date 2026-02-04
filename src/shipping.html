@@ -647,6 +647,12 @@
     var oricargo1 = $('select[id="cargo1"]').html();
     var oricargo2 = $('select[id="cargo2"]').html();
     var oricargo3 = $('select[id="cargo3"]').html();
+    /** 納品方法が一致するか（完全一致または相互に含む）。例: 「佐川急便」と「佐川」で true */
+    function deliveryMethodMatches(val1, val2) {
+      if (!val1 || !val2) return true;
+      if (val1 === val2) return true;
+      return (val1.indexOf(val2) !== -1) || (val2.indexOf(val1) !== -1);
+    }
     function deliveryMethodChange() {
       var $deliveryMethod = $('select[id="deliveryMethod"]');
       var $deliveryTime = $('select[id="deliveryTime"]');
@@ -656,39 +662,44 @@
       var $cargo2 = $('select[id="cargo2"]');
       var $cargo3 = $('select[id="cargo3"]');
       var val1 = $deliveryMethod.val();
+      // コピー/編集で渡された荷扱いの値を保持（フィルタ・自動設定後に復元するため）
+      var savedCargo1 = $cargo1.val();
+      var savedCargo2 = $cargo2.val();
+      var savedCargo3 = $cargo3.val();
+
       $deliveryTime.html(orideliveryTime).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).not(':first-child').remove();
         }
       })
       $invoiceType.html(oriinvoiceType).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).remove();
         }
       })
       $coolCls.html(oricoolCls).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).remove();
         }
       })
       $cargo1.html(oricargo1).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).not(':first-child').remove();
         }
       })
       $cargo2.html(oricargo2).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).not(':first-child').remove();
         }
       })
       $cargo3.html(oricargo3).find('option').each(function () {
         var val2 = $(this).data('val');
-        if (val1 && val1 != val2) {
+        if (!deliveryMethodMatches(val1, val2)) {
           $(this).not(':first-child').remove();
         }
       })
@@ -696,8 +707,8 @@
       // 佐川の場合、荷扱い３を表示
       if (val1 && val1.includes('佐川')) {
         $('#cargo3Container').show();
-        // 荷扱い１に「指定日配達サービス」を自動設定
-        if (!$cargo1.val()) {
+        // 荷扱い１に「指定日配達サービス」を自動設定（未選択時のみ）
+        if (!savedCargo1) {
           $cargo1.val('005:指定日配達サービス');
         }
       } else {
@@ -707,6 +718,17 @@
 
       // 自動設定ロジックを呼び出し
       updateCargoByConditions();
+
+      // コピー/編集で渡された荷扱い２・３を復元（画面上に正しく表示されるようにする）
+      if (savedCargo2) {
+        $cargo2.val(savedCargo2);
+      }
+      if (savedCargo3) {
+        $cargo3.val(savedCargo3);
+      }
+      if (savedCargo1) {
+        $cargo1.val(savedCargo1);
+      }
     }
 
     /**
@@ -980,6 +1002,11 @@
   <script>
     // ページ読み込み時の初期化
     document.addEventListener('DOMContentLoaded', function () {
+      // コピー/編集で開いた場合に荷扱い１・２・３が正しく表示されるよう、納品方法に応じたフィルタと値を適用
+      if (typeof deliveryMethodChange === 'function') {
+        deliveryMethodChange();
+      }
+
       // マスタデータをキャッシュロード（検索高速化）
       loadMasterDataForSearch();
 

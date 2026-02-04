@@ -252,6 +252,8 @@ function getshippingHTML(e, alert = '') {
     if (isInheritMode) {
       e.parameter.shippingDate1 = '';
       e.parameter.deliveryDate1 = '';
+      // コピー時も納品書テキストは引継ぐ（1日程目を deliveryNoteText1 に設定）
+      e.parameter.deliveryNoteText1 = (editData.dates && editData.dates[0]) ? (editData.dates[0].deliveryNoteText || '') : '';
     } else {
       // 後方互換性: 旧形式（dates配列がない場合）にも対応
       if (editData.dates && editData.dates.length > 0) {

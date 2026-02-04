@@ -50,6 +50,7 @@
  *     coolCls: string,       // 種別値形式（例: "0:なし"）
  *     cargo1: string,        // 種別値形式（例: "0:なし"）
  *     cargo2: string,        // 種別値形式（例: "0:なし"）
+ *     cargo3: string,        // 種別値形式（佐川用）
  *     cashOnDelivery: number, cashOnDeliTax: number, copiePrint: number,
  *     internalMemo: string, csvmemo: string, deliveryMemo: string, memo: string,
  *     items: [
@@ -248,6 +249,7 @@ function getOrderByOrderId(orderId) {
     coolCls: coolClsMap[firstRow[getColIndex('クール区分')]] || '',
     cargo1: cargoMap[firstRow[getColIndex('荷扱い１')]] || '',
     cargo2: cargoMap[firstRow[getColIndex('荷扱い２')]] || '',
+    cargo3: cargoMap[firstRow[getColIndex('荷扱い３')]] || '',
 
     // 代引・発行枚数
     cashOnDelivery: firstRow[getColIndex('代引総額')] || '',
