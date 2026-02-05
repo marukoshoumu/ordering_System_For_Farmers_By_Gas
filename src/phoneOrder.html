@@ -573,6 +573,7 @@
         <div class="subtitle">発送先・顧客を選択して素早く入力</div>
       </div>
       <form method="POST" action="<?= deployURL ?>" style="display: inline;">
+        <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
         <button type="submit" name="main" value="true" class="btn btn-light btn-sm" style="border-radius: 20px;">
           ✕ 閉じる
         </button>
@@ -762,6 +763,7 @@
       
       <div class="text-center mt-4">
         <form method="POST" action="<?= deployURL ?>" style="display: inline;">
+          <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
           <button type="submit" name="shipping" value="true" class="btn-phone btn-phone-outline">
             📝 通常の受注画面へ
           </button>
@@ -1103,6 +1105,7 @@
       
       <div class="mt-4">
         <form id="orderForm" method="POST" action="<?= deployURL ?>">
+          <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
           <!-- hidden fields will be added dynamically -->
           <input type="hidden" name="shippingSubmit" value="true">
           <button type="submit" class="btn-phone btn-phone-success" id="submitOrderBtn">

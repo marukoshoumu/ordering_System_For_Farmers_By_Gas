@@ -262,6 +262,7 @@
 <body>
   <div class="main-container">
     <form method="post" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <input type="hidden" name="userRole" value="<?= userRole ?>">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <button type="submit" name="main" value="true" class="btn btn-outline-secondary btn-sm">

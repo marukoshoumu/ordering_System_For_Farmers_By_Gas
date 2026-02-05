@@ -532,6 +532,7 @@
           <span class="pending-badge" id="pendingBadge" style="display: none;">未処理: 0件</span>
         </div>
         <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+          <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
           <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
             <i class="bi bi-house"></i> ホーム
           </button>
@@ -639,6 +640,7 @@
 
   <!-- 受注画面遷移用フォーム -->
   <form id="processForm" method="POST" action="<?= deployURL ?>" style="display: none;">
+    <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
     <input type="hidden" name="shipping" value="true">
     <input type="hidden" name="tempOrderId" id="tempOrderIdInput" value="">
   </form>

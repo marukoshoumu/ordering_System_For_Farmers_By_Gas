@@ -18,6 +18,7 @@
   <div class="container">
     <h2 class="text-center m-4">発送伝票</h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="row mb-3 align-items-center justify-content-center">
         <div class="col-auto">
           <label for="shippingDate" class="text-center form-label">発送日</label>

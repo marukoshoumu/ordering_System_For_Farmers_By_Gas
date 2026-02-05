@@ -14,6 +14,7 @@
   <div class="container">
     <h2 class="text-center m-4">確認画面</h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <? output._ = confirmHTML ?>
       <!-- 仮受注ID（AI取込一覧から遷移した場合に引き継ぎ） -->
       <? if (typeof tempOrderId !== 'undefined' && tempOrderId) { ?>

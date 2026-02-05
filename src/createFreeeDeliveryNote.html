@@ -26,6 +26,7 @@
       </ul>
     </div>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="customerSearch_dg">
         <div>
           <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>

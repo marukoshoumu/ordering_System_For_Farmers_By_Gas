@@ -492,6 +492,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h1><i class="bi bi-box-seam me-2"></i>製造数一覧</h1>
       <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+        <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
         <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
         <button type="submit" class="btn btn-outline-light btn-sm" name="mainTop" value="true">
           <i class="bi bi-house"></i> ホーム

@@ -209,6 +209,7 @@
 <body>
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <input type="hidden" name="userRole" value="<?= userRole ?>">
     </form>
 

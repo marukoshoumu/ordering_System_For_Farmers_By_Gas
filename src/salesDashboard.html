@@ -104,6 +104,7 @@
 <body>
   <div class="container-fluid py-4">
     <form method="POST" action="<?= deployURL ?>">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="mb-3">
         <button type="submit" formnovalidate class="btn btn-outline-secondary" name="mainTop" value="true">
           ← ホーム画面に戻る
