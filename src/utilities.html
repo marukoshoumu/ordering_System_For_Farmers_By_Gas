@@ -166,6 +166,9 @@
   function calcNextRecurringDate(baseDate, type, subValue) {
     var d = new Date(baseDate);
     if (isNaN(d.getTime())) return null;
+    // 曜日計算のずれ防止: カレンダー日のみに正規化（ローカル日付で再構築）
+    var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    d = new Date(y, m, day);
 
     if (type === 'weekly') {
       // 毎週: 発送日から最低7日後の指定曜日
@@ -178,13 +181,16 @@
       d.setDate(d.getDate() + diff);
       return d;
     } else if (type === 'biweekly' || type === 'triweekly' || type.endsWith('week')) {
+      // 指定曜日をベースにし、その日から n 週間後を次回発送日とする（recurringOrderCode.js と同一ロジック）
       var n = type === 'biweekly' ? 2 : type === 'triweekly' ? 3 : parseInt(type.replace('week', '')) || 2;
       var weekday = Number(subValue) || 1;
       var currentDay2 = d.getDay() || 7;
-      var daysToAdd = (weekday - currentDay2 + 7) % 7;
-      if (daysToAdd === 0) daysToAdd = 7 * n;
-      else daysToAdd += 7 * (n - 1);
-      d.setDate(d.getDate() + daysToAdd);
+      var daysToAnchor = (weekday - currentDay2 + 7) % 7;
+      if (daysToAnchor === 0) {
+        d.setDate(d.getDate() + 7 * n);
+      } else {
+        d.setDate(d.getDate() + daysToAnchor + 7 * n);
+      }
       return d;
     } else if (type === 'monthly') {
       if (subValue === 'first') {

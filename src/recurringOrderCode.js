@@ -31,13 +31,26 @@ function addMonthsWithAdjustment(date, months) {
 }
 
 /**
+ * 基準日を「カレンダー日のみ」に正規化する（曜日計算のタイムゾーンずれ防止）
+ * "YYYY-MM-DD" が UTC で解釈され getDay() が意図とずれる場合に、表示上の日付で再構築する。
+ * @param {Date} date - 基準日
+ * @returns {Date} 同一カレンダー日のローカル 0:00 の Date
+ */
+function normalizeToDateOnly(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const day = date.getDate();
+  return new Date(y, m, day);
+}
+
+/**
  * 柔軟な間隔形式で次回発送日を計算する
  * @param {Date} baseDate - 基準日
  * @param {Object} intervalObj - 間隔オブジェクト {type, value, weekday?}
  * @returns {Date} 次回発送日
  */
 function calcNextShippingDateFlexible(baseDate, intervalObj) {
-  const d = new Date(baseDate);
+  const d = normalizeToDateOnly(new Date(baseDate));
   if (!intervalObj || !intervalObj.type) {
     // 旧形式（数値のみ）の場合
     const months = Number(intervalObj) || 1;
@@ -58,13 +71,19 @@ function calcNextShippingDateFlexible(baseDate, intervalObj) {
     case 'biweekly':
     case 'triweekly':
       // n週ごと（value = 週数, weekday = 曜日番号1-7）
+      // 指定曜日をベースにし、その日付から n 週間後を次回発送日とする。
+      // 基準日が指定曜日でない場合は、基準日以降の「直後のその曜日」をアンカーにしてから n 週間後を返す。
       const n = Number(intervalObj.value) || 2;
       const weekday = Number(intervalObj.weekday) || 1;
-      const currentDay2 = d.getDay() || 7;
-      let daysToAdd = (weekday - currentDay2 + 7) % 7;
-      if (daysToAdd === 0) daysToAdd = 7 * n;
-      else daysToAdd += 7 * (n - 1);
-      d.setDate(d.getDate() + daysToAdd);
+      const currentDay2 = d.getDay() || 7; // 日曜=0→7 でフォームの 1-7 と揃える
+      let daysToAnchor = (weekday - currentDay2 + 7) % 7;
+      if (daysToAnchor === 0) {
+        // 基準日がすでに指定曜日 → その日をアンカーとして n 週間後
+        d.setDate(d.getDate() + 7 * n);
+      } else {
+        // 基準日以降の直後の指定曜日をアンカーにして、その日から n 週間後
+        d.setDate(d.getDate() + daysToAnchor + 7 * n);
+      }
       return d;
 
     case 'monthly':
