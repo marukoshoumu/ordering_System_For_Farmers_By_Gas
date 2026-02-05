@@ -201,7 +201,9 @@ function initializeDataStructure() {
     },
     harvestWaitingCounts: {
       total: 0
-    }
+    },
+    /** 収穫待ちのみを集約するリスト（日付別リストには含めない） */
+    harvestWaitingLists: new Map()
   };
 }
 
@@ -219,9 +221,11 @@ function processItems(items, dates, dataStructure, unitMap) {
 
     if (item['商品名'] === '送料') continue;
 
-    // 収穫待ちカウント（全日程横断）
+    // 収穫待ちは日付別リストに含めず、収穫待ち専用リストにのみ追加（当日発送と混同しないため）
     if (item._isHarvestWaiting) {
       dataStructure.harvestWaitingCounts.total++;
+      processHarvestWaitingItem(item, dataStructure, unitMap);
+      continue;
     }
 
     let dateKey = null;
@@ -359,6 +363,62 @@ function processDateItem(item, dateKey, dataStructure, unitMap) {
 }
 
 /**
+ * 収穫待ちの受注のみを harvestWaitingLists に集約（日付別リスト・件数には含めない）
+ * @param {Object} item - 受注レコード単体
+ * @param {Object} dataStructure - 集計用データ構造
+ * @param {Object} unitMap - 商品単位マップ
+ */
+function processHarvestWaitingItem(item, dataStructure, unitMap) {
+  const lists = dataStructure.harvestWaitingLists;
+  const listKey = `${item['発送先名']}_${item['クール区分']}_${item['受注ID']}`;
+
+  if (lists.has(listKey)) {
+    const record = lists.get(listKey);
+    record.shipped = record.shipped || item['出荷済'] === '○' || item['出荷済'] === true;
+    const existingProduct = record['商品'].find(p => p['商品名'] === item['商品名']);
+    if (existingProduct) {
+      existingProduct['受注数'] += Number(item['受注数']);
+    } else {
+      record['商品'].push({
+        '商品名': item['商品名'],
+        '受注数': Number(item['受注数']),
+        '単位': unitMap[item['商品名']] || '枚',
+        'メモ': item['メモ'] || ""
+      });
+    }
+    if (item['メモ'] && String(item['メモ']).trim() !== "") {
+      record.uniqueMemos.add(String(item['メモ']).trim());
+    }
+  } else {
+    let deliveryMethod = item['納品方法'];
+    if (deliveryMethod === 'ヤマト伝票受領') deliveryMethod = 'ヤマト';
+    else if (deliveryMethod === '佐川伝票受領') deliveryMethod = '佐川';
+
+    const uniqueMemos = new Set();
+    if (item['メモ'] && String(item['メモ']).trim() !== "") uniqueMemos.add(String(item['メモ']).trim());
+
+    lists.set(listKey, {
+      'orderId': item['受注ID'],
+      '顧客名': item['顧客名'],
+      '発送先名': item['発送先名'],
+      'クール区分': item['クール区分'],
+      'deliveryMethod': deliveryMethod,
+      'trackingNumber': item['追跡番号'] || '',
+      'status': item['ステータス'] || '',
+      'shipped': item['出荷済'] === '○' || item['出荷済'] === true,
+      'shippingDate': item['発送日'],
+      '商品': [{
+        '商品名': item['商品名'],
+        '受注数': Number(item['受注数']),
+        '単位': unitMap[item['商品名']] || '枚',
+        'メモ': item['メモ'] || ""
+      }],
+      'uniqueMemos': uniqueMemos
+    });
+  }
+}
+
+/**
  * 集計済みデータ構造から最終的なレスポンス配列を構築
  *
  * @param {Object} dateStrings - 表示用日付文字列
@@ -450,6 +510,7 @@ function buildResult(dateStrings, dataStructure, dates) {
     convertMapToArray(dataStructure.invoiceTypes.dayAfter2),
     convertListMap(dataStructure.lists.dayAfter2),
     convertMapToArray(dataStructure.invoiceTypes.dayAfter3),
-    convertListMap(dataStructure.lists.dayAfter3)
+    convertListMap(dataStructure.lists.dayAfter3),
+    convertListMap(dataStructure.harvestWaitingLists)
   ];
 }

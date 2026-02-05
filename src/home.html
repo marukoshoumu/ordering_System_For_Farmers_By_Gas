@@ -286,6 +286,35 @@
     .order-card.overdue-row .order-card-customer {
       color: #c62828;
     }
+    /* 収穫待ち一覧ダイアログ：コンパクト表形式（PC・スマホ両対応） */
+    .harvest-waiting-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .harvest-waiting-row {
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.5rem 1rem;
+      padding: 0.6rem 0.75rem; background: #fffef8; border: 1px solid #fef3c7; border-radius: 8px;
+      font-size: 0.875rem;
+    }
+    .harvest-waiting-left {
+      flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem;
+    }
+    .harvest-waiting-name { font-weight: 600; color: #1e293b; }
+    .harvest-waiting-client { font-size: 0.8rem; color: #64748b; }
+    .harvest-waiting-cool { flex-shrink: 0; }
+    .harvest-waiting-right {
+      flex: 1 1 200px; min-width: 0; color: #475569; word-break: break-all; line-height: 1.4;
+    }
+    @media (min-width: 576px) {
+      .harvest-waiting-row { flex-wrap: nowrap; }
+      .harvest-waiting-left { flex: 0 0 220px; }
+      .harvest-waiting-right { flex: 1; min-width: 180px; }
+    }
+    /* 収穫待ちモーダル：発送商品詳細が少し狭まった程度の横幅まで広げる */
+    .harvest-waiting-modal {
+      width: 96vw;
+      max-width: 1120px;
+    }
+    .harvest-waiting-modal #harvestWaitingDialogBody {
+      max-height: 60vh;
+    }
   </style>
 </head>
 
@@ -429,6 +458,16 @@
         <p><strong>メモ:</strong> <span id="dialogMemo"></span></p>
         <button type="button" class="btn" id="closeDialogButton">閉じる</button>
       </div>
+      <div id="harvestWaitingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050; align-items:center; justify-content:center;"></div>
+      <div id="harvestWaitingDialog" class="harvest-waiting-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:1051; max-height:85vh; overflow:hidden; flex-direction:column;">
+        <div class="p-3 border-bottom bg-warning bg-opacity-25">
+          <h5 class="mb-0"><i class="bi bi-flower1 me-1"></i>収穫待ち一覧</h5>
+        </div>
+        <div id="harvestWaitingDialogBody" class="p-3 overflow-auto" style="max-height:60vh;"></div>
+        <div class="p-3 border-top">
+          <button type="button" class="btn btn-secondary" id="closeHarvestWaitingDialogBtn">閉じる</button>
+        </div>
+      </div>
     </form>
   </div>
   <script>
@@ -530,6 +569,7 @@
     }
     function setTable(datas) {
       var res = JSON.parse(datas);
+      window.harvestWaitingList = (res[12] != null) ? res[12] : [];
       $("#cntRes").html("");
       let cntHtml = `<table class="table table-bordered text-center" style="table-layout: fixed;">`;
       cntHtml += `<thead><tr>`;
@@ -560,7 +600,7 @@
       }
 
       if (harvestWaitingCount > 0) {
-        statusBadges += `<span class="badge bg-warning text-dark me-2" style="font-size:0.85rem;">
+        statusBadges += `<span class="badge bg-warning text-dark me-2" style="font-size:0.85rem; cursor:pointer;" role="button" tabindex="0" onclick="showHarvestWaitingDialog()" onkeydown="if(event.key==='Enter')showHarvestWaitingDialog()" title="クリックで収穫待ち一覧を表示">
                     <i class="bi bi-flower1 me-1"></i>収穫待ち: ${harvestWaitingCount}件
                 </span>`;
       }
@@ -639,6 +679,84 @@
       document.getElementById('detailDialog').style.display = 'none'; // ダイアログを非表示
       document.getElementById('overlay').style.display = 'none'; // オーバーレイを非表示
     });
+
+    function showHarvestWaitingDialog() {
+      const list = window.harvestWaitingList || [];
+      const body = document.getElementById('harvestWaitingDialogBody');
+      if (!list.length) {
+        body.innerHTML = '<p class="text-muted mb-0">収穫待ちの受注はありません。</p>';
+      } else {
+        // 発送商品詳細と同じカード形式で表示
+        let html = '<div class="dashboard-grid">';
+        for (let i = 0; i < list.length; i++) {
+          const order = list[i];
+          const coolCls = order['クール区分'] || '';
+          let coolBadge = '';
+          if (coolCls.includes('冷蔵')) coolBadge = '<span class="cool-badge cool-badge-reizo">冷蔵</span>';
+          else if (coolCls.includes('冷凍')) coolBadge = '<span class="cool-badge cool-badge-reito">冷凍</span>';
+          else if (coolCls && coolCls !== 'なし' && coolCls !== '常温') coolBadge = '<span class="cool-badge bg-warning text-dark" style="font-size:0.6rem">' + escapeHtml(coolCls) + '</span>';
+          const statusBadgeHtml = getStatusBadge('収穫待ち');
+          const escapedOrderId = escapeHtml(order.orderId);
+          const escapedRecipientName = escapeHtml(order['発送先名'] || '');
+          const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
+          const actionsHtml = `
+            <div class="order-card-actions" style="flex-direction: column; gap: 5px; align-items: stretch;">
+              <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
+                <option value="発送前">発送前</option>
+                <option value="収穫待ち" selected>🌱待ち</option>
+                <option value="出荷済み">✓済</option>
+              </select>
+              <button type="button" class="btn btn-sm scan-btn-mini" data-order-id="${escapedOrderId}" data-recipient-name="${escapedRecipientName}" data-delivery-method="${escapedDeliveryMethod}" title="伝票スキャン" style="width: 100%;">
+                <i class="bi bi-upc-scan"></i>
+              </button>
+              ${statusBadgeHtml}
+            </div>
+          `;
+          html += `<div class="order-card shadow-sm border-warning border-opacity-50">`;
+          html += `<div class="order-card-header"><div class="order-card-info-main">`;
+          html += `<h4 class="order-card-title">${escapeHtml(order['発送先名'] || '')} 様</h4>`;
+          html += `<span class="order-card-customer">依頼主: ${escapeHtml(order['顧客名'] || '')}</span>`;
+          if (coolBadge) html += `<div class="mt-1">${coolBadge}</div>`;
+          html += `</div>`;
+          html += actionsHtml;
+          html += `</div>`;
+          html += `<div class="order-card-body">`;
+          let combinedMemo = order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos']) ? order['aggregatedMemos'] : [];
+          if (combinedMemo.length === 0) {
+            const seenMemos = new Set();
+            for (let j = 0; j < (order['商品'] || []).length; j++) {
+              const p = order['商品'][j];
+              if (p['メモ']) {
+                const rawMemo = String(p['メモ']).trim();
+                if (rawMemo && !seenMemos.has(rawMemo)) { seenMemos.add(rawMemo); combinedMemo.push(escapeHtml(p['メモ'])); }
+              }
+            }
+          }
+          for (let j = 0; j < (order['商品'] || []).length; j++) {
+            const p = order['商品'][j];
+            const unit = p['単位'] || '枚';
+            html += `<div class="product-list-item">`;
+            html += `<span class="product-name">${escapeHtml(p['商品名'] || '')}</span>`;
+            html += `<span class="product-quantity">${escapeHtml(String(p['受注数'] || ''))} ${escapeHtml(unit)}</span>`;
+            html += `</div>`;
+          }
+          if (combinedMemo.length > 0) {
+            html += `<div class="memo-box"><span class="memo-icon">📌</span><div>${combinedMemo.join('<br>')}</div></div>`;
+          }
+          html += `</div></div>`;
+        }
+        html += '</div>';
+        body.innerHTML = html;
+      }
+      document.getElementById('harvestWaitingOverlay').style.display = 'flex';
+      document.getElementById('harvestWaitingDialog').style.display = 'flex';
+    }
+    function closeHarvestWaitingDialog() {
+      document.getElementById('harvestWaitingOverlay').style.display = 'none';
+      document.getElementById('harvestWaitingDialog').style.display = 'none';
+    }
+    document.getElementById('closeHarvestWaitingDialogBtn').addEventListener('click', closeHarvestWaitingDialog);
+    document.getElementById('harvestWaitingOverlay').addEventListener('click', closeHarvestWaitingDialog);
     window.onload = function () {
       setRes();
     };
