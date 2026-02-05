@@ -642,17 +642,12 @@
       }
     }
 
-    var orideliveryTime = $('select[id="deliveryTime"]').html();
-    var oriinvoiceType = $('select[id="invoiceType"]').html();
-    var oricoolCls = $('select[id="coolCls"]').html();
-    var oricargo1 = $('select[id="cargo1"]').html();
-    var oricargo2 = $('select[id="cargo2"]').html();
-    var oricargo3 = $('select[id="cargo3"]').html();
-    /** 納品方法が一致するか（完全一致または相互に含む）。例: 「佐川急便」と「佐川」で true */
+    // 納品方法変更時に復元するための元HTML（DOM準備後に取得するため変数のみ宣言）
+    var orideliveryTime, oriinvoiceType, oricoolCls, oricargo1, oricargo2, oricargo3;
+    /** 納品方法が一致するか。完全一致のみ（「ヤマト」と「ヤマト伝票受領」は区別する） */
     function deliveryMethodMatches(val1, val2) {
       if (!val1 || !val2) return true;
-      if (val1 === val2) return true;
-      return (val1.indexOf(val2) !== -1) || (val2.indexOf(val1) !== -1);
+      return val1 === val2;
     }
     function deliveryMethodChange() {
       var $deliveryMethod = $('select[id="deliveryMethod"]');
@@ -668,42 +663,55 @@
       var savedCargo2 = $cargo2.val();
       var savedCargo3 = $cargo3.val();
 
-      $deliveryTime.html(orideliveryTime).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).not(':first-child').remove();
-        }
-      })
-      $invoiceType.html(oriinvoiceType).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).remove();
-        }
-      })
-      $coolCls.html(oricoolCls).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).remove();
-        }
-      })
-      $cargo1.html(oricargo1).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).not(':first-child').remove();
-        }
-      })
-      $cargo2.html(oricargo2).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).not(':first-child').remove();
-        }
-      })
-      $cargo3.html(oricargo3).find('option').each(function () {
-        var val2 = $(this).data('val');
-        if (!deliveryMethodMatches(val1, val2)) {
-          $(this).not(':first-child').remove();
-        }
-      })
+      // data-val は .attr() で取得（.html(ori*) 直後の要素では .data() が未キャッシュのため属性を確実に参照）
+      if (orideliveryTime) {
+        $deliveryTime.html(orideliveryTime).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).not(':first-child').remove();
+          }
+        });
+      }
+      if (oriinvoiceType) {
+        $invoiceType.html(oriinvoiceType).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).remove();
+          }
+        });
+      }
+      if (oricoolCls) {
+        $coolCls.html(oricoolCls).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).remove();
+          }
+        });
+      }
+      if (oricargo1) {
+        $cargo1.html(oricargo1).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).not(':first-child').remove();
+          }
+        });
+      }
+      if (oricargo2) {
+        $cargo2.html(oricargo2).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).not(':first-child').remove();
+          }
+        });
+      }
+      if (oricargo3) {
+        $cargo3.html(oricargo3).find('option').each(function () {
+          var val2 = $(this).attr('data-val');
+          if (!deliveryMethodMatches(val1, val2)) {
+            $(this).not(':first-child').remove();
+          }
+        });
+      }
 
       // 佐川の場合、荷扱い３を表示
       if (val1 && val1.includes('佐川')) {
@@ -1003,6 +1011,15 @@
   <script>
     // ページ読み込み時の初期化
     document.addEventListener('DOMContentLoaded', function () {
+      // クール区分・荷扱い等の「元HTML」をフォーム確定後に取得（納品方法変更時の絞り込みで使用）
+      var $dt = $('select[id="deliveryTime"]'), $it = $('select[id="invoiceType"]'), $cc = $('select[id="coolCls"]');
+      var $c1 = $('select[id="cargo1"]'), $c2 = $('select[id="cargo2"]'), $c3 = $('select[id="cargo3"]');
+      if ($dt.length) orideliveryTime = $dt.html();
+      if ($it.length) oriinvoiceType = $it.html();
+      if ($cc.length) oricoolCls = $cc.html();
+      if ($c1.length) oricargo1 = $c1.html();
+      if ($c2.length) oricargo2 = $c2.html();
+      if ($c3.length) oricargo3 = $c3.html();
       // コピー/編集で開いた場合に荷扱い１・２・３が正しく表示されるよう、納品方法に応じたフィルタと値を適用
       if (typeof deliveryMethodChange === 'function') {
         deliveryMethodChange();
