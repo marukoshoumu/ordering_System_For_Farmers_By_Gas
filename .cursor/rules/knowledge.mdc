@@ -6,40 +6,34 @@ alwaysApply: false
 
 # ナレッジベース参照
 
-このプロジェクト（農家向け受注管理システム）の詳細ナレッジは以下で管理されている。
+このプロジェクト（農家向け受注管理システム）の詳細ナレッジは **プロジェクト外** の `$HOME/knowledge` で管理する。  
+**リポジトリ内にはナレッジファイルを置かず、参照のみ行う。** プロジェクト内に `docs/` フォルダは存在しない。ドキュメント・事象メモはすべて以下パスを参照する。
 
-- **パス**: 環境変数形式: `${KNOWLEDGE_DIR:-$HOME/knowledge}` または `$HOME/knowledge`
-  - プロジェクトルートからの相対パス: `<project-root>/knowledge` または `./knowledge`
-  - リポジトリルートからの相対パス: `projects/ordering-system` なども使用可能
-- **ordering-system 用**: 環境変数形式: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` または `$HOME/knowledge/projects/ordering-system/`
-  - プロジェクトルートからの相対パス: `<project-root>/knowledge/projects/ordering-system/` または `./knowledge/projects/ordering-system/`
-  - リポジトリルートからの相対パス: `projects/ordering-system/` なども使用可能
+## パス
 
-**注意**: 共有ナレッジディレクトリを使用する場合、`.gitignore` と競合しないことを確認してください。リポジトリ内にナレッジディレクトリを作成する場合は、`.gitignore` に適切な設定を追加することを検討してください。
+- **ナレッジルート**: `${KNOWLEDGE_DIR:-$HOME/knowledge}` または `$HOME/knowledge`（例: `/Users/resily0808/knowledge`）
+- **ordering-system 用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}`  
+  - 例: `$HOME/knowledge/projects/ordering-system/`
 
 ## セッション開始時・設計判断時
 
-1. **まず参照**: ナレッジ側 `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}KNOWLEDGE_REFERENCE.md` または `CURRENT_STATUS.md` で直近のステータス・セッション要約を確認する（ナレッジはプロジェクト外の `$HOME/knowledge` 等に保存）。
-2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `_README.md` または `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}` 内のドキュメントを参照する。
-3. **エージェント用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}AGENT.md` でクイックスタート、`SKILLS.md` で頻出タスクパターンを確認する。
+1. **まず参照**: `$HOME/knowledge/projects/ordering-system/KNOWLEDGE_REFERENCE.md` または `CURRENT_STATUS.md` で直近のステータス・セッション要約を確認する。
+2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `_README.md` または `docs/` 内のドキュメントを参照する。
+3. **エージェント用**: 上記パスの `AGENT.md` でクイックスタート、`SKILLS.md` で頻出タスクパターンを確認する。
 
 ## 主なドキュメント
 
-- 現在のステータス: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}CURRENT_STATUS.md`
-- セッション履歴: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}sessions/`
-- 機能・設計: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}docs/`
-- プロンプトのコツ（魔法の言葉7選）: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}docs/prompt-magic-words.md`（詳細は `$KNOWLEDGE_DIR/personal/learnings/prompt-magic-words.md`）
+- 現在のステータス: `$HOME/knowledge/projects/ordering-system/CURRENT_STATUS.md`
+- セッション履歴: `$HOME/knowledge/projects/ordering-system/sessions/`
+- 機能・設計: `$HOME/knowledge/projects/ordering-system/docs/`
+- プロンプトのコツ: 上記 `docs/prompt-magic-words.md` など
 
-## 環境変数の設定
+## 環境変数（任意）
 
-これらのパスをカスタマイズするには、以下の環境変数を設定してください：
+- `KNOWLEDGE_DIR`: ナレッジルート（デフォルト: `$HOME/knowledge`）
+- `ORDERING_PROJECT_DIR`: ordering-system 用ディレクトリ（デフォルト: `$KNOWLEDGE_DIR/projects/ordering-system/`）
 
-- `KNOWLEDGE_DIR`: ナレッジベースのルートディレクトリ（デフォルト: `$HOME/knowledge`）
-- `ORDERING_PROJECT_DIR`: ordering-system プロジェクトのディレクトリ（デフォルト: `$KNOWLEDGE_DIR/projects/ordering-system/`）
+## 注意
 
-例（`.env` またはシェル設定ファイル）:
-```bash
-export KNOWLEDGE_DIR="/path/to/your/knowledge"
-export ORDERING_PROJECT_DIR="/path/to/your/ordering-system"
-```
-
+- ナレッジの更新・追加は **$HOME/knowledge** 側にのみ行う。プロジェクト内に `knowledge/` や `docs/` を新規作成しない（本プロジェクトでは `docs/` は廃止済み）。
+- インデックス更新は `ki` スキル（`~/knowledge/_scripts/update-index.sh`）を使用する。
