@@ -297,7 +297,7 @@ function createFreeeMainRow(customerName, deliveryDate, orderId, shippingMemo, i
   row[6] = internalMemo;              // 社内メモ
   row[7] = shippingMemo;              // 備考（送り状備考欄）
   row[8] = customerInfo['消費税の表示方法'] || ''; // 消費税の表示方法（内税 or 外税）
-  row[10] = customerName;             // 取引先名称
+  row[10] = trimForFreee(customerName);          // 取引先名称（freeeマスタ完全一致のため前後空白除去）
   row[12] = customerInfo['敬称'] || ''; // 取引先敬称（様 or 御中）
   row[13] = customerInfo['郵便番号'] || ''; // 取引先郵便番号
   row[14] = customerInfo['都道府県'] || ''; // 取引先都道府県
@@ -348,12 +348,46 @@ function createFreeeDetailRow(order, productInfo, deliveryDate) {
   row[24] = convertTaxRateForFreee(productInfo['税率']); // 税率
   row[26] = deliveryDate;             // 発生日
   row[27] = productInfo['勘定科目'] || ''; // 勘定科目
-  row[28] = productInfo['税区分'] || ''; // 税区分
+  row[28] = normalizeTaxCategoryForFreee(productInfo['税区分'] || ''); // 税区分（全角→半角正規化）
   row[29] = productInfo['部門'] || '';   // 部門
   row[30] = productInfo['品目'] || '';   // 品目
   row[31] = productInfo['メモ'] || '';   // メモ
 
   return row;
+}
+
+/**
+ * freee用に文字列の前後空白を除去する
+ *
+ * 取引先名称はfreeeの取引先マスタと完全一致が必須のため、
+ * 半角・全角のスペースを前後から除去する。
+ *
+ * @param {string} str - 対象文字列
+ * @returns {string} トリム後の文字列
+ */
+function trimForFreee(str) {
+  if (str == null || typeof str !== 'string') {
+    return '';
+  }
+  return str.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
+}
+
+/**
+ * freee用に税区分表記を正規化する
+ *
+ * 商品マスタに全角の％・括弧が入っている場合、freeeの税区分マスタ表記（半角）に合わせる。
+ *
+ * @param {string} taxCategory - 商品マスタの税区分
+ * @returns {string} 正規化後の税区分
+ */
+function normalizeTaxCategoryForFreee(taxCategory) {
+  if (taxCategory == null || typeof taxCategory !== 'string') {
+    return '';
+  }
+  return taxCategory
+    .replace(/\uFF05/g, '%')   // 全角％ → 半角%
+    .replace(/\uFF08/g, '(')   // 全角（ → 半角(
+    .replace(/\uFF09/g, ')');  // 全角） → 半角)
 }
 
 /**
