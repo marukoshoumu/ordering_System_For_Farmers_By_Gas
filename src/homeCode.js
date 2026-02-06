@@ -50,6 +50,7 @@ function updateOrderStatus(orderId, newStatus) {
  * @param {Date} endDate - 終了日
  * @param {boolean} [includeOverdue=false] - true の場合、発送日が今日より前で未出荷・非キャンセルの行も含める（当日分として表示するため）
  * @returns {Array<Object>} - ラベルをキーとしたレコードの配列
+ * @description 収穫待ちの受注は発送日が範囲外（未来含む）でも常に含める（件数確認の収穫待ち欄に表示するため）
  */
 function getOrdersByDateRange(startDate, endDate, includeOverdue) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -91,8 +92,8 @@ function getOrdersByDateRange(startDate, endDate, includeOverdue) {
       isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
     }
 
-    // 期間内 または 予定日超過のみ含める
-    if (!inRange && !isOverdueRow) continue;
+    // 期間内 または 予定日超過 または 収穫待ち（発送日が先でも収穫待ち欄に表示するため）
+    if (!inRange && !isOverdueRow && !isHarvestWaiting) continue;
 
     const record = {};
     labels.forEach((label, index) => {
