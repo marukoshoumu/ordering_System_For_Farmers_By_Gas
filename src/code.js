@@ -107,14 +107,15 @@ function getSession(sessionId) {
 
 /**
  * ログイン成功時にセッションを保存する。
- * @param {string} sessionId - Utilities.getUuid() 等で生成したID
- * @param {string} userRole - ユーザー権限（admin/viewer）
+ * @param {string} sessionId - Utilities.getUuid() 等で生成した一意のセッションID
+ * @param {string} userRole - ユーザー権限（admin/viewer）。未設定・空文字の場合は最小権限（viewer）として保存する。
  * @param {string} loginId - ログインID
  */
 function setSession(sessionId, userRole, loginId) {
   if (!sessionId) return;
   const cache = CacheService.getScriptCache();
-  cache.put('session_' + sessionId, JSON.stringify({ userRole: userRole || 'viewer', loginId: loginId || '' }), SESSION_TTL_SEC);
+  const role = (userRole && String(userRole).trim()) ? String(userRole).trim() : 'viewer';
+  cache.put('session_' + sessionId, JSON.stringify({ userRole: role === 'admin' ? 'admin' : 'viewer', loginId: loginId || '' }), SESSION_TTL_SEC);
 }
 
 /**
@@ -236,8 +237,9 @@ function doPost(e) {
       htmlOutput.setTitle('ログイン画面');
       return htmlOutput;
     }
-    // ログイン成功 - 権限情報を取得しサーバー側セッションを発行（クライアントの userRole 送信に依存しない）
-    const userRole = user['権限'] || 'admin';  // デフォルトは管理者（passシートから取得）
+    // ログイン成功 - 権限情報を取得しサーバー側セッションを発行（クライアントの userRole 送信に依存しない）。権限が未設定・空の場合は最小権限（viewer）とする。
+    const rawRole = (user['権限'] != null && typeof user['権限'] === 'string') ? String(user['権限']).trim() : '';
+    const userRole = rawRole === 'admin' ? 'admin' : 'viewer';
     const sessionId = Utilities.getUuid();
     setSession(sessionId, userRole, e.parameter.loginId);
     const tempOrderId = e.parameter.tempOrderId || '';
