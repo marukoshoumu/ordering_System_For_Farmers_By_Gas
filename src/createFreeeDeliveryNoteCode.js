@@ -348,7 +348,7 @@ function createFreeeDetailRow(order, productInfo, deliveryDate) {
   row[24] = convertTaxRateForFreee(productInfo['税率']); // 税率
   row[26] = deliveryDate;             // 発生日
   row[27] = productInfo['勘定科目'] || ''; // 勘定科目
-  row[28] = normalizeTaxCategoryForFreee(productInfo['税区分'] || ''); // 税区分（全角→半角正規化）
+  row[28] = productInfo['税区分'] || ''; // 税区分（スプレッドシートの値をそのまま出力。保存時はUTF-8バイト列で全角も保持）
   row[29] = productInfo['部門'] || '';   // 部門
   row[30] = productInfo['品目'] || '';   // 品目
   row[31] = productInfo['メモ'] || '';   // メモ
@@ -370,24 +370,6 @@ function trimForFreee(str) {
     return '';
   }
   return str.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
-}
-
-/**
- * freee用に税区分表記を正規化する
- *
- * 商品マスタに全角の％・括弧が入っている場合、freeeの税区分マスタ表記（半角）に合わせる。
- *
- * @param {string} taxCategory - 商品マスタの税区分
- * @returns {string} 正規化後の税区分
- */
-function normalizeTaxCategoryForFreee(taxCategory) {
-  if (taxCategory == null || typeof taxCategory !== 'string') {
-    return '';
-  }
-  return taxCategory
-    .replace(/\uFF05/g, '%')   // 全角％ → 半角%
-    .replace(/\uFF08/g, '(')   // 全角（ → 半角(
-    .replace(/\uFF09/g, ')');  // 全角） → 半角)
 }
 
 /**
@@ -476,6 +458,39 @@ function getProductInfo(productName, productItems) {
 }
 
 /**
+ * 文字列をUTF-8バイト配列に変換する
+ *
+ * GASのnewBlob(string, 'text/csv')ではUnicode正規化等で全角括弧が半角になる場合があるため、
+ * 明示的にUTF-8バイト列にしてBlobを作成し、全角文字をそのままファイルに残す。
+ *
+ * @param {string} str - 対象文字列
+ * @returns {Array<number>} UTF-8バイト列（0-255）
+ */
+function _stringToUtf8Bytes(str) {
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    let c = str.charCodeAt(i);
+    if (c >= 0xD800 && c < 0xDC00 && i + 1 < str.length) {
+      const c2 = str.charCodeAt(i + 1);
+      if (c2 >= 0xDC00 && c2 < 0xE000) {
+        c = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00);
+        i += 1;
+      }
+    }
+    if (c < 128) {
+      bytes.push(c);
+    } else if (c < 2048) {
+      bytes.push(0xC0 | (c >> 6), 0x80 | (c & 0x3F));
+    } else if (c < 65536) {
+      bytes.push(0xE0 | (c >> 12), 0x80 | ((c >> 6) & 0x3F), 0x80 | (c & 0x3F));
+    } else {
+      bytes.push(0xF0 | (c >> 18), 0x80 | ((c >> 12) & 0x3F), 0x80 | ((c >> 6) & 0x3F), 0x80 | (c & 0x3F));
+    }
+  }
+  return bytes;
+}
+
+/**
  * CSVをGoogleドライブに保存
  *
  * @param {Array<Array<string>>} csvRows - CSV行データ
@@ -492,11 +507,12 @@ function saveFreeeCSVToDrive(csvRows, targetFrom, targetTo) {
   const toDate = targetTo.replace(/\//g, '');
   const fileName = 'freee納品書CSV_' + fromDate + '-' + toDate;
 
-  // Googleドライブに保存
+  // 明示的にUTF-8バイト列に変換してBlob作成（全角括弧等が正規化で半角にならないようにする）
+  const utf8Bytes = _stringToUtf8Bytes(csvContent);
+  const blob = Utilities.newBlob(new Uint8Array(utf8Bytes), 'text/csv; charset=UTF-8', fileName + '.csv');
+
   const folderId = getFreeeCSVFolderId();
   const folder = DriveApp.getFolderById(folderId);
-
-  const blob = Utilities.newBlob(csvContent, 'text/csv', fileName + '.csv');
   folder.createFile(blob);
 
   return fileName;
