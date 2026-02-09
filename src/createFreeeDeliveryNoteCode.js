@@ -509,7 +509,8 @@ function saveFreeeCSVToDrive(csvRows, targetFrom, targetTo) {
 
   // 明示的にUTF-8バイト列に変換してBlob作成（全角括弧等が正規化で半角にならないようにする）
   const utf8Bytes = _stringToUtf8Bytes(csvContent);
-  const blob = Utilities.newBlob(new Uint8Array(utf8Bytes), 'text/csv; charset=UTF-8', fileName + '.csv');
+  const signedBytes = new Int8Array(utf8Bytes);
+  const blob = Utilities.newBlob(signedBytes, 'text/csv; charset=UTF-8', fileName + '.csv');
 
   const folderId = getFreeeCSVFolderId();
   const folder = DriveApp.getFolderById(folderId);
