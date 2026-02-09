@@ -721,7 +721,7 @@
           html += actionsHtml;
           html += `</div>`;
           html += `<div class="order-card-body">`;
-          let combinedMemo = order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos']) ? order['aggregatedMemos'] : [];
+          let combinedMemo = order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos']) ? order['aggregatedMemos'].map(m => escapeHtml(String(m == null ? '' : m))) : [];
           if (combinedMemo.length === 0) {
             const seenMemos = new Set();
             for (let j = 0; j < (order['商品'] || []).length; j++) {
@@ -920,9 +920,9 @@
         html += `<div class="order-card-body">`;
         let combinedMemo = [];
 
-        // バックエンドですでに集約済みのメモがあればそれを使用
+        // バックエンドですでに集約済みのメモがあればそれを使用（XSS対策のため各要素をエスケープ）
         if (order['aggregatedMemos'] && Array.isArray(order['aggregatedMemos'])) {
-          combinedMemo = order['aggregatedMemos'];
+          combinedMemo = order['aggregatedMemos'].map(m => escapeHtml(String(m == null ? '' : m)));
         } else {
           // 下位互換性（念のため残す）
           const seenMemos = new Set();
