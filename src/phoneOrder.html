@@ -1478,12 +1478,20 @@
 
       // 佐川の場合のみ処理
       if (deliveryMethod && deliveryMethod.includes('佐川')) {
-        // クール区分に応じて荷扱い２を自動設定
-        if (coolCls) {
-          if (coolCls.includes('002')) {  // 冷蔵
-            cargo2Select.value = '001:冷蔵';
-          } else if (coolCls.includes('003')) {  // 冷凍
-            cargo2Select.value = '002:冷凍';
+        // クール区分が冷蔵/冷凍の場合、該当する option（種別値はシートで可変のため表示で判定）を選択
+        if (coolCls && cargo2Select) {
+          let targetLabel = null;
+          if (coolCls.indexOf('冷蔵') !== -1) targetLabel = '冷蔵';
+          else if (coolCls.indexOf('冷凍') !== -1) targetLabel = '冷凍';
+          if (targetLabel) {
+            for (let i = 0; i < cargo2Select.options.length; i++) {
+              const opt = cargo2Select.options[i];
+              const v = opt.value, t = opt.text;
+              if (v && (t.indexOf(targetLabel) !== -1 || (v.split(':')[1] && v.split(':')[1].indexOf(targetLabel) !== -1))) {
+                cargo2Select.value = v;
+                break;
+              }
+            }
           }
         }
 
