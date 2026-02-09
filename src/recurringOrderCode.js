@@ -749,8 +749,13 @@ function createYamatoCsvFromRecurring(recurringOrder, deliveryId) {
   yamatoRecord['お届け先電話番号'] = recurringOrder['発送先電話番号'] || '';
   yamatoRecord['お届け先電話番号枝番'] = '';
   yamatoRecord['お届け先郵便番号'] = recurringOrder['発送先郵便番号'] || '';
-  yamatoRecord['お届け先住所'] = recurringOrder['発送先住所'] || '';
-  yamatoRecord['お届け先住所（アパートマンション名）'] = '';
+  // ヤマトB2: お届け先住所・お届け先住所（アパートマンション名）は各16文字まで。超える場合は16文字目以降を次カラムへ
+  (function () {
+    const ADDRESS_MAX_LEN = 16;
+    var toAddr = (recurringOrder['発送先住所'] || '').toString();
+    yamatoRecord['お届け先住所'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(0, ADDRESS_MAX_LEN) : toAddr;
+    yamatoRecord['お届け先住所（アパートマンション名）'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(ADDRESS_MAX_LEN) : '';
+  })();
   yamatoRecord['お届け先会社・部門名１'] = '';
   yamatoRecord['お届け先会社・部門名２'] = '';
   yamatoRecord['お届け先名'] = recurringOrder['発送先名'] || '';
@@ -760,8 +765,13 @@ function createYamatoCsvFromRecurring(recurringOrder, deliveryId) {
   yamatoRecord['ご依頼主電話番号'] = recurringOrder['発送元電話番号'] || '';
   yamatoRecord['ご依頼主電話番号枝番'] = '';
   yamatoRecord['ご依頼主郵便番号'] = recurringOrder['発送元郵便番号'] || '';
-  yamatoRecord['ご依頼主住所'] = recurringOrder['発送元住所'] || '';
-  yamatoRecord['ご依頼主住所（アパートマンション名）'] = '';
+  // ヤマトB2: ご依頼主住所・ご依頼主住所（アパートマンション名）は各16文字まで。超える場合は16文字目以降を次カラムへ
+  (function () {
+    const ADDRESS_MAX_LEN = 16;
+    var fromAddr = (recurringOrder['発送元住所'] || '').toString();
+    yamatoRecord['ご依頼主住所'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(0, ADDRESS_MAX_LEN) : fromAddr;
+    yamatoRecord['ご依頼主住所（アパートマンション名）'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(ADDRESS_MAX_LEN) : '';
+  })();
   yamatoRecord['ご依頼主名'] = recurringOrder['発送元名'] || '';
   yamatoRecord['ご依頼主略称カナ'] = '';
   yamatoRecord['品名コード１'] = '';

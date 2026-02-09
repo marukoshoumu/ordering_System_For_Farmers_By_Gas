@@ -2334,8 +2334,13 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
   record['お届け先電話番号'] = getOrderValue(orderData, '発送先電話番号', orderHeaders);
   record['お届け先電話番号枝番'] = "";
   record['お届け先郵便番号'] = getOrderValue(orderData, '発送先郵便番号', orderHeaders);
-  record['お届け先住所'] = getOrderValue(orderData, '発送先住所', orderHeaders);
-  record['お届け先住所（アパートマンション名）'] = "";
+  // ヤマトB2: お届け先住所・お届け先住所（アパートマンション名）は各16文字まで。超える場合は16文字目以降を次カラムへ
+  (function () {
+    const ADDRESS_MAX_LEN = 16;
+    var toAddr = (getOrderValue(orderData, '発送先住所', orderHeaders) || '').toString();
+    record['お届け先住所'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(0, ADDRESS_MAX_LEN) : toAddr;
+    record['お届け先住所（アパートマンション名）'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(ADDRESS_MAX_LEN) : "";
+  })();
   record['お届け先会社・部門名１'] = "";
   record['お届け先会社・部門名２'] = "";
   record['お届け先名'] = getOrderValue(orderData, '発送先名', orderHeaders);
@@ -2345,8 +2350,13 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
   record['ご依頼主電話番号'] = getOrderValue(orderData, '発送元電話番号', orderHeaders);
   record['ご依頼主電話番号枝番'] = "";
   record['ご依頼主郵便番号'] = getOrderValue(orderData, '発送元郵便番号', orderHeaders);
-  record['ご依頼主住所'] = getOrderValue(orderData, '発送元住所', orderHeaders);
-  record['ご依頼主住所（アパートマンション名）'] = "";
+  // ヤマトB2: ご依頼主住所・ご依頼主住所（アパートマンション名）は各16文字まで。超える場合は16文字目以降を次カラムへ
+  (function () {
+    const ADDRESS_MAX_LEN = 16;
+    var fromAddr = (getOrderValue(orderData, '発送元住所', orderHeaders) || '').toString();
+    record['ご依頼主住所'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(0, ADDRESS_MAX_LEN) : fromAddr;
+    record['ご依頼主住所（アパートマンション名）'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(ADDRESS_MAX_LEN) : "";
+  })();
   record['ご依頼主名'] = getOrderValue(orderData, '発送元名', orderHeaders);
   record['ご依頼主略称カナ'] = "";
   record['品名コード１'] = "";
@@ -3232,6 +3242,73 @@ function migrateCSVSheet(sheetName, orderMap, deliveryMethod) {
   }
 
   return { success: successCount, failed: failedCount, details: failedDetails };
+}
+
+/**
+ * 既存の「ヤマトCSV」シートの住所を16文字制限に合わせて分割するパッチ。
+ * お届け先住所・ご依頼主住所が16文字超の場合、先頭16文字をそのまま残し、
+ * 17文字目以降を「お届け先住所（アパートマンション名）」または「ご依頼主住所（アパートマンション名）」に設定する。
+ * スクリプトエディタで実行するか、メニューから実行してください。
+ * @returns {Object} - { updatedRows: number, message: string }
+ */
+function patchYamatoCsvAddressColumns() {
+  const ADDRESS_MAX_LEN = 16;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('ヤマトCSV');
+
+  if (!sheet) {
+    Logger.log('ヤマトCSVシートが見つかりません');
+    return { updatedRows: 0, message: 'ヤマトCSVシートが見つかりません' };
+  }
+
+  const data = sheet.getDataRange().getValues();
+  if (!data.length) {
+    Logger.log('ヤマトCSVシートにデータがありません');
+    return { updatedRows: 0, message: 'データがありません' };
+  }
+
+  const headers = data[0];
+  const colToAddr = headers.indexOf('お届け先住所');
+  const colToApt = headers.indexOf('お届け先住所（アパートマンション名）');
+  const colFromAddr = headers.indexOf('ご依頼主住所');
+  const colFromApt = headers.indexOf('ご依頼主住所（アパートマンション名）');
+
+  if (colToAddr === -1 || colToApt === -1 || colFromAddr === -1 || colFromApt === -1) {
+    Logger.log('必要なヘッダーが見つかりません: お届け先住所, お届け先住所（アパートマンション名）, ご依頼主住所, ご依頼主住所（アパートマンション名）');
+    return { updatedRows: 0, message: '必要なヘッダーが見つかりません' };
+  }
+
+  let updatedRows = 0;
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    let changed = false;
+
+    let toAddr = (row[colToAddr] != null && row[colToAddr] !== '') ? String(row[colToAddr]).trim() : '';
+    if (toAddr.length > ADDRESS_MAX_LEN) {
+      row[colToAddr] = toAddr.substring(0, ADDRESS_MAX_LEN);
+      row[colToApt] = toAddr.substring(ADDRESS_MAX_LEN);
+      changed = true;
+    }
+
+    let fromAddr = (row[colFromAddr] != null && row[colFromAddr] !== '') ? String(row[colFromAddr]).trim() : '';
+    if (fromAddr.length > ADDRESS_MAX_LEN) {
+      row[colFromAddr] = fromAddr.substring(0, ADDRESS_MAX_LEN);
+      row[colFromApt] = fromAddr.substring(ADDRESS_MAX_LEN);
+      changed = true;
+    }
+
+    if (changed) updatedRows++;
+  }
+
+  if (updatedRows > 0) {
+    sheet.getRange(1, 1, data.length, headers.length).setValues(data);
+  }
+
+  const message = updatedRows > 0
+    ? 'ヤマトCSV: ' + updatedRows + '行の住所を16文字で分割して更新しました。'
+    : 'ヤマトCSV: 16文字を超える住所はありませんでした。';
+  Logger.log(message);
+  return { updatedRows: updatedRows, message: message };
 }
 
 /**
