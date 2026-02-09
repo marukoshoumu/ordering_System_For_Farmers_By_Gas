@@ -598,14 +598,21 @@ function updateOrderShippedStatusShared(ss, orderId, shippedValue) {
 }
 
 /**
- * 受注のステータスを更新（発送前/収穫待ち/出荷済み）
+ * 受注のステータスを更新する。
+ * 許可値: '発送前', '収穫待ち', '出荷済み'（それ以外は無効でエラーを投げる）。
+ * '出荷済み'のときのみ出荷済列に'○'を設定する。
  *
  * @param {Spreadsheet} ss - スプレッドシートオブジェクト
  * @param {string} orderId - 受注ID
- * @param {string} newStatus - 新しいステータス（'発送前'/'収穫待ち'/'出荷済み'）
+ * @param {string} newStatus - 新しいステータス（許可値: '発送前' / '収穫待ち' / '出荷済み'）
  * @returns {Object} - 更新結果
  */
 function updateOrderStatusShared(ss, orderId, newStatus) {
+  const allowed = ['発送前', '収穫待ち', '出荷済み'];
+  if (!allowed.includes(newStatus)) {
+    throw new Error('無効なステータスです。許可値: ' + allowed.join(' / ') + '。指定値: ' + newStatus);
+  }
+
   const sheet = ss.getSheetByName('受注');
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
@@ -631,7 +638,7 @@ function updateOrderStatusShared(ss, orderId, newStatus) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][orderIdCol] === orderId) {
       statusColumnArray.push([newStatus]);
-      // 出荷済みの場合は出荷済チェックも更新
+      // 出荷済みのときのみ出荷済列に'○'を設定、それ以外は空
       if (newStatus === '出荷済み') {
         shippedColumnArray.push(['○']);
       } else {
