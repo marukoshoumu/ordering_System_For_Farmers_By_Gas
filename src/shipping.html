@@ -658,7 +658,10 @@
       var $cargo2 = $('select[id="cargo2"]');
       var $cargo3 = $('select[id="cargo3"]');
       var val1 = $deliveryMethod.val();
-      // コピー/編集で渡された荷扱いの値を保持（フィルタ・自動設定後に復元するため）
+      // コピー/編集で渡された値を保持（フィルタ・自動設定後に復元するため）
+      var savedDeliveryTime = $deliveryTime.val();
+      var savedInvoiceType = $invoiceType.val();
+      var savedCoolCls = $coolCls.val();
       var savedCargo1 = $cargo1.val();
       var savedCargo2 = $cargo2.val();
       var savedCargo3 = $cargo3.val();
@@ -728,6 +731,16 @@
       // 自動設定ロジックを呼び出し
       updateCargoByConditions();
 
+      // コピー/編集で渡された配達時間帯・送り状種別・クール区分を復元（.html()差し替えでvalueがリセットされるため）
+      if (savedDeliveryTime) {
+        $deliveryTime.val(savedDeliveryTime);
+      }
+      if (savedInvoiceType) {
+        $invoiceType.val(savedInvoiceType);
+      }
+      if (savedCoolCls) {
+        $coolCls.val(savedCoolCls);
+      }
       // コピー/編集で渡された荷扱い２・３を復元（画面上に正しく表示されるようにする）
       if (savedCargo2) {
         $cargo2.val(savedCargo2);

@@ -167,12 +167,30 @@ function getOrderByOrderId(orderId) {
     });
 
   // クール区分の逆引き（種別 → 種別値）
+  // 受注シートには通常「種別」（表示名）が保存されるが、数値・種別値で保存されている場合にも対応する
+  const coolClsFiltered = master.coolClss.filter(item => item['納品方法'] === deliveryMethod);
   const coolClsMap = {};
-  master.coolClss
-    .filter(item => item['納品方法'] === deliveryMethod)
-    .forEach(item => {
-      coolClsMap[item['種別']] = item['種別値'];
-    });
+  coolClsFiltered.forEach(item => {
+    coolClsMap[item['種別']] = item['種別値'];
+  });
+  const coolClsByValue = {}; // 種別値 → 種別値（そのまま返す用）
+  coolClsFiltered.forEach(item => {
+    coolClsByValue[item['種別値']] = item['種別値'];
+  });
+  const coolClsByCode = {}; // コード部分（種別値の ":" 前）→ 種別値
+  coolClsFiltered.forEach(item => {
+    const code = (item['種別値'] || '').toString().split(':')[0];
+    if (code) coolClsByCode[code] = item['種別値'];
+  });
+  const resolveCoolCls = (raw) => {
+    if (raw === undefined || raw === null || raw === '') return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (coolClsMap[s]) return coolClsMap[s];
+    if (coolClsByValue[s]) return coolClsByValue[s];
+    if (coolClsByCode[s]) return coolClsByCode[s];
+    return '';
+  };
 
   // 荷扱いの逆引き（種別 → 種別値）
   const cargoMap = {};
@@ -246,7 +264,7 @@ function getOrderByOrderId(orderId) {
     // 受注シートには「発払い」等の表示名が保存されている → 「0:発払い」形式に変換
     sendProduct: firstRow[getColIndex('品名')] || '',
     invoiceType: invoiceTypeMap[firstRow[getColIndex('送り状種別')]] || '',
-    coolCls: coolClsMap[firstRow[getColIndex('クール区分')]] || '',
+    coolCls: resolveCoolCls(firstRow[getColIndex('クール区分')]),
     cargo1: cargoMap[firstRow[getColIndex('荷扱い１')]] || '',
     cargo2: cargoMap[firstRow[getColIndex('荷扱い２')]] || '',
     cargo3: cargoMap[firstRow[getColIndex('荷扱い３')]] || '',
