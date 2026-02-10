@@ -508,9 +508,11 @@ function saveFreeeCSVToDrive(csvRows, targetFrom, targetTo) {
   const fileName = 'freee納品書CSV_' + fromDate + '-' + toDate;
 
   // 明示的にUTF-8バイト列に変換してBlob作成（全角括弧等が正規化で半角にならないようにする）
+  // GASのUtilities.newBlob(data, contentType, name)の第1引数は Byte[]（通常の配列）または String のみ受け付ける。Int8Array は不可。
+  // GASのByte[]は符号付き(-128〜127)のため、0-255の配列は符号付きに変換して渡す。
   const utf8Bytes = _stringToUtf8Bytes(csvContent);
-  const signedBytes = new Int8Array(utf8Bytes);
-  const blob = Utilities.newBlob(signedBytes, 'text/csv; charset=UTF-8', fileName + '.csv');
+  const gasBytes = utf8Bytes.map(function (b) { return b > 127 ? b - 256 : b; });
+  const blob = Utilities.newBlob(gasBytes, 'text/csv; charset=UTF-8', fileName + '.csv');
 
   const folderId = getFreeeCSVFolderId();
   const folder = DriveApp.getFolderById(folderId);
