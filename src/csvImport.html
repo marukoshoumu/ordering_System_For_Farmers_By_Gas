@@ -32,73 +32,104 @@
           <label for="fileClass" class="text-center form-label">分類</label>
         </div>
         <div class="col-auto">
-          <select class="form-select" id="fileClass" name="fileClass" >
+          <select class="form-select" id="fileClass" name="fileClass">
             <option value="1">食べチョク</option>
             <option value="2">ふるさと納税</option>
             <option value="3">ポケマル</option>
           </select>
         </div>
         <div class="col-auto">
-          <button type="button" class="btn btn-primary me-3" id="addCsvFileBtn" name="addCsvFileBtn" value="true" onclick="addCSV()">取込</button>
+          <button type="button" class="btn btn-primary me-3" id="addCsvFileBtn" name="addCsvFileBtn" value="true"
+            onclick="addCSV()">取込</button>
         </div>
       </div>
       <p id="res" style="text-align: center;"></p>
       <div class="text-center">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main"
+          value="true">ホーム画面に戻る</button>
       </div>
     </form>
   </div>
   <script>
-    var file = document.getElementById('csvFile');    
+    /**
+     * CSV文字列をパースしてrecords配列に格納する
+     * @param {string} text - CSVテキスト
+     */
+    function parseCsvText(text) {
+      records = [];
+      var lines = text.replaceAll(/\"/g, '').split('\n');
+      var labels = lines.shift().split(",");
+      for (const line of lines) {
+        var cols = line.split(',');
+        const record = {};
+        labels.forEach((label, index) => {
+          const lab = label.trim();
+          let tVal = cols[index];
+          if (typeof tVal === 'undefined' || tVal == null) {
+            record[lab] = cols[index];
+          }
+          else {
+            record[lab] = cols[index].trim();
+          }
+        });
+        records.push(record);
+      }
+    }
+    var file = document.getElementById('csvFile');
     var records = [];
     // HTML5 のFile APIに対応している場合
-    if(window.File && window.FileReader && window.FileList && window.Blob) {
-        function loadLocalCsv(e) {
-            // ファイルデータ取得
-            var fileData = e.target.files[0];
-            // CSVファイルチェック
-            if(!fileData.name.match('.csv$')) {
-                showWarningToast('CSVファイルを選択してください');
-                return;
-            }    
-            // ファイル読み込み
-            var reader = new FileReader();
-            // ファイル読み込みに成功時、カンマ区切りを配列に加工
-            reader.onload = function() {
-              var lines = reader.result.replaceAll(/\"/g, '').split('\n');
-              var labels = lines.shift().split(",");
-              for (const line of lines) {
-                var cols = line.split(',');
-                const record = {};
-                labels.forEach((label, index) => {
-                  const lab = label.trim();
-                  let tVal = cols[index];
-                  if (typeof tVal === 'undefined' || tVal == null) {
-                    record[lab] = cols[index];
-                  }
-                  else {
-                    record[lab] = cols[index].trim();
-                  }
-                });
-                records.push(record);
-              }
-            }
-            // ファイル読み込みを実行
-            reader.readAsText(fileData, 'Shift-JIS');
+    if (window.File && window.FileReader && window.FileList && window.Blob) {
+      function loadLocalCsv(e) {
+        // ファイルデータ取得
+        var fileData = e.target.files[0];
+        // CSVファイルチェック
+        if (!fileData.name.match('.csv$')) {
+          showWarningToast('CSVファイルを選択してください');
+          return;
         }
-        records = [];
-        file.addEventListener('change', loadLocalCsv, false);
+        // UTF-8とShift-JISの両方で同時に読み込み、正しい方を採用
+        var textUtf8 = null;
+        var textSjis = null;
+        var done = 0;
+
+        function pickCorrectEncoding() {
+          // ヘッダー行に既知の日本語フィールド名が含まれるかチェック
+          var knownFields = ['注文', '発送', '商品', '配送', '届け先', '返礼品', '顧客', '受注'];
+          var utf8Header = textUtf8.split('\n')[0];
+          var isUtf8 = knownFields.some(function (f) { return utf8Header.indexOf(f) >= 0; });
+          parseCsvText(isUtf8 ? textUtf8 : textSjis);
+        }
+
+        var r1 = new FileReader();
+        r1.onload = function () {
+          textUtf8 = r1.result;
+          done++;
+          if (done === 2) pickCorrectEncoding();
+        };
+
+        var r2 = new FileReader();
+        r2.onload = function () {
+          textSjis = r2.result;
+          done++;
+          if (done === 2) pickCorrectEncoding();
+        };
+
+        r1.readAsText(fileData, 'UTF-8');
+        r2.readAsText(fileData, 'Shift-JIS');
+      }
+      records = [];
+      file.addEventListener('change', loadLocalCsv, false);
     }
     function addCSV() {
       const checkAddFlg = window.confirm('CSVファイルをインポートしてもよろしいですか？');
-      if(checkAddFlg) {
+      if (checkAddFlg) {
         $("button[id='addCsvFileBtn']").text('インポート中...');
         var fileClass = $("select[id='fileClass']").val();
         google.script.run.withSuccessHandler(createList).withFailureHandler(createFail).csvFileImport(fileClass, JSON.stringify(records));
       }
     }
     function createFail() {
-      showErrorToast("取り込めないデータが含まれています。");  
+      showErrorToast("取り込めないデータが含まれています。");
       $("button[id='addCsvFileBtn']").text('取込');
     }
     function createList(data) {
