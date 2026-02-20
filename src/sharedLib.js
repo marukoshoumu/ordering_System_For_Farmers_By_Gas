@@ -380,6 +380,7 @@ function processDateItemShared(item, dateKey, dataStructure, unitMap) {
       'status': item['ステータス'] || '',
       'shipped': item['出荷済'] === '○' || item['出荷済'] === true,
       'shippingDate': item['発送日'],
+      'orderDate': item['受注日'],
       '商品': [{
         '商品名': item['商品名'],
         '受注数': Number(item['受注数']),
@@ -436,6 +437,7 @@ function processHarvestWaitingItemShared(item, dataStructure, unitMap) {
       'status': item['ステータス'] || '',
       'shipped': item['出荷済'] === '○' || item['出荷済'] === true,
       'shippingDate': item['発送日'],
+      'orderDate': item['受注日'],
       '商品': [{
         '商品名': item['商品名'],
         '受注数': Number(item['受注数']),
@@ -498,7 +500,7 @@ function buildResultShared(dateStrings, dataStructure, dates) {
     return t.getTime();
   })() : null;
 
-  const convertListMap = (map, sortOverdueFirst) => {
+  const convertListMap = (map, sortOverdueFirst, sortByOrderDate) => {
     let arr = Array.from(map.values()).map(record => ({
       'orderId': record['orderId'],
       '顧客名': record['顧客名'],
@@ -509,6 +511,7 @@ function buildResultShared(dateStrings, dataStructure, dates) {
       'status': record['status'],
       'shipped': record['shipped'],
       'shippingDate': record['shippingDate'] || null,
+      'orderDate': record['orderDate'] || null,
       '商品': record['商品'],
       'aggregatedMemos': Array.from(record.uniqueMemos || [])
     }));
@@ -522,6 +525,12 @@ function buildResultShared(dateStrings, dataStructure, dates) {
         if (!aOver && bOver) return 1;
         if (aOver && bOver) return aTime - bTime;
         return 0;
+      });
+    } else if (sortByOrderDate) {
+      arr = arr.sort((a, b) => {
+        const aTime = a.orderDate ? new Date(a.orderDate).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTime = b.orderDate ? new Date(b.orderDate).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
       });
     }
     return arr;
@@ -540,7 +549,7 @@ function buildResultShared(dateStrings, dataStructure, dates) {
     convertListMap(dataStructure.lists.dayAfter2),
     convertMapToArray(dataStructure.invoiceTypes.dayAfter3),
     convertListMap(dataStructure.lists.dayAfter3),
-    convertListMap(dataStructure.harvestWaitingLists)
+    convertListMap(dataStructure.harvestWaitingLists, false, true)
   ];
 }
 
