@@ -40,8 +40,10 @@
           </select>
         </div>
         <div class="col-auto">
-          <button type="button" class="btn btn-outline-primary me-2" id="downloadTemplateBtn" name="downloadTemplateBtn" onclick="downloadTemplate()">テンプレートダウンロード</button>
-          <button type="button" class="btn btn-primary me-3" id="importBtn" name="importBtn" value="true" onclick="importCSV()">取込</button>
+          <button type="button" class="btn btn-outline-primary me-2" id="downloadTemplateBtn" name="downloadTemplateBtn"
+            onclick="downloadTemplate()">テンプレートダウンロード</button>
+          <button type="button" class="btn btn-primary me-3" id="importBtn" name="importBtn" value="true"
+            onclick="importCSV()">取込</button>
         </div>
       </div>
       <div id="resultMessage" class="row mb-3 justify-content-center" style="display: none;">
@@ -50,14 +52,55 @@
         </div>
       </div>
       <div class="text-center">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
+        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main"
+          value="true">ホーム画面に戻る</button>
       </div>
     </form>
   </div>
   <script>
     var file = document.getElementById('csvFile');
     var records = [];
-    
+
+    /**
+     * CSV文字列をパースしてrecords配列に格納する
+     * @param {string} text - CSVテキスト
+     */
+    function parseCsvText(text) {
+      records = [];
+      var lines = text.replaceAll(/\"/g, '').split('\n').filter(function (line) {
+        return line.trim().length > 0;
+      });
+
+      if (lines.length === 0) {
+        showWarningToast('CSVファイルが空です');
+        return;
+      }
+
+      var labels = lines.shift().split(",").map(function (label) {
+        return label.trim();
+      });
+
+      for (const line of lines) {
+        var cols = line.split(',');
+        const record = {};
+        labels.forEach((label, index) => {
+          const lab = label.trim();
+          let tVal = cols[index];
+          if (typeof tVal === 'undefined' || tVal == null) {
+            record[lab] = '';
+          } else {
+            record[lab] = cols[index].trim();
+          }
+        });
+        records.push(record);
+      }
+
+      // ファイル選択時に件数を表示
+      var masterType = $("select[id='masterType']").val();
+      var typeName = getMasterTypeName(masterType);
+      showInfoToast('CSVファイルを読み込みました。' + records.length + '件のデータが検出されました。');
+    }
+
     // HTML5 のFile APIに対応している場合
     if (window.File && window.FileReader && window.FileList && window.Blob) {
       function loadLocalCsv(e) {
@@ -66,59 +109,47 @@
         if (!fileData) {
           return;
         }
-        
+
         // CSVファイルチェック
         if (!fileData.name.match('.csv$')) {
           showWarningToast('CSVファイルを選択してください');
           return;
         }
-        
-        // ファイル読み込み
-        var reader = new FileReader();
-        // ファイル読み込みに成功時、カンマ区切りを配列に加工
-        reader.onload = function () {
-          records = [];
-          var lines = reader.result.replaceAll(/\"/g, '').split('\n').filter(function(line) {
-            return line.trim().length > 0;
-          });
-          
-          if (lines.length === 0) {
-            showWarningToast('CSVファイルが空です');
-            return;
-          }
-          
-          var labels = lines.shift().split(",").map(function(label) {
-            return label.trim();
-          });
-          
-          for (const line of lines) {
-            var cols = line.split(',');
-            const record = {};
-            labels.forEach((label, index) => {
-              const lab = label.trim();
-              let tVal = cols[index];
-              if (typeof tVal === 'undefined' || tVal == null) {
-                record[lab] = '';
-              } else {
-                record[lab] = cols[index].trim();
-              }
-            });
-            records.push(record);
-          }
-          
-          // ファイル選択時に件数を表示
-          var masterType = $("select[id='masterType']").val();
-          var typeName = getMasterTypeName(masterType);
-          showInfoToast('CSVファイルを読み込みました。' + records.length + '件のデータが検出されました。');
+
+        // UTF-8とShift-JISの両方で同時に読み込み、正しい方を採用
+        var textUtf8 = null;
+        var textSjis = null;
+        var done = 0;
+
+        function pickCorrectEncoding() {
+          // ヘッダー行に既知の日本語フィールド名が含まれるかチェック
+          var knownFields = ['商品', '分類', '価格', '顧客', '氏名', '郵便', '住所', '電話', '項目', '値'];
+          var utf8Header = textUtf8.split('\n')[0];
+          var isUtf8 = knownFields.some(function (f) { return utf8Header.indexOf(f) >= 0; });
+          parseCsvText(isUtf8 ? textUtf8 : textSjis);
+        }
+
+        var r1 = new FileReader();
+        r1.onload = function () {
+          textUtf8 = r1.result;
+          done++;
+          if (done === 2) pickCorrectEncoding();
         };
-        
-        // ファイル読み込みを実行
-        reader.readAsText(fileData, 'Shift-JIS');
+
+        var r2 = new FileReader();
+        r2.onload = function () {
+          textSjis = r2.result;
+          done++;
+          if (done === 2) pickCorrectEncoding();
+        };
+
+        r1.readAsText(fileData, 'UTF-8');
+        r2.readAsText(fileData, 'Shift-JIS');
       }
-      
+
       file.addEventListener('change', loadLocalCsv, false);
     }
-    
+
     function getMasterTypeName(masterType) {
       var names = {
         'product': '商品',
@@ -128,27 +159,27 @@
       };
       return names[masterType] || '';
     }
-    
+
     function importCSV() {
       if (!records || records.length === 0) {
         showWarningToast('CSVファイルを選択してください');
         return;
       }
-      
+
       var masterType = $("select[id='masterType']").val();
       var typeName = getMasterTypeName(masterType);
-      
+
       // 会社名の場合は確認メッセージを変更
-      var confirmMessage = masterType === 'company' 
+      var confirmMessage = masterType === 'company'
         ? '会社名シートのデータを上書きします。よろしいですか？'
         : typeName + 'マスタに' + records.length + '件のデータをインポートしてもよろしいですか？';
-      
+
       const checkAddFlg = window.confirm(confirmMessage);
       if (checkAddFlg) {
         $("button[id='importBtn']").text('インポート中...');
         $("button[id='importBtn']").prop('disabled', true);
         $("#resultMessage").hide();
-        
+
         var functionName = '';
         switch (masterType) {
           case 'product':
@@ -169,21 +200,21 @@
             $("button[id='importBtn']").prop('disabled', false);
             return;
         }
-        
+
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             handleImportSuccess(result, masterType, typeName);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             handleImportFailure(error);
           })[functionName](JSON.stringify(records));
       }
     }
-    
+
     function handleImportSuccess(result, masterType, typeName) {
       $("button[id='importBtn']").text('取込');
       $("button[id='importBtn']").prop('disabled', false);
-      
+
       if (result.success) {
         var message = '';
         if (masterType === 'company') {
@@ -194,9 +225,9 @@
             message += '（重複により' + result.skippedCount + '件をスキップしました）';
           }
         }
-        
+
         showSuccessToast(message);
-        
+
         // 結果を詳細表示
         var resultHtml = '<div class="alert alert-success" role="alert">';
         resultHtml += '<strong>インポート完了</strong><br>';
@@ -217,12 +248,12 @@
         $("#resultMessage").show();
       }
     }
-    
+
     function handleImportFailure(error) {
       $("button[id='importBtn']").text('取込');
       $("button[id='importBtn']").prop('disabled', false);
       showErrorToast('インポート中にエラーが発生しました: ' + error.toString());
-      
+
       var resultHtml = '<div class="alert alert-danger" role="alert">';
       resultHtml += '<strong>エラー</strong><br>';
       resultHtml += 'インポート中にエラーが発生しました: ' + error.toString();
@@ -230,11 +261,11 @@
       $("#resultContent").html(resultHtml);
       $("#resultMessage").show();
     }
-    
+
     function downloadTemplate() {
       var masterType = $("select[id='masterType']").val();
       var typeName = getMasterTypeName(masterType);
-      
+
       // GAS関数からヘッダーを取得
       var functionName = '';
       switch (masterType) {
@@ -254,12 +285,12 @@
           showErrorToast('不正なマスタ種別です');
           return;
       }
-      
+
       google.script.run
-        .withSuccessHandler(function(headers) {
+        .withSuccessHandler(function (headers) {
           // CSV文字列を生成（ヘッダーのみ）
           var csv = headers.join(',');
-          
+
           // UTF-8 BOM追加（Excel文字化け対策）
           var bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
           var blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
@@ -267,10 +298,10 @@
           link.href = URL.createObjectURL(blob);
           link.download = typeName + '_テンプレート.csv';
           link.click();
-          
+
           showSuccessToast('テンプレートファイルをダウンロードしました');
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           showErrorToast('テンプレートの取得に失敗しました: ' + error.toString());
         })[functionName]();
     }
