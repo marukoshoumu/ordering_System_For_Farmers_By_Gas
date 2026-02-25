@@ -344,6 +344,8 @@ function updateOrderShippedStatus(orderId, shippedValue) {
   // 列インデックスを取得
   const orderIdCol = headers.indexOf('受注ID');
   const shippedCol = headers.indexOf('出荷済');
+  const statusCol = headers.indexOf('ステータス');
+  const deliveryMethodCol = headers.indexOf('納品方法');
 
   if (orderIdCol === -1 || shippedCol === -1) {
     throw new Error('必要な列が見つかりません');
@@ -354,6 +356,16 @@ function updateOrderShippedStatus(orderId, shippedValue) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][orderIdCol] === orderId) {
       sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
+
+      // 出荷済にする場合、納品方法に応じてステータスを設定
+      if (shippedValue === '○' && statusCol !== -1) {
+        const deliveryMethod = deliveryMethodCol >= 0 ? (data[i][deliveryMethodCol] || '') : '';
+        const newStatus = (deliveryMethod === '配達' || deliveryMethod === '店舗受取')
+          ? '配達完了'
+          : '出荷済';
+        sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
+      }
+
       updatedCount++;
     }
   }
