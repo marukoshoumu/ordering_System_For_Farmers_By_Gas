@@ -151,6 +151,10 @@ function getOrderListData(params) {
         matchesBasicCondition = !isShipped && !isCancelled;
       } else if (shippingStatus === 'cancelled') {
         matchesBasicCondition = isCancelled;
+      } else if (shippingStatus === 'harvestWaiting') {
+        matchesBasicCondition = order.status === '収穫待ち';
+      } else if (shippingStatus === 'shippedToDelivering') {
+        matchesBasicCondition = order.status === '出荷済' || order.status === '配達中';
       }
 
       // includeOverdueがtrueの場合、基本条件 OR 予定日超過でマッチ
