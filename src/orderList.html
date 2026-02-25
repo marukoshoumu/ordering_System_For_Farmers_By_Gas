@@ -1000,6 +1000,8 @@
           <div class="filter-group">
             <span class="filter-label">期間：</span>
             <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="period" id="periodNone" value="none">
+              <label class="btn btn-outline-primary" for="periodNone">指定なし</label>
               <input type="radio" class="btn-check" name="period" id="periodYesterday" value="yesterday">
               <label class="btn btn-outline-primary" for="periodYesterday">前日</label>
               <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
@@ -1018,8 +1020,6 @@
               <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
               <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
               <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
-              <input type="radio" class="btn-check" name="period" id="periodNone" value="none">
-              <label class="btn btn-outline-warning" for="periodNone">指定なし</label>
             </div>
           </div>
         </div>
