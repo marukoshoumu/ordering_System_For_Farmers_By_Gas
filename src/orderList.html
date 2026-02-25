@@ -1139,6 +1139,7 @@
                   <th class="col-shipped">出荷済</th>
                   <th class="col-action">操作</th>
                   <th class="col-date">受注日</th>
+                  <th class="col-memo">メモ</th>
                 </tr>
               </thead>
               <tbody id="orderTableBody">
@@ -1872,6 +1873,9 @@
             `;
             tableRows += `
             <td class="col-date" rowspan="${itemCount}">${formatDisplayDate(order.orderDate)}</td>
+          `;
+            tableRows += `
+            <td class="col-memo" rowspan="${itemCount}">${escapeHtml(order.memo || '')}</td>
           `;
           }
 

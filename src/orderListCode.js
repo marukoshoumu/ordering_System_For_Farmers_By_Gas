@@ -27,6 +27,7 @@ function getOrderListData(params) {
   const trackingCol = getColIndex('追跡番号');
   const statusCol = getColIndex('ステータス');
   const deliveryMethodCol = getColIndex('納品方法');
+  const memoCol = getColIndex('メモ');
 
   // パラメータ
   const startDate = params.dateFrom ? new Date(params.dateFrom) : null;
@@ -102,6 +103,7 @@ function getOrderListData(params) {
         trackingNumber: trackingCol >= 0 ? (row[trackingCol] || '') : '', // 追跡番号
         status: statusCol >= 0 ? (row[statusCol] || '') : '',  // ステータス
         deliveryMethod: deliveryMethodCol >= 0 ? (row[deliveryMethodCol] || '') : '', // 納品方法
+        memo: memoCol >= 0 ? (row[memoCol] || '') : '', // メモ
         items: [],  // 商品ごとの配列
         totalAmount: 0
       });
