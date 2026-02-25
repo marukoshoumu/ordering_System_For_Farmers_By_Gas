@@ -332,7 +332,7 @@ function searchCustomer(keyword) {
 /**
  * 受注の出荷済ステータスを更新
  * @param {string} orderId - 受注ID
- * @param {string} shippedValue - 出荷済の値（'○' or ''）
+ * @param {string} shippedValue - 出荷済の値（'○' or ''）。'○' の場合は納品方法に応じてステータス列も更新する（配達/店舗受取 → 配達完了、それ以外 → 出荷済）
  * @returns {Object} - 更新結果
  */
 function updateOrderShippedStatus(orderId, shippedValue) {
@@ -359,7 +359,7 @@ function updateOrderShippedStatus(orderId, shippedValue) {
 
       // 出荷済にする場合、納品方法に応じてステータスを設定
       if (shippedValue === '○' && statusCol !== -1) {
-        const deliveryMethod = deliveryMethodCol >= 0 ? (data[i][deliveryMethodCol] || '') : '';
+        const deliveryMethod = deliveryMethodCol !== -1 ? (data[i][deliveryMethodCol] || '') : '';
         const newStatus = (deliveryMethod === '配達' || deliveryMethod === '店舗受取')
           ? '配達完了'
           : '出荷済';
@@ -380,7 +380,7 @@ function updateOrderShippedStatus(orderId, shippedValue) {
 /**
  * 複数受注の出荷済ステータスを一括更新
  * @param {Array<string>} orderIds - 受注IDの配列
- * @param {string} shippedValue - 出荷済の値（'○' or ''）
+ * @param {string} shippedValue - 出荷済の値（'○' or ''）。'○' の場合は納品方法に応じてステータス列も更新する（配達/店舗受取 → 配達完了、それ以外 → 出荷済）
  * @returns {Object} - 更新結果
  */
 function bulkUpdateOrderShippedStatus(orderIds, shippedValue) {
@@ -395,6 +395,8 @@ function bulkUpdateOrderShippedStatus(orderIds, shippedValue) {
 
   const orderIdCol = headers.indexOf('受注ID');
   const shippedCol = headers.indexOf('出荷済');
+  const statusCol = headers.indexOf('ステータス');
+  const deliveryMethodCol = headers.indexOf('納品方法');
 
   if (orderIdCol === -1 || shippedCol === -1) {
     throw new Error('必要な列が見つかりません');
@@ -406,6 +408,16 @@ function bulkUpdateOrderShippedStatus(orderIds, shippedValue) {
   for (let i = 1; i < data.length; i++) {
     if (orderIdSet.has(data[i][orderIdCol])) {
       sheet.getRange(i + 1, shippedCol + 1).setValue(shippedValue);
+
+      // 出荷済にする場合、納品方法に応じてステータスを設定
+      if (shippedValue === '○' && statusCol !== -1) {
+        const deliveryMethod = deliveryMethodCol !== -1 ? (data[i][deliveryMethodCol] || '') : '';
+        const newStatus = (deliveryMethod === '配達' || deliveryMethod === '店舗受取')
+          ? '配達完了'
+          : '出荷済';
+        sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
+      }
+
       updatedCount++;
     }
   }
