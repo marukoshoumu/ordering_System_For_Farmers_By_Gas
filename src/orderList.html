@@ -2336,6 +2336,10 @@
     }
 
     // モーダルが開いた時にスキャナー起動、閉じるときに停止
+    // スキャナーモーダルを開くたびに手入力欄をクリア
+    document.getElementById('scannerModal').addEventListener('show.bs.modal', function () {
+      document.getElementById('modalManualNo').value = '';
+    });
     document.getElementById('scannerModal').addEventListener('shown.bs.modal', initQuagga);
     document.getElementById('scannerModal').addEventListener('hidden.bs.modal', () => {
       Quagga.stop();
