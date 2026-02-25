@@ -256,6 +256,7 @@ function doPost(e) {
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = sessionId;
       template.isEditMode = false;
+      template.isCopyMode = false;
       template.editOrderId = '';
       template.tempOrderId = tempOrderId;
       template.shippingHTML = getshippingHTMLForTempOrder(tempOrderId);
@@ -291,6 +292,7 @@ function doPost(e) {
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = sessionId;
       template.isEditMode = false;
+      template.isCopyMode = false;
       template.editOrderId = '';
       template.tempOrderId = '';
       template.autoOpenAI = false;
@@ -358,7 +360,9 @@ function doPost(e) {
     // 編集モードの設定
     const editOrderId = e.parameter.editOrderId || '';
     const editMode = e.parameter.editMode === 'true';
+    const copyMode = e.parameter.actionMode === 'inherit';
     template.isEditMode = editMode;
+    template.isCopyMode = copyMode;
     template.editOrderId = editOrderId;
 
     // 検索条件引継用
@@ -415,6 +419,7 @@ function doPost(e) {
       template.autoOpenAI = false;
       template.aiAnalysisResult = '';
       template.isEditMode = e.parameter.editMode === 'true';
+      template.isCopyMode = e.parameter.actionMode === 'inherit';
       template.editOrderId = e.parameter.editOrderId || '';
       template.tempOrderId = e.parameter.tempOrderId || '';
       // 検索条件引継用
@@ -469,6 +474,7 @@ function doPost(e) {
     const editOrderId = e.parameter.editOrderId || '';
     const editMode = e.parameter.editMode === 'true';
     template.isEditMode = editMode;
+    template.isCopyMode = false;
     template.editOrderId = editOrderId;
     // 仮受注IDを引き継ぎ
     template.tempOrderId = e.parameter.tempOrderId || '';

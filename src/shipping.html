@@ -50,7 +50,7 @@
         <input type="hidden" name="prevStatus" value="<?= typeof prevStatus !== 'undefined' ? prevStatus : '' ?>">
         <input type="hidden" name="prevIncludeOverdue" value="<?= typeof prevIncludeOverdue !== 'undefined' ? prevIncludeOverdue : '' ?>">
       </div>
-      <h2 class="text-center m-4">受注管理</h2>
+      <h2 class="text-center m-4"><? if (isEditMode) { ?>受注管理（編集）<? } else if (isCopyMode) { ?>受注管理（コピー）<? } else { ?>受注管理<? } ?></h2>
       <!-- AI解析済みインジケーター（フォーム上部に表示） -->
       <div class="ai-analyzed-indicator" id="aiAnalyzedIndicator">
         <span>🤖 AI解析済み</span>
