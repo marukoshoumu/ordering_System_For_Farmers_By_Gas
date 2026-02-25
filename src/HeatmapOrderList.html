@@ -507,11 +507,15 @@
         <div class="filter-group">
           <span class="filter-label">期間：</span>
           <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek">
+            <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
+            <label class="btn btn-outline-primary" for="periodToday">今日</label>
+            <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
+            <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
+            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
             <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
             <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
             <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth" checked>
+            <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
             <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
             <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
             <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
@@ -820,6 +824,13 @@
       radio.addEventListener('change', function() {
         const customRow = document.getElementById('customDateRangeRow');
         customRow.style.display = this.value === 'custom' ? 'block' : 'none';
+        if (this.value === 'custom') {
+          const today = new Date();
+          const endDate = new Date(today);
+          endDate.setDate(today.getDate() + 6);
+          document.getElementById('dateFrom').value = formatDate(today);
+          document.getElementById('dateTo').value = formatDate(endDate);
+        }
       });
     });
     
@@ -1026,6 +1037,15 @@
     const today = new Date();
     
     switch (period) {
+      case 'today':
+        dateFrom = new Date(today);
+        dateTo = new Date(today);
+        break;
+      case 'tomorrow':
+        dateFrom = new Date(today);
+        dateFrom.setDate(today.getDate() + 1);
+        dateTo = new Date(dateFrom);
+        break;
       case 'thisWeek':
         // 今週（日曜始まり）
         const dayOfWeek = today.getDay();
