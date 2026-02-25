@@ -19,6 +19,9 @@
     <h2 class="text-center m-4">受注CSV取込</h2>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
+      <div class="alert alert-warning" role="alert">
+        <strong>注意：</strong> CSVファイルをインポートすると、既存の受注データに新しいデータが追加されます。同じ注文番号のデータが既に存在する場合は上書きされます。インポートは取り消しできませんので、ご注意ください。
+      </div>
       <div class="row mb-3 align-items-center justify-content-center">
         <div class="col-auto">
           <label for="csvFile" class="text-center form-label">CSVファイル</label>
