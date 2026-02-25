@@ -353,11 +353,11 @@
             <span class="menu-arrow">▼</span>
           </div>
           <div class="menu-content show">
+            <button type="submit" class="btn menu-btn" name="orderListPage" value="true">📑 受注一覧</button>
+            <button type="submit" class="btn menu-btn" name="orderList" value="true">📊 製造数一覧</button>
             <? if (userRole === 'admin') { ?>
             <button type="submit" class="btn menu-btn" name="salesDashboard" value="true">📈 売上ダッシュボード</button>
             <? } ?>
-            <button type="submit" class="btn menu-btn" name="orderList" value="true">📊 製造数一覧</button>
-            <button type="submit" class="btn menu-btn" name="orderListPage" value="true">📑 受注一覧</button>
             <? if (userRole !== 'viewer') { ?>
             <button type="submit" class="btn menu-btn" name="recurringOrderList" value="true">🔄 定期便一覧</button>
             <button type="submit" class="btn menu-btn" name="aiImportList" value="true" style="position: relative;">
