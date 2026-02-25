@@ -92,6 +92,9 @@ function getOrdersByDateRange(startDate, endDate, includeOverdue) {
       isOverdueRow = includeOverdue && !isShipped && shippingTime < todayTime;
     }
 
+    // 収穫待ちでも出荷済みの場合は除外
+    if (isHarvestWaiting && isShipped) continue;
+
     // 期間内 または 予定日超過 または 収穫待ち（発送日が先でも収穫待ち欄に表示するため）
     if (!inRange && !isOverdueRow && !isHarvestWaiting) continue;
 
