@@ -211,7 +211,8 @@ function getOrderListData(params) {
       trackingNumber: order.trackingNumber, // 追跡番号
       status: order.status,    // ステータス
       items: order.items,  // 商品配列をそのまま渡す
-      totalAmount: order.totalAmount
+      totalAmount: order.totalAmount,
+      memo: order.memo || ''
     };
   });
 
