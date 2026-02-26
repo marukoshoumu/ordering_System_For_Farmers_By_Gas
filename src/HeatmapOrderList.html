@@ -830,7 +830,7 @@
         if (this.value === 'custom') {
           const today = new Date();
           const endDate = new Date(today);
-          endDate.setDate(today.getDate() + 6);
+          endDate.setDate(today.getDate() + 1);
           document.getElementById('dateFrom').value = formatDate(today);
           document.getElementById('dateTo').value = formatDate(endDate);
         }
