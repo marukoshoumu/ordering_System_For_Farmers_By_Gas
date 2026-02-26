@@ -11,14 +11,25 @@ function getManufacturingOrderData(paramsJson) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const orderIdCol = headers.indexOf('受注ID');
-  const shippingDateCol = headers.indexOf('発送日');
-  const customerNameCol = headers.indexOf('顧客名');
-  const productCol = headers.indexOf('商品名');
-  const categoryCol = headers.indexOf('商品分類');
-  const quantityCol = headers.indexOf('受注数');
-  const memoCol = headers.indexOf('メモ');
-  const statusCol = headers.indexOf('ステータス');
+  const requiredHeaders = {
+    '受注ID': -1, '発送日': -1, '顧客名': -1, '商品名': -1,
+    '商品分類': -1, '受注数': -1, 'ステータス': -1
+  };
+  const optionalHeaders = { 'メモ': -1 };
+  for (const name of Object.keys(requiredHeaders)) { requiredHeaders[name] = headers.indexOf(name); }
+  for (const name of Object.keys(optionalHeaders)) { optionalHeaders[name] = headers.indexOf(name); }
+  const missingHeaders = Object.entries(requiredHeaders).filter(([, idx]) => idx === -1).map(([name]) => name);
+  if (missingHeaders.length > 0) {
+    throw new Error('受注シートに必要なヘッダーが見つかりません: ' + missingHeaders.join(', '));
+  }
+  const orderIdCol = requiredHeaders['受注ID'];
+  const shippingDateCol = requiredHeaders['発送日'];
+  const customerNameCol = requiredHeaders['顧客名'];
+  const productCol = requiredHeaders['商品名'];
+  const categoryCol = requiredHeaders['商品分類'];
+  const quantityCol = requiredHeaders['受注数'];
+  const statusCol = requiredHeaders['ステータス'];
+  const memoCol = optionalHeaders['メモ'];
 
   const dateFrom = params.dateFrom ? new Date(params.dateFrom) : null;
   const dateTo = params.dateTo ? new Date(params.dateTo) : null;

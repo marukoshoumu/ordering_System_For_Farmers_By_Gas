@@ -614,7 +614,15 @@
 
     function renderOrderPreview(data) {
       $("button[id='previewFreeeOrders']").text('受注を確認');
-      var orders = JSON.parse(data);
+      var orders;
+      try {
+        orders = JSON.parse(data);
+      } catch (e) {
+        console.error('受注プレビューの解析に失敗:', e, data);
+        showErrorToast("受注データの解析に失敗しました: " + e.message);
+        document.getElementById('orderPreviewArea').style.display = 'none';
+        return;
+      }
       var tbody = document.getElementById('orderPreviewBody');
       var cardsContainer = document.getElementById('orderPreviewCards');
 
@@ -717,9 +725,14 @@
     function createListSelected(data) {
       $("button[id='createFreeeCSVSelected']").text('CSV生成（選択分）');
       if (data) {
-        var res = JSON.parse(data);
-        showSuccessToast("freee納品書CSVを作成しました。");
-        showFileResult(res);
+        try {
+          var res = JSON.parse(data);
+          showSuccessToast("freee納品書CSVを作成しました。");
+          showFileResult(res);
+        } catch (e) {
+          console.error('CSV生成レスポンスの解析に失敗:', e, data);
+          showErrorToast("レスポンスの解析に失敗しました。再度お試しください。");
+        }
       } else {
         showInfoToast("該当データがありませんでした。");
       }

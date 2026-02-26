@@ -503,8 +503,10 @@ function buildResult(dateStrings, dataStructure, dates) {
       });
     } else if (sortByOrderDate) {
       arr = arr.sort((a, b) => {
-        const aTime = a.orderDate ? new Date(a.orderDate).getTime() : Number.MAX_SAFE_INTEGER;
-        const bTime = b.orderDate ? new Date(b.orderDate).getTime() : Number.MAX_SAFE_INTEGER;
+        const aRaw = a.orderDate ? new Date(a.orderDate).getTime() : NaN;
+        const aTime = Number.isFinite(aRaw) ? aRaw : Number.MAX_SAFE_INTEGER;
+        const bRaw = b.orderDate ? new Date(b.orderDate).getTime() : NaN;
+        const bTime = Number.isFinite(bRaw) ? bRaw : Number.MAX_SAFE_INTEGER;
         return aTime - bTime;
       });
     }

@@ -389,8 +389,8 @@
           var today = new Date();
           var endDate = new Date(today);
           endDate.setDate(today.getDate() + 6);
-          document.getElementById('dateFrom').value = today.toISOString().split('T')[0];
-          document.getElementById('dateTo').value = endDate.toISOString().split('T')[0];
+          document.getElementById('dateFrom').value = formatLocalDate(today);
+          document.getElementById('dateTo').value = formatLocalDate(endDate);
         }
       });
     });
@@ -416,26 +416,42 @@
     executeSearch();
   });
 
+  function formatLocalDate(d) {
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    return y + '-' + m + '-' + day;
+  }
+
   function getPeriodDates() {
     var today = new Date();
-    var fmt = function(d) { return d.toISOString().split('T')[0]; };
     var period = document.querySelector('input[name="period"]:checked').value;
     if (period === 'today') {
-      return { dateFrom: fmt(today), dateTo: fmt(today) };
+      var todayStr = formatLocalDate(today);
+      return { dateFrom: todayStr, dateTo: todayStr };
     } else if (period === 'tomorrow') {
       var tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
-      return { dateFrom: fmt(tomorrow), dateTo: fmt(tomorrow) };
+      var tomorrowStr = formatLocalDate(tomorrow);
+      return { dateFrom: tomorrowStr, dateTo: tomorrowStr };
     } else {
-      return {
-        dateFrom: document.getElementById('dateFrom').value,
-        dateTo: document.getElementById('dateTo').value
-      };
+      var from = (document.getElementById('dateFrom').value || '').trim();
+      var to = (document.getElementById('dateTo').value || '').trim();
+      if (!from || !to) {
+        showErrorToast('開始日と終了日を入力してください。');
+        return null;
+      }
+      if (from > to) {
+        showErrorToast('開始日が終了日より後になっています。');
+        return null;
+      }
+      return { dateFrom: from, dateTo: to };
     }
   }
 
   function executeSearch() {
     var dates = getPeriodDates();
+    if (!dates) return;
     var category = document.getElementById('categoryFilter').value;
     var params = JSON.stringify({ dateFrom: dates.dateFrom, dateTo: dates.dateTo, category: category });
     document.getElementById('loadingIndicator').style.display = 'block';
