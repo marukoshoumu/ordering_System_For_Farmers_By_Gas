@@ -108,6 +108,7 @@
       vertical-align: middle;
     }
 
+    .product-table .col-check { width: 36px; text-align: center; }
     .product-table .col-category { width: 100px; }
     .product-table .col-name { min-width: 150px; }
     .product-table .col-price,
@@ -234,6 +235,9 @@
           <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
             <i class="bi bi-house"></i> ホーム
           </button>
+          <button type="button" class="btn btn-warning btn-sm" id="copyCreateBtn" onclick="openCopyModal()" disabled>
+            <i class="bi bi-files"></i> コピーして作成
+          </button>
           <button type="button" class="btn btn-success btn-sm" onclick="openAddModal()">
             <i class="bi bi-plus-lg"></i> 新規登録
           </button>
@@ -270,6 +274,9 @@
           <table class="product-table">
             <thead>
               <tr>
+                <th class="col-check">
+                  <input type="checkbox" id="selectAllCheckbox" title="全選択" onchange="toggleSelectAll(this)">
+                </th>
                 <th class="col-category">分類</th>
                 <th class="col-name">商品名</th>
                 <th class="col-price">価格</th>
@@ -384,19 +391,27 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">勘定科目</label>
-                <input type="text" class="form-control" id="productAccountTitle">
+                <select class="form-select" id="productAccountTitle">
+                  <!-- options populated by initFreeeDropdowns() -->
+                </select>
               </div>
               <div class="col-md-6">
                 <label class="form-label">税区分</label>
-                <input type="text" class="form-control" id="productTaxCategory">
+                <select class="form-select" id="productTaxCategory">
+                  <!-- options populated by initFreeeDropdowns() -->
+                </select>
               </div>
               <div class="col-md-4">
                 <label class="form-label">部門</label>
-                <input type="text" class="form-control" id="productDepartment">
+                <select class="form-select" id="productDepartment" onchange="onDepartmentChange()">
+                  <!-- options populated by initFreeeDropdowns() -->
+                </select>
               </div>
               <div class="col-md-4">
                 <label class="form-label">品目</label>
-                <input type="text" class="form-control" id="productItem">
+                <select class="form-select" id="productItem" onfocus="validateDepartmentSelected()">
+                  <!-- options updated dynamically when 部門 changes -->
+                </select>
               </div>
               <div class="col-md-4">
                 <label class="form-label">メモ</label>
@@ -477,6 +492,29 @@
     let categories = [];
     let productModal, categoryModal, deleteModal;
 
+    // =========================================================
+    // freee連携ドロップダウン マスターデータ
+    // =========================================================
+
+    // ⚠️ 勘定科目の選択肢は実際の値に更新が必要です
+    const ACCOUNT_TYPES = ['売上高'];
+
+    // ⚠️ 税区分の選択肢（標準的な値を設定済み。必要に応じて更新してください）
+    const TAX_CATEGORIES = [
+      '課税売上10%',
+      '課税売上8%（軽減）',
+      '非課税売上',
+      '免税売上'
+    ];
+
+    // ⚠️ 部門→品目マスターは実際の値に更新が必要です
+    const DEPARTMENT_ITEMS = {
+      '部門A': ['品目A1', '品目A2', '品目A3'],
+      '部門B': ['品目B1', '品目B2']
+    };
+
+    // =========================================================
+
     document.addEventListener('DOMContentLoaded', function() {
       // 最初にスピナーを表示
       showLoading('読み込み中...');
@@ -485,6 +523,7 @@
       categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
       deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
+      initFreeeDropdowns();
       loadCategories();
       loadProducts();
 
@@ -504,6 +543,153 @@
       form.appendChild(input);
       form.submit();
     }
+
+    // =========================================================
+    // freee連携ドロップダウン 初期化・連動
+    // =========================================================
+
+    function initFreeeDropdowns() {
+      // 勘定科目ドロップダウンを構築
+      var accountSelect = document.getElementById('productAccountTitle');
+      accountSelect.textContent = '';
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '選択してください';
+      accountSelect.appendChild(emptyOpt);
+      ACCOUNT_TYPES.forEach(function(type) {
+        var opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        accountSelect.appendChild(opt);
+      });
+      // デフォルト: 売上高
+      accountSelect.value = '売上高';
+
+      // 税区分ドロップダウンを構築
+      var taxSelect = document.getElementById('productTaxCategory');
+      taxSelect.textContent = '';
+      var taxEmpty = document.createElement('option');
+      taxEmpty.value = '';
+      taxEmpty.textContent = '選択してください';
+      taxSelect.appendChild(taxEmpty);
+      TAX_CATEGORIES.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        taxSelect.appendChild(opt);
+      });
+
+      // 部門ドロップダウンを構築
+      var deptSelect = document.getElementById('productDepartment');
+      deptSelect.textContent = '';
+      var deptEmpty = document.createElement('option');
+      deptEmpty.value = '';
+      deptEmpty.textContent = '選択してください';
+      deptSelect.appendChild(deptEmpty);
+      Object.keys(DEPARTMENT_ITEMS).forEach(function(dept) {
+        var opt = document.createElement('option');
+        opt.value = dept;
+        opt.textContent = dept;
+        deptSelect.appendChild(opt);
+      });
+
+      // 品目は初期状態では空（部門未選択）
+      updateItemDropdown('');
+    }
+
+    function updateItemDropdown(department) {
+      var itemSelect = document.getElementById('productItem');
+      itemSelect.textContent = '';
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = department ? '選択してください' : '（部門を先に選択）';
+      itemSelect.appendChild(emptyOpt);
+
+      if (department && DEPARTMENT_ITEMS[department]) {
+        DEPARTMENT_ITEMS[department].forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item;
+          opt.textContent = item;
+          itemSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function onDepartmentChange() {
+      var dept = document.getElementById('productDepartment').value;
+      updateItemDropdown(dept);
+    }
+
+    function validateDepartmentSelected() {
+      var dept = document.getElementById('productDepartment').value;
+      if (!dept) {
+        alert('部門を先に選択してください');
+        document.getElementById('productDepartment').focus();
+      }
+    }
+
+    // =========================================================
+    // 商品コピー機能
+    // =========================================================
+
+    function toggleSelectAll(headerCheckbox) {
+      var checkboxes = document.querySelectorAll('.product-row-checkbox');
+      checkboxes.forEach(function(cb) {
+        cb.checked = headerCheckbox.checked;
+      });
+      updateCopyButton();
+    }
+
+    function updateCopyButton() {
+      var checked = document.querySelectorAll('.product-row-checkbox:checked');
+      var btn = document.getElementById('copyCreateBtn');
+      btn.disabled = checked.length === 0;
+    }
+
+    function openCopyModal() {
+      var checked = document.querySelectorAll('.product-row-checkbox:checked');
+      if (checked.length === 0) {
+        showErrorToast('コピーする商品を選択してください');
+        return;
+      }
+
+      // 最初に選択された商品を使用
+      var rowIndex = Number(checked[0].value);
+      var product = products.find(function(p) { return p.rowIndex === rowIndex; });
+      if (!product) {
+        showErrorToast('選択した商品の情報が見つかりません');
+        return;
+      }
+
+      // 新規登録モーダルとして開き、選択商品データをコピー（価格・原価・粗利・在庫はクリア）
+      document.getElementById('productModalTitle').textContent = '商品登録（コピー）';
+      document.getElementById('editRowIndex').value = '';
+      clearModalForm();
+
+      // 基本情報をコピー（価格・原価・粗利・在庫はクリア）
+      document.getElementById('productCategory').value = product.category || '';
+      document.getElementById('productName').value = product.name || '';
+      document.getElementById('productAbbr').value = product.abbr || '';
+      document.getElementById('productInvoiceName').value = product.invoiceName || '';
+      document.getElementById('productUnit').value = product.unit || '';
+      document.getElementById('productTaxRate').value = product.taxRate || '';
+      document.getElementById('productMemo').value = product.memo || '';
+      document.getElementById('productNote').value = product.note || '';
+
+      // freee連携フィールドをコピー（部門→品目の連動を考慮）
+      document.getElementById('productAccountTitle').value = product.accountTitle || '';
+      document.getElementById('productTaxCategory').value = product.taxCategory || '';
+      var deptVal = product.department || '';
+      document.getElementById('productDepartment').value = deptVal;
+      updateItemDropdown(deptVal);
+      document.getElementById('productItem').value = product.item || '';
+
+      // 価格・原価・粗利・在庫はクリア（既にclearModalFormでクリア済み）
+
+      productModal.show();
+    }
+
+    // =========================================================
 
     function loadCategories() {
       google.script.run
@@ -592,10 +778,33 @@
       tbody.textContent = '';
       cards.textContent = '';
 
+      // Reset select-all checkbox and copy button
+      var selectAll = document.getElementById('selectAllCheckbox');
+      if (selectAll) { selectAll.checked = false; }
+      var copyBtn = document.getElementById('copyCreateBtn');
+      if (copyBtn) { copyBtn.disabled = true; }
+
       // Build PC table using DOM methods
       products.forEach(function(p) {
         const tr = document.createElement('tr');
-        tr.addEventListener('click', function() { openEditModal(p.rowIndex); });
+        // Click on row body (not checkbox/action cells) opens edit modal
+        tr.addEventListener('click', function(e) {
+          if (e.target.type !== 'checkbox' && !e.target.closest('.col-action')) {
+            openEditModal(p.rowIndex);
+          }
+        });
+
+        // Checkbox cell
+        const tdCheck = document.createElement('td');
+        tdCheck.className = 'col-check';
+        tdCheck.addEventListener('click', function(e) { e.stopPropagation(); });
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'product-row-checkbox';
+        cb.value = p.rowIndex;
+        cb.addEventListener('change', updateCopyButton);
+        tdCheck.appendChild(cb);
+        tr.appendChild(tdCheck);
 
         const tdCategory = document.createElement('td');
         tdCategory.className = 'col-category';
@@ -780,7 +989,10 @@
             document.getElementById('productUnit').value = p.unit ?? '';
             document.getElementById('productAccountTitle').value = p.accountTitle ?? '';
             document.getElementById('productTaxCategory').value = p.taxCategory ?? '';
-            document.getElementById('productDepartment').value = p.department ?? '';
+            // 部門をセットしてから品目リストを更新し、その後品目をセット
+            var deptVal = p.department ?? '';
+            document.getElementById('productDepartment').value = deptVal;
+            updateItemDropdown(deptVal);
             document.getElementById('productItem').value = p.item ?? '';
             document.getElementById('productMemo').value = p.memo ?? '';
             document.getElementById('productNote').value = p.note ?? '';
@@ -809,10 +1021,13 @@
       document.getElementById('productTaxRate').value = '';
       document.getElementById('productStock').value = '';
       document.getElementById('productUnit').value = '';
-      document.getElementById('productAccountTitle').value = '';
+      // freee連携フィールド（<select>）のリセット
+      // 勘定科目: デフォルト値「売上高」を設定
+      document.getElementById('productAccountTitle').value = '売上高';
       document.getElementById('productTaxCategory').value = '';
       document.getElementById('productDepartment').value = '';
-      document.getElementById('productItem').value = '';
+      // 部門リセットに合わせて品目も初期化
+      updateItemDropdown('');
       document.getElementById('productMemo').value = '';
       document.getElementById('productNote').value = '';
     }
