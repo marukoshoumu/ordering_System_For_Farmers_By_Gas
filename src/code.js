@@ -625,6 +625,16 @@ function doPost(e) {
       .setTitle('製造数一覧')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
+  else if (e.parameter.manufacturingOrder) {
+    const _s = resolveSessionFromPost(e);
+    const page = HtmlService.createTemplateFromFile('manufacturingOrder');
+    page.deployURL = ScriptApp.getService().getUrl();
+    page.sessionId = _s.sessionId;
+    page.userRole = _s.userRole;
+    return page.evaluate()
+      .setTitle('製造指示書')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   else if (e.parameter.orderListPage) {
     const _s = resolveSessionFromPost(e);
     const template = HtmlService.createTemplateFromFile('orderList');
