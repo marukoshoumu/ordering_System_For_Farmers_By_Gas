@@ -231,7 +231,7 @@
                     const escapedDeliveryMethod = escapeHtml(order.deliveryMethod || '');
                     const actionsHtml = `
                         <div class="order-card-actions" style="flex-direction: column; gap: 5px; align-items: stretch;">
-                            <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
+                            <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" data-delivery-method="${escapedDeliveryMethod}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
                                 <option value="発送前">発送前</option>
                                 <option value="収穫待ち" selected>🌱待ち</option>
                                 <option value="出荷済み">✓済</option>
@@ -427,7 +427,7 @@
 
                 const actionsHtml = `
                     <div class="order-card-actions" style="flex-direction: column; gap: 5px; align-items: stretch;">
-                        <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
+                        <select class="form-select form-select-sm status-select" data-order-id="${escapedOrderId}" data-delivery-method="${escapedDeliveryMethod}" style="font-size: 0.65rem; padding: 1px 2px; width: 100%; min-width: 70px; text-align: center;">
                             <option value="発送前" ${currentStatus === '発送前' ? 'selected' : ''}>発送前</option>
                             <option value="収穫待ち" ${currentStatus === '収穫待ち' ? 'selected' : ''}>🌱待ち</option>
                             <option value="出荷済み" ${currentStatus === '出荷済み' ? 'selected' : ''}>✓済</option>
@@ -553,7 +553,10 @@
         document.addEventListener('DOMContentLoaded', function () {
             const scannerModalEl = document.getElementById('scannerModal');
             if (scannerModalEl) {
-                scannerModalEl.addEventListener('shown.bs.modal', initQuagga);
+                scannerModalEl.addEventListener('shown.bs.modal', function () {
+                    document.getElementById('modalManualNo').value = '';
+                    initQuagga();
+                });
                 scannerModalEl.addEventListener('hidden.bs.modal', () => {
                     Quagga.stop();
                     toggleModalManual(false);
@@ -821,8 +824,17 @@
         }
 
         // ステータス更新UI
-        function updateOrderStatusUI(orderId, newStatus) {
-            const selectElem = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
+        function updateOrderStatusUI(orderId, newStatus, selectElem) {
+            if (!selectElem) selectElem = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
+
+            // 配達・店舗受取で出荷済みを設定する場合は配達完了に自動変換
+            if (newStatus === '出荷済み' && selectElem) {
+                const deliveryMethod = selectElem.getAttribute('data-delivery-method') || '';
+                if (deliveryMethod.includes('配達') || deliveryMethod.includes('店舗受取')) {
+                    newStatus = '配達完了';
+                }
+            }
+
             if (selectElem) selectElem.disabled = true;
 
             toggleLoading(true);
@@ -849,7 +861,7 @@
             if (e.target.classList.contains('status-select')) {
                 const orderId = e.target.getAttribute('data-order-id');
                 const newStatus = e.target.value;
-                updateOrderStatusUI(orderId, newStatus);
+                updateOrderStatusUI(orderId, newStatus, e.target);
             }
         });
 
