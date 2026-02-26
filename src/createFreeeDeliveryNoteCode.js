@@ -458,6 +458,105 @@ function getProductInfo(productName, productItems) {
 }
 
 /**
+ * freee納品書CSV対象の受注一覧を返す（プレビュー用）
+ *
+ * @param {string} datas - JSON形式の入力パラメータ
+ * @param {string} datas.customerName - 対象顧客名（空の場合は全顧客）
+ * @param {string} datas.targetDateFrom - 集計期間開始日（ISO形式）
+ * @param {string} datas.targetDateTo - 集計期間終了日（ISO形式）
+ * @returns {string} 受注一覧（JSON形式）。各要素は { orderId, customerName, shippingDate, productName } を持つ
+ */
+function getFreeeDeliveryNoteOrderList(datas) {
+  const data = JSON.parse(datas);
+  const customerName = data['customerName'];
+
+  const dateFromObj = new Date(data['targetDateFrom']);
+  if (isNaN(dateFromObj.getTime())) {
+    throw new Error('無効な開始日が指定されました: ' + data['targetDateFrom']);
+  }
+  const targetFrom = Utilities.formatDate(dateFromObj, 'JST', 'yyyy/MM/dd');
+
+  const dateToObj = new Date(data['targetDateTo']);
+  if (isNaN(dateToObj.getTime())) {
+    throw new Error('無効な終了日が指定されました: ' + data['targetDateTo']);
+  }
+  const targetTo = Utilities.formatDate(dateToObj, 'JST', 'yyyy/MM/dd');
+
+  const items = getAllRecords('受注');
+
+  const targetLists = items.filter(function(target) {
+    const shippingDateObj = new Date(target['発送日']);
+    if (isNaN(shippingDateObj.getTime())) return false;
+    const shippingDate = Utilities.formatDate(shippingDateObj, 'JST', 'yyyy/MM/dd');
+    const isInPeriod = shippingDate >= targetFrom && shippingDate <= targetTo;
+    const isTargetCustomer = customerName === '' || target['顧客名'] === customerName;
+    return isInPeriod && isTargetCustomer;
+  });
+
+  const result = targetLists.map(function(order) {
+    return {
+      orderId: order['受注ID'] || '',
+      customerName: order['顧客名'] || '',
+      shippingDate: order['発送日'] ? Utilities.formatDate(new Date(order['発送日']), 'JST', 'yyyy/MM/dd') : '',
+      productName: order['商品名'] || ''
+    };
+  });
+
+  return JSON.stringify(result);
+}
+
+/**
+ * 指定された受注IDのみを対象にfreee納品書CSVを生成する
+ *
+ * @param {string} orderIdsJson - 受注IDの配列（JSON形式）: ['R001', 'R002', ...]
+ * @returns {string|null} 生成されたCSVファイル名（JSON形式）。対象データなしの場合はnull
+ */
+function createFreeeDeliveryNoteByIds(orderIdsJson) {
+  const orderIds = JSON.parse(orderIdsJson);
+
+  if (!orderIds || orderIds.length === 0) {
+    return null;
+  }
+
+  const idSet = {};
+  orderIds.forEach(function(id) { idSet[id] = true; });
+
+  const items = getAllRecords('受注');
+
+  const targetLists = items.filter(function(order) {
+    return idSet[order['受注ID']] === true;
+  });
+
+  if (targetLists.length === 0) {
+    return null;
+  }
+
+  // 発送日の範囲をファイル名用に算出
+  const shippingDates = targetLists.map(function(order) {
+    const d = new Date(order['発送日']);
+    return isNaN(d.getTime()) ? null : d;
+  }).filter(function(d) { return d !== null; });
+
+  let targetFrom, targetTo;
+  if (shippingDates.length > 0) {
+    const minDate = new Date(Math.min.apply(null, shippingDates));
+    const maxDate = new Date(Math.max.apply(null, shippingDates));
+    targetFrom = Utilities.formatDate(minDate, 'JST', 'yyyy/MM/dd');
+    targetTo = Utilities.formatDate(maxDate, 'JST', 'yyyy/MM/dd');
+  } else {
+    const now = new Date();
+    targetFrom = Utilities.formatDate(now, 'JST', 'yyyy/MM/dd');
+    targetTo = targetFrom;
+  }
+
+  const groupedOrders = groupOrdersByLinkedId(targetLists);
+  const csvRows = generateFreeeCSV(groupedOrders);
+  const fileName = saveFreeeCSVToDrive(csvRows, targetFrom, targetTo);
+
+  return JSON.stringify([fileName]);
+}
+
+/**
  * 文字列をUTF-8バイト配列に変換する
  *
  * GASのnewBlob(string, 'text/csv')ではUnicode正規化等で全角括弧が半角になる場合があるため、

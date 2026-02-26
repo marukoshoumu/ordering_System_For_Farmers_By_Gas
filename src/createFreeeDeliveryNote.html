@@ -83,7 +83,30 @@
           <input type="date" class="form-control" id="targetDateTo" name="targetDateTo">
         </div>
         <div class="col-auto">
-          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3">CSV作成</button>
+          <button type='button' id="previewFreeeOrders" class="btn btn-secondary me-2">受注を確認</button>
+          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3">CSV作成（全件）</button>
+        </div>
+      </div>
+      <!-- 受注プレビューテーブル -->
+      <div id="orderPreviewArea" style="display:none;" class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong id="orderPreviewCount"></strong>
+          <button type="button" id="createFreeeCSVSelected" class="btn btn-success">CSV生成（選択分）</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered" id="orderPreviewTable">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAllOrders" title="全選択"></th>
+                <th>受注ID</th>
+                <th>顧客名</th>
+                <th>発送日</th>
+                <th>商品名</th>
+              </tr>
+            </thead>
+            <tbody id="orderPreviewBody">
+            </tbody>
+          </table>
         </div>
       </div>
   </div>
@@ -139,22 +162,32 @@
     }
     function createFail() {
       showErrorToast("エラーが発生しました。");
-      $("button[id='createFreeeCSV']").text('CSV作成');
+      $("button[id='createFreeeCSV']").text('CSV作成（全件）');
+    }
+    /**
+     * 作成ファイル名をresパラグラフに表示する（DOM API使用、XSS安全）
+     */
+    function showFileResult(fileNames) {
+      var resEl = document.getElementById('res');
+      while (resEl.firstChild) {
+        resEl.removeChild(resEl.firstChild);
+      }
+      resEl.appendChild(document.createTextNode('◆作成ファイル◆'));
+      fileNames.forEach(function(name) {
+        resEl.appendChild(document.createElement('br'));
+        resEl.appendChild(document.createTextNode(String(name) + '.csv'));
+      });
     }
     function createList(data) {
       if (data) {
         var res = JSON.parse(data);
         showSuccessToast("freee納品書CSVを作成しました。");
-        $("button[id='createFreeeCSV']").text('CSV作成');
-        var html = "◆作成ファイル◆<br>";
-        for (var ele of res) {
-          html += escapeHtml(String(ele)) + ".csv" + "<br>";
-        }
-        $("p[id='res']").html(html);
+        $("button[id='createFreeeCSV']").text('CSV作成（全件）');
+        showFileResult(res);
       }
       else {
         showInfoToast("該当データがありませんでした。");
-        $("button[id='createFreeeCSV']").text('CSV作成');
+        $("button[id='createFreeeCSV']").text('CSV作成（全件）');
       }
     }
     // 顧客検索ダイアログを開く（イベント委譲で動的要素に対応）
@@ -349,10 +382,146 @@
     // ページロード時に実行
     loadMasterDataForSearch();
 
+    // ========================================
+    // 受注プレビュー・選択CSV生成
+    // ========================================
+    function previewFreeeOrders() {
+      var customerName = $('input[id="customerName"]').val();
+      var targetDateFrom = $('input[id="targetDateFrom"]').val();
+      var targetDateTo = $('input[id="targetDateTo"]').val();
+      if (!targetDateFrom || !targetDateTo) {
+        showWarningToast('発送日の期間を入力してください。');
+        return;
+      }
+      $("button[id='previewFreeeOrders']").text('検索中...');
+      var record = {
+        customerName: customerName,
+        targetDateFrom: targetDateFrom,
+        targetDateTo: targetDateTo
+      };
+      google.script.run
+        .withSuccessHandler(renderOrderPreview)
+        .withFailureHandler(previewFail)
+        .getFreeeDeliveryNoteOrderList(JSON.stringify(record));
+    }
+
+    function previewFail() {
+      showErrorToast("受注一覧の取得に失敗しました。");
+      $("button[id='previewFreeeOrders']").text('受注を確認');
+    }
+
+    function renderOrderPreview(data) {
+      $("button[id='previewFreeeOrders']").text('受注を確認');
+      var orders = JSON.parse(data);
+      var tbody = document.getElementById('orderPreviewBody');
+
+      // 既存の行をすべて削除（DOM API）
+      while (tbody.firstChild) {
+        tbody.removeChild(tbody.firstChild);
+      }
+
+      if (!orders || orders.length === 0) {
+        showInfoToast("該当する受注がありませんでした。");
+        document.getElementById('orderPreviewArea').style.display = 'none';
+        return;
+      }
+
+      orders.forEach(function(order) {
+        var tr = document.createElement('tr');
+
+        // チェックボックスセル
+        var tdCheck = document.createElement('td');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'order-row-checkbox';
+        cb.value = order.orderId;
+        tdCheck.appendChild(cb);
+        tr.appendChild(tdCheck);
+
+        // 受注ID
+        var tdId = document.createElement('td');
+        tdId.textContent = order.orderId;
+        tr.appendChild(tdId);
+
+        // 顧客名
+        var tdCustomer = document.createElement('td');
+        tdCustomer.textContent = order.customerName;
+        tr.appendChild(tdCustomer);
+
+        // 発送日
+        var tdDate = document.createElement('td');
+        tdDate.textContent = order.shippingDate;
+        tr.appendChild(tdDate);
+
+        // 商品名
+        var tdProduct = document.createElement('td');
+        tdProduct.textContent = order.productName;
+        tr.appendChild(tdProduct);
+
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('orderPreviewCount').textContent = '対象受注: ' + orders.length + '件';
+      document.getElementById('orderPreviewArea').style.display = '';
+      // 全選択チェックボックスをリセット
+      document.getElementById('selectAllOrders').checked = false;
+    }
+
+    function createFreeeCSVSelected() {
+      var checkboxes = document.querySelectorAll('#orderPreviewBody .order-row-checkbox:checked');
+      if (checkboxes.length === 0) {
+        showWarningToast('受注を1件以上選択してください。');
+        return;
+      }
+      var selectedIds = [];
+      checkboxes.forEach(function(cb) {
+        selectedIds.push(cb.value);
+      });
+      var confirmMsg = '選択した' + selectedIds.length + '件の受注でfreee納品書CSVを作成しますか？';
+      if (!window.confirm(confirmMsg)) return;
+
+      $("button[id='createFreeeCSVSelected']").text('作成中...');
+      google.script.run
+        .withSuccessHandler(createListSelected)
+        .withFailureHandler(createFailSelected)
+        .createFreeeDeliveryNoteByIds(JSON.stringify(selectedIds));
+    }
+
+    function createFailSelected() {
+      showErrorToast("エラーが発生しました。");
+      $("button[id='createFreeeCSVSelected']").text('CSV生成（選択分）');
+    }
+
+    function createListSelected(data) {
+      $("button[id='createFreeeCSVSelected']").text('CSV生成（選択分）');
+      if (data) {
+        var res = JSON.parse(data);
+        showSuccessToast("freee納品書CSVを作成しました。");
+        showFileResult(res);
+      } else {
+        showInfoToast("該当データがありませんでした。");
+      }
+    }
+
     // イベントハンドラー登録（DOMロード後）
     $(document).ready(function() {
       $('#createFreeeCSV').on('click', function() {
         createFreeeCSV();
+      });
+
+      $('#previewFreeeOrders').on('click', function() {
+        previewFreeeOrders();
+      });
+
+      $('#selectAllOrders').on('change', function() {
+        var checked = this.checked;
+        document.querySelectorAll('#orderPreviewBody .order-row-checkbox').forEach(function(cb) {
+          cb.checked = checked;
+        });
+      });
+
+      $('#createFreeeCSVSelected').on('click', function() {
+        createFreeeCSVSelected();
       });
 
       $('#openFreeeCSV').on('click', function() {
