@@ -485,6 +485,8 @@ function getFreeeDeliveryNoteOrderList(datas) {
   const items = getAllRecords('受注');
 
   const targetLists = items.filter(function(target) {
+    const status = target['ステータス'] || '';
+    if (status === '　キャンセル済' || status === 'キャンセル') return false;
     const shippingDateObj = new Date(target['発送日']);
     if (isNaN(shippingDateObj.getTime())) return false;
     const shippingDate = Utilities.formatDate(shippingDateObj, 'JST', 'yyyy/MM/dd');

@@ -7,6 +7,7 @@ function getManufacturingOrderData(paramsJson) {
   const params = JSON.parse(paramsJson);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('受注');
+  if (!sheet) throw new Error('受注シートが見つかりません');
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 

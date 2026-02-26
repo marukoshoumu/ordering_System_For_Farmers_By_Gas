@@ -342,10 +342,10 @@ function deleteProduct(rowIndex) {
 }
 
 /**
- * 商品分類一覧を取得する
+ * 商品分類一覧を取得する（id, name, updatedAt, rowIndex を含むオブジェクト配列）
  * @returns {Array<Object>} 商品分類データの配列
  */
-function getProductCategories() {
+function getProductCategoryDetails() {
   var categories = getAllRecords('商品分類');
 
   if (!categories || categories.length === 0) {
@@ -367,7 +367,7 @@ function getProductCategories() {
  * @returns {string} JSON文字列
  */
 function getProductCategoriesData() {
-  return JSON.stringify(getProductCategories());
+  return JSON.stringify(getProductCategoryDetails());
 }
 
 /**
@@ -392,7 +392,7 @@ function addProductCategory(categoryName) {
     }
 
     // 既存の分類をチェック（重複防止）
-    var existingCategories = getProductCategories();
+    var existingCategories = getProductCategoryDetails();
     for (var i = 0; i < existingCategories.length; i++) {
       if (existingCategories[i].name === categoryName.trim()) {
         return { success: false, message: 'この分類名は既に存在します' };
