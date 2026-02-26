@@ -977,6 +977,7 @@
 </head>
 
 <body>
+  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
 
   <div class="main-container">
     <div class="card">
@@ -1958,6 +1959,14 @@
               ${itemsHtml}
             </div>
           </div>
+          ${order.memo ? `
+          <div class="order-card-row">
+            <span class="order-card-icon"><i class="bi bi-chat-left-text"></i></span>
+            <div class="order-card-value">
+              <div class="order-card-label">メモ</div>
+              ${escapeHtml(order.memo)}
+            </div>
+          </div>` : ''}
             <div class="order-card-row" onclick="event.stopPropagation();">
               <span class="order-card-icon"><i class="bi bi-check2-square"></i></span>
               <div class="order-card-value" style="display: flex; align-items: center; gap: 8px;">
