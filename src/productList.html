@@ -222,6 +222,7 @@
 </head>
 
 <body>
+  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -274,9 +275,7 @@
           <table class="product-table">
             <thead>
               <tr>
-                <th class="col-check">
-                  <input type="checkbox" id="selectAllCheckbox" title="全選択" onchange="toggleSelectAll(this)">
-                </th>
+                <th class="col-check"></th>
                 <th class="col-category">分類</th>
                 <th class="col-name">商品名</th>
                 <th class="col-price">価格</th>
@@ -499,18 +498,21 @@
     // ⚠️ 勘定科目の選択肢は実際の値に更新が必要です
     const ACCOUNT_TYPES = ['売上高'];
 
-    // ⚠️ 税区分の選択肢（標準的な値を設定済み。必要に応じて更新してください）
     const TAX_CATEGORIES = [
-      '課税売上10%',
-      '課税売上8%（軽減）',
-      '非課税売上',
-      '免税売上'
+      '課税売上8%（軽）',
+      '課税売上10％'
     ];
 
-    // ⚠️ 部門→品目マスターは実際の値に更新が必要です
     const DEPARTMENT_ITEMS = {
-      '部門A': ['品目A1', '品目A2', '品目A3'],
-      '部門B': ['品目B1', '品目B2']
+      'かぼちゃ部門':   ['かぼちゃ'],
+      '水稲部門':       ['玄米', '精米'],
+      '加工部門':       ['加工かぼちゃ', '加工りんご', '加工長いも', '加工ホワイトアスパラ', '加工とうもろこし'],
+      'アスパラ部門':   ['ホワイトアスパラ'],
+      '仕入販売部門':   ['仕入かぼちゃ', '仕入アスパラ', '仕入仕入アイス', '仕入玄米おにぎり', '仕入コロッケ'],
+      '水稲苗部門':     ['水稲苗'],
+      '作業受託部門':   ['除雪', '配達', '田植え', '代掻き', '稲刈り', '籾乾燥'],
+      '加工受託部門':   ['加工受託'],
+      '共通部門':       ['運賃']
     };
 
     // =========================================================
@@ -632,24 +634,16 @@
     // 商品コピー機能
     // =========================================================
 
-    function toggleSelectAll(headerCheckbox) {
-      var checkboxes = document.querySelectorAll('.product-row-checkbox');
-      checkboxes.forEach(function(cb) {
-        cb.checked = headerCheckbox.checked;
-      });
-      updateCopyButton();
-    }
-
     function updateCopyButton() {
       var checked = document.querySelectorAll('.product-row-checkbox:checked');
       var btn = document.getElementById('copyCreateBtn');
-      btn.disabled = checked.length === 0;
+      btn.disabled = checked.length !== 1;
     }
 
     function openCopyModal() {
       var checked = document.querySelectorAll('.product-row-checkbox:checked');
-      if (checked.length === 0) {
-        showErrorToast('コピーする商品を選択してください');
+      if (checked.length !== 1) {
+        showErrorToast('コピーする商品を1件選択してください');
         return;
       }
 
@@ -778,9 +772,6 @@
       tbody.textContent = '';
       cards.textContent = '';
 
-      // Reset select-all checkbox and copy button
-      var selectAll = document.getElementById('selectAllCheckbox');
-      if (selectAll) { selectAll.checked = false; }
       var copyBtn = document.getElementById('copyCreateBtn');
       if (copyBtn) { copyBtn.disabled = true; }
 
@@ -789,7 +780,7 @@
         const tr = document.createElement('tr');
         // Click on row body (not checkbox/action cells) opens edit modal
         tr.addEventListener('click', function(e) {
-          if (e.target.type !== 'checkbox' && !e.target.closest('.col-action')) {
+          if (e.target.type !== 'radio' && !e.target.closest('.col-action')) {
             openEditModal(p.rowIndex);
           }
         });
@@ -799,7 +790,8 @@
         tdCheck.className = 'col-check';
         tdCheck.addEventListener('click', function(e) { e.stopPropagation(); });
         const cb = document.createElement('input');
-        cb.type = 'checkbox';
+        cb.type = 'radio';
+        cb.name = 'productSelect';
         cb.className = 'product-row-checkbox';
         cb.value = p.rowIndex;
         cb.addEventListener('change', updateCopyButton);

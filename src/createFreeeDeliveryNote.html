@@ -15,110 +15,312 @@
 </head>
 
 <body>
-  <div class="container">
-    <h2 class="text-center m-4">freee納品書CSV作成</h2>
-    <div class="alert alert-info" role="alert">
-      <strong>📋 freee側の事前準備が必要です:</strong>
-      <ul class="mb-0 mt-2">
-        <li>取引先（顧客）をfreeeに登録し、<strong>取引先名はfreeeの登録名と同一に</strong></li>
-        <li>品目（商品）をfreeeに登録（任意だが推奨）</li>
-        <li>勘定科目をfreeeに登録（例: 売上高）</li>
-      </ul>
+  <style>
+    body {
+      background-color: var(--bg-body);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card-header {
+      background: var(--brand-primary);
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 16px 20px;
+    }
+
+    .card-header h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .filter-section {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .filter-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: #666;
+      white-space: nowrap;
+      min-width: 70px;
+    }
+
+    .table-section {
+      padding: 16px 20px;
+      background: #fff;
+    }
+
+    .freee-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .freee-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .freee-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+    }
+
+    .freee-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .freee-table tbody td {
+      padding: 10px 8px;
+      vertical-align: top;
+    }
+
+    .freee-table .col-check {
+      width: 40px;
+      text-align: center;
+    }
+
+    /* スマホカード */
+    .freee-cards {
+      display: none;
+    }
+
+    .freee-card {
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      transition: box-shadow 0.2s;
+    }
+
+    .freee-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .freee-card-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .freee-card-row:last-child {
+      border-bottom: none;
+    }
+
+    .freee-card-icon {
+      color: var(--brand-primary);
+      min-width: 20px;
+      text-align: center;
+      padding-top: 2px;
+    }
+
+    .freee-card-value {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+
+    .freee-card-label {
+      font-size: 0.75rem;
+      color: #999;
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 8px;
+      }
+
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .freee-pc-table {
+        display: none;
+      }
+
+      .freee-cards {
+        display: block;
+      }
+    }
+  </style>
+
+  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+
+  <div class="main-container">
+    <div class="card">
+      <!-- ヘッダー -->
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h1><i class="bi bi-file-earmark-spreadsheet me-2"></i>freee納品書CSV作成</h1>
+        <div class="d-flex gap-2">
+          <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
+            <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
+            <button type="submit" class="btn btn-outline-light btn-sm" name="main" value="true">
+              <i class="bi bi-house"></i> ホーム
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 注意事項 -->
+      <div style="padding: 16px 20px; background: #fff; border-bottom: 1px solid #e9ecef;">
+        <div class="alert alert-info mb-0" role="alert">
+          <strong>freee側の事前準備が必要です:</strong>
+          <ul class="mb-0 mt-2">
+            <li>取引先（顧客）をfreeeに登録し、<strong>取引先名はfreeeの登録名と同一に</strong></li>
+            <li>品目（商品）をfreeeに登録（任意だが推奨）</li>
+            <li>勘定科目をfreeeに登録（例: 売上高）</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- フィルター -->
+      <form class="mb-0" method="POST" action="<?= deployURL ?>">
+        <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
+        <div class="customerSearch_dg">
+          <div>
+            <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
+            <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg" >
+              <option value="1">会社名</option>
+              <option value="2">氏名</option>
+              <option value="3">表示名</option>
+              <option value="4">フリガナ</option>
+            </select>
+          </div>
+          <div>
+            <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
+            <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg" >
+              <option value=""></option>
+              <option value="1">一次卸し・大口</option>
+              <option value="2">小売店</option>
+              <option value="3">飲食店・ホテル</option>
+              <option value="4">地元飲食店</option>
+              <option value="5">通信販売</option>
+              <option value="6">一般販売</option>
+              <option value="7">その他</option>
+              <option value="8">職域</option>
+            </select>
+          </div>
+          <div>
+            <label for="customerSearchKeyDg" class="text-left form-label">キーワード</label>
+            <input type="text" class="form-control" id="customerSearchKeyDg" name="customerSearchKeyDg">
+          </div>
+          <div id="resCustArea" class="mt-2 resTable">
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label">顧客名：</span>
+              <input type="text" class="form-control form-control-sm" id="customerName" name="customerName" placeholder="空欄=全顧客" style="min-width: 180px;">
+              <button type='button' class="btn btn-outline-secondary btn-sm customerSearchBtn_open" title="顧客検索">
+                <i class="bi bi-search me-1"></i>検索
+              </button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label">発送日：</span>
+              <input type="date" class="form-control form-control-sm" id="targetDateFrom" name="targetDateFrom" style="width: 150px;">
+              <span style="color: #666;">〜</span>
+              <input type="date" class="form-control form-control-sm" id="targetDateTo" name="targetDateTo" style="width: 150px;">
+            </div>
+            <button type='button' id="previewFreeeOrders" class="btn btn-secondary btn-sm">
+              <i class="bi bi-eye me-1"></i>受注を確認
+            </button>
+            <button type='button' id="createFreeeCSV" class="btn btn-primary btn-sm">
+              <i class="bi bi-download me-1"></i>CSV作成（全件）
+            </button>
+          </div>
+        </div>
+
+        <!-- 受注プレビュー -->
+        <div class="table-section">
+          <div id="orderPreviewArea" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <strong id="orderPreviewCount"></strong>
+              <button type="button" id="createFreeeCSVSelected" class="btn btn-success btn-sm">
+                <i class="bi bi-download me-1"></i>CSV生成（選択分）
+              </button>
+            </div>
+            <!-- PC テーブル -->
+            <div class="freee-pc-table">
+              <table class="freee-table" id="orderPreviewTable">
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" id="selectAllOrders" title="全選択"></th>
+                    <th>受注ID</th>
+                    <th>顧客名</th>
+                    <th>発送日</th>
+                    <th>商品名</th>
+                  </tr>
+                </thead>
+                <tbody id="orderPreviewBody">
+                </tbody>
+              </table>
+            </div>
+            <!-- スマホ カード -->
+            <div class="freee-cards" id="orderPreviewCards">
+            </div>
+          </div>
+
+          <p id="res" style="text-align: center; margin-top: 16px;"></p>
+
+          <div class="text-center mt-3 mb-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="openFreeeCSV" name="openFreeeCSV" value="true">
+              <i class="bi bi-folder2-open me-1"></i>CSV参照
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
-    <form class="mb-5" method="POST" action="<?= deployURL ?>">
-      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-      <div class="customerSearch_dg">
-        <div>
-          <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
-          <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg" >
-            <option value="1">会社名</option>
-            <option value="2">氏名</option>
-            <option value="3">表示名</option>
-            <option value="4">フリガナ</option>
-          </select>
-        </div>
-        <div>
-          <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
-          <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg" >
-            <option value=""></option>
-            <option value="1">一次卸し・大口</option>
-            <option value="2">小売店</option>
-            <option value="3">飲食店・ホテル</option>
-            <option value="4">地元飲食店</option>
-            <option value="5">通信販売</option>
-            <option value="6">一般販売</option>
-            <option value="7">その他</option>
-            <option value="8">職域</option>
-          </select>
-        </div>
-        <div>
-          <label for="customerSearchKeyDg" class="text-left form-label">キーワード</label>
-          <input type="text" class="form-control" id="customerSearchKeyDg" name="customerSearchKeyDg">
-        </div>
-        <div id="resCustArea" class="mt-2 resTable">
-        </div>
-      </div>
-      <div class="row mb-3 align-items-center justify-content-center">
-        <div class="col-auto">
-          <label for="customerName" class="text-center form-label">顧客名</label>
-        </div>
-        <div class="col-auto">
-          <input type="text" class="form-control" id="customerName" name="customerName" placeholder="空欄=全顧客">
-        </div>
-        <div class="col-auto">
-          <button type='button' class="customerSearchBtn_open" title="顧客検索">🔍 検索</button>
-        </div>
-      </div>
-      <div class="row mb-3 align-items-center justify-content-center">
-        <div class="col-auto">
-          <label for="targetDateFrom" class="text-center form-label">発送日</label>
-        </div>
-        <div class="col-auto">
-          <input type="date" class="form-control" id="targetDateFrom" name="targetDateFrom">
-        </div>
-        <div class="col-auto">
-          <label for="targetDateTo" class="text-center form-label">～</label>
-        </div>
-        <div class="col-auto">
-          <input type="date" class="form-control" id="targetDateTo" name="targetDateTo">
-        </div>
-        <div class="col-auto">
-          <button type='button' id="previewFreeeOrders" class="btn btn-secondary me-2">受注を確認</button>
-          <button type='button' id="createFreeeCSV" class="btn btn-primary me-3">CSV作成（全件）</button>
-        </div>
-      </div>
-      <!-- 受注プレビューテーブル -->
-      <div id="orderPreviewArea" style="display:none;" class="mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <strong id="orderPreviewCount"></strong>
-          <button type="button" id="createFreeeCSVSelected" class="btn btn-success">CSV生成（選択分）</button>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered" id="orderPreviewTable">
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="selectAllOrders" title="全選択"></th>
-                <th>受注ID</th>
-                <th>顧客名</th>
-                <th>発送日</th>
-                <th>商品名</th>
-              </tr>
-            </thead>
-            <tbody id="orderPreviewBody">
-            </tbody>
-          </table>
-        </div>
-      </div>
-  </div>
-  <p id="res" style="text-align: center;"></p>
-  <div class="text-center">
-    <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main" value="true">ホーム画面に戻る</button>
-  </div>
-  <br>
-  <div class="text-center">
-    <button type="button" class="btn btn-outline-secondary" id="openFreeeCSV" name="openFreeeCSV" value="true">CSV参照</button>
-  </div>
-  </form>
   </div>
   <script>
     // ========================================
@@ -414,11 +616,10 @@
       $("button[id='previewFreeeOrders']").text('受注を確認');
       var orders = JSON.parse(data);
       var tbody = document.getElementById('orderPreviewBody');
+      var cardsContainer = document.getElementById('orderPreviewCards');
 
-      // 既存の行をすべて削除（DOM API）
-      while (tbody.firstChild) {
-        tbody.removeChild(tbody.firstChild);
-      }
+      while (tbody.firstChild) { tbody.removeChild(tbody.firstChild); }
+      cardsContainer.innerHTML = '';
 
       if (!orders || orders.length === 0) {
         showInfoToast("該当する受注がありませんでした。");
@@ -426,11 +627,14 @@
         return;
       }
 
+      var cardsHtml = '';
+
       orders.forEach(function(order) {
+        // PC テーブル行
         var tr = document.createElement('tr');
 
-        // チェックボックスセル
         var tdCheck = document.createElement('td');
+        tdCheck.className = 'col-check';
         var cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.className = 'order-row-checkbox';
@@ -438,37 +642,55 @@
         tdCheck.appendChild(cb);
         tr.appendChild(tdCheck);
 
-        // 受注ID
         var tdId = document.createElement('td');
         tdId.textContent = order.orderId;
         tr.appendChild(tdId);
 
-        // 顧客名
         var tdCustomer = document.createElement('td');
         tdCustomer.textContent = order.customerName;
         tr.appendChild(tdCustomer);
 
-        // 発送日
         var tdDate = document.createElement('td');
         tdDate.textContent = order.shippingDate;
         tr.appendChild(tdDate);
 
-        // 商品名
         var tdProduct = document.createElement('td');
         tdProduct.textContent = order.productName;
         tr.appendChild(tdProduct);
 
         tbody.appendChild(tr);
+
+        // スマホカード
+        cardsHtml += '<div class="freee-card">';
+        cardsHtml += '<div class="freee-card-row">';
+        cardsHtml += '  <input type="checkbox" class="form-check-input order-row-checkbox-card" value="' + escapeHtml(order.orderId) + '" style="margin-right: 8px;">';
+        cardsHtml += '  <div class="freee-card-value" style="font-weight: 600;">' + escapeHtml(order.orderId) + '</div>';
+        cardsHtml += '  <span style="font-size: 0.8rem; color: #666;">' + escapeHtml(order.shippingDate) + '</span>';
+        cardsHtml += '</div>';
+        cardsHtml += '<div class="freee-card-row">';
+        cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-person"></i></span>';
+        cardsHtml += '  <div class="freee-card-value">';
+        cardsHtml += '    <div class="freee-card-label">顧客名</div>' + escapeHtml(order.customerName);
+        cardsHtml += '  </div>';
+        cardsHtml += '</div>';
+        cardsHtml += '<div class="freee-card-row">';
+        cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-box-seam"></i></span>';
+        cardsHtml += '  <div class="freee-card-value">';
+        cardsHtml += '    <div class="freee-card-label">商品名</div>' + escapeHtml(order.productName);
+        cardsHtml += '  </div>';
+        cardsHtml += '</div>';
+        cardsHtml += '</div>';
       });
+
+      cardsContainer.innerHTML = cardsHtml;
 
       document.getElementById('orderPreviewCount').textContent = '対象受注: ' + orders.length + '件';
       document.getElementById('orderPreviewArea').style.display = '';
-      // 全選択チェックボックスをリセット
       document.getElementById('selectAllOrders').checked = false;
     }
 
     function createFreeeCSVSelected() {
-      var checkboxes = document.querySelectorAll('#orderPreviewBody .order-row-checkbox:checked');
+      var checkboxes = document.querySelectorAll('.order-row-checkbox:checked, .order-row-checkbox-card:checked');
       if (checkboxes.length === 0) {
         showWarningToast('受注を1件以上選択してください。');
         return;
@@ -515,7 +737,7 @@
 
       $('#selectAllOrders').on('change', function() {
         var checked = this.checked;
-        document.querySelectorAll('#orderPreviewBody .order-row-checkbox').forEach(function(cb) {
+        document.querySelectorAll('.order-row-checkbox, .order-row-checkbox-card').forEach(function(cb) {
           cb.checked = checked;
         });
       });

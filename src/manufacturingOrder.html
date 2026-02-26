@@ -11,18 +11,13 @@
   <?!= HtmlService.createHtmlOutputFromFile('design-system').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <style>
-    :root {
-      --primary-color: #1e3a5f;
-      --header-bg: #1e3a5f;
-    }
-
     body {
-      background-color: #f0f2f5;
+      background-color: var(--bg-body);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
     .main-container {
-      max-width: 960px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 16px;
     }
@@ -34,7 +29,7 @@
     }
 
     .card-header {
-      background: var(--header-bg);
+      background: var(--brand-primary);
       color: white;
       border-radius: 12px 12px 0 0 !important;
       padding: 16px 20px;
@@ -96,6 +91,126 @@
       background: #fff;
     }
 
+    /* PC テーブル（受注一覧と統一） */
+    .mfg-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .mfg-table thead th {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .mfg-table tbody tr {
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+    }
+
+    .mfg-table tbody tr:hover {
+      background: #e3f2fd;
+    }
+
+    .mfg-table tbody td {
+      padding: 10px 8px;
+      vertical-align: top;
+    }
+
+    .mfg-table .col-quantity {
+      text-align: right;
+      width: 60px;
+      white-space: nowrap;
+    }
+
+    .mfg-table .col-memo {
+      min-width: 100px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .category-heading {
+      background: var(--brand-primary);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    .category-heading:first-child {
+      margin-top: 0;
+    }
+
+    /* スマホ用カード（受注一覧と統一） */
+    .mfg-cards {
+      display: none;
+    }
+
+    .mfg-card {
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      transition: box-shadow 0.2s;
+    }
+
+    .mfg-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .mfg-card-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .mfg-card-row:last-child {
+      border-bottom: none;
+    }
+
+    .mfg-card-icon {
+      color: var(--brand-primary);
+      min-width: 20px;
+      text-align: center;
+      padding-top: 2px;
+    }
+
+    .mfg-card-value {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+
+    .mfg-card-label {
+      font-size: 0.75rem;
+      color: #999;
+      margin-bottom: 2px;
+    }
+
+    .mfg-card-quantity {
+      background: var(--brand-primary);
+      color: white;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
     @media (max-width: 768px) {
       .main-container {
         padding: 8px;
@@ -125,6 +240,14 @@
       .date-separator {
         text-align: center;
         padding: 2px 0;
+      }
+
+      .mfg-pc-table {
+        display: none;
+      }
+
+      .mfg-cards {
+        display: block;
       }
     }
 
@@ -161,10 +284,19 @@
       .result-section {
         padding: 8px 0;
       }
+
+      .mfg-cards {
+        display: none !important;
+      }
+
+      .mfg-pc-table {
+        display: block !important;
+      }
     }
   </style>
 </head>
 <body>
+  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
 
 <div class="main-container">
   <div class="card">
@@ -320,6 +452,12 @@
       .getManufacturingOrderData(params);
   }
 
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
   function renderResult(data) {
     var container = document.getElementById('resultArea');
     container.innerHTML = '';
@@ -330,38 +468,63 @@
       container.appendChild(p);
       return;
     }
+
+    var pcHtml = '';
+    var mobileHtml = '';
+
     data.groups.forEach(function(group) {
-      // カテゴリ見出し
-      var h5 = document.createElement('h5');
-      h5.className = 'mt-4 mb-2';
-      h5.textContent = group.category || '（分類なし）';
-      container.appendChild(h5);
-      // テーブル
-      var table = document.createElement('table');
-      table.className = 'table table-bordered table-sm';
-      var thead = document.createElement('thead');
-      thead.className = 'table-light';
-      var headerRow = document.createElement('tr');
-      ['顧客名', '商品名', '数量', 'メモ'].forEach(function(text) {
-        var th = document.createElement('th');
-        th.textContent = text;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-      var tbody = document.createElement('tbody');
+      var catName = escapeHtml(group.category || '（分類なし）');
+
+      // カテゴリ見出し（PC・スマホ共通）
+      var heading = '<div class="category-heading"><i class="bi bi-folder me-1"></i>' + catName + '</div>';
+
+      // PC テーブル
+      pcHtml += heading;
+      pcHtml += '<table class="mfg-table">';
+      pcHtml += '<thead><tr>';
+      pcHtml += '<th>顧客名</th><th>商品名</th><th class="col-quantity">数量</th><th class="col-memo">メモ</th>';
+      pcHtml += '</tr></thead><tbody>';
       group.rows.forEach(function(row) {
-        var tr = document.createElement('tr');
-        [row.customerName, row.product, String(row.quantity), row.memo].forEach(function(val) {
-          var td = document.createElement('td');
-          td.textContent = val || '';
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
+        pcHtml += '<tr>';
+        pcHtml += '<td>' + escapeHtml(row.customerName) + '</td>';
+        pcHtml += '<td>' + escapeHtml(row.product) + '</td>';
+        pcHtml += '<td class="col-quantity">' + escapeHtml(String(row.quantity)) + '</td>';
+        pcHtml += '<td class="col-memo">' + escapeHtml(row.memo) + '</td>';
+        pcHtml += '</tr>';
       });
-      table.appendChild(tbody);
-      container.appendChild(table);
+      pcHtml += '</tbody></table>';
+
+      // スマホ カード
+      mobileHtml += heading;
+      group.rows.forEach(function(row) {
+        mobileHtml += '<div class="mfg-card">';
+        mobileHtml += '<div class="mfg-card-row">';
+        mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-person"></i></span>';
+        mobileHtml += '  <div class="mfg-card-value">';
+        mobileHtml += '    <div class="mfg-card-label">顧客名</div>' + escapeHtml(row.customerName);
+        mobileHtml += '  </div>';
+        mobileHtml += '  <span class="mfg-card-quantity">' + escapeHtml(String(row.quantity)) + '点</span>';
+        mobileHtml += '</div>';
+        mobileHtml += '<div class="mfg-card-row">';
+        mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-box-seam"></i></span>';
+        mobileHtml += '  <div class="mfg-card-value">';
+        mobileHtml += '    <div class="mfg-card-label">商品名</div>' + escapeHtml(row.product);
+        mobileHtml += '  </div>';
+        mobileHtml += '</div>';
+        if (row.memo) {
+          mobileHtml += '<div class="mfg-card-row">';
+          mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-chat-left-text"></i></span>';
+          mobileHtml += '  <div class="mfg-card-value">';
+          mobileHtml += '    <div class="mfg-card-label">メモ</div>' + escapeHtml(row.memo);
+          mobileHtml += '  </div>';
+          mobileHtml += '</div>';
+        }
+        mobileHtml += '</div>';
+      });
     });
+
+    container.innerHTML = '<div class="mfg-pc-table">' + pcHtml + '</div>'
+                        + '<div class="mfg-cards">' + mobileHtml + '</div>';
   }
 </script>
 
