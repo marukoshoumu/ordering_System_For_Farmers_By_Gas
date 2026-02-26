@@ -485,6 +485,7 @@
   </style>
 </head>
 <body>
+  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
 
 <div class="main-container">
   <div class="card">
@@ -511,7 +512,9 @@
             <label class="btn btn-outline-primary" for="periodToday">今日</label>
             <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
             <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek" checked>
+            <input type="radio" class="btn-check" name="period" id="periodTodayWeek" value="todayWeek" checked>
+            <label class="btn btn-outline-primary" for="periodTodayWeek">今日から1週間</label>
+            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek">
             <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
             <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
             <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
@@ -1045,6 +1048,12 @@
         dateFrom = new Date(today);
         dateFrom.setDate(today.getDate() + 1);
         dateTo = new Date(dateFrom);
+        break;
+      case 'todayWeek':
+        // 今日から1週間（今日〜today+6 の7日分）
+        dateFrom = new Date(today);
+        dateTo = new Date(today);
+        dateTo.setDate(today.getDate() + 6);
         break;
       case 'thisWeek':
         // 今週（日曜始まり）
