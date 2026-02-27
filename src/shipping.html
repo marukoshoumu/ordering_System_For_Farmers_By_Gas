@@ -12,14 +12,24 @@
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div id="gas-session-data" style="display:none;"
     data-auto-open="<?= typeof autoOpenAI !== 'undefined' ? autoOpenAI : false ?>"
     data-analysis="<?= typeof aiAnalysisResult !== 'undefined' ? aiAnalysisResult : '' ?>">
   </div>
   <div class="container">
+    <div class="page-hero-header d-flex justify-content-center align-items-center">
+      <h2 class="m-0">
+        <? if (isEditMode) { ?>受注管理（編集）
+        <? } else if (isCopyMode) { ?>受注管理（コピー）
+        <? } else { ?>受注管理
+        <? } ?>
+      </h2>
+    </div>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="mt-3">
@@ -35,10 +45,6 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
           }
         </style>
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3 nav-btn" name="mainTop" value="true"
-          onclick="clearAISession()">ホーム画面に戻る</button>
-        <button type="submit" formnovalidate class="btn btn-outline-primary me-3 nav-btn" name="orderListPage"
-          value="true" onclick="clearAISession()">受注一覧に戻る</button>
 
         <!-- 検索条件引継用 -->
         <input type="hidden" name="prevPeriod" value="<?= typeof prevPeriod !== 'undefined' ? prevPeriod : '' ?>">
@@ -48,9 +54,9 @@
           value="<?= typeof prevDestination !== 'undefined' ? prevDestination : '' ?>">
         <input type="hidden" name="prevCustomer" value="<?= typeof prevCustomer !== 'undefined' ? prevCustomer : '' ?>">
         <input type="hidden" name="prevStatus" value="<?= typeof prevStatus !== 'undefined' ? prevStatus : '' ?>">
-        <input type="hidden" name="prevIncludeOverdue" value="<?= typeof prevIncludeOverdue !== 'undefined' ? prevIncludeOverdue : '' ?>">
+        <input type="hidden" name="prevIncludeOverdue"
+          value="<?= typeof prevIncludeOverdue !== 'undefined' ? prevIncludeOverdue : '' ?>">
       </div>
-      <h2 class="text-center m-4"><? if (isEditMode) { ?>受注管理（編集）<? } else if (isCopyMode) { ?>受注管理（コピー）<? } else { ?>受注管理<? } ?></h2>
       <!-- AI解析済みインジケーター（フォーム上部に表示） -->
       <div class="ai-analyzed-indicator" id="aiAnalyzedIndicator">
         <span>🤖 AI解析済み</span>
@@ -368,7 +374,8 @@
         <div class="card">
           <div class="card-header bg-info text-white py-2">
             <label class="form-check-label mb-0" style="cursor: pointer;">
-              <input type="checkbox" class="form-check-input me-2" id="isRecurringOrder" name="isRecurringOrder" value="true" onchange="toggleRecurringOptions()">
+              <input type="checkbox" class="form-check-input me-2" id="isRecurringOrder" name="isRecurringOrder"
+                value="true" onchange="toggleRecurringOptions()">
               🔄 定期便として登録する
             </label>
           </div>
@@ -410,94 +417,94 @@
               </div>
             </div>
             <script>
-            /**
-             * 定期発送の次回発送日を更新
-             * (calcNextRecurringDateはutilities.htmlで定義)
-             */
-            function updateRecurringNextDate() {
-              var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
-              if (!shippingDateInput || !shippingDateInput.value) return;
-              var baseDate = new Date(shippingDateInput.value);
-              var type = document.getElementById('recurringType').value;
-              var subValue = null;
-              if (type.endsWith('weekly') || type.endsWith('week')) {
-                var weekdaySelect = document.getElementById('recurringWeekday');
-                if (weekdaySelect) subValue = weekdaySelect.value;
-              } else if (type === 'monthly') {
-                var monthDaySelect = document.getElementById('recurringMonthDay');
-                if (monthDaySelect) subValue = monthDaySelect.value;
-              }
-              var nextDate = calcNextRecurringDate(baseDate, type, subValue);
-              if (nextDate) {
-                var year = nextDate.getFullYear();
-                var month = String(nextDate.getMonth() + 1).padStart(2, '0');
-                var day = String(nextDate.getDate()).padStart(2, '0');
-                document.getElementById('recurringNextDate').value = year + '-' + month + '-' + day;
-              }
-            }
-
-            function onRecurringTypeChange() {
-              var type = document.getElementById('recurringType').value;
-              var subOptions = document.getElementById('recurringSubOptions');
-              subOptions.innerHTML = '';
-              if (type.endsWith('weekly') || type.endsWith('week')) {
-                // 曜日セレクト（weekly / biweekly / triweekly / 4week など）
-                var days = ['月','火','水','木','金','土','日'];
-                var select = document.createElement('select');
-                select.className = 'form-select';
-                select.id = 'recurringWeekday';
-                select.name = 'recurringWeekday';
-                days.forEach(function(day, idx) {
-                  var opt = document.createElement('option');
-                  opt.value = idx+1;
-                  opt.text = '毎週' + day + '曜日';
-                  select.appendChild(opt);
-                });
-                select.onchange = updateRecurringNextDate;
-                subOptions.appendChild(select);
-              } else if (type === 'monthly') {
-                // 日付セレクト
-                var select = document.createElement('select');
-                select.className = 'form-select';
-                select.id = 'recurringMonthDay';
-                select.name = 'recurringMonthDay';
-                for (var i=1; i<=31; i++) {
-                  var opt = document.createElement('option');
-                  opt.value = i;
-                  opt.text = '毎月' + i + '日';
-                  select.appendChild(opt);
+              /**
+               * 定期発送の次回発送日を更新
+               * (calcNextRecurringDateはutilities.htmlで定義)
+               */
+              function updateRecurringNextDate() {
+                var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
+                if (!shippingDateInput || !shippingDateInput.value) return;
+                var baseDate = new Date(shippingDateInput.value);
+                var type = document.getElementById('recurringType').value;
+                var subValue = null;
+                if (type.endsWith('weekly') || type.endsWith('week')) {
+                  var weekdaySelect = document.getElementById('recurringWeekday');
+                  if (weekdaySelect) subValue = weekdaySelect.value;
+                } else if (type === 'monthly') {
+                  var monthDaySelect = document.getElementById('recurringMonthDay');
+                  if (monthDaySelect) subValue = monthDaySelect.value;
                 }
-                var optFirst = document.createElement('option');
-                optFirst.value = 'first';
-                optFirst.text = '毎月初日';
-                select.appendChild(optFirst);
-                var optLast = document.createElement('option');
-                optLast.value = 'last';
-                optLast.text = '毎月末日';
-                select.appendChild(optLast);
-                select.onchange = updateRecurringNextDate;
-                subOptions.appendChild(select);
+                var nextDate = calcNextRecurringDate(baseDate, type, subValue);
+                if (nextDate) {
+                  var year = nextDate.getFullYear();
+                  var month = String(nextDate.getMonth() + 1).padStart(2, '0');
+                  var day = String(nextDate.getDate()).padStart(2, '0');
+                  document.getElementById('recurringNextDate').value = year + '-' + month + '-' + day;
+                }
               }
-              // 次回発送日入力欄を表示
-              document.getElementById('recurringNextDateRow').style.display = '';
-              // 定期タイプ変更時に次回発送日を自動計算（shippingDate1が存在し値がある場合のみ）
-              var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
-              if (shippingDateInput && shippingDateInput.value) {
-                updateRecurringNextDate();
+
+              function onRecurringTypeChange() {
+                var type = document.getElementById('recurringType').value;
+                var subOptions = document.getElementById('recurringSubOptions');
+                subOptions.innerHTML = '';
+                if (type.endsWith('weekly') || type.endsWith('week')) {
+                  // 曜日セレクト（weekly / biweekly / triweekly / 4week など）
+                  var days = ['月', '火', '水', '木', '金', '土', '日'];
+                  var select = document.createElement('select');
+                  select.className = 'form-select';
+                  select.id = 'recurringWeekday';
+                  select.name = 'recurringWeekday';
+                  days.forEach(function (day, idx) {
+                    var opt = document.createElement('option');
+                    opt.value = idx + 1;
+                    opt.text = '毎週' + day + '曜日';
+                    select.appendChild(opt);
+                  });
+                  select.onchange = updateRecurringNextDate;
+                  subOptions.appendChild(select);
+                } else if (type === 'monthly') {
+                  // 日付セレクト
+                  var select = document.createElement('select');
+                  select.className = 'form-select';
+                  select.id = 'recurringMonthDay';
+                  select.name = 'recurringMonthDay';
+                  for (var i = 1; i <= 31; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = i;
+                    opt.text = '毎月' + i + '日';
+                    select.appendChild(opt);
+                  }
+                  var optFirst = document.createElement('option');
+                  optFirst.value = 'first';
+                  optFirst.text = '毎月初日';
+                  select.appendChild(optFirst);
+                  var optLast = document.createElement('option');
+                  optLast.value = 'last';
+                  optLast.text = '毎月末日';
+                  select.appendChild(optLast);
+                  select.onchange = updateRecurringNextDate;
+                  subOptions.appendChild(select);
+                }
+                // 次回発送日入力欄を表示
+                document.getElementById('recurringNextDateRow').style.display = '';
+                // 定期タイプ変更時に次回発送日を自動計算（shippingDate1が存在し値がある場合のみ）
+                var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
+                if (shippingDateInput && shippingDateInput.value) {
+                  updateRecurringNextDate();
+                }
               }
-            }
-            // 初期化
-            document.addEventListener('DOMContentLoaded', function() {
-              var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
-              // 発送日変更時に次回発送日を自動計算
-              if (shippingDateInput) {
-                shippingDateInput.addEventListener('change', updateRecurringNextDate);
-              }
-              // shippingDate1が存在し、値がある場合のみonRecurringTypeChangeを呼び出す
-              if (document.getElementById('recurringType') && shippingDateInput && shippingDateInput.value) {
-                onRecurringTypeChange();
-              }
-            });
+              // 初期化
+              document.addEventListener('DOMContentLoaded', function () {
+                var shippingDateInput = document.querySelector('input[name="shippingDate1"]');
+                // 発送日変更時に次回発送日を自動計算
+                if (shippingDateInput) {
+                  shippingDateInput.addEventListener('change', updateRecurringNextDate);
+                }
+                // shippingDate1が存在し、値がある場合のみonRecurringTypeChangeを呼び出す
+                if (document.getElementById('recurringType') && shippingDateInput && shippingDateInput.value) {
+                  onRecurringTypeChange();
+                }
+              });
             </script>
           </div>
         </div>
@@ -515,10 +522,7 @@
             onclick="return validateBeforeSubmit()">受注確認</button>
           <? } ?>
         </div>
-        <div class="text-center mt-3">
-          <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="mainTop" value="true"
-            onclick="clearAISession()">ホーム画面に戻る</button>
-        </div>
+
       </div>
     </form>
   </div>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <meta charset="UTF-8">
@@ -25,20 +26,7 @@
     .card {
       border: none;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .card-header {
-      background: var(--brand-primary);
-      color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 16px 20px;
-    }
-
-    .card-header h1 {
-      font-size: 1.25rem;
-      margin: 0;
-      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .filter-section {
@@ -163,12 +151,12 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       transition: box-shadow 0.2s;
     }
 
     .mfg-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     .mfg-card-row {
@@ -252,6 +240,7 @@
     }
 
     @media print {
+
       .filter-section,
       .card-header .btn,
       .no-print {
@@ -295,254 +284,249 @@
     }
   </style>
 </head>
+
 <body>
-  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
 
-<div class="main-container">
-  <div class="card">
-    <!-- ヘッダー -->
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h1><i class="bi bi-clipboard-list me-2"></i>製造指示書</h1>
-      <div class="d-flex gap-2 no-print">
-        <button type="button" class="btn btn-outline-light btn-sm" onclick="window.print()">
-          <i class="bi bi-printer me-1"></i>PDF出力
-        </button>
-        <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-          <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-          <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
-          <button type="submit" class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-            <i class="bi bi-house"></i> ホーム
+  <div class="main-container">
+    <div class="card">
+      <!-- ヘッダー -->
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-clipboard-list me-2"></i>製造指示書</h1>
+        <div style="position: absolute; right: 16px;" class="no-print">
+          <button type="button" class="btn btn-outline-light btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>PDF出力
           </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- フィルター -->
-    <div class="filter-section no-print">
-      <!-- 1行目：期間 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">期間：</span>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="period" id="periodToday" value="today" checked>
-            <label class="btn btn-outline-primary" for="periodToday">今日</label>
-            <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
-            <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
-            <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
-            <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
-          </div>
         </div>
       </div>
 
-      <!-- 期間指定の日付範囲 -->
-      <div id="customDateRangeRow" style="display: none;">
+      <!-- フィルター -->
+      <div class="filter-section no-print">
+        <!-- 1行目：期間 -->
         <div class="filter-row">
           <div class="filter-group">
-            <span class="filter-label"></span>
-            <div class="custom-date-inputs">
-              <input type="date" class="form-control form-control-sm" id="dateFrom">
-              <span class="date-separator">〜</span>
-              <input type="date" class="form-control form-control-sm" id="dateTo">
+            <span class="filter-label">期間：</span>
+            <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="period" id="periodToday" value="today" checked>
+              <label class="btn btn-outline-primary" for="periodToday">今日</label>
+              <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
+              <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
+              <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
+              <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
             </div>
           </div>
         </div>
+
+        <!-- 期間指定の日付範囲 -->
+        <div id="customDateRangeRow" style="display: none;">
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label"></span>
+              <div class="custom-date-inputs">
+                <input type="date" class="form-control form-control-sm" id="dateFrom">
+                <span class="date-separator">〜</span>
+                <input type="date" class="form-control form-control-sm" id="dateTo">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2行目：商品分類・検索 -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">商品分類：</span>
+            <select class="form-select form-select-sm" id="categoryFilter" style="min-width: 160px;">
+              <option value="all">全て</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
+            <i class="bi bi-search me-1"></i>検索
+          </button>
+        </div>
       </div>
 
-      <!-- 2行目：商品分類・検索 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">商品分類：</span>
-          <select class="form-select form-select-sm" id="categoryFilter" style="min-width: 160px;">
-            <option value="all">全て</option>
-          </select>
+      <!-- 結果エリア -->
+      <div class="result-section">
+        <div id="loadingIndicator" style="display: none; text-align: center; padding: 24px;">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <div class="mt-2 text-muted">検索中...</div>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
-          <i class="bi bi-search me-1"></i>検索
-        </button>
+        <div id="resultArea"></div>
       </div>
-    </div>
-
-    <!-- 結果エリア -->
-    <div class="result-section">
-      <div id="loadingIndicator" style="display: none; text-align: center; padding: 24px;">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <div class="mt-2 text-muted">検索中...</div>
-      </div>
-      <div id="resultArea"></div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-  // 初期化
-  document.addEventListener('DOMContentLoaded', function() {
-    // 期間ラジオボタンのイベント
-    document.querySelectorAll('input[name="period"]').forEach(function(radio) {
-      radio.addEventListener('change', function() {
-        var customRow = document.getElementById('customDateRangeRow');
-        customRow.style.display = this.value === 'custom' ? 'block' : 'none';
-        if (this.value === 'custom') {
-          var today = new Date();
-          var endDate = new Date(today);
-          endDate.setDate(today.getDate() + 6);
-          document.getElementById('dateFrom').value = formatLocalDate(today);
-          document.getElementById('dateTo').value = formatLocalDate(endDate);
-        }
+  <script>
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function () {
+      // 期間ラジオボタンのイベント
+      document.querySelectorAll('input[name="period"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+          var customRow = document.getElementById('customDateRangeRow');
+          customRow.style.display = this.value === 'custom' ? 'block' : 'none';
+          if (this.value === 'custom') {
+            var today = new Date();
+            var endDate = new Date(today);
+            endDate.setDate(today.getDate() + 6);
+            document.getElementById('dateFrom').value = formatLocalDate(today);
+            document.getElementById('dateTo').value = formatLocalDate(endDate);
+          }
+        });
       });
+
+      // カテゴリドロップダウンを読み込む
+      google.script.run
+        .withSuccessHandler(function (categories) {
+          var sel = document.getElementById('categoryFilter');
+          categories.forEach(function (cat) {
+            var catName = typeof cat === 'object' && cat !== null && cat.name != null ? String(cat.name) : String(cat);
+            var opt = document.createElement('option');
+            opt.value = catName;
+            opt.textContent = catName;
+            sel.appendChild(opt);
+          });
+        })
+        .withFailureHandler(function (err) {
+          console.error('カテゴリ取得エラー:', err);
+        })
+        .getProductCategories();
+
+      // 初回検索
+      executeSearch();
     });
 
-    // カテゴリドロップダウンを読み込む
-    google.script.run
-      .withSuccessHandler(function(categories) {
-        var sel = document.getElementById('categoryFilter');
-        categories.forEach(function(cat) {
-          var catName = typeof cat === 'object' && cat !== null && cat.name != null ? String(cat.name) : String(cat);
-          var opt = document.createElement('option');
-          opt.value = catName;
-          opt.textContent = catName;
-          sel.appendChild(opt);
+    function formatLocalDate(d) {
+      var y = d.getFullYear();
+      var m = ('0' + (d.getMonth() + 1)).slice(-2);
+      var day = ('0' + d.getDate()).slice(-2);
+      return y + '-' + m + '-' + day;
+    }
+
+    function getPeriodDates() {
+      var today = new Date();
+      var period = document.querySelector('input[name="period"]:checked').value;
+      if (period === 'today') {
+        var todayStr = formatLocalDate(today);
+        return { dateFrom: todayStr, dateTo: todayStr };
+      } else if (period === 'tomorrow') {
+        var tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        var tomorrowStr = formatLocalDate(tomorrow);
+        return { dateFrom: tomorrowStr, dateTo: tomorrowStr };
+      } else {
+        var from = (document.getElementById('dateFrom').value || '').trim();
+        var to = (document.getElementById('dateTo').value || '').trim();
+        if (!from || !to) {
+          showErrorToast('開始日と終了日を入力してください。');
+          return null;
+        }
+        if (from > to) {
+          showErrorToast('開始日が終了日より後になっています。');
+          return null;
+        }
+        return { dateFrom: from, dateTo: to };
+      }
+    }
+
+    function executeSearch() {
+      var dates = getPeriodDates();
+      if (!dates) return;
+      var category = document.getElementById('categoryFilter').value;
+      var params = JSON.stringify({ dateFrom: dates.dateFrom, dateTo: dates.dateTo, category: category });
+      document.getElementById('loadingIndicator').style.display = 'block';
+      document.getElementById('resultArea').innerHTML = '';
+      google.script.run
+        .withSuccessHandler(function (result) {
+          document.getElementById('loadingIndicator').style.display = 'none';
+          renderResult(JSON.parse(result));
+        })
+        .withFailureHandler(function (err) {
+          document.getElementById('loadingIndicator').style.display = 'none';
+          document.getElementById('resultArea').textContent = 'エラー: ' + err.message;
+        })
+        .getManufacturingOrderData(params);
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    function renderResult(data) {
+      var container = document.getElementById('resultArea');
+      container.innerHTML = '';
+      if (!data.groups || data.groups.length === 0) {
+        var p = document.createElement('p');
+        p.className = 'text-muted text-center py-4';
+        p.textContent = '該当する受注はありません。';
+        container.appendChild(p);
+        return;
+      }
+
+      var pcHtml = '';
+      var mobileHtml = '';
+
+      data.groups.forEach(function (group) {
+        var catName = escapeHtml(group.category || '（分類なし）');
+
+        // カテゴリ見出し（PC・スマホ共通）
+        var heading = '<div class="category-heading"><i class="bi bi-folder me-1"></i>' + catName + '</div>';
+
+        // PC テーブル
+        pcHtml += heading;
+        pcHtml += '<table class="mfg-table">';
+        pcHtml += '<thead><tr>';
+        pcHtml += '<th>顧客名</th><th>商品名</th><th class="col-quantity">数量</th><th class="col-memo">メモ</th>';
+        pcHtml += '</tr></thead><tbody>';
+        group.rows.forEach(function (row) {
+          pcHtml += '<tr>';
+          pcHtml += '<td>' + escapeHtml(row.customerName) + '</td>';
+          pcHtml += '<td>' + escapeHtml(row.product) + '</td>';
+          pcHtml += '<td class="col-quantity">' + escapeHtml(String(row.quantity)) + '</td>';
+          pcHtml += '<td class="col-memo">' + escapeHtml(row.memo) + '</td>';
+          pcHtml += '</tr>';
         });
-      })
-      .withFailureHandler(function(err) {
-        console.error('カテゴリ取得エラー:', err);
-      })
-      .getProductCategories();
+        pcHtml += '</tbody></table>';
 
-    // 初回検索
-    executeSearch();
-  });
-
-  function formatLocalDate(d) {
-    var y = d.getFullYear();
-    var m = ('0' + (d.getMonth() + 1)).slice(-2);
-    var day = ('0' + d.getDate()).slice(-2);
-    return y + '-' + m + '-' + day;
-  }
-
-  function getPeriodDates() {
-    var today = new Date();
-    var period = document.querySelector('input[name="period"]:checked').value;
-    if (period === 'today') {
-      var todayStr = formatLocalDate(today);
-      return { dateFrom: todayStr, dateTo: todayStr };
-    } else if (period === 'tomorrow') {
-      var tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      var tomorrowStr = formatLocalDate(tomorrow);
-      return { dateFrom: tomorrowStr, dateTo: tomorrowStr };
-    } else {
-      var from = (document.getElementById('dateFrom').value || '').trim();
-      var to = (document.getElementById('dateTo').value || '').trim();
-      if (!from || !to) {
-        showErrorToast('開始日と終了日を入力してください。');
-        return null;
-      }
-      if (from > to) {
-        showErrorToast('開始日が終了日より後になっています。');
-        return null;
-      }
-      return { dateFrom: from, dateTo: to };
-    }
-  }
-
-  function executeSearch() {
-    var dates = getPeriodDates();
-    if (!dates) return;
-    var category = document.getElementById('categoryFilter').value;
-    var params = JSON.stringify({ dateFrom: dates.dateFrom, dateTo: dates.dateTo, category: category });
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('resultArea').innerHTML = '';
-    google.script.run
-      .withSuccessHandler(function(result) {
-        document.getElementById('loadingIndicator').style.display = 'none';
-        renderResult(JSON.parse(result));
-      })
-      .withFailureHandler(function(err) {
-        document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('resultArea').textContent = 'エラー: ' + err.message;
-      })
-      .getManufacturingOrderData(params);
-  }
-
-  function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
-
-  function renderResult(data) {
-    var container = document.getElementById('resultArea');
-    container.innerHTML = '';
-    if (!data.groups || data.groups.length === 0) {
-      var p = document.createElement('p');
-      p.className = 'text-muted text-center py-4';
-      p.textContent = '該当する受注はありません。';
-      container.appendChild(p);
-      return;
-    }
-
-    var pcHtml = '';
-    var mobileHtml = '';
-
-    data.groups.forEach(function(group) {
-      var catName = escapeHtml(group.category || '（分類なし）');
-
-      // カテゴリ見出し（PC・スマホ共通）
-      var heading = '<div class="category-heading"><i class="bi bi-folder me-1"></i>' + catName + '</div>';
-
-      // PC テーブル
-      pcHtml += heading;
-      pcHtml += '<table class="mfg-table">';
-      pcHtml += '<thead><tr>';
-      pcHtml += '<th>顧客名</th><th>商品名</th><th class="col-quantity">数量</th><th class="col-memo">メモ</th>';
-      pcHtml += '</tr></thead><tbody>';
-      group.rows.forEach(function(row) {
-        pcHtml += '<tr>';
-        pcHtml += '<td>' + escapeHtml(row.customerName) + '</td>';
-        pcHtml += '<td>' + escapeHtml(row.product) + '</td>';
-        pcHtml += '<td class="col-quantity">' + escapeHtml(String(row.quantity)) + '</td>';
-        pcHtml += '<td class="col-memo">' + escapeHtml(row.memo) + '</td>';
-        pcHtml += '</tr>';
-      });
-      pcHtml += '</tbody></table>';
-
-      // スマホ カード
-      mobileHtml += heading;
-      group.rows.forEach(function(row) {
-        mobileHtml += '<div class="mfg-card">';
-        mobileHtml += '<div class="mfg-card-row">';
-        mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-person"></i></span>';
-        mobileHtml += '  <div class="mfg-card-value">';
-        mobileHtml += '    <div class="mfg-card-label">顧客名</div>' + escapeHtml(row.customerName);
-        mobileHtml += '  </div>';
-        mobileHtml += '  <span class="mfg-card-quantity">' + escapeHtml(String(row.quantity)) + '点</span>';
-        mobileHtml += '</div>';
-        mobileHtml += '<div class="mfg-card-row">';
-        mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-box-seam"></i></span>';
-        mobileHtml += '  <div class="mfg-card-value">';
-        mobileHtml += '    <div class="mfg-card-label">商品名</div>' + escapeHtml(row.product);
-        mobileHtml += '  </div>';
-        mobileHtml += '</div>';
-        if (row.memo) {
+        // スマホ カード
+        mobileHtml += heading;
+        group.rows.forEach(function (row) {
+          mobileHtml += '<div class="mfg-card">';
           mobileHtml += '<div class="mfg-card-row">';
-          mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-chat-left-text"></i></span>';
+          mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-person"></i></span>';
           mobileHtml += '  <div class="mfg-card-value">';
-          mobileHtml += '    <div class="mfg-card-label">メモ</div>' + escapeHtml(row.memo);
+          mobileHtml += '    <div class="mfg-card-label">顧客名</div>' + escapeHtml(row.customerName);
+          mobileHtml += '  </div>';
+          mobileHtml += '  <span class="mfg-card-quantity">' + escapeHtml(String(row.quantity)) + '点</span>';
+          mobileHtml += '</div>';
+          mobileHtml += '<div class="mfg-card-row">';
+          mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-box-seam"></i></span>';
+          mobileHtml += '  <div class="mfg-card-value">';
+          mobileHtml += '    <div class="mfg-card-label">商品名</div>' + escapeHtml(row.product);
           mobileHtml += '  </div>';
           mobileHtml += '</div>';
-        }
-        mobileHtml += '</div>';
+          if (row.memo) {
+            mobileHtml += '<div class="mfg-card-row">';
+            mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-chat-left-text"></i></span>';
+            mobileHtml += '  <div class="mfg-card-value">';
+            mobileHtml += '    <div class="mfg-card-label">メモ</div>' + escapeHtml(row.memo);
+            mobileHtml += '  </div>';
+            mobileHtml += '</div>';
+          }
+          mobileHtml += '</div>';
+        });
       });
-    });
 
-    container.innerHTML = '<div class="mfg-pc-table">' + pcHtml + '</div>'
-                        + '<div class="mfg-cards">' + mobileHtml + '</div>';
-  }
-</script>
+      container.innerHTML = '<div class="mfg-pc-table">' + pcHtml + '</div>'
+        + '<div class="mfg-cards">' + mobileHtml + '</div>';
+    }
+  </script>
 
 </body>
+
 </html>

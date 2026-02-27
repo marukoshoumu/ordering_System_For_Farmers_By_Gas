@@ -1,4 +1,22 @@
 /**
+ * サイドバーHTMLを生成するヘルパー関数
+ * createTemplateFromFile を使用してGASスクリプトレットを正しく評価する。
+ * createHtmlOutputFromFile ではスクリプトレットが処理されないため、この関数を使う。
+ *
+ * @param {string} deployURL - アプリケーションのデプロイURL
+ * @param {string} sessionId - セッションID
+ * @param {string} userRole - ユーザー権限（admin/viewer）
+ * @returns {string} 評価済みのサイドバーHTML文字列
+ */
+function includeSidebar(deployURL, sessionId, userRole) {
+  const template = HtmlService.createTemplateFromFile('sidebar');
+  template.deployURL = deployURL || '';
+  template.sessionId = sessionId || '';
+  template.userRole = userRole || 'viewer';
+  return template.evaluate().getContent();
+}
+
+/**
  * GETリクエスト処理（アプリケーションエントリーポイント）
  *
  * Google Apps ScriptのWebアプリケーションに対するGETリクエストを処理します。
@@ -255,6 +273,7 @@ function doPost(e) {
       const template = HtmlService.createTemplateFromFile('shipping');
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = sessionId;
+      template.userRole = userRole;
       template.isEditMode = false;
       template.isCopyMode = false;
       template.editOrderId = '';
@@ -281,6 +300,7 @@ function doPost(e) {
       const template = HtmlService.createTemplateFromFile('aiImportList');
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = sessionId;
+      template.userRole = userRole;
       const htmlOutput = template.evaluate();
       htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
       htmlOutput.setTitle('AI取込一覧');
@@ -291,6 +311,7 @@ function doPost(e) {
       const template = HtmlService.createTemplateFromFile('shipping');
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = sessionId;
+      template.userRole = userRole;
       template.isEditMode = false;
       template.isCopyMode = false;
       template.editOrderId = '';
@@ -342,6 +363,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('phoneOrder');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
     htmlOutput.setTitle('電話受注モード');
@@ -356,6 +378,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
 
     // 編集モードの設定
     const editOrderId = e.parameter.editOrderId || '';
@@ -415,6 +438,7 @@ function doPost(e) {
       const alert = '少なくとも1個以上注文してください。';
       template.deployURL = ScriptApp.getService().getUrl();
       template.sessionId = _s.sessionId;
+      template.userRole = _s.userRole;
       template.shippingHTML = getshippingHTML(e, alert);
       template.autoOpenAI = false;
       template.aiAnalysisResult = '';
@@ -439,6 +463,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('shippingComfirm');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     // 編集モードの設定を追加
     const editOrderId = e.parameter.editOrderId || '';
     const editMode = e.parameter.editMode === 'true';
@@ -469,6 +494,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('shipping');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
 
     // 編集モードの設定を追加
     const editOrderId = e.parameter.editOrderId || '';
@@ -509,6 +535,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('shippingComplete');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('受注完了');
@@ -522,6 +549,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('createShippingSlips');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('発注伝票作成');
@@ -535,6 +563,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('createBill');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('請求書作成');
@@ -548,6 +577,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('createFreeeDeliveryNote');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('freee納品書CSV作成');
@@ -561,6 +591,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('csvImport');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('受注CSV取込');
@@ -574,6 +605,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('masterImport');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('一括マスタ登録');
@@ -587,6 +619,7 @@ function doPost(e) {
     const template = HtmlService.createTemplateFromFile('quotation');
     template.deployURL = ScriptApp.getService().getUrl();
     template.sessionId = _s.sessionId;
+    template.userRole = _s.userRole;
     const htmlOutput = template.evaluate();
     htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
     htmlOutput.setTitle('見積書作成');

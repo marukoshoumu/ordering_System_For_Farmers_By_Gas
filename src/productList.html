@@ -29,7 +29,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
+    .page-hero-header {
       background: var(--brand-primary, #4a90a4);
       color: white;
       border-radius: 12px 12px 0 0 !important;
@@ -39,7 +39,7 @@
       align-items: center;
     }
 
-    .card-header h1 {
+    .page-hero-header h1 {
       font-size: 1.25rem;
       margin: 0;
       font-weight: 600;
@@ -108,16 +108,38 @@
       vertical-align: middle;
     }
 
-    .product-table .col-check { width: 36px; text-align: center; }
-    .product-table .col-category { width: 100px; }
-    .product-table .col-name { min-width: 150px; }
-    .product-table .col-price,
-    .product-table .col-stock { text-align: right; width: 80px; }
-    .product-table .col-unit,
-    .product-table .col-abbr { width: 60px; }
-    .product-table .col-action { width: 100px; text-align: center; }
+    .product-table .col-check {
+      width: 36px;
+      text-align: center;
+    }
 
-    .product-cards { display: none; }
+    .product-table .col-category {
+      width: 100px;
+    }
+
+    .product-table .col-name {
+      min-width: 150px;
+    }
+
+    .product-table .col-price,
+    .product-table .col-stock {
+      text-align: right;
+      width: 80px;
+    }
+
+    .product-table .col-unit,
+    .product-table .col-abbr {
+      width: 60px;
+    }
+
+    .product-table .col-action {
+      width: 100px;
+      text-align: center;
+    }
+
+    .product-cards {
+      display: none;
+    }
 
     .product-card {
       background: white;
@@ -157,9 +179,20 @@
       font-size: 0.85rem;
     }
 
-    .product-card-item { display: flex; flex-direction: column; }
-    .product-card-label { font-size: 0.7rem; color: #999; }
-    .product-card-value { color: #333; font-weight: 500; }
+    .product-card-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .product-card-label {
+      font-size: 0.7rem;
+      color: #999;
+    }
+
+    .product-card-value {
+      color: #333;
+      font-weight: 500;
+    }
 
     .product-card-buttons {
       display: flex;
@@ -169,7 +202,9 @@
       border-top: 1px solid #f0f0f0;
     }
 
-    .product-card-buttons button { flex: 1; }
+    .product-card-buttons button {
+      flex: 1;
+    }
 
     .result-count {
       padding: 8px 0;
@@ -187,7 +222,9 @@
       color: white;
     }
 
-    .modal-section { margin-bottom: 20px; }
+    .modal-section {
+      margin-bottom: 20px;
+    }
 
     .modal-section-title {
       font-weight: 600;
@@ -204,26 +241,57 @@
       color: #555;
     }
 
-    .add-category-btn { padding: 6px 12px; font-size: 0.85rem; }
-
-    @media (max-width: 768px) {
-      .main-container { padding: 8px; }
-      .filter-row { flex-direction: column; align-items: stretch; }
-      .filter-group { width: 100%; }
-      .filter-group .form-control,
-      .filter-group .form-select { flex: 1; }
-      .product-table-wrapper { display: none; }
-      .product-cards { display: block; }
-      #copyCreateBtn { display: none; }
-      .card-header { flex-direction: column; gap: 12px; align-items: stretch; }
-      .card-header h1 { text-align: center; }
+    .add-category-btn {
+      padding: 6px 12px;
+      font-size: 0.85rem;
     }
 
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 8px;
+      }
+
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-group .form-control,
+      .filter-group .form-select {
+        flex: 1;
+      }
+
+      .product-table-wrapper {
+        display: none;
+      }
+
+      .product-cards {
+        display: block;
+      }
+
+      #copyCreateBtn {
+        display: none;
+      }
+
+      .page-hero-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .page-hero-header h1 {
+        text-align: center;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -231,12 +299,9 @@
     </form>
 
     <div class="card">
-      <div class="card-header">
-        <h1><i class="bi bi-box-seam me-2"></i>商品マスタ</h1>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
-            <i class="bi bi-house"></i> ホーム
-          </button>
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-box-seam me-2"></i>商品マスタ</h1>
+        <div class="d-flex gap-2" style="position: absolute; right: 16px;">
           <button type="button" class="btn btn-warning btn-sm" id="copyCreateBtn" onclick="openCopyModal()" disabled>
             <i class="bi bi-files"></i> コピーして作成
           </button>
@@ -505,20 +570,20 @@
     ];
 
     const DEPARTMENT_ITEMS = {
-      'かぼちゃ部門':   ['かぼちゃ'],
-      '水稲部門':       ['玄米', '精米'],
-      '加工部門':       ['加工かぼちゃ', '加工りんご', '加工長いも', '加工ホワイトアスパラ', '加工とうもろこし'],
-      'アスパラ部門':   ['ホワイトアスパラ'],
-      '仕入販売部門':   ['仕入かぼちゃ', '仕入アスパラ', '仕入アイス', '仕入玄米おにぎり', '仕入コロッケ'],
-      '水稲苗部門':     ['水稲苗'],
-      '作業受託部門':   ['除雪', '配達', '田植え', '代掻き', '稲刈り', '籾乾燥'],
-      '加工受託部門':   ['加工受託'],
-      '共通部門':       ['運賃']
+      'かぼちゃ部門': ['かぼちゃ'],
+      '水稲部門': ['玄米', '精米'],
+      '加工部門': ['加工かぼちゃ', '加工りんご', '加工長いも', '加工ホワイトアスパラ', '加工とうもろこし'],
+      'アスパラ部門': ['ホワイトアスパラ'],
+      '仕入販売部門': ['仕入かぼちゃ', '仕入アスパラ', '仕入アイス', '仕入玄米おにぎり', '仕入コロッケ'],
+      '水稲苗部門': ['水稲苗'],
+      '作業受託部門': ['除雪', '配達', '田植え', '代掻き', '稲刈り', '籾乾燥'],
+      '加工受託部門': ['加工受託'],
+      '共通部門': ['運賃']
     };
 
     // =========================================================
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       // 最初にスピナーを表示
       showLoading('読み込み中...');
 
@@ -530,7 +595,7 @@
       loadCategories();
       loadProducts();
 
-      document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
+      document.getElementById('filterKeyword').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
           searchProducts();
         }
@@ -559,7 +624,7 @@
       emptyOpt.value = '';
       emptyOpt.textContent = '選択してください';
       accountSelect.appendChild(emptyOpt);
-      ACCOUNT_TYPES.forEach(function(type) {
+      ACCOUNT_TYPES.forEach(function (type) {
         var opt = document.createElement('option');
         opt.value = type;
         opt.textContent = type;
@@ -575,7 +640,7 @@
       taxEmpty.value = '';
       taxEmpty.textContent = '選択してください';
       taxSelect.appendChild(taxEmpty);
-      TAX_CATEGORIES.forEach(function(cat) {
+      TAX_CATEGORIES.forEach(function (cat) {
         var opt = document.createElement('option');
         opt.value = cat;
         opt.textContent = cat;
@@ -589,7 +654,7 @@
       deptEmpty.value = '';
       deptEmpty.textContent = '選択してください';
       deptSelect.appendChild(deptEmpty);
-      Object.keys(DEPARTMENT_ITEMS).forEach(function(dept) {
+      Object.keys(DEPARTMENT_ITEMS).forEach(function (dept) {
         var opt = document.createElement('option');
         opt.value = dept;
         opt.textContent = dept;
@@ -609,7 +674,7 @@
       itemSelect.appendChild(emptyOpt);
 
       if (department && DEPARTMENT_ITEMS[department]) {
-        DEPARTMENT_ITEMS[department].forEach(function(item) {
+        DEPARTMENT_ITEMS[department].forEach(function (item) {
           var opt = document.createElement('option');
           opt.value = item;
           opt.textContent = item;
@@ -650,7 +715,7 @@
 
       // 最初に選択された商品を使用
       var rowIndex = Number(checked[0].value);
-      var product = products.find(function(p) { return p.rowIndex === rowIndex; });
+      var product = products.find(function (p) { return p.rowIndex === rowIndex; });
       if (!product) {
         showErrorToast('選択した商品の情報が見つかりません');
         return;
@@ -688,11 +753,11 @@
 
     function loadCategories() {
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           categories = JSON.parse(data);
           updateCategorySelects();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('カテゴリ取得エラー:', e);
         })
         .getProductCategoriesData();
@@ -711,7 +776,7 @@
       }
 
       // Add options using DOM methods
-      categories.forEach(function(c) {
+      categories.forEach(function (c) {
         const filterOpt = document.createElement('option');
         filterOpt.value = c.name;
         filterOpt.textContent = c.name;
@@ -733,12 +798,12 @@
       };
 
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           products = JSON.parse(data);
           renderProducts();
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('商品取得エラー:', e);
           hideLoading();
           showErrorToast('商品の読み込みに失敗しました');
@@ -777,10 +842,10 @@
       if (copyBtn) { copyBtn.disabled = true; }
 
       // Build PC table using DOM methods
-      products.forEach(function(p) {
+      products.forEach(function (p) {
         const tr = document.createElement('tr');
         // Click on row body (not checkbox/action cells) opens edit modal
-        tr.addEventListener('click', function(e) {
+        tr.addEventListener('click', function (e) {
           if (e.target.type !== 'radio' && !e.target.closest('.col-action')) {
             openEditModal(p.rowIndex);
           }
@@ -789,7 +854,7 @@
         // Checkbox cell
         const tdCheck = document.createElement('td');
         tdCheck.className = 'col-check';
-        tdCheck.addEventListener('click', function(e) { e.stopPropagation(); });
+        tdCheck.addEventListener('click', function (e) { e.stopPropagation(); });
         const cb = document.createElement('input');
         cb.type = 'radio';
         cb.name = 'productSelect';
@@ -837,7 +902,7 @@
         const editIcon = document.createElement('i');
         editIcon.className = 'bi bi-pencil';
         editBtn.appendChild(editIcon);
-        editBtn.addEventListener('click', function(e) {
+        editBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openEditModal(p.rowIndex);
         });
@@ -848,7 +913,7 @@
         const deleteIcon = document.createElement('i');
         deleteIcon.className = 'bi bi-trash';
         deleteBtn.appendChild(deleteIcon);
-        deleteBtn.addEventListener('click', function(e) {
+        deleteBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openDeleteModal(p.rowIndex, p.name);
         });
@@ -859,7 +924,7 @@
       });
 
       // Build mobile cards using DOM methods
-      products.forEach(function(p) {
+      products.forEach(function (p) {
         const card = document.createElement('div');
         card.className = 'product-card';
 
@@ -890,7 +955,7 @@
           { label: '在庫', value: p.stock || '-' }
         ];
 
-        items.forEach(function(item) {
+        items.forEach(function (item) {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'product-card-item';
 
@@ -918,7 +983,7 @@
         editIconMobile.className = 'bi bi-pencil';
         editBtnMobile.appendChild(editIconMobile);
         editBtnMobile.appendChild(document.createTextNode(' 編集'));
-        editBtnMobile.addEventListener('click', function() { openEditModal(p.rowIndex); });
+        editBtnMobile.addEventListener('click', function () { openEditModal(p.rowIndex); });
         buttons.appendChild(editBtnMobile);
 
         const deleteBtnMobile = document.createElement('button');
@@ -927,7 +992,7 @@
         deleteIconMobile.className = 'bi bi-trash';
         deleteBtnMobile.appendChild(deleteIconMobile);
         deleteBtnMobile.appendChild(document.createTextNode(' 削除'));
-        deleteBtnMobile.addEventListener('click', function() { openDeleteModal(p.rowIndex, p.name); });
+        deleteBtnMobile.addEventListener('click', function () { openDeleteModal(p.rowIndex, p.name); });
         buttons.appendChild(deleteBtnMobile);
 
         card.appendChild(buttons);
@@ -947,7 +1012,7 @@
       showLoading('商品情報を取得中...');
 
       google.script.run
-        .withSuccessHandler(function(product) {
+        .withSuccessHandler(function (product) {
           if (product) {
             // Normalize: getProductDetail returns Japanese keys; form expects English
             var p = {
@@ -995,7 +1060,7 @@
           }
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('商品詳細取得エラー:', e);
           hideLoading();
           showErrorToast('商品情報の取得に失敗しました: ' + (e.message || e));
@@ -1122,7 +1187,7 @@
 
       if (rowIndex) {
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
@@ -1132,14 +1197,14 @@
               showErrorToast(result.message);
             }
           })
-          .withFailureHandler(function(e) {
+          .withFailureHandler(function (e) {
             hideLoading();
             showErrorToast('更新に失敗しました');
           })
           .updateProduct(Number(rowIndex), data);
       } else {
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
@@ -1149,7 +1214,7 @@
               showErrorToast(result.message);
             }
           })
-          .withFailureHandler(function(e) {
+          .withFailureHandler(function (e) {
             hideLoading();
             showErrorToast('登録に失敗しました');
           })
@@ -1173,7 +1238,7 @@
       showLoading('分類を追加中...');
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
@@ -1187,7 +1252,7 @@
             showErrorToast(result.message);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           hideLoading();
           showErrorToast('分類の追加に失敗しました');
         })
@@ -1206,7 +1271,7 @@
       showLoading('削除中...');
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
@@ -1216,7 +1281,7 @@
             showErrorToast(result.message);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           hideLoading();
           showErrorToast('削除に失敗しました');
         })

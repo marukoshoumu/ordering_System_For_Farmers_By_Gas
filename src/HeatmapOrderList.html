@@ -11,6 +11,7 @@
 
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <meta charset="UTF-8">
@@ -24,7 +25,8 @@
   <style>
     :root {
       --primary-color: #1e3a5f;
-      --header-bg: #1e3a5f;
+      --header-bg: #4a90a4;
+      /* 統一カラーに変更 */
       --cell-size: 48px;
       --sticky-width: 110px;
     }
@@ -43,20 +45,7 @@
     .card {
       border: none;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .card-header {
-      background: var(--header-bg);
-      color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 16px 20px;
-    }
-
-    .card-header h1 {
-      font-size: 1.25rem;
-      margin: 0;
-      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     /* フィルターセクション */
@@ -138,7 +127,7 @@
       background: white;
       border: 1px solid #ced4da;
       border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 100;
       max-height: 250px;
       overflow-y: auto;
@@ -243,8 +232,15 @@
     }
 
     /* 曜日ごとの色分け */
-    .heatmap-table thead th.sunday { background: #ffebee; color: #c62828; }
-    .heatmap-table thead th.saturday { background: #e3f2fd; color: #1565c0; }
+    .heatmap-table thead th.sunday {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .heatmap-table thead th.saturday {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
 
     /* 左固定列 */
     .sticky-column {
@@ -254,7 +250,7 @@
       width: var(--sticky-width);
       background: #fff;
       z-index: 10;
-      box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
     }
 
     .sticky-table {
@@ -298,13 +294,40 @@
     }
 
     /* ヒートマップの色 */
-    .heat-0 { background-color: #ffffff; color: #ccc; }
-    .heat-1 { background-color: #e3f2fd; color: #1565c0; }
-    .heat-2 { background-color: #81d4fa; color: #01579b; }
-    .heat-3 { background-color: #81c784; color: #1b5e20; }
-    .heat-4 { background-color: #fff176; color: #f57f17; }
-    .heat-5 { background-color: #ff8a65; color: #bf360c; }
-    .heat-6 { background-color: #e53935; color: #ffffff; }
+    .heat-0 {
+      background-color: #ffffff;
+      color: #ccc;
+    }
+
+    .heat-1 {
+      background-color: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .heat-2 {
+      background-color: #81d4fa;
+      color: #01579b;
+    }
+
+    .heat-3 {
+      background-color: #81c784;
+      color: #1b5e20;
+    }
+
+    .heat-4 {
+      background-color: #fff176;
+      color: #f57f17;
+    }
+
+    .heat-5 {
+      background-color: #ff8a65;
+      color: #bf360c;
+    }
+
+    .heat-6 {
+      background-color: #e53935;
+      color: #ffffff;
+    }
 
     .heatmap-table td {
       font-weight: 500;
@@ -314,7 +337,7 @@
 
     .heatmap-table td:hover {
       transform: scale(1.05);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       z-index: 5;
       position: relative;
     }
@@ -361,7 +384,7 @@
       font-size: 0.75rem;
       max-width: 300px;
       z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.2s;
@@ -484,792 +507,793 @@
     }
   </style>
 </head>
+
 <body>
-  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
 
-<div class="main-container">
-  <div class="card">
-    <!-- ヘッダー -->
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h1><i class="bi bi-box-seam me-2"></i>製造数一覧</h1>
-      <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-        <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-        <input type="hidden" name="userRole" value="<?= userRole || 'admin' ?>">
-        <button type="submit" class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-          <i class="bi bi-house"></i> ホーム
-        </button>
-      </form>
-    </div>
-
-    <!-- フィルター -->
-    <div class="filter-section">
-      <!-- 1行目：期間 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">期間：</span>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
-            <label class="btn btn-outline-primary" for="periodToday">今日</label>
-            <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
-            <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
-            <input type="radio" class="btn-check" name="period" id="periodTodayWeek" value="todayWeek" checked>
-            <label class="btn btn-outline-primary" for="periodTodayWeek">今日から1週間</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek">
-            <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
-            <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
-            <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
-            <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
-            <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
-            <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
-            <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
-            <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
-            <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
-          </div>
-        </div>
+  <div class="main-container">
+    <div class="card">
+      <!-- ヘッダー -->
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1><i class="bi bi-box-seam me-2"></i>製造数一覧</h1>
       </div>
 
-      <!-- 期間指定の日付範囲（別行で表示） -->
-      <div id="customDateRangeRow" style="display: none;">
+      <!-- フィルター -->
+      <div class="filter-section">
+        <!-- 1行目：期間 -->
         <div class="filter-row">
           <div class="filter-group">
-            <span class="filter-label"></span>
-            <div class="custom-date-inputs">
-              <input type="date" class="form-control form-control-sm" id="dateFrom">
-              <span class="date-separator">〜</span>
-              <input type="date" class="form-control form-control-sm" id="dateTo">
+            <span class="filter-label">期間：</span>
+            <div class="btn-group btn-group-sm" role="group">
+              <input type="radio" class="btn-check" name="period" id="periodToday" value="today">
+              <label class="btn btn-outline-primary" for="periodToday">今日</label>
+              <input type="radio" class="btn-check" name="period" id="periodTomorrow" value="tomorrow">
+              <label class="btn btn-outline-primary" for="periodTomorrow">翌日</label>
+              <input type="radio" class="btn-check" name="period" id="periodTodayWeek" value="todayWeek" checked>
+              <label class="btn btn-outline-primary" for="periodTodayWeek">今日から1週間</label>
+              <input type="radio" class="btn-check" name="period" id="periodThisWeek" value="thisWeek">
+              <label class="btn btn-outline-primary" for="periodThisWeek">今週</label>
+              <input type="radio" class="btn-check" name="period" id="periodNextWeek" value="nextWeek">
+              <label class="btn btn-outline-primary" for="periodNextWeek">来週</label>
+              <input type="radio" class="btn-check" name="period" id="periodThisMonth" value="thisMonth">
+              <label class="btn btn-outline-primary" for="periodThisMonth">今月</label>
+              <input type="radio" class="btn-check" name="period" id="periodNextMonth" value="nextMonth">
+              <label class="btn btn-outline-primary" for="periodNextMonth">来月</label>
+              <input type="radio" class="btn-check" name="period" id="periodCustom" value="custom">
+              <label class="btn btn-outline-primary" for="periodCustom">期間指定</label>
             </div>
           </div>
         </div>
-        <div class="filter-row">
-          <div class="filter-group">
-            <span class="filter-label"></span>
-            <span class="text-muted" style="font-size: 0.8rem;">※最大1ヶ月まで指定可能です</span>
-          </div>
-        </div>
-      </div>
 
-      <!-- 2行目：商品分類（マルチセレクト） -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">商品分類：</span>
-          <div class="multi-select-container" id="categorySelectContainer">
-            <div class="multi-select-btn" onclick="toggleMultiSelect()">
-              <span id="categorySelectText">全て</span>
-              <i class="bi bi-chevron-down"></i>
-            </div>
-            <div class="multi-select-dropdown" id="categoryDropdown">
-              <div class="multi-select-item">
-                <input type="checkbox" id="catAll" checked onchange="toggleAllCategories(this)">
-                <label for="catAll">全て選択</label>
+        <!-- 期間指定の日付範囲（別行で表示） -->
+        <div id="customDateRangeRow" style="display: none;">
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label"></span>
+              <div class="custom-date-inputs">
+                <input type="date" class="form-control form-control-sm" id="dateFrom">
+                <span class="date-separator">〜</span>
+                <input type="date" class="form-control form-control-sm" id="dateTo">
               </div>
-              <hr class="my-1">
-              <!-- カテゴリーはGASから動的に生成 -->
-              <div id="categoryList"></div>
             </div>
           </div>
-          <div class="selected-tags" id="selectedCategoryTags"></div>
-        </div>
-      </div>
-
-      <!-- 3行目：発送先・顧客 -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <span class="filter-label">発送先：</span>
-          <div id="destinationContainer">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#destinationSearchModal">
-              <i class="bi bi-search me-1"></i>指定なし
-            </button>
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label"></span>
+              <span class="text-muted" style="font-size: 0.8rem;">※最大1ヶ月まで指定可能です</span>
+            </div>
           </div>
         </div>
-        <div class="filter-group">
-          <span class="filter-label">顧客：</span>
-          <div id="customerContainer">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
-              <i class="bi bi-search me-1"></i>指定なし
-            </button>
+
+        <!-- 2行目：商品分類（マルチセレクト） -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">商品分類：</span>
+            <div class="multi-select-container" id="categorySelectContainer">
+              <div class="multi-select-btn" onclick="toggleMultiSelect()">
+                <span id="categorySelectText">全て</span>
+                <i class="bi bi-chevron-down"></i>
+              </div>
+              <div class="multi-select-dropdown" id="categoryDropdown">
+                <div class="multi-select-item">
+                  <input type="checkbox" id="catAll" checked onchange="toggleAllCategories(this)">
+                  <label for="catAll">全て選択</label>
+                </div>
+                <hr class="my-1">
+                <!-- カテゴリーはGASから動的に生成 -->
+                <div id="categoryList"></div>
+              </div>
+            </div>
+            <div class="selected-tags" id="selectedCategoryTags"></div>
           </div>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
-          <i class="bi bi-search me-1"></i>検索
-        </button>
-      </div>
-    </div>
 
-    <!-- テーブル -->
-    <div class="table-wrapper" id="tableWrapper">
-      <!-- 左固定列 -->
-      <div class="sticky-column">
-        <table class="sticky-table">
-          <thead>
-            <tr><th>商品</th></tr>
-          </thead>
-          <tbody id="stickyTableBody">
-            <!-- 動的に生成 -->
-          </tbody>
-          <tfoot>
-            <tr><td>日計</td></tr>
-          </tfoot>
-        </table>
+        <!-- 3行目：発送先・顧客 -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">発送先：</span>
+            <div id="destinationContainer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal"
+                data-bs-target="#destinationSearchModal">
+                <i class="bi bi-search me-1"></i>指定なし
+              </button>
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">顧客：</span>
+            <div id="customerContainer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal"
+                data-bs-target="#customerSearchModal">
+                <i class="bi bi-search me-1"></i>指定なし
+              </button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="executeSearch()">
+            <i class="bi bi-search me-1"></i>検索
+          </button>
+        </div>
       </div>
 
-      <!-- スクロール部分 -->
-      <div class="table-scroll-container">
-        <table class="heatmap-table">
-          <thead id="heatmapHeader">
-            <!-- 動的に生成 -->
-          </thead>
-          <tbody id="heatmapBody">
-            <!-- 動的に生成 -->
-          </tbody>
-          <tfoot id="heatmapFooter">
-            <!-- 日計行 -->
-          </tfoot>
-        </table>
-      </div>
-    </div>
+      <!-- テーブル -->
+      <div class="table-wrapper" id="tableWrapper">
+        <!-- 左固定列 -->
+        <div class="sticky-column">
+          <table class="sticky-table">
+            <thead>
+              <tr>
+                <th>商品</th>
+              </tr>
+            </thead>
+            <tbody id="stickyTableBody">
+              <!-- 動的に生成 -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>日計</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
 
-    <!-- 凡例 -->
-    <div class="legend">
-      <span class="legend-title">数量：</span>
-      <div class="legend-item">
-        <div class="legend-color heat-0"></div>
-        <span>0</span>
+        <!-- スクロール部分 -->
+        <div class="table-scroll-container">
+          <table class="heatmap-table">
+            <thead id="heatmapHeader">
+              <!-- 動的に生成 -->
+            </thead>
+            <tbody id="heatmapBody">
+              <!-- 動的に生成 -->
+            </tbody>
+            <tfoot id="heatmapFooter">
+              <!-- 日計行 -->
+            </tfoot>
+          </table>
+        </div>
       </div>
-      <div class="legend-item">
-        <div class="legend-color heat-1"></div>
-        <span>1-20</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color heat-2"></div>
-        <span>21-50</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color heat-3"></div>
-        <span>51-100</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color heat-4"></div>
-        <span>101-150</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color heat-5"></div>
-        <span>151-200</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color heat-6"></div>
-        <span>201+</span>
+
+      <!-- 凡例 -->
+      <div class="legend">
+        <span class="legend-title">数量：</span>
+        <div class="legend-item">
+          <div class="legend-color heat-0"></div>
+          <span>0</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-1"></div>
+          <span>1-20</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-2"></div>
+          <span>21-50</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-3"></div>
+          <span>51-100</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-4"></div>
+          <span>101-150</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-5"></div>
+          <span>151-200</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color heat-6"></div>
+          <span>201+</span>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ツールチップ -->
-<div class="product-tooltip" id="productTooltip"></div>
+  <!-- ツールチップ -->
+  <div class="product-tooltip" id="productTooltip"></div>
 
-<!-- 発送先検索モーダル -->
-<div class="modal fade search-modal" id="destinationSearchModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>発送先検索</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="search-header">
-          <input type="text" class="form-control" id="destinationSearchInput" placeholder="発送先名、住所、電話番号で検索...">
+  <!-- 発送先検索モーダル -->
+  <div class="modal fade search-modal" id="destinationSearchModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>発送先検索</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="search-results" id="destinationSearchResults">
-          <div class="no-results">検索キーワードを入力してください</div>
+        <div class="modal-body">
+          <div class="search-header">
+            <input type="text" class="form-control" id="destinationSearchInput" placeholder="発送先名、住所、電話番号で検索...">
+          </div>
+          <div class="search-results" id="destinationSearchResults">
+            <div class="no-results">検索キーワードを入力してください</div>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- 顧客検索モーダル -->
-<div class="modal fade search-modal" id="customerSearchModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-person me-2"></i>顧客検索</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="search-header">
-          <input type="text" class="form-control" id="customerSearchInput" placeholder="顧客名、住所、電話番号で検索...">
+  <!-- 顧客検索モーダル -->
+  <div class="modal fade search-modal" id="customerSearchModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person me-2"></i>顧客検索</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="search-results" id="customerSearchResults">
-          <div class="no-results">検索キーワードを入力してください</div>
+        <div class="modal-body">
+          <div class="search-header">
+            <input type="text" class="form-control" id="customerSearchInput" placeholder="顧客名、住所、電話番号で検索...">
+          </div>
+          <div class="search-results" id="customerSearchResults">
+            <div class="no-results">検索キーワードを入力してください</div>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- 詳細モーダル -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalTitle">
-          <i class="bi bi-calendar-event me-2"></i>詳細
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>顧客名</th>
-              <th>発送先</th>
-              <th class="text-end">数量</th>
-            </tr>
-          </thead>
-          <tbody id="modalBody">
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="2">合計</th>
-              <th class="text-end" id="modalTotal"></th>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+  <!-- 詳細モーダル -->
+  <div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">
+            <i class="bi bi-calendar-event me-2"></i>詳細
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>顧客名</th>
+                <th>発送先</th>
+                <th class="text-end">数量</th>
+              </tr>
+            </thead>
+            <tbody id="modalBody">
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="2">合計</th>
+                <th class="text-end" id="modalTotal"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-  // グローバル変数
-  let categories = [];
-  let selectedCategories = [];
-  let selectedDestination = null;
-  let selectedCustomer = null;
-  let heatmapData = null;
-  
-  // 初期化
-  document.addEventListener('DOMContentLoaded', function() {
-    initializeDateInputs();
-    loadCategories();
-    setupEventListeners();
-    executeSearch(); // 初回検索
-  });
-  
-  // 日付入力の初期化
-  function initializeDateInputs() {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    document.getElementById('dateFrom').value = formatDate(firstDay);
-    document.getElementById('dateTo').value = formatDate(lastDay);
-  }
-  
-  function formatDate(date) {
-    return date.toISOString().split('T')[0];
-  }
-  
-  // カテゴリー読み込み
-  function loadCategories() {
-    google.script.run
-      .withSuccessHandler(function(result) {
-        categories = result;
-        renderCategoryList();
-      })
-      .withFailureHandler(function(error) {
-        console.error('カテゴリー取得エラー:', error);
-      })
-      .getProductCategories();
-  }
-  
-  // カテゴリの表示名を取得（オブジェクトの場合は .name、文字列の場合はそのまま）
-  function getCategoryName(cat) {
-    return typeof cat === 'object' && cat !== null && cat.name != null ? String(cat.name) : String(cat);
-  }
+  <script>
+    // グローバル変数
+    let categories = [];
+    let selectedCategories = [];
+    let selectedDestination = null;
+    let selectedCustomer = null;
+    let heatmapData = null;
 
-  function renderCategoryList() {
-    const container = document.getElementById('categoryList');
-    container.innerHTML = categories.map((cat, index) => {
-      const name = getCategoryName(cat);
-      return `
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function () {
+      initializeDateInputs();
+      loadCategories();
+      setupEventListeners();
+      executeSearch(); // 初回検索
+    });
+
+    // 日付入力の初期化
+    function initializeDateInputs() {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      document.getElementById('dateFrom').value = formatDate(firstDay);
+      document.getElementById('dateTo').value = formatDate(lastDay);
+    }
+
+    function formatDate(date) {
+      return date.toISOString().split('T')[0];
+    }
+
+    // カテゴリー読み込み
+    function loadCategories() {
+      google.script.run
+        .withSuccessHandler(function (result) {
+          categories = result;
+          renderCategoryList();
+        })
+        .withFailureHandler(function (error) {
+          console.error('カテゴリー取得エラー:', error);
+        })
+        .getProductCategories();
+    }
+
+    // カテゴリの表示名を取得（オブジェクトの場合は .name、文字列の場合はそのまま）
+    function getCategoryName(cat) {
+      return typeof cat === 'object' && cat !== null && cat.name != null ? String(cat.name) : String(cat);
+    }
+
+    function renderCategoryList() {
+      const container = document.getElementById('categoryList');
+      container.innerHTML = categories.map((cat, index) => {
+        const name = getCategoryName(cat);
+        return `
       <div class="multi-select-item">
         <input type="checkbox" id="cat${index}" value="${escapeHtmlAttr(name)}" onchange="updateSelectedCategories()">
         <label for="cat${index}">${escapeHtml(name)}</label>
       </div>
     `;
-    }).join('');
-  }
+      }).join('');
+    }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-  function escapeHtmlAttr(str) {
-    return escapeHtml(str).replace(/"/g, '&quot;');
-  }
-  
-  // イベントリスナー設定
-  function setupEventListeners() {
-    // 期間ラジオボタン
-    document.querySelectorAll('input[name="period"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        const customRow = document.getElementById('customDateRangeRow');
-        customRow.style.display = this.value === 'custom' ? 'block' : 'none';
-        if (this.value === 'custom') {
-          const today = new Date();
-          const endDate = new Date(today);
-          endDate.setDate(today.getDate() + 1);
-          document.getElementById('dateFrom').value = formatDate(today);
-          document.getElementById('dateTo').value = formatDate(endDate);
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+    function escapeHtmlAttr(str) {
+      return escapeHtml(str).replace(/"/g, '&quot;');
+    }
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 期間ラジオボタン
+      document.querySelectorAll('input[name="period"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+          const customRow = document.getElementById('customDateRangeRow');
+          customRow.style.display = this.value === 'custom' ? 'block' : 'none';
+          if (this.value === 'custom') {
+            const today = new Date();
+            const endDate = new Date(today);
+            endDate.setDate(today.getDate() + 1);
+            document.getElementById('dateFrom').value = formatDate(today);
+            document.getElementById('dateTo').value = formatDate(endDate);
+          }
+        });
+      });
+
+      // 発送先検索
+      const destInput = document.getElementById('destinationSearchInput');
+      let destTimeout;
+      destInput.addEventListener('input', function () {
+        clearTimeout(destTimeout);
+        destTimeout = setTimeout(() => searchDestinations(this.value), 300);
+      });
+
+      // 顧客検索
+      const custInput = document.getElementById('customerSearchInput');
+      let custTimeout;
+      custInput.addEventListener('input', function () {
+        clearTimeout(custTimeout);
+        custTimeout = setTimeout(() => searchCustomers(this.value), 300);
+      });
+
+      // モーダルが開いたときにフォーカス
+      document.getElementById('destinationSearchModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('destinationSearchInput').focus();
+      });
+      document.getElementById('customerSearchModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('customerSearchInput').focus();
+      });
+
+      // ドロップダウン外クリックで閉じる
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('.multi-select-container')) {
+          document.getElementById('categoryDropdown').classList.remove('show');
         }
       });
-    });
-    
-    // 発送先検索
-    const destInput = document.getElementById('destinationSearchInput');
-    let destTimeout;
-    destInput.addEventListener('input', function() {
-      clearTimeout(destTimeout);
-      destTimeout = setTimeout(() => searchDestinations(this.value), 300);
-    });
-    
-    // 顧客検索
-    const custInput = document.getElementById('customerSearchInput');
-    let custTimeout;
-    custInput.addEventListener('input', function() {
-      clearTimeout(custTimeout);
-      custTimeout = setTimeout(() => searchCustomers(this.value), 300);
-    });
-    
-    // モーダルが開いたときにフォーカス
-    document.getElementById('destinationSearchModal').addEventListener('shown.bs.modal', function() {
-      document.getElementById('destinationSearchInput').focus();
-    });
-    document.getElementById('customerSearchModal').addEventListener('shown.bs.modal', function() {
-      document.getElementById('customerSearchInput').focus();
-    });
-    
-    // ドロップダウン外クリックで閉じる
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.multi-select-container')) {
-        document.getElementById('categoryDropdown').classList.remove('show');
+    }
+
+    // マルチセレクト操作
+    function toggleMultiSelect() {
+      document.getElementById('categoryDropdown').classList.toggle('show');
+    }
+
+    function toggleAllCategories(checkbox) {
+      const checkboxes = document.querySelectorAll('#categoryList input[type="checkbox"]');
+      checkboxes.forEach(cb => cb.checked = checkbox.checked);
+      updateSelectedCategories();
+    }
+
+    function updateSelectedCategories() {
+      const checkboxes = document.querySelectorAll('#categoryList input[type="checkbox"]:checked');
+      selectedCategories = Array.from(checkboxes).map(cb => cb.value);
+
+      const allCheckbox = document.getElementById('catAll');
+      const allCategoryCheckboxes = document.querySelectorAll('#categoryList input[type="checkbox"]');
+      allCheckbox.checked = selectedCategories.length === allCategoryCheckboxes.length;
+
+      // 表示更新
+      const text = document.getElementById('categorySelectText');
+      if (selectedCategories.length === 0 || selectedCategories.length === categories.length) {
+        text.textContent = '全て';
+      } else if (selectedCategories.length <= 2) {
+        text.textContent = selectedCategories.join(', ');
+      } else {
+        text.textContent = `${selectedCategories.length}件選択中`;
       }
-    });
-  }
-  
-  // マルチセレクト操作
-  function toggleMultiSelect() {
-    document.getElementById('categoryDropdown').classList.toggle('show');
-  }
-  
-  function toggleAllCategories(checkbox) {
-    const checkboxes = document.querySelectorAll('#categoryList input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = checkbox.checked);
-    updateSelectedCategories();
-  }
-  
-  function updateSelectedCategories() {
-    const checkboxes = document.querySelectorAll('#categoryList input[type="checkbox"]:checked');
-    selectedCategories = Array.from(checkboxes).map(cb => cb.value);
-    
-    const allCheckbox = document.getElementById('catAll');
-    const allCategoryCheckboxes = document.querySelectorAll('#categoryList input[type="checkbox"]');
-    allCheckbox.checked = selectedCategories.length === allCategoryCheckboxes.length;
-    
-    // 表示更新
-    const text = document.getElementById('categorySelectText');
-    if (selectedCategories.length === 0 || selectedCategories.length === categories.length) {
-      text.textContent = '全て';
-    } else if (selectedCategories.length <= 2) {
-      text.textContent = selectedCategories.join(', ');
-    } else {
-      text.textContent = `${selectedCategories.length}件選択中`;
+
+      // タグ表示
+      renderSelectedCategoryTags();
     }
-    
-    // タグ表示
-    renderSelectedCategoryTags();
-  }
-  
-  function renderSelectedCategoryTags() {
-    const container = document.getElementById('selectedCategoryTags');
-    if (selectedCategories.length === 0 || selectedCategories.length === categories.length) {
-      container.innerHTML = '';
-      return;
-    }
-    
-    container.innerHTML = selectedCategories.map(cat => `
+
+    function renderSelectedCategoryTags() {
+      const container = document.getElementById('selectedCategoryTags');
+      if (selectedCategories.length === 0 || selectedCategories.length === categories.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = selectedCategories.map(cat => `
       <span class="selected-tag" data-category="${escapeHtmlAttr(cat)}">
         ${escapeHtml(cat)}
         <i class="bi bi-x remove" onclick="removeCategory(this.parentElement.getAttribute('data-category'))"></i>
       </span>
     `).join('');
-  }
-  
-  function removeCategory(cat) {
-    const list = document.querySelectorAll('#categoryList input[type="checkbox"]');
-    const checkbox = Array.from(list).find(input => input.value === cat);
-    if (checkbox) {
-      checkbox.checked = false;
-      updateSelectedCategories();
     }
-  }
-  
-  // 発送先検索
-  function searchDestinations(keyword) {
-    const resultsContainer = document.getElementById('destinationSearchResults');
-    
-    if (!keyword || keyword.length < 2) {
-      resultsContainer.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
-      return;
+
+    function removeCategory(cat) {
+      const list = document.querySelectorAll('#categoryList input[type="checkbox"]');
+      const checkbox = Array.from(list).find(input => input.value === cat);
+      if (checkbox) {
+        checkbox.checked = false;
+        updateSelectedCategories();
+      }
     }
-    
-    resultsContainer.innerHTML = '<div class="no-results">検索中...</div>';
-    
-    google.script.run
-      .withSuccessHandler(function(results) {
-        if (results.length === 0) {
-          resultsContainer.innerHTML = '<div class="no-results">該当する発送先が見つかりません</div>';
-          return;
-        }
-        
-        resultsContainer.innerHTML = results.map(item => `
+
+    // 発送先検索
+    function searchDestinations(keyword) {
+      const resultsContainer = document.getElementById('destinationSearchResults');
+
+      if (!keyword || keyword.length < 2) {
+        resultsContainer.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = '<div class="no-results">検索中...</div>';
+
+      google.script.run
+        .withSuccessHandler(function (results) {
+          if (results.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-results">該当する発送先が見つかりません</div>';
+            return;
+          }
+
+          resultsContainer.innerHTML = results.map(item => `
           <div class="search-result-item" onclick="selectDestination('${item.name}', '${item.address}')">
             <div class="result-main">${item.name}</div>
             <div class="result-sub">${item.address || ''} ${item.tel || ''}</div>
           </div>
         `).join('');
-      })
-      .withFailureHandler(function(error) {
-        resultsContainer.innerHTML = '<div class="no-results">検索エラーが発生しました</div>';
-      })
-      .searchShippingTo(keyword);
-  }
-  
-  function selectDestination(name, address) {
-    selectedDestination = name;
-    
-    document.getElementById('destinationContainer').innerHTML = `
+        })
+        .withFailureHandler(function (error) {
+          resultsContainer.innerHTML = '<div class="no-results">検索エラーが発生しました</div>';
+        })
+        .searchShippingTo(keyword);
+    }
+
+    function selectDestination(name, address) {
+      selectedDestination = name;
+
+      document.getElementById('destinationContainer').innerHTML = `
       <span class="selected-value">
         ${name}
         <i class="bi bi-x-circle remove-btn" onclick="clearDestination()"></i>
       </span>
     `;
-    
-    bootstrap.Modal.getInstance(document.getElementById('destinationSearchModal')).hide();
-  }
-  
-  function clearDestination() {
-    selectedDestination = null;
-    document.getElementById('destinationContainer').innerHTML = `
+
+      bootstrap.Modal.getInstance(document.getElementById('destinationSearchModal')).hide();
+    }
+
+    function clearDestination() {
+      selectedDestination = null;
+      document.getElementById('destinationContainer').innerHTML = `
       <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#destinationSearchModal">
         <i class="bi bi-search me-1"></i>指定なし
       </button>
     `;
-  }
-  
-  // 顧客検索
-  function searchCustomers(keyword) {
-    const resultsContainer = document.getElementById('customerSearchResults');
-    
-    if (!keyword || keyword.length < 2) {
-      resultsContainer.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
-      return;
     }
-    
-    resultsContainer.innerHTML = '<div class="no-results">検索中...</div>';
-    
-    google.script.run
-      .withSuccessHandler(function(results) {
-        if (results.length === 0) {
-          resultsContainer.innerHTML = '<div class="no-results">該当する顧客が見つかりません</div>';
-          return;
-        }
-        
-        resultsContainer.innerHTML = results.map(item => `
+
+    // 顧客検索
+    function searchCustomers(keyword) {
+      const resultsContainer = document.getElementById('customerSearchResults');
+
+      if (!keyword || keyword.length < 2) {
+        resultsContainer.innerHTML = '<div class="no-results">2文字以上入力してください</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = '<div class="no-results">検索中...</div>';
+
+      google.script.run
+        .withSuccessHandler(function (results) {
+          if (results.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-results">該当する顧客が見つかりません</div>';
+            return;
+          }
+
+          resultsContainer.innerHTML = results.map(item => `
           <div class="search-result-item" onclick="selectCustomer('${item.name}', '${item.address}')">
             <div class="result-main">${item.name}</div>
             <div class="result-sub">${item.address || ''} ${item.tel || ''}</div>
           </div>
         `).join('');
-      })
-      .withFailureHandler(function(error) {
-        resultsContainer.innerHTML = '<div class="no-results">検索エラーが発生しました</div>';
-      })
-      .searchCustomer(keyword);
-  }
-  
-  function selectCustomer(name, address) {
-    selectedCustomer = name;
-    
-    document.getElementById('customerContainer').innerHTML = `
+        })
+        .withFailureHandler(function (error) {
+          resultsContainer.innerHTML = '<div class="no-results">検索エラーが発生しました</div>';
+        })
+        .searchCustomer(keyword);
+    }
+
+    function selectCustomer(name, address) {
+      selectedCustomer = name;
+
+      document.getElementById('customerContainer').innerHTML = `
       <span class="selected-value">
         ${name}
         <i class="bi bi-x-circle remove-btn" onclick="clearCustomer()"></i>
       </span>
     `;
-    
-    bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
-  }
-  
-  function clearCustomer() {
-    selectedCustomer = null;
-    document.getElementById('customerContainer').innerHTML = `
+
+      bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
+    }
+
+    function clearCustomer() {
+      selectedCustomer = null;
+      document.getElementById('customerContainer').innerHTML = `
       <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
         <i class="bi bi-search me-1"></i>指定なし
       </button>
     `;
-  }
-  
-  // 検索実行
-  function executeSearch() {
-    const period = document.querySelector('input[name="period"]:checked').value;
-    let dateFrom, dateTo;
-    
-    const today = new Date();
-    
-    switch (period) {
-      case 'today':
-        dateFrom = new Date(today);
-        dateTo = new Date(today);
-        break;
-      case 'tomorrow':
-        dateFrom = new Date(today);
-        dateFrom.setDate(today.getDate() + 1);
-        dateTo = new Date(dateFrom);
-        break;
-      case 'todayWeek':
-        // 今日から1週間（今日〜today+6 の7日分）
-        dateFrom = new Date(today);
-        dateTo = new Date(today);
-        dateTo.setDate(today.getDate() + 6);
-        break;
-      case 'thisWeek':
-        // 今週（日曜始まり）
-        const dayOfWeek = today.getDay();
-        dateFrom = new Date(today);
-        dateFrom.setDate(today.getDate() - dayOfWeek);
-        dateTo = new Date(dateFrom);
-        dateTo.setDate(dateFrom.getDate() + 6);
-        break;
-      case 'nextWeek':
-        // 来週
-        const nextWeekStart = new Date(today);
-        nextWeekStart.setDate(today.getDate() + (7 - today.getDay()));
-        dateFrom = nextWeekStart;
-        dateTo = new Date(nextWeekStart);
-        dateTo.setDate(nextWeekStart.getDate() + 6);
-        break;
-      case 'thisMonth':
-        dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
-        dateTo = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        break;
-      case 'nextMonth':
-        dateFrom = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-        dateTo = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-        break;
-      case 'custom':
-        dateFrom = new Date(document.getElementById('dateFrom').value);
-        dateTo = new Date(document.getElementById('dateTo').value);
-        
-        // 最大1ヶ月チェック
-        const diffDays = (dateTo - dateFrom) / (1000 * 60 * 60 * 24);
-        if (diffDays > 31) {
-          alert('期間は最大1ヶ月までです');
-          return;
-        }
-        if (dateFrom > dateTo) {
-          alert('開始日は終了日より前にしてください');
-          return;
-        }
-        break;
     }
-    
-    const params = {
-      dateFrom: formatDate(dateFrom),
-      dateTo: formatDate(dateTo),
-      categories: selectedCategories.length === 0 || selectedCategories.length === categories.length 
-                  ? [] : selectedCategories,
-      destination: selectedDestination,
-      customer: selectedCustomer
-    };
-    
-    showLoading('検索中...');
-    
-    google.script.run
-      .withSuccessHandler(function(result) {
-        hideLoading();
-        heatmapData = JSON.parse(result);
-        renderHeatmap();
-      })
-      .withFailureHandler(function(error) {
-        hideLoading();
-        alert('検索エラー: ' + error.message);
-      })
-      .getHeatmapData(params);
-  }
-  
-  // ヒートマップ描画
-  function renderHeatmap() {
-    if (!heatmapData) return;
-    
-    const { dates, products, data, dailyTotals, productTotals } = heatmapData;
-    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-    
-    // ヘッダー（日付）
-    const headerRow = document.getElementById('heatmapHeader');
-    headerRow.innerHTML = '<tr>' + dates.map(d => {
-      const date = new Date(d);
-      const day = date.getDate();
-      const weekday = date.getDay();
-      let className = '';
-      if (weekday === 0) className = 'sunday';
-      if (weekday === 6) className = 'saturday';
-      return `<th class="${className}">${day}<br><small>${weekdays[weekday]}</small></th>`;
-    }).join('') + '<th>計</th></tr>';
-    
-    // 左固定列（商品名）
-    const stickyBody = document.getElementById('stickyTableBody');
-    stickyBody.innerHTML = products.map(p => 
-      `<tr><td data-product="${p.fullName}">${p.shortName}</td></tr>`
-    ).join('');
-    
-    // ヒートマップ本体
-    const body = document.getElementById('heatmapBody');
-    body.innerHTML = products.map((product, pIndex) => {
-      const cells = dates.map((date, dIndex) => {
-        const value = data[pIndex][dIndex] || 0;
-        const heatClass = getHeatClass(value);
-        const display = value > 0 ? value : '-';
-        return `<td class="${heatClass}" data-date="${date}" data-product="${product.shortName}" data-product-index="${pIndex}" data-date-index="${dIndex}">${display}</td>`;
-      }).join('');
-      
-      const total = productTotals[pIndex] || 0;
-      return `<tr>${cells}<td style="background:#e9ecef;font-weight:600;">${total}</td></tr>`;
-    }).join('');
-    
-    // 日計行
-    const footer = document.getElementById('heatmapFooter');
-    const dailyCells = dates.map((date, dIndex) => {
-      const total = dailyTotals[dIndex] || 0;
-      return `<td style="background:#e9ecef;font-weight:600;">${total > 0 ? total : '-'}</td>`;
-    }).join('');
-    const grandTotal = dailyTotals.reduce((a, b) => a + b, 0);
-    footer.innerHTML = `<tr>${dailyCells}<td style="background:#3d5a80;color:white;font-weight:700;">${grandTotal}</td></tr>`;
-    
-    // イベント設定
-    setupCellEvents();
-    setupTooltipEvents();
-    syncHeight();
-  }
-  
-  function getHeatClass(value) {
-    if (value === 0) return 'heat-0';
-    if (value <= 20) return 'heat-1';
-    if (value <= 50) return 'heat-2';
-    if (value <= 100) return 'heat-3';
-    if (value <= 150) return 'heat-4';
-    if (value <= 200) return 'heat-5';
-    return 'heat-6';
-  }
-  
-  // セルクリックイベント
-  function setupCellEvents() {
-    const cells = document.querySelectorAll('.heatmap-table tbody td:not(.heat-0)');
-    const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
-    
-    cells.forEach(cell => {
-      if (cell.dataset.date && cell.dataset.product) {
-        cell.addEventListener('click', function() {
-          const dateIndex = parseInt(this.dataset.dateIndex);
-          const productIndex = parseInt(this.dataset.productIndex);
-          const date = this.dataset.date;
-          const product = this.dataset.product;
-          
-          showDetailModal(date, product, productIndex, dateIndex, detailModal);
-        });
+
+    // 検索実行
+    function executeSearch() {
+      const period = document.querySelector('input[name="period"]:checked').value;
+      let dateFrom, dateTo;
+
+      const today = new Date();
+
+      switch (period) {
+        case 'today':
+          dateFrom = new Date(today);
+          dateTo = new Date(today);
+          break;
+        case 'tomorrow':
+          dateFrom = new Date(today);
+          dateFrom.setDate(today.getDate() + 1);
+          dateTo = new Date(dateFrom);
+          break;
+        case 'todayWeek':
+          // 今日から1週間（今日〜today+6 の7日分）
+          dateFrom = new Date(today);
+          dateTo = new Date(today);
+          dateTo.setDate(today.getDate() + 6);
+          break;
+        case 'thisWeek':
+          // 今週（日曜始まり）
+          const dayOfWeek = today.getDay();
+          dateFrom = new Date(today);
+          dateFrom.setDate(today.getDate() - dayOfWeek);
+          dateTo = new Date(dateFrom);
+          dateTo.setDate(dateFrom.getDate() + 6);
+          break;
+        case 'nextWeek':
+          // 来週
+          const nextWeekStart = new Date(today);
+          nextWeekStart.setDate(today.getDate() + (7 - today.getDay()));
+          dateFrom = nextWeekStart;
+          dateTo = new Date(nextWeekStart);
+          dateTo.setDate(nextWeekStart.getDate() + 6);
+          break;
+        case 'thisMonth':
+          dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+          dateTo = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          break;
+        case 'nextMonth':
+          dateFrom = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          dateTo = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+          break;
+        case 'custom':
+          dateFrom = new Date(document.getElementById('dateFrom').value);
+          dateTo = new Date(document.getElementById('dateTo').value);
+
+          // 最大1ヶ月チェック
+          const diffDays = (dateTo - dateFrom) / (1000 * 60 * 60 * 24);
+          if (diffDays > 31) {
+            alert('期間は最大1ヶ月までです');
+            return;
+          }
+          if (dateFrom > dateTo) {
+            alert('開始日は終了日より前にしてください');
+            return;
+          }
+          break;
       }
-    });
-  }
-  
-  function showDetailModal(date, product, productIndex, dateIndex, modal) {
-    const details = heatmapData.details[productIndex][dateIndex] || [];
-    
-    const dateObj = new Date(date);
-    const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-    
-    document.getElementById('modalTitle').innerHTML = 
-      `<i class="bi bi-calendar-event me-2"></i>${dateStr} - ${product} の内訳`;
-    
-    const tbody = document.getElementById('modalBody');
-    if (details.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="text-center">詳細データがありません</td></tr>';
-    } else {
-      tbody.innerHTML = details.map(d => `
+
+      const params = {
+        dateFrom: formatDate(dateFrom),
+        dateTo: formatDate(dateTo),
+        categories: selectedCategories.length === 0 || selectedCategories.length === categories.length
+          ? [] : selectedCategories,
+        destination: selectedDestination,
+        customer: selectedCustomer
+      };
+
+      showLoading('検索中...');
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          hideLoading();
+          heatmapData = JSON.parse(result);
+          renderHeatmap();
+        })
+        .withFailureHandler(function (error) {
+          hideLoading();
+          alert('検索エラー: ' + error.message);
+        })
+        .getHeatmapData(params);
+    }
+
+    // ヒートマップ描画
+    function renderHeatmap() {
+      if (!heatmapData) return;
+
+      const { dates, products, data, dailyTotals, productTotals } = heatmapData;
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+
+      // ヘッダー（日付）
+      const headerRow = document.getElementById('heatmapHeader');
+      headerRow.innerHTML = '<tr>' + dates.map(d => {
+        const date = new Date(d);
+        const day = date.getDate();
+        const weekday = date.getDay();
+        let className = '';
+        if (weekday === 0) className = 'sunday';
+        if (weekday === 6) className = 'saturday';
+        return `<th class="${className}">${day}<br><small>${weekdays[weekday]}</small></th>`;
+      }).join('') + '<th>計</th></tr>';
+
+      // 左固定列（商品名）
+      const stickyBody = document.getElementById('stickyTableBody');
+      stickyBody.innerHTML = products.map(p =>
+        `<tr><td data-product="${p.fullName}">${p.shortName}</td></tr>`
+      ).join('');
+
+      // ヒートマップ本体
+      const body = document.getElementById('heatmapBody');
+      body.innerHTML = products.map((product, pIndex) => {
+        const cells = dates.map((date, dIndex) => {
+          const value = data[pIndex][dIndex] || 0;
+          const heatClass = getHeatClass(value);
+          const display = value > 0 ? value : '-';
+          return `<td class="${heatClass}" data-date="${date}" data-product="${product.shortName}" data-product-index="${pIndex}" data-date-index="${dIndex}">${display}</td>`;
+        }).join('');
+
+        const total = productTotals[pIndex] || 0;
+        return `<tr>${cells}<td style="background:#e9ecef;font-weight:600;">${total}</td></tr>`;
+      }).join('');
+
+      // 日計行
+      const footer = document.getElementById('heatmapFooter');
+      const dailyCells = dates.map((date, dIndex) => {
+        const total = dailyTotals[dIndex] || 0;
+        return `<td style="background:#e9ecef;font-weight:600;">${total > 0 ? total : '-'}</td>`;
+      }).join('');
+      const grandTotal = dailyTotals.reduce((a, b) => a + b, 0);
+      footer.innerHTML = `<tr>${dailyCells}<td style="background:#3d5a80;color:white;font-weight:700;">${grandTotal}</td></tr>`;
+
+      // イベント設定
+      setupCellEvents();
+      setupTooltipEvents();
+      syncHeight();
+    }
+
+    function getHeatClass(value) {
+      if (value === 0) return 'heat-0';
+      if (value <= 20) return 'heat-1';
+      if (value <= 50) return 'heat-2';
+      if (value <= 100) return 'heat-3';
+      if (value <= 150) return 'heat-4';
+      if (value <= 200) return 'heat-5';
+      return 'heat-6';
+    }
+
+    // セルクリックイベント
+    function setupCellEvents() {
+      const cells = document.querySelectorAll('.heatmap-table tbody td:not(.heat-0)');
+      const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+
+      cells.forEach(cell => {
+        if (cell.dataset.date && cell.dataset.product) {
+          cell.addEventListener('click', function () {
+            const dateIndex = parseInt(this.dataset.dateIndex);
+            const productIndex = parseInt(this.dataset.productIndex);
+            const date = this.dataset.date;
+            const product = this.dataset.product;
+
+            showDetailModal(date, product, productIndex, dateIndex, detailModal);
+          });
+        }
+      });
+    }
+
+    function showDetailModal(date, product, productIndex, dateIndex, modal) {
+      const details = heatmapData.details[productIndex][dateIndex] || [];
+
+      const dateObj = new Date(date);
+      const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+
+      document.getElementById('modalTitle').innerHTML =
+        `<i class="bi bi-calendar-event me-2"></i>${dateStr} - ${product} の内訳`;
+
+      const tbody = document.getElementById('modalBody');
+      if (details.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center">詳細データがありません</td></tr>';
+      } else {
+        tbody.innerHTML = details.map(d => `
         <tr>
           <td>${d.customer}</td>
           <td>${d.destination}</td>
           <td class="text-end">${d.quantity}</td>
         </tr>
       `).join('');
+      }
+
+      const total = details.reduce((sum, d) => sum + d.quantity, 0);
+      document.getElementById('modalTotal').textContent = total;
+
+      modal.show();
     }
-    
-    const total = details.reduce((sum, d) => sum + d.quantity, 0);
-    document.getElementById('modalTotal').textContent = total;
-    
-    modal.show();
-  }
-  
-  // ツールチップ
-  function setupTooltipEvents() {
-    const tooltip = document.getElementById('productTooltip');
-    const stickyTds = document.querySelectorAll('.sticky-table tbody td');
-    
-    stickyTds.forEach(td => {
-      td.addEventListener('mouseenter', function(e) {
-        const productName = this.dataset.product;
-        if (productName) {
-          tooltip.textContent = productName;
-          tooltip.classList.add('show');
-          
-          const rect = this.getBoundingClientRect();
-          tooltip.style.left = (rect.right + 10) + 'px';
-          tooltip.style.top = rect.top + 'px';
+
+    // ツールチップ
+    function setupTooltipEvents() {
+      const tooltip = document.getElementById('productTooltip');
+      const stickyTds = document.querySelectorAll('.sticky-table tbody td');
+
+      stickyTds.forEach(td => {
+        td.addEventListener('mouseenter', function (e) {
+          const productName = this.dataset.product;
+          if (productName) {
+            tooltip.textContent = productName;
+            tooltip.classList.add('show');
+
+            const rect = this.getBoundingClientRect();
+            tooltip.style.left = (rect.right + 10) + 'px';
+            tooltip.style.top = rect.top + 'px';
+          }
+        });
+
+        td.addEventListener('mouseleave', function () {
+          tooltip.classList.remove('show');
+        });
+      });
+    }
+
+    // 高さ同期
+    function syncHeight() {
+      const mainRows = document.querySelectorAll('.heatmap-table tbody tr');
+      const stickyRows = document.querySelectorAll('.sticky-table tbody tr');
+
+      mainRows.forEach((row, index) => {
+        if (stickyRows[index]) {
+          const height = row.offsetHeight;
+          stickyRows[index].style.height = height + 'px';
         }
       });
-      
-      td.addEventListener('mouseleave', function() {
-        tooltip.classList.remove('show');
-      });
-    });
-  }
-  
-  // 高さ同期
-  function syncHeight() {
-    const mainRows = document.querySelectorAll('.heatmap-table tbody tr');
-    const stickyRows = document.querySelectorAll('.sticky-table tbody tr');
-    
-    mainRows.forEach((row, index) => {
-      if (stickyRows[index]) {
-        const height = row.offsetHeight;
-        stickyRows[index].style.height = height + 'px';
-      }
-    });
-  }
-  
-  window.addEventListener('resize', syncHeight);
-</script>
+    }
+
+    window.addEventListener('resize', syncHeight);
+  </script>
 
 </body>
+
 </html>

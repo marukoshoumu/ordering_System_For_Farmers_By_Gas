@@ -29,7 +29,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
+    .page-hero-header {
       background: var(--brand-primary, #4a90a4);
       color: white;
       border-radius: 12px 12px 0 0 !important;
@@ -39,7 +39,7 @@
       align-items: center;
     }
 
-    .card-header h1 {
+    .page-hero-header h1 {
       font-size: 1.25rem;
       margin: 0;
       font-weight: 600;
@@ -108,12 +108,26 @@
       vertical-align: middle;
     }
 
-    .customer-table .col-company { min-width: 150px; }
-    .customer-table .col-name { width: 120px; }
-    .customer-table .col-address { min-width: 250px; }
-    .customer-table .col-action { width: 100px; text-align: center; }
+    .customer-table .col-company {
+      min-width: 150px;
+    }
 
-    .customer-cards { display: none; }
+    .customer-table .col-name {
+      width: 120px;
+    }
+
+    .customer-table .col-address {
+      min-width: 250px;
+    }
+
+    .customer-table .col-action {
+      width: 100px;
+      text-align: center;
+    }
+
+    .customer-cards {
+      display: none;
+    }
 
     .customer-card {
       background: white;
@@ -153,9 +167,20 @@
       font-size: 0.85rem;
     }
 
-    .customer-card-item { display: flex; flex-direction: column; }
-    .customer-card-label { font-size: 0.7rem; color: #999; }
-    .customer-card-value { color: #333; font-weight: 500; }
+    .customer-card-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .customer-card-label {
+      font-size: 0.7rem;
+      color: #999;
+    }
+
+    .customer-card-value {
+      color: #333;
+      font-weight: 500;
+    }
 
     .customer-card-buttons {
       display: flex;
@@ -165,7 +190,9 @@
       border-top: 1px solid #f0f0f0;
     }
 
-    .customer-card-buttons button { flex: 1; }
+    .customer-card-buttons button {
+      flex: 1;
+    }
 
     .result-count {
       padding: 8px 0;
@@ -183,7 +210,9 @@
       color: white;
     }
 
-    .modal-section { margin-bottom: 20px; }
+    .modal-section {
+      margin-bottom: 20px;
+    }
 
     .modal-section-title {
       font-weight: 600;
@@ -201,21 +230,47 @@
     }
 
     @media (max-width: 768px) {
-      .main-container { padding: 8px; }
-      .filter-row { flex-direction: column; align-items: stretch; }
-      .filter-group { width: 100%; }
-      .filter-group .form-control,
-      .filter-group .form-select { flex: 1; }
-      .customer-table-wrapper { display: none; }
-      .customer-cards { display: block; }
-      .card-header { flex-direction: column; gap: 12px; align-items: stretch; }
-      .card-header h1 { text-align: center; }
-    }
+      .main-container {
+        padding: 8px;
+      }
 
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-group .form-control,
+      .filter-group .form-select {
+        flex: 1;
+      }
+
+      .customer-table-wrapper {
+        display: none;
+      }
+
+      .customer-cards {
+        display: block;
+      }
+
+      .page-hero-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .page-hero-header h1 {
+        text-align: center;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -223,12 +278,9 @@
     </form>
 
     <div class="card">
-      <div class="card-header">
-        <h1><i class="bi bi-people me-2"></i>顧客マスタ</h1>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
-            <i class="bi bi-house"></i> ホーム
-          </button>
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-people me-2"></i>顧客マスタ</h1>
+        <div class="d-flex gap-2" style="position: absolute; right: 16px;">
           <button type="button" class="btn btn-success btn-sm" onclick="openAddModal()">
             <i class="bi bi-plus-lg"></i> 新規登録
           </button>
@@ -350,7 +402,8 @@
             <div class="row g-3">
               <div class="col-md-4">
                 <label class="form-label">郵便番号 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="customerZipcode" maxlength="7" placeholder="1234567" onchange="getCustomerAddress()">
+                <input type="text" class="form-control" id="customerZipcode" maxlength="7" placeholder="1234567"
+                  onchange="getCustomerAddress()">
               </div>
               <div class="col-md-8">
                 <label class="form-label">住所１ <span class="text-danger">*</span></label>
@@ -418,7 +471,8 @@
               </div>
               <div class="col-12">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="customerSameShippingTo" name="customerSameShippingTo">
+                  <input class="form-check-input" type="checkbox" id="customerSameShippingTo"
+                    name="customerSameShippingTo">
                   <label class="form-check-label" for="customerSameShippingTo">発送先同上</label>
                 </div>
               </div>
@@ -463,13 +517,13 @@
     let customers = [];
     let customerModal, deleteModal;
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
       deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
       loadCustomers();
 
-      document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
+      document.getElementById('filterKeyword').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
           searchCustomers();
         }
@@ -495,12 +549,12 @@
       };
 
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           customers = JSON.parse(data);
           renderCustomers();
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('顧客取得エラー:', e);
           hideLoading();
           showErrorToast('顧客の読み込みに失敗しました');
@@ -533,9 +587,9 @@
       tbody.textContent = '';
       cards.textContent = '';
 
-      customers.forEach(function(c) {
+      customers.forEach(function (c) {
         const tr = document.createElement('tr');
-        tr.addEventListener('click', function() { openEditModal(c.rowIndex); });
+        tr.addEventListener('click', function () { openEditModal(c.rowIndex); });
 
         const tdCompany = document.createElement('td');
         tdCompany.className = 'col-company';
@@ -560,7 +614,7 @@
         const editIcon = document.createElement('i');
         editIcon.className = 'bi bi-pencil';
         editBtn.appendChild(editIcon);
-        editBtn.addEventListener('click', function(e) {
+        editBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openEditModal(c.rowIndex);
         });
@@ -571,7 +625,7 @@
         const deleteIcon = document.createElement('i');
         deleteIcon.className = 'bi bi-trash';
         deleteBtn.appendChild(deleteIcon);
-        deleteBtn.addEventListener('click', function(e) {
+        deleteBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openDeleteModal(c.rowIndex, c.companyName || c.personName);
         });
@@ -581,7 +635,7 @@
         tbody.appendChild(tr);
       });
 
-      customers.forEach(function(c) {
+      customers.forEach(function (c) {
         const card = document.createElement('div');
         card.className = 'customer-card';
 
@@ -612,7 +666,7 @@
           { label: 'メール', value: c.email || '-' }
         ];
 
-        items.forEach(function(item) {
+        items.forEach(function (item) {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'customer-card-item';
 
@@ -640,7 +694,7 @@
         editIconMobile.className = 'bi bi-pencil';
         editBtnMobile.appendChild(editIconMobile);
         editBtnMobile.appendChild(document.createTextNode(' 編集'));
-        editBtnMobile.addEventListener('click', function() { openEditModal(c.rowIndex); });
+        editBtnMobile.addEventListener('click', function () { openEditModal(c.rowIndex); });
         buttons.appendChild(editBtnMobile);
 
         const deleteBtnMobile = document.createElement('button');
@@ -649,7 +703,7 @@
         deleteIconMobile.className = 'bi bi-trash';
         deleteBtnMobile.appendChild(deleteIconMobile);
         deleteBtnMobile.appendChild(document.createTextNode(' 削除'));
-        deleteBtnMobile.addEventListener('click', function() { openDeleteModal(c.rowIndex, c.showName || c.companyName || c.personName); });
+        deleteBtnMobile.addEventListener('click', function () { openDeleteModal(c.rowIndex, c.showName || c.companyName || c.personName); });
         buttons.appendChild(deleteBtnMobile);
 
         card.appendChild(buttons);
@@ -669,7 +723,7 @@
       showLoading('顧客情報を取得中...');
 
       google.script.run
-        .withSuccessHandler(function(customer) {
+        .withSuccessHandler(function (customer) {
           if (customer) {
             var c = {
               rowIndex: customer.rowIndex,
@@ -717,7 +771,7 @@
           }
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('顧客詳細取得エラー:', e);
           hideLoading();
           showErrorToast('顧客情報の取得に失敗しました');
@@ -752,14 +806,14 @@
       if (!/^\d{7}$/.test(zipcode)) return;
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           if (result) {
             const addr = JSON.parse(result);
             document.getElementById('customerAddress1').value =
               (addr.address1 || '') + (addr.address2 || '') + (addr.address3 || '');
           }
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           console.error('住所取得エラー:', error);
         })
         .getAddressFromPostalCode(JSON.stringify({ postalCode: zipcode }));
@@ -846,7 +900,7 @@
       let functionName;
       let args;
       let errorMessage;
-      
+
       if (rowIndex) {
         // 編集時
         errorMessage = '更新に失敗しました';
@@ -926,7 +980,7 @@
       showLoading('削除中...');
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
@@ -936,7 +990,7 @@
             showErrorToast(result.message);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           hideLoading();
           showErrorToast('削除に失敗しました');
         })

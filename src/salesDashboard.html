@@ -11,6 +11,7 @@
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
     .dashboard-card {
@@ -18,7 +19,7 @@
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .summary-card {
@@ -73,10 +74,21 @@
       margin-right: 10px;
     }
 
-    .rank-1 { background: #ffd700; }
-    .rank-2 { background: #c0c0c0; }
-    .rank-3 { background: #cd7f32; }
-    .rank-other { background: #94a3b8; }
+    .rank-1 {
+      background: #ffd700;
+    }
+
+    .rank-2 {
+      background: #c0c0c0;
+    }
+
+    .rank-3 {
+      background: #cd7f32;
+    }
+
+    .rank-other {
+      background: #94a3b8;
+    }
 
     .segment-badge {
       display: inline-block;
@@ -86,10 +98,25 @@
       font-weight: bold;
     }
 
-    .segment-active { background: #10b981; color: white; }
-    .segment-warning { background: #f59e0b; color: white; }
-    .segment-risk { background: #ef4444; color: white; }
-    .segment-churned { background: #6b7280; color: white; }
+    .segment-active {
+      background: #10b981;
+      color: white;
+    }
+
+    .segment-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .segment-risk {
+      background: #ef4444;
+      color: white;
+    }
+
+    .segment-churned {
+      background: #6b7280;
+      color: white;
+    }
 
     .alert-custom {
       border-left: 4px solid #ef4444;
@@ -102,17 +129,11 @@
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="container-fluid py-4">
-    <form method="POST" action="<?= deployURL ?>">
-      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-      <div class="mb-3">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary" name="mainTop" value="true">
-          ← ホーム画面に戻る
-        </button>
-      </div>
-    </form>
-
-    <h2 class="text-center mb-4">📊 売上ダッシュボード</h2>
+    <div class="page-hero-header d-flex justify-content-between align-items-center mb-4">
+      <h2 class="m-0">売上ダッシュボード</h2>
+    </div>
 
     <div class="dashboard-card">
       <div class="row align-items-center">
@@ -260,7 +281,8 @@
     <div class="dashboard-card">
       <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="retention-tab" data-bs-toggle="tab" data-bs-target="#retention" type="button">
+          <button class="nav-link active" id="retention-tab" data-bs-toggle="tab" data-bs-target="#retention"
+            type="button">
             👥 顧客リテンション分析
           </button>
         </li>

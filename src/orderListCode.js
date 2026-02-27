@@ -154,7 +154,8 @@ function getOrderListData(params) {
       } else if (shippingStatus === 'harvestWaiting') {
         matchesBasicCondition = order.status === '収穫待ち';
       } else if (shippingStatus === 'shippedToDelivering') {
-        matchesBasicCondition = ['出荷済み', '出荷済', '発送済', '配達中'].includes(order.status);
+        matchesBasicCondition = ['出荷済み', '出荷済', '発送済', '配達中'].includes(order.status)
+          || (isShipped && !['キャンセル', '　キャンセル済', '配達完了'].includes(order.status));
       }
 
       // includeOverdueがtrueの場合、基本条件 OR 予定日超過でマッチ

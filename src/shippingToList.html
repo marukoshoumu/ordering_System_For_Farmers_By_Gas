@@ -29,7 +29,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
+    .page-hero-header {
       background: var(--brand-primary, #4a90a4);
       color: white;
       border-radius: 12px 12px 0 0 !important;
@@ -39,7 +39,7 @@
       align-items: center;
     }
 
-    .card-header h1 {
+    .page-hero-header h1 {
       font-size: 1.25rem;
       margin: 0;
       font-weight: 600;
@@ -108,12 +108,26 @@
       vertical-align: middle;
     }
 
-    .shippingto-table .col-company { min-width: 150px; }
-    .shippingto-table .col-name { width: 120px; }
-    .shippingto-table .col-address { min-width: 300px; }
-    .shippingto-table .col-action { width: 100px; text-align: center; }
+    .shippingto-table .col-company {
+      min-width: 150px;
+    }
 
-    .shippingto-cards { display: none; }
+    .shippingto-table .col-name {
+      width: 120px;
+    }
+
+    .shippingto-table .col-address {
+      min-width: 300px;
+    }
+
+    .shippingto-table .col-action {
+      width: 100px;
+      text-align: center;
+    }
+
+    .shippingto-cards {
+      display: none;
+    }
 
     .shippingto-card {
       background: white;
@@ -145,9 +159,20 @@
       font-size: 0.85rem;
     }
 
-    .shippingto-card-item { display: flex; flex-direction: column; }
-    .shippingto-card-label { font-size: 0.7rem; color: #999; }
-    .shippingto-card-value { color: #333; font-weight: 500; }
+    .shippingto-card-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .shippingto-card-label {
+      font-size: 0.7rem;
+      color: #999;
+    }
+
+    .shippingto-card-value {
+      color: #333;
+      font-weight: 500;
+    }
 
     .shippingto-card-buttons {
       display: flex;
@@ -157,7 +182,9 @@
       border-top: 1px solid #f0f0f0;
     }
 
-    .shippingto-card-buttons button { flex: 1; }
+    .shippingto-card-buttons button {
+      flex: 1;
+    }
 
     .result-count {
       padding: 8px 0;
@@ -175,7 +202,9 @@
       color: white;
     }
 
-    .modal-section { margin-bottom: 20px; }
+    .modal-section {
+      margin-bottom: 20px;
+    }
 
     .modal-section-title {
       font-weight: 600;
@@ -193,20 +222,46 @@
     }
 
     @media (max-width: 768px) {
-      .main-container { padding: 8px; }
-      .filter-row { flex-direction: column; align-items: stretch; }
-      .filter-group { width: 100%; }
-      .filter-group .form-control { flex: 1; }
-      .shippingto-table-wrapper { display: none; }
-      .shippingto-cards { display: block; }
-      .card-header { flex-direction: column; gap: 12px; align-items: stretch; }
-      .card-header h1 { text-align: center; }
-    }
+      .main-container {
+        padding: 8px;
+      }
 
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-group .form-control {
+        flex: 1;
+      }
+
+      .shippingto-table-wrapper {
+        display: none;
+      }
+
+      .shippingto-cards {
+        display: block;
+      }
+
+      .page-hero-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .page-hero-header h1 {
+        text-align: center;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="main-container">
     <form id="navForm" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -214,12 +269,9 @@
     </form>
 
     <div class="card">
-      <div class="card-header">
-        <h1><i class="bi bi-box-seam me-2"></i>発送先マスタ</h1>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light btn-sm" onclick="goHome()">
-            <i class="bi bi-house"></i> ホーム
-          </button>
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-box-seam me-2"></i>発送先マスタ</h1>
+        <div class="d-flex gap-2" style="position: absolute; right: 16px;">
           <button type="button" class="btn btn-success btn-sm" onclick="openAddModal()">
             <i class="bi bi-plus-lg"></i> 新規登録
           </button>
@@ -301,7 +353,8 @@
             <div class="row g-3">
               <div class="col-md-4">
                 <label class="form-label">郵便番号 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="shippingToZipcode" maxlength="7" placeholder="1234567" onchange="getShippingToAddress()">
+                <input type="text" class="form-control" id="shippingToZipcode" maxlength="7" placeholder="1234567"
+                  onchange="getShippingToAddress()">
               </div>
               <div class="col-md-8">
                 <label class="form-label">住所１ <span class="text-danger">*</span></label>
@@ -370,13 +423,13 @@
     let shippingTos = [];
     let shippingToModal, deleteModal;
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       shippingToModal = new bootstrap.Modal(document.getElementById('shippingToModal'));
       deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
       loadShippingTos();
 
-      document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
+      document.getElementById('filterKeyword').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
           searchShippingTos();
         }
@@ -401,12 +454,12 @@
       };
 
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           shippingTos = JSON.parse(data);
           renderShippingTos();
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('発送先取得エラー:', e);
           hideLoading();
           showErrorToast('発送先の読み込みに失敗しました');
@@ -438,9 +491,9 @@
       tbody.textContent = '';
       cards.textContent = '';
 
-      shippingTos.forEach(function(s) {
+      shippingTos.forEach(function (s) {
         const tr = document.createElement('tr');
-        tr.addEventListener('click', function() { openEditModal(s.rowIndex); });
+        tr.addEventListener('click', function () { openEditModal(s.rowIndex); });
 
         const tdCompany = document.createElement('td');
         tdCompany.className = 'col-company';
@@ -466,7 +519,7 @@
         const editIcon = document.createElement('i');
         editIcon.className = 'bi bi-pencil';
         editBtn.appendChild(editIcon);
-        editBtn.addEventListener('click', function(e) {
+        editBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openEditModal(s.rowIndex);
         });
@@ -477,7 +530,7 @@
         const deleteIcon = document.createElement('i');
         deleteIcon.className = 'bi bi-trash';
         deleteBtn.appendChild(deleteIcon);
-        deleteBtn.addEventListener('click', function(e) {
+        deleteBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           openDeleteModal(s.rowIndex, s.companyName || s.personName);
         });
@@ -487,7 +540,7 @@
         tbody.appendChild(tr);
       });
 
-      shippingTos.forEach(function(s) {
+      shippingTos.forEach(function (s) {
         const card = document.createElement('div');
         card.className = 'shippingto-card';
 
@@ -514,7 +567,7 @@
           { label: 'メール', value: s.email || '-' }
         ];
 
-        items.forEach(function(item) {
+        items.forEach(function (item) {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'shippingto-card-item';
 
@@ -542,7 +595,7 @@
         editIconMobile.className = 'bi bi-pencil';
         editBtnMobile.appendChild(editIconMobile);
         editBtnMobile.appendChild(document.createTextNode(' 編集'));
-        editBtnMobile.addEventListener('click', function() { openEditModal(s.rowIndex); });
+        editBtnMobile.addEventListener('click', function () { openEditModal(s.rowIndex); });
         buttons.appendChild(editBtnMobile);
 
         const deleteBtnMobile = document.createElement('button');
@@ -551,7 +604,7 @@
         deleteIconMobile.className = 'bi bi-trash';
         deleteBtnMobile.appendChild(deleteIconMobile);
         deleteBtnMobile.appendChild(document.createTextNode(' 削除'));
-        deleteBtnMobile.addEventListener('click', function() { openDeleteModal(s.rowIndex, s.companyName || s.personName); });
+        deleteBtnMobile.addEventListener('click', function () { openDeleteModal(s.rowIndex, s.companyName || s.personName); });
         buttons.appendChild(deleteBtnMobile);
 
         card.appendChild(buttons);
@@ -571,7 +624,7 @@
       showLoading('発送先情報を取得中...');
 
       google.script.run
-        .withSuccessHandler(function(shippingTo) {
+        .withSuccessHandler(function (shippingTo) {
           if (shippingTo) {
             var s = {
               rowIndex: shippingTo.rowIndex,
@@ -601,7 +654,7 @@
           }
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('発送先詳細取得エラー:', e);
           hideLoading();
           showErrorToast('発送先情報の取得に失敗しました');
@@ -626,14 +679,14 @@
       if (!/^\d{7}$/.test(zipcode)) return;
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           if (result) {
             const addr = JSON.parse(result);
             document.getElementById('shippingToAddress1').value =
               (addr.address1 || '') + (addr.address2 || '') + (addr.address3 || '');
           }
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           console.error('住所取得エラー:', error);
         })
         .getAddressFromPostalCode(JSON.stringify({ postalCode: zipcode }));
@@ -698,7 +751,7 @@
 
       if (rowIndex) {
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
@@ -708,14 +761,14 @@
               showErrorToast(result.message);
             }
           })
-          .withFailureHandler(function(e) {
+          .withFailureHandler(function (e) {
             hideLoading();
             showErrorToast('更新に失敗しました');
           })
           .updateShippingTo(Number(rowIndex), data);
       } else {
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             hideLoading();
             if (result.success) {
               showSuccessToast(result.message);
@@ -725,7 +778,7 @@
               showErrorToast(result.message);
             }
           })
-          .withFailureHandler(function(e) {
+          .withFailureHandler(function (e) {
             hideLoading();
             showErrorToast('登録に失敗しました');
           })
@@ -745,7 +798,7 @@
       showLoading('削除中...');
 
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result.success) {
             showSuccessToast(result.message);
@@ -755,7 +808,7 @@
             showErrorToast(result.message);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           hideLoading();
           showErrorToast('削除に失敗しました');
         })

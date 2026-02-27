@@ -286,32 +286,78 @@
     .order-card.overdue-row .order-card-customer {
       color: #c62828;
     }
+
     /* 収穫待ち一覧ダイアログ：コンパクト表形式（PC・スマホ両対応） */
-    .harvest-waiting-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .harvest-waiting-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
     .harvest-waiting-row {
-      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.5rem 1rem;
-      padding: 0.6rem 0.75rem; background: #fffef8; border: 1px solid #fef3c7; border-radius: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.5rem 1rem;
+      padding: 0.6rem 0.75rem;
+      background: #fffef8;
+      border: 1px solid #fef3c7;
+      border-radius: 8px;
       font-size: 0.875rem;
     }
+
     .harvest-waiting-left {
-      flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem;
+      flex: 0 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.75rem;
     }
-    .harvest-waiting-name { font-weight: 600; color: #1e293b; }
-    .harvest-waiting-client { font-size: 0.8rem; color: #64748b; }
-    .harvest-waiting-cool { flex-shrink: 0; }
+
+    .harvest-waiting-name {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .harvest-waiting-client {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .harvest-waiting-cool {
+      flex-shrink: 0;
+    }
+
     .harvest-waiting-right {
-      flex: 1 1 200px; min-width: 0; color: #475569; word-break: break-all; line-height: 1.4;
+      flex: 1 1 200px;
+      min-width: 0;
+      color: #475569;
+      word-break: break-all;
+      line-height: 1.4;
     }
+
     @media (min-width: 576px) {
-      .harvest-waiting-row { flex-wrap: nowrap; }
-      .harvest-waiting-left { flex: 0 0 220px; }
-      .harvest-waiting-right { flex: 1; min-width: 180px; }
+      .harvest-waiting-row {
+        flex-wrap: nowrap;
+      }
+
+      .harvest-waiting-left {
+        flex: 0 0 220px;
+      }
+
+      .harvest-waiting-right {
+        flex: 1;
+        min-width: 180px;
+      }
     }
+
     /* 収穫待ちモーダル：発送商品詳細が少し狭まった程度の横幅まで広げる */
     .harvest-waiting-modal {
       width: 96vw;
       max-width: 1120px;
     }
+
     .harvest-waiting-modal #harvestWaitingDialogBody {
       max-height: 60vh;
     }
@@ -319,115 +365,20 @@
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="container">
-    <h2 class="text-center m-4">
-      <?= getCompanyDisplayName() ?>
-    </h2>
+    <div class="page-hero-header d-flex justify-content-center align-items-center">
+      <h2 class="m-0">
+        <?= getCompanyDisplayName() ?>
+      </h2>
+    </div>
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <!-- セッション引き継ぎ（権限はサーバー側セッションで検証） -->
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
 
-      <!-- アコーディオンメニュー -->
-      <div class="menu-accordion">
+      <!-- ナビゲーションはハンバーガーメニュー（左上 ☰）に統合されました -->
+      <p class="text-center text-muted mb-3" style="font-size: 0.85rem;">左上の ☰ ボタンからメニューを開けます</p>
 
-        <? if (userRole !== 'viewer') { ?>
-        <!-- 受注系 -->
-        <div class="menu-section">
-          <div class="menu-header" onclick="toggleSection(this)">
-            <span>📝 受注</span>
-            <span class="menu-arrow">▼</span>
-          </div>
-          <div class="menu-content show">
-            <button type="submit" class="btn menu-btn" name="shipping" value="true">📝 受注入力</button>
-            <button type="submit" class="btn menu-btn" name="phoneOrder" value="true">📞 電話受注</button>
-            <button type="submit" class="btn menu-btn" name="csvImport" value="true">📥 CSV取込</button>
-            <button type="submit" class="btn menu-btn" name="masterImport" value="true">📋 一括マスタ登録</button>
-          </div>
-        </div>
-        <? } ?>
-
-        <!-- 一覧系 -->
-        <div class="menu-section">
-          <div class="menu-header" onclick="toggleSection(this)">
-            <span>📊 一覧</span>
-            <span class="menu-arrow">▼</span>
-          </div>
-          <div class="menu-content show">
-            <button type="submit" class="btn menu-btn" name="orderListPage" value="true">📑 受注一覧</button>
-            <button type="submit" class="btn menu-btn" name="orderList" value="true">📊 製造数一覧</button>
-            <button type="submit" class="btn menu-btn" name="manufacturingOrder" value="true">📋 製造指示書</button>
-            <? if (userRole === 'admin') { ?>
-            <button type="submit" class="btn menu-btn" name="salesDashboard" value="true">📈 売上ダッシュボード</button>
-            <? } ?>
-            <? if (userRole !== 'viewer') { ?>
-            <button type="submit" class="btn menu-btn" name="recurringOrderList" value="true">🔄 定期便一覧</button>
-            <button type="submit" class="btn menu-btn" name="aiImportList" value="true" style="position: relative;">
-              🤖 AI取込一覧
-              <span id="pendingImportBadge" class="badge bg-danger"
-                style="position: absolute; top: 5px; right: 10px; font-size: 0.65rem; padding: 2px 5px;">0</span>
-            </button>
-            <? } ?>
-            <? if (userRole === 'admin') { ?>
-            <button type="submit" class="btn menu-btn" name="productList" value="true">🛍️ 商品マスタ</button>
-            <button type="submit" class="btn menu-btn" name="customerList" value="true">👥 顧客マスタ</button>
-            <button type="submit" class="btn menu-btn" name="shippingToList" value="true">📦 発送先マスタ</button>
-            <? } ?>
-          </div>
-        </div>
-
-        <? if (userRole !== 'viewer') { ?>
-        <!-- 作成系 -->
-        <div class="menu-section">
-          <div class="menu-header" onclick="toggleSection(this)">
-            <span>🛠️ 作成</span>
-            <span class="menu-arrow">▼</span>
-          </div>
-          <div class="menu-content">
-            <button type="submit" class="btn menu-btn" name="createShippingSlips" value="true">📦 送り状作成</button>
-            <button type="submit" class="btn menu-btn" name="createBill" value="true">💰 請求書作成</button>
-            <button type="submit" class="btn menu-btn" name="createFreeeDeliveryNote" value="true">📊
-              freee納品書CSV</button>
-            <button type="submit" class="btn menu-btn" name="quotation" value="true">📋 見積書作成</button>
-          </div>
-        </div>
-
-        <!-- 参照系 -->
-        <div class="menu-section">
-          <div class="menu-header" onclick="toggleSection(this)">
-            <span>🔍 参照</span>
-            <span class="menu-arrow">▼</span>
-          </div>
-          <div class="menu-content">
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlProduct()">🛍️ 商品情報</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlCustomer()">👥 顧客情報</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlShipp()">📑 受注シート</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlQuotaion()">📋 見積書</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlBill()">💰 請求書</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlFreeeCSV()">📊 freee納品書CSV</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlDelivered()">📄 納品書</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlYamato()">🚚 ヤマト送り状</button>
-            <button type="button" class="btn menu-btn-sub" onclick="openUrlSagawa()">🚛 佐川送り状</button>
-          </div>
-        </div>
-
-        <!-- その他 -->
-        <div class="menu-section">
-          <div class="menu-header menu-header-util" onclick="toggleSection(this)">
-            <span>⚙️ その他</span>
-            <span class="menu-arrow">▼</span>
-          </div>
-          <div class="menu-content">
-            <button type="submit" class="btn menu-btn-util" name="logout" value="true">🚪 ログアウト</button>
-            <button type="button" class="btn menu-btn-util" id="refreshCacheBtn" onclick="refreshMasterCache()">🔄
-              キャッシュ更新</button>
-            <button type="button" class="btn menu-btn-util" onclick="openTestComponents()">🎨 デザインシステムテスト</button>
-          </div>
-        </div>
-        <? } ?>
-
-      </div>
-
-      <br>
       <div class="text-center" id="cntRes">
       </div>
       <!-- <div class="text-center" id="invoiceYesterdayRes">
@@ -459,8 +410,11 @@
         <p><strong>メモ:</strong> <span id="dialogMemo"></span></p>
         <button type="button" class="btn" id="closeDialogButton">閉じる</button>
       </div>
-      <div id="harvestWaitingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050; align-items:center; justify-content:center;"></div>
-      <div id="harvestWaitingDialog" class="harvest-waiting-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:1051; max-height:85vh; overflow:hidden; flex-direction:column;">
+      <div id="harvestWaitingOverlay"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050; align-items:center; justify-content:center;">
+      </div>
+      <div id="harvestWaitingDialog" class="harvest-waiting-modal"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:1051; max-height:85vh; overflow:hidden; flex-direction:column;">
         <div class="p-3 border-bottom bg-warning bg-opacity-25">
           <h5 class="mb-0"><i class="bi bi-flower1 me-1"></i>収穫待ち一覧</h5>
         </div>
@@ -553,20 +507,6 @@
     function setRes() {
       $("#cntRes").html('<div class="inline-spinner" style="padding: 20px; text-align: center;"><div class="mini-spinner"></div><span>読み込み中...</span></div>');
       google.script.run.withSuccessHandler(setTable).withFailureHandler(setTableFail).selectShippingDate();
-      // 未処理のAI取込件数を取得
-      google.script.run.withSuccessHandler(function (count) {
-        const badge = document.getElementById('pendingImportBadge');
-        if (badge) {
-          if (count > 0) {
-            badge.textContent = count;
-            badge.style.display = 'inline-block';
-          } else {
-            badge.style.display = 'none';
-          }
-        }
-      }).withFailureHandler(function (e) {
-        console.error('AI取込件数取得エラー:', e);
-      }).getPendingImportCount();
     }
     function setTable(datas) {
       var res = JSON.parse(datas);

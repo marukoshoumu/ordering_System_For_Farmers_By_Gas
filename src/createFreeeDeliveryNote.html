@@ -12,6 +12,7 @@
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 
 <body>
@@ -30,17 +31,10 @@
     .card {
       border: none;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
-      background: var(--brand-primary);
-      color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 16px 20px;
-    }
-
-    .card-header h1 {
+    .page-hero-header h1 {
       font-size: 1.25rem;
       margin: 0;
       font-weight: 600;
@@ -129,12 +123,12 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       transition: box-shadow 0.2s;
     }
 
     .freee-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     .freee-card-row {
@@ -192,21 +186,13 @@
     }
   </style>
 
-  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
 
   <div class="main-container">
     <div class="card">
       <!-- ヘッダー -->
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h1><i class="bi bi-file-earmark-spreadsheet me-2"></i>freee納品書CSV作成</h1>
-        <div class="d-flex gap-2">
-          <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-            <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-            <button type="submit" class="btn btn-outline-light btn-sm" name="main" value="true">
-              <i class="bi bi-house"></i> ホーム
-            </button>
-          </form>
-        </div>
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i>freee納品書CSV作成</h1>
       </div>
 
       <!-- 注意事項 -->
@@ -227,7 +213,7 @@
         <div class="customerSearch_dg">
           <div>
             <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
-            <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg" >
+            <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg">
               <option value="1">会社名</option>
               <option value="2">氏名</option>
               <option value="3">表示名</option>
@@ -236,7 +222,7 @@
           </div>
           <div>
             <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
-            <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg" >
+            <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg">
               <option value=""></option>
               <option value="1">一次卸し・大口</option>
               <option value="2">小売店</option>
@@ -259,7 +245,8 @@
           <div class="filter-row">
             <div class="filter-group">
               <span class="filter-label">顧客名：</span>
-              <input type="text" class="form-control form-control-sm" id="customerName" name="customerName" placeholder="空欄=全顧客" style="min-width: 180px;">
+              <input type="text" class="form-control form-control-sm" id="customerName" name="customerName"
+                placeholder="空欄=全顧客" style="min-width: 180px;">
               <button type='button' class="btn btn-outline-secondary btn-sm customerSearchBtn_open" title="顧客検索">
                 <i class="bi bi-search me-1"></i>検索
               </button>
@@ -268,9 +255,11 @@
           <div class="filter-row">
             <div class="filter-group">
               <span class="filter-label">発送日：</span>
-              <input type="date" class="form-control form-control-sm" id="targetDateFrom" name="targetDateFrom" style="width: 150px;">
+              <input type="date" class="form-control form-control-sm" id="targetDateFrom" name="targetDateFrom"
+                style="width: 150px;">
               <span style="color: #666;">〜</span>
-              <input type="date" class="form-control form-control-sm" id="targetDateTo" name="targetDateTo" style="width: 150px;">
+              <input type="date" class="form-control form-control-sm" id="targetDateTo" name="targetDateTo"
+                style="width: 150px;">
             </div>
             <button type='button' id="previewFreeeOrders" class="btn btn-secondary btn-sm">
               <i class="bi bi-eye me-1"></i>受注を確認
@@ -296,10 +285,11 @@
                 <thead>
                   <tr>
                     <th class="col-check"><input type="checkbox" id="selectAllOrders" title="全選択"></th>
-                    <th>受注ID</th>
                     <th>顧客名</th>
                     <th>発送日</th>
                     <th>商品名</th>
+                    <th>金額</th>
+                    <th>メモ</th>
                   </tr>
                 </thead>
                 <tbody id="orderPreviewBody">
@@ -314,7 +304,8 @@
           <p id="res" style="text-align: center; margin-top: 16px;"></p>
 
           <div class="text-center mt-3 mb-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="openFreeeCSV" name="openFreeeCSV" value="true">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="openFreeeCSV" name="openFreeeCSV"
+              value="true">
               <i class="bi bi-folder2-open me-1"></i>CSV参照
             </button>
           </div>
@@ -341,8 +332,8 @@
     function setTodayDate() {
       const nowDate = new Date();
       var yyyy = nowDate.getFullYear();
-      var mm = ("0"+(nowDate.getMonth()+1)).slice(-2);
-      var dd = ("0"+nowDate.getDate()).slice(-2);
+      var mm = ("0" + (nowDate.getMonth() + 1)).slice(-2);
+      var dd = ("0" + nowDate.getDate()).slice(-2);
       var today = yyyy + '-' + mm + '-' + dd;
       document.getElementById("targetDateFrom").value = today;
       document.getElementById("targetDateTo").value = today;
@@ -350,7 +341,7 @@
     setTodayDate();
     function createFreeeCSV() {
       const checkAddFlg = window.confirm('freee納品書CSVを作成してもよろしいですか？');
-      if(checkAddFlg) {
+      if (checkAddFlg) {
         $("button[id='createFreeeCSV']").text('作成中...');
         var customerName = $('input[id="customerName"]').val();
         var targetDateFrom = $('input[id="targetDateFrom"]').val();
@@ -375,7 +366,7 @@
         resEl.removeChild(resEl.firstChild);
       }
       resEl.appendChild(document.createTextNode('◆作成ファイル◆'));
-      fileNames.forEach(function(name) {
+      fileNames.forEach(function (name) {
         resEl.appendChild(document.createElement('br'));
         resEl.appendChild(document.createTextNode(String(name) + '.csv'));
       });
@@ -393,21 +384,21 @@
       }
     }
     // 顧客検索ダイアログを開く（イベント委譲で動的要素に対応）
-    $(document).on("click", ".customerSearchBtn_open", function(){
-        $(".customerSearch_dg").dialog({
-            title:"顧客検索",
-            width:"400",
-            height:"500",
-            modal:true,
-            buttons:{
-                "キャンセル":function(){
-                  $(this).dialog("close");
-                },
-                "検索":function(){
-                  customerSearch();
-                },
-           },
-        });
+    $(document).on("click", ".customerSearchBtn_open", function () {
+      $(".customerSearch_dg").dialog({
+        title: "顧客検索",
+        width: "400",
+        height: "500",
+        modal: true,
+        buttons: {
+          "キャンセル": function () {
+            $(this).dialog("close");
+          },
+          "検索": function () {
+            customerSearch();
+          },
+        },
+      });
     });
     function customerSearch() {
       if (!$('input[id="customerSearchKeyDg"]').val()) {
@@ -432,7 +423,7 @@
       var searchClass = $('select[id="customerSearchClassDg"]').val();
       var key = $('input[id="customerSearchKeyDg"]').val();
 
-      var results = cachedCustomers.filter(function(customer) {
+      var results = cachedCustomers.filter(function (customer) {
         // 顧客分類フィルタ
         if (searchClass && customer['顧客分類'] !== searchClass) {
           return false;
@@ -479,7 +470,7 @@
 
         var table = document.createElement('table');
         var headerRow = document.createElement('tr');
-        ['', '会社名', '氏名'].forEach(function(text) {
+        ['', '会社名', '氏名'].forEach(function (text) {
           var th = document.createElement('th');
           th.textContent = text;
           headerRow.appendChild(th);
@@ -505,8 +496,8 @@
           btn.id = 'nameCust' + i;
           btn.dataset.val = datVal;
           btn.textContent = '選択';
-          btn.onclick = (function(index) {
-            return function() { applyName(index); };
+          btn.onclick = (function (index) {
+            return function () { applyName(index); };
           })(i);
           tdBtn.appendChild(btn);
           tr.appendChild(tdBtn);
@@ -545,7 +536,7 @@
     }
     function applyName(num) {
       var nameVal = 'nameCust' + num;
-      var dataVal = $('button[id="'+ nameVal+ '"]').data('val');
+      var dataVal = $('button[id="' + nameVal + '"]').data('val');
       var dataSp = dataVal.split('|');
       $(".customerSearch_dg").dialog("close");
       if (dataSp[0]) {
@@ -565,7 +556,7 @@
     function loadMasterDataForSearch() {
       console.log('マスタデータをロード中...');
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           try {
             const masterData = JSON.parse(data);
             cachedCustomers = masterData.customers || [];
@@ -575,7 +566,7 @@
             console.error('マスタデータのパースに失敗:', e);
           }
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('マスタデータのロードに失敗:', e);
         })
         .getAllMasterDataForSearch();
@@ -637,7 +628,7 @@
 
       var cardsHtml = '';
 
-      orders.forEach(function(order) {
+      orders.forEach(function (order) {
         // PC テーブル行
         var tr = document.createElement('tr');
 
@@ -649,10 +640,6 @@
         cb.value = order.orderId;
         tdCheck.appendChild(cb);
         tr.appendChild(tdCheck);
-
-        var tdId = document.createElement('td');
-        tdId.textContent = order.orderId;
-        tr.appendChild(tdId);
 
         var tdCustomer = document.createElement('td');
         tdCustomer.textContent = order.customerName;
@@ -666,27 +653,47 @@
         tdProduct.textContent = order.productName;
         tr.appendChild(tdProduct);
 
+        var tdAmount = document.createElement('td');
+        tdAmount.textContent = Number(order.amount).toLocaleString() + '円';
+        tr.appendChild(tdAmount);
+
+        var tdMemo = document.createElement('td');
+        tdMemo.textContent = order.memo;
+        tr.appendChild(tdMemo);
+
         tbody.appendChild(tr);
 
         // スマホカード
         cardsHtml += '<div class="freee-card">';
         cardsHtml += '<div class="freee-card-row">';
         cardsHtml += '  <input type="checkbox" class="form-check-input order-row-checkbox-card" value="' + escapeHtml(order.orderId) + '" style="margin-right: 8px;">';
-        cardsHtml += '  <div class="freee-card-value" style="font-weight: 600;">' + escapeHtml(order.orderId) + '</div>';
+        cardsHtml += '  <div class="freee-card-value" style="font-weight: 600;">' + escapeHtml(order.customerName) + '</div>';
         cardsHtml += '  <span style="font-size: 0.8rem; color: #666;">' + escapeHtml(order.shippingDate) + '</span>';
         cardsHtml += '</div>';
-        cardsHtml += '<div class="freee-card-row">';
-        cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-person"></i></span>';
-        cardsHtml += '  <div class="freee-card-value">';
-        cardsHtml += '    <div class="freee-card-label">顧客名</div>' + escapeHtml(order.customerName);
-        cardsHtml += '  </div>';
-        cardsHtml += '</div>';
+
         cardsHtml += '<div class="freee-card-row">';
         cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-box-seam"></i></span>';
         cardsHtml += '  <div class="freee-card-value">';
         cardsHtml += '    <div class="freee-card-label">商品名</div>' + escapeHtml(order.productName);
         cardsHtml += '  </div>';
         cardsHtml += '</div>';
+
+        cardsHtml += '<div class="freee-card-row">';
+        cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-currency-yen"></i></span>';
+        cardsHtml += '  <div class="freee-card-value">';
+        cardsHtml += '    <div class="freee-card-label">金額</div>' + Number(order.amount).toLocaleString() + '円';
+        cardsHtml += '  </div>';
+        cardsHtml += '</div>';
+
+        if (order.memo) {
+          cardsHtml += '<div class="freee-card-row">';
+          cardsHtml += '  <span class="freee-card-icon"><i class="bi bi-card-text"></i></span>';
+          cardsHtml += '  <div class="freee-card-value">';
+          cardsHtml += '    <div class="freee-card-label">メモ</div>' + escapeHtml(order.memo);
+          cardsHtml += '  </div>';
+          cardsHtml += '</div>';
+        }
+
         cardsHtml += '</div>';
       });
 
@@ -704,7 +711,7 @@
         return;
       }
       var selectedIds = [];
-      checkboxes.forEach(function(cb) {
+      checkboxes.forEach(function (cb) {
         selectedIds.push(cb.value);
       });
       var confirmMsg = '選択した' + selectedIds.length + '件の受注でfreee納品書CSVを作成しますか？';
@@ -739,27 +746,27 @@
     }
 
     // イベントハンドラー登録（DOMロード後）
-    $(document).ready(function() {
-      $('#createFreeeCSV').on('click', function() {
+    $(document).ready(function () {
+      $('#createFreeeCSV').on('click', function () {
         createFreeeCSV();
       });
 
-      $('#previewFreeeOrders').on('click', function() {
+      $('#previewFreeeOrders').on('click', function () {
         previewFreeeOrders();
       });
 
-      $('#selectAllOrders').on('change', function() {
+      $('#selectAllOrders').on('change', function () {
         var checked = this.checked;
-        document.querySelectorAll('.order-row-checkbox, .order-row-checkbox-card').forEach(function(cb) {
+        document.querySelectorAll('.order-row-checkbox, .order-row-checkbox-card').forEach(function (cb) {
           cb.checked = checked;
         });
       });
 
-      $('#createFreeeCSVSelected').on('click', function() {
+      $('#createFreeeCSVSelected').on('click', function () {
         createFreeeCSVSelected();
       });
 
-      $('#openFreeeCSV').on('click', function() {
+      $('#openFreeeCSV').on('click', function () {
         openUrlFreeeCSV();
       });
     });

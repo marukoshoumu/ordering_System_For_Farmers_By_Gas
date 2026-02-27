@@ -46,14 +46,14 @@
 function createFreeeDeliveryNote(datas) {
   const data = JSON.parse(datas);
   const customerName = data['customerName'];
-  
+
   // Validate and parse targetDateFrom
   const dateFromObj = new Date(data['targetDateFrom']);
   if (isNaN(dateFromObj.getTime())) {
     throw new Error('無効な開始日が指定されました: ' + data['targetDateFrom']);
   }
   const targetFrom = Utilities.formatDate(dateFromObj, 'JST', 'yyyy/MM/dd');
-  
+
   // Validate and parse targetDateTo
   const dateToObj = new Date(data['targetDateTo']);
   if (isNaN(dateToObj.getTime())) {
@@ -66,7 +66,7 @@ function createFreeeDeliveryNote(datas) {
 
   // 期間と顧客でフィルタリング（発送日ベース）
   const invalidDates = [];
-  const targetLists = items.filter(function(target) {
+  const targetLists = items.filter(function (target) {
     // Validate shipping date before formatting
     const shippingDateObj = new Date(target['発送日']);
     if (isNaN(shippingDateObj.getTime())) {
@@ -81,7 +81,7 @@ function createFreeeDeliveryNote(datas) {
     const isTargetCustomer = customerName === '' || target['顧客名'] === customerName;
     return isInPeriod && isTargetCustomer;
   });
-  
+
   // Log invalid dates if any were found
   if (invalidDates.length > 0) {
     Logger.log('無効な発送日が見つかりました（スキップされました）: ' + JSON.stringify(invalidDates));
@@ -116,7 +116,7 @@ function createFreeeDeliveryNote(datas) {
 function groupOrdersByLinkedId(orders) {
   const groups = {};
 
-  orders.forEach(function(order) {
+  orders.forEach(function (order) {
     const linkedId = order['紐付け受注ID'] || '';
     const orderId = order['受注ID'];
     const customerName = order['顧客名'];
@@ -144,8 +144,8 @@ function groupOrdersByLinkedId(orders) {
   });
 
   // 各グループ内で納品日順にソート
-  Object.keys(groups).forEach(function(groupKey) {
-    groups[groupKey].orders.sort(function(a, b) {
+  Object.keys(groups).forEach(function (groupKey) {
+    groups[groupKey].orders.sort(function (a, b) {
       const dateA = new Date(a['納品日']);
       const dateB = new Date(b['納品日']);
       return dateA - dateB;
@@ -153,7 +153,7 @@ function groupOrdersByLinkedId(orders) {
   });
 
   // グループを配列に変換
-  return Object.keys(groups).map(function(key) {
+  return Object.keys(groups).map(function (key) {
     return groups[key];
   });
 }
@@ -175,7 +175,7 @@ function generateFreeeCSV(groupedOrders) {
   const productItems = getAllRecords('商品');
 
   // 各グループの納品書を生成
-  groupedOrders.forEach(function(group) {
+  groupedOrders.forEach(function (group) {
     const customerName = group.customerName;
     const orders = group.orders;
 
@@ -201,7 +201,7 @@ function generateFreeeCSV(groupedOrders) {
 
     // 納品日ごとにグループ化
     const ordersByDate = {};
-    orders.forEach(function(order) {
+    orders.forEach(function (order) {
       const deliveryDate = Utilities.formatDate(new Date(order['納品日']), 'JST', 'yyyy-MM-dd');
       if (!ordersByDate[deliveryDate]) {
         ordersByDate[deliveryDate] = [];
@@ -211,7 +211,7 @@ function generateFreeeCSV(groupedOrders) {
 
     // 納品日順に処理
     const sortedDates = Object.keys(ordersByDate).sort();
-    sortedDates.forEach(function(deliveryDate) {
+    sortedDates.forEach(function (deliveryDate) {
       const dateOrders = ordersByDate[deliveryDate];
 
       // 納品書テキストがあればテキスト行を追加
@@ -221,7 +221,7 @@ function generateFreeeCSV(groupedOrders) {
       }
 
       // この日付の明細行を追加
-      dateOrders.forEach(function(order) {
+      dateOrders.forEach(function (order) {
         const productInfo = getProductInfo(order['商品名'], productItems);
         rows.push(createFreeeDetailRow(order, productInfo, deliveryDate));
       });
@@ -484,7 +484,7 @@ function getFreeeDeliveryNoteOrderList(datas) {
 
   const items = getAllRecords('受注');
 
-  const targetLists = items.filter(function(target) {
+  const targetLists = items.filter(function (target) {
     const status = target['ステータス'] || '';
     if (status === '　キャンセル済' || status === 'キャンセル') return false;
     const shippingDateObj = new Date(target['発送日']);
@@ -495,12 +495,44 @@ function getFreeeDeliveryNoteOrderList(datas) {
     return isInPeriod && isTargetCustomer;
   });
 
-  const result = targetLists.map(function(order) {
+  const groupedOrders = groupOrdersByLinkedId(targetLists);
+
+  const result = groupedOrders.map(function (group) {
+    const orders = group.orders;
+    let totalAmount = 0;
+    const productNames = [];
+
+    orders.forEach(function (o) {
+      const price = Number(o['販売価格']) || 0;
+      const count = Number(o['受注数']) || 0;
+      totalAmount += price * count;
+      if (o['商品名']) {
+        productNames.push(o['商品名']);
+      }
+    });
+
+    // 商品名の重複を除外して結合
+    const uniqueProducts = productNames.filter(function (value, index, self) {
+      return self.indexOf(value) === index;
+    });
+
+    // メモ項目（社内メモと送り状備考欄を改行で結合。片方だけならそのまま）
+    const internalMemo = orders[0]['社内メモ'] || '';
+    const shippingMemo = orders[0]['送り状備考欄'] || '';
+    let memo = '';
+    if (internalMemo && shippingMemo) {
+      memo = internalMemo + ' / ' + shippingMemo;
+    } else {
+      memo = internalMemo || shippingMemo;
+    }
+
     return {
-      orderId: order['受注ID'] || '',
-      customerName: order['顧客名'] || '',
-      shippingDate: order['発送日'] ? Utilities.formatDate(new Date(order['発送日']), 'JST', 'yyyy/MM/dd') : '',
-      productName: order['商品名'] || ''
+      orderId: group.parentId,
+      customerName: group.customerName,
+      shippingDate: orders[0]['発送日'] ? Utilities.formatDate(new Date(orders[0]['発送日']), 'JST', 'yyyy/MM/dd') : '',
+      productName: uniqueProducts.join(', '),
+      amount: totalAmount,
+      memo: memo
     };
   });
 
@@ -521,12 +553,14 @@ function createFreeeDeliveryNoteByIds(orderIdsJson) {
   }
 
   const idSet = {};
-  orderIds.forEach(function(id) { idSet[id] = true; });
+  orderIds.forEach(function (id) { idSet[id] = true; });
 
   const items = getAllRecords('受注');
 
-  const targetLists = items.filter(function(order) {
-    return idSet[order['受注ID']] === true;
+  const targetLists = items.filter(function (order) {
+    // 受注IDが選択されたID、または紐付け受注IDが選択されたIDに含まれる場合に対象
+    return idSet[order['受注ID']] === true ||
+           (order['紐付け受注ID'] && idSet[order['紐付け受注ID']] === true);
   });
 
   if (targetLists.length === 0) {
@@ -534,10 +568,10 @@ function createFreeeDeliveryNoteByIds(orderIdsJson) {
   }
 
   // 発送日の範囲をファイル名用に算出
-  const shippingDates = targetLists.map(function(order) {
+  const shippingDates = targetLists.map(function (order) {
     const d = new Date(order['発送日']);
     return isNaN(d.getTime()) ? null : d;
-  }).filter(function(d) { return d !== null; });
+  }).filter(function (d) { return d !== null; });
 
   let targetFrom, targetTo;
   if (shippingDates.length > 0) {
@@ -635,8 +669,8 @@ function generateCSVWithBOM(rows) {
   const BOM = '\uFEFF';
 
   // CSVエスケープ処理
-  const csvLines = rows.map(function(row) {
-    return row.map(function(cell) {
+  const csvLines = rows.map(function (row) {
+    return row.map(function (cell) {
       const cellStr = String(cell);
       // カンマ、改行、ダブルクォートを含む場合はエスケープ
       if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {

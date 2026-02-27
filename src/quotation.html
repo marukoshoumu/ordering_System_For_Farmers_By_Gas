@@ -12,40 +12,42 @@
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="container">
     <form class="mb-5" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="mt-3">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="mainTop"
-                    value="true">ホーム画面に戻る</button>
       </div>
-      <h2 class="text-center m-4">見積書作成</h2>
+      <div class="page-hero-header d-flex justify-content-center align-items-center mb-4">
+        <h2 class="m-0">見積書作成</h2>
+      </div>
       <div class="customerSearch_dg">
         <div>
           <label for="customerSearchBunruiDg" class="text-left form-label">顧客</label>
           <select class="form-select" id="customerSearchBunruiDg" name="customerSearchBunruiDg">
-                        <option value="1">会社名</option>
-                        <option value="2">氏名</option>
-                        <option value="3">表示名</option>
-                        <option value="4">フリガナ</option>
-                    </select>
+            <option value="1">会社名</option>
+            <option value="2">氏名</option>
+            <option value="3">表示名</option>
+            <option value="4">フリガナ</option>
+          </select>
         </div>
         <div>
           <label for="customerSearchClassDg" class="text-left form-label">顧客分類</label>
           <select class="form-select" id="customerSearchClassDg" name="customerSearchClassDg">
-                        <option value=""></option>
-                        <option value="1">一次卸し・大口</option>
-                        <option value="2">小売店</option>
-                        <option value="3">飲食店・ホテル</option>
-                        <option value="4">地元飲食店</option>
-                        <option value="5">通信販売</option>
-                        <option value="6">一般販売</option>
-                        <option value="7">その他</option>
-                        <option value="8">職域</option>
-                    </select>
+            <option value=""></option>
+            <option value="1">一次卸し・大口</option>
+            <option value="2">小売店</option>
+            <option value="3">飲食店・ホテル</option>
+            <option value="4">地元飲食店</option>
+            <option value="5">通信販売</option>
+            <option value="6">一般販売</option>
+            <option value="7">その他</option>
+            <option value="8">職域</option>
+          </select>
         </div>
         <div>
           <label for="customerSearchKeyDg" class="text-left form-label">キーワード</label>
@@ -58,9 +60,9 @@
         <div>
           <label for="shippingToSearchBunruiDg" class="text-left form-label">発送先</label>
           <select class="form-select" id="shippingToSearchBunruiDg" name="shippingToSearchBunruiDg">
-                        <option value="1">会社名</option>
-                        <option value="2">氏名</option>
-                    </select>
+            <option value="1">会社名</option>
+            <option value="2">氏名</option>
+          </select>
         </div>
         <div>
           <label for="shippingToSearchKeyDg" class="text-left form-label">キーワード</label>
@@ -73,15 +75,15 @@
         <div>
           <label for="customerClassDg" class="text-left form-label">顧客分類</label>
           <select class="form-select" id="customerClassDg" name="customerClassDg">
-                        <option value="1">一次卸し・大口</option>
-                        <option value="2">小売店</option>
-                        <option value="3">飲食店・ホテル</option>
-                        <option value="4">地元飲食店</option>
-                        <option value="5">通信販売</option>
-                        <option value="6">一般販売</option>
-                        <option value="7">その他</option>
-                        <option value="8">職域</option>
-                    </select>
+            <option value="1">一次卸し・大口</option>
+            <option value="2">小売店</option>
+            <option value="3">飲食店・ホテル</option>
+            <option value="4">地元飲食店</option>
+            <option value="5">通信販売</option>
+            <option value="6">一般販売</option>
+            <option value="7">その他</option>
+            <option value="8">職域</option>
+          </select>
         </div>
         <div>
           <label for="customerNameDg" class="text-left form-label">会社名</label>
@@ -109,8 +111,7 @@
         </div>
         <div>
           <label for="customerZipcodeDg" class="text-left form-label">郵便番号</label>
-          <input type="text" id="customerZipcodeDg" name="customerZipcodeDg" maxlength=7
-                        onfocusout="getAddress()">
+          <input type="text" id="customerZipcodeDg" name="customerZipcodeDg" maxlength=7 onfocusout="getAddress()">
         </div>
         <div>
           <label for="customerAddress1Dg" class="text-left form-label">住所１</label>
@@ -143,18 +144,18 @@
         <div>
           <label for="customerBillDg" class="text-left form-label">請求書有無</label>
           <select class="form-select" id="customerBillDg" name="customerBillDg">
-                        <option value=""></option>
-                        <option value="有">有</option>
-                    </select>
+            <option value=""></option>
+            <option value="有">有</option>
+          </select>
         </div>
         <div>
           <label for="customerDepositDateDg" class="text-left form-label">入金期日</label>
           <select class="form-select" id="customerDepositDateDg" name="customerDepositDateDg">
-                        <option value="翌末日">翌末日</option>
-                        <option value="２週間後">２週間後</option>
-                        <option value="翌々中日">翌々中日</option>
-                        <option value="翌々末日">翌々末日</option>
-                    </select>
+            <option value="翌末日">翌末日</option>
+            <option value="２週間後">２週間後</option>
+            <option value="翌々中日">翌々中日</option>
+            <option value="翌々末日">翌々末日</option>
+          </select>
         </div>
         <div>
           <label for="customerTaxDisplayDg" class="text-left form-label">消費税の表示方法</label>
@@ -170,10 +171,15 @@
         </div>
       </div>
       <div>
-        <div style="background-color: magenta; color: white; padding: 10px 12px; border-radius: 6px 6px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <div
+          style="background-color: magenta; color: white; padding: 10px 12px; border-radius: 6px 6px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           <span style="font-weight: 600;">【顧客情報】</span>
-          <button type='button' class="customerInsertBtn_open btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;" title="新規登録">➕ 新規</button>
-          <button type='button' class="customerSearchBtn_open btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;" title="顧客検索">🔍 検索</button>
+          <button type='button' class="customerInsertBtn_open btn btn-sm"
+            style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;"
+            title="新規登録">➕ 新規</button>
+          <button type='button' class="customerSearchBtn_open btn btn-sm"
+            style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px;"
+            title="顧客検索">🔍 検索</button>
         </div>
         <div>
           <label for="customerName" class="text-left form-label">顧客名</label>
@@ -186,7 +192,7 @@
         <div>
           <label for="deliveryMethod" class="text-left form-label">納品方法</label>
           <select class="form-select" id="deliveryMethod" name="deliveryMethod" required>
-                    </select>
+          </select>
         </div>
         <div>
           <label for="leadTime" class="text-left form-label">出荷リードタイム</label>
@@ -201,13 +207,10 @@
       </div>
       <div class="text-center m-3">
         <button type="button" class="btn btn-primary me-3" id="quoutationComfirm" name="quoutationComfirm"
-                    onclick="createQuoutation()">見積書作成</button>
+          onclick="createQuoutation()">見積書作成</button>
       </div>
       <p id="res" style="text-align: center;"></p>
-      <div class="text-center mt-3">
-        <button type="submit" formnovalidate class="btn btn-outline-secondary me-3" name="main"
-                    value="true">ホーム画面に戻る</button>
-      </div>
+
     </form>
   </div>
   <script>
@@ -218,737 +221,737 @@
     var masterDataLoaded = false;
 
     let productsData;
-        let bunruisData;
-        let unitsData;
-        let preservationsData;
-        let productContainer;
-        let deliveryMethodsData;
-        var oriproduct;
-        // 商品を追加する関数
-        function addProduct() {
-            const productCount = productContainer ? productContainer.children.length + 1 : 1;
+    let bunruisData;
+    let unitsData;
+    let preservationsData;
+    let productContainer;
+    let deliveryMethodsData;
+    var oriproduct;
+    // 商品を追加する関数
+    function addProduct() {
+      const productCount = productContainer ? productContainer.children.length + 1 : 1;
 
-            // 新しい商品用のdivを作成
-            const newProductDiv = document.createElement('div');
-            newProductDiv.className = `productDiv row`;
-            newProductDiv.id = `productDiv${productCount}`;
+      // 新しい商品用のdivを作成
+      const newProductDiv = document.createElement('div');
+      newProductDiv.className = `productDiv row`;
+      newProductDiv.id = `productDiv${productCount}`;
 
-            // 商品分類のラベルとセレクトボックスを追加
-            const bunruiLabel = document.createElement('label');
-            bunruiLabel.htmlFor = `bunrui${productCount}`;
-            bunruiLabel.textContent = '商品分類';
-            bunruiLabel.className = 'col-form-label';
+      // 商品分類のラベルとセレクトボックスを追加
+      const bunruiLabel = document.createElement('label');
+      bunruiLabel.htmlFor = `bunrui${productCount}`;
+      bunruiLabel.textContent = '商品分類';
+      bunruiLabel.className = 'col-form-label';
 
-            const bunruiSelect = document.createElement('select');
-            bunruiSelect.className = 'form-select';
-            bunruiSelect.id = `bunrui${productCount}`;
-            bunruiSelect.name = `bunrui${productCount}`;
-            bunruiSelect.addEventListener('change', function () {
-                bunruiChange(`${productCount}`);
-            });
-            const bunruiSelectOption = document.createElement('option');
-            bunruiSelectOption.value = '';
-            bunruiSelectOption.textContent = '';
-            bunruiSelect.appendChild(bunruiSelectOption);
+      const bunruiSelect = document.createElement('select');
+      bunruiSelect.className = 'form-select';
+      bunruiSelect.id = `bunrui${productCount}`;
+      bunruiSelect.name = `bunrui${productCount}`;
+      bunruiSelect.addEventListener('change', function () {
+        bunruiChange(`${productCount}`);
+      });
+      const bunruiSelectOption = document.createElement('option');
+      bunruiSelectOption.value = '';
+      bunruiSelectOption.textContent = '';
+      bunruiSelect.appendChild(bunruiSelectOption);
 
-            // セレクトボックスにオプションを追加
-            bunruisData.forEach(function (bunrui) {
-                const option = document.createElement('option');
-                option.value = bunrui['商品分類'];
-                option.textContent = bunrui['商品分類'];
-                bunruiSelect.appendChild(option);
-            });
-            // 商品名のラベルとセレクトボックスを追加
-            const productLabel = document.createElement('label');
-            productLabel.htmlFor = `product${productCount}`;
-            productLabel.textContent = '商品名';
-            productLabel.className = 'col-form-label';
+      // セレクトボックスにオプションを追加
+      bunruisData.forEach(function (bunrui) {
+        const option = document.createElement('option');
+        option.value = bunrui['商品分類'];
+        option.textContent = bunrui['商品分類'];
+        bunruiSelect.appendChild(option);
+      });
+      // 商品名のラベルとセレクトボックスを追加
+      const productLabel = document.createElement('label');
+      productLabel.htmlFor = `product${productCount}`;
+      productLabel.textContent = '商品名';
+      productLabel.className = 'col-form-label';
 
-            const productSelect = document.createElement('select');
-            productSelect.className = 'form-select';
-            productSelect.id = `product${productCount}`;
-            productSelect.name = `product${productCount}`;
-            const productSelectOption = document.createElement('option');
-            productSelectOption.value = '';
-            productSelectOption.textContent = '';
-            productSelect.appendChild(productSelectOption);
+      const productSelect = document.createElement('select');
+      productSelect.className = 'form-select';
+      productSelect.id = `product${productCount}`;
+      productSelect.name = `product${productCount}`;
+      const productSelectOption = document.createElement('option');
+      productSelectOption.value = '';
+      productSelectOption.textContent = '';
+      productSelect.appendChild(productSelectOption);
 
-            // セレクトボックスにオプションを追加
-            productsData.forEach(function (product) {
-                const option = document.createElement('option');
-                option.value = product['商品名'];
-                option.textContent = product['商品名'];
-                option.dataset.val = product['商品分類']
-                productSelect.appendChild(option);
-            });
-            // 内容量・規格のラベルとテキストボックスを追加
-            const specLabel = document.createElement('label');
-            specLabel.htmlFor = `spec${productCount}`;
-            specLabel.textContent = '内容量・規格';
-            specLabel.className = 'col-form-label';
+      // セレクトボックスにオプションを追加
+      productsData.forEach(function (product) {
+        const option = document.createElement('option');
+        option.value = product['商品名'];
+        option.textContent = product['商品名'];
+        option.dataset.val = product['商品分類']
+        productSelect.appendChild(option);
+      });
+      // 内容量・規格のラベルとテキストボックスを追加
+      const specLabel = document.createElement('label');
+      specLabel.htmlFor = `spec${productCount}`;
+      specLabel.textContent = '内容量・規格';
+      specLabel.className = 'col-form-label';
 
-            const specInput = document.createElement('input');
-            specInput.className = 'form-control';
-            specInput.type = 'text';
-            specInput.id = `spec${productCount}`;
-            specInput.name = `spec${productCount}`;
+      const specInput = document.createElement('input');
+      specInput.className = 'form-control';
+      specInput.type = 'text';
+      specInput.id = `spec${productCount}`;
+      specInput.name = `spec${productCount}`;
 
-            // 出荷ロットのラベルとテキストボックスを追加
-            const shipLotLabel = document.createElement('label');
-            shipLotLabel.htmlFor = `shipLot${productCount}`;
-            shipLotLabel.textContent = '出荷ロット';
-            shipLotLabel.className = 'col-form-label';
+      // 出荷ロットのラベルとテキストボックスを追加
+      const shipLotLabel = document.createElement('label');
+      shipLotLabel.htmlFor = `shipLot${productCount}`;
+      shipLotLabel.textContent = '出荷ロット';
+      shipLotLabel.className = 'col-form-label';
 
-            const shipLotInput = document.createElement('input');
-            shipLotInput.className = 'form-control';
-            shipLotInput.type = 'text';
-            shipLotInput.id = `shipLot${productCount}`;
-            shipLotInput.name = `shipLot${productCount}`;
+      const shipLotInput = document.createElement('input');
+      shipLotInput.className = 'form-control';
+      shipLotInput.type = 'text';
+      shipLotInput.id = `shipLot${productCount}`;
+      shipLotInput.name = `shipLot${productCount}`;
 
-            // 単価のラベルとテキストボックスを追加
-            const priceLabel = document.createElement('label');
-            priceLabel.htmlFor = `price${productCount}`;
-            priceLabel.textContent = '単価（外税）';
-            priceLabel.className = 'col-form-label';
+      // 単価のラベルとテキストボックスを追加
+      const priceLabel = document.createElement('label');
+      priceLabel.htmlFor = `price${productCount}`;
+      priceLabel.textContent = '単価（外税）';
+      priceLabel.className = 'col-form-label';
 
-            const priceInput = document.createElement('input');
-            priceInput.className = 'form-control';
-            priceInput.type = 'number';
-            priceInput.id = `price${productCount}`;
-            priceInput.name = `price${productCount}`;
-            priceInput.min = 0;
+      const priceInput = document.createElement('input');
+      priceInput.className = 'form-control';
+      priceInput.type = 'number';
+      priceInput.id = `price${productCount}`;
+      priceInput.name = `price${productCount}`;
+      priceInput.min = 0;
 
-            // 単位のラベルとセレクトボックスを追加
-            const unitLabel = document.createElement('label');
-            unitLabel.htmlFor = `unit${productCount}`;
-            unitLabel.textContent = '単位';
-            unitLabel.className = 'col-form-label';
+      // 単位のラベルとセレクトボックスを追加
+      const unitLabel = document.createElement('label');
+      unitLabel.htmlFor = `unit${productCount}`;
+      unitLabel.textContent = '単位';
+      unitLabel.className = 'col-form-label';
 
-            const unitSelect = document.createElement('select');
-            unitSelect.className = 'form-select';
-            unitSelect.id = `unit${productCount}`;
-            unitSelect.name = `unit${productCount}`;
-            const unitSelectOption = document.createElement('option');
-            unitSelectOption.value = '';
-            unitSelectOption.textContent = '';
-            unitSelect.appendChild(unitSelectOption);
+      const unitSelect = document.createElement('select');
+      unitSelect.className = 'form-select';
+      unitSelect.id = `unit${productCount}`;
+      unitSelect.name = `unit${productCount}`;
+      const unitSelectOption = document.createElement('option');
+      unitSelectOption.value = '';
+      unitSelectOption.textContent = '';
+      unitSelect.appendChild(unitSelectOption);
 
-            // セレクトボックスにオプションを追加
-            unitsData.forEach(function (unit) {
-                const option = document.createElement('option');
-                option.value = unit['単位'];
-                option.textContent = unit['単位'];
-                unitSelect.appendChild(option);
-            });
-            // 産地（製造場所）のラベルとテキストボックスを追加
-            const placeLabel = document.createElement('label');
-            placeLabel.htmlFor = `place${productCount}`;
-            placeLabel.textContent = '産地（製造場所）';
-            placeLabel.className = 'col-form-label';
+      // セレクトボックスにオプションを追加
+      unitsData.forEach(function (unit) {
+        const option = document.createElement('option');
+        option.value = unit['単位'];
+        option.textContent = unit['単位'];
+        unitSelect.appendChild(option);
+      });
+      // 産地（製造場所）のラベルとテキストボックスを追加
+      const placeLabel = document.createElement('label');
+      placeLabel.htmlFor = `place${productCount}`;
+      placeLabel.textContent = '産地（製造場所）';
+      placeLabel.className = 'col-form-label';
 
-            const placeInput = document.createElement('input');
-            placeInput.className = 'form-control';
-            placeInput.type = 'text';
-            placeInput.id = `place${productCount}`;
-            placeInput.name = `place${productCount}`;
-            // JANコードのラベルとテキストボックスを追加
-            const jancdLabel = document.createElement('label');
-            jancdLabel.htmlFor = `jancd${productCount}`;
-            jancdLabel.textContent = 'JANコード';
-            jancdLabel.className = 'col-form-label';
+      const placeInput = document.createElement('input');
+      placeInput.className = 'form-control';
+      placeInput.type = 'text';
+      placeInput.id = `place${productCount}`;
+      placeInput.name = `place${productCount}`;
+      // JANコードのラベルとテキストボックスを追加
+      const jancdLabel = document.createElement('label');
+      jancdLabel.htmlFor = `jancd${productCount}`;
+      jancdLabel.textContent = 'JANコード';
+      jancdLabel.className = 'col-form-label';
 
-            const jancdInput = document.createElement('input');
-            jancdInput.className = 'form-control';
-            jancdInput.type = 'text';
-            jancdInput.id = `jancd${productCount}`;
-            jancdInput.name = `jancd${productCount}`;
-            // 保存温度帯のラベルとセレクトボックスを追加
-            const preservationLabel = document.createElement('label');
-            preservationLabel.htmlFor = `preservation${productCount}`;
-            preservationLabel.textContent = '保存温度帯';
-            preservationLabel.className = 'col-form-label';
+      const jancdInput = document.createElement('input');
+      jancdInput.className = 'form-control';
+      jancdInput.type = 'text';
+      jancdInput.id = `jancd${productCount}`;
+      jancdInput.name = `jancd${productCount}`;
+      // 保存温度帯のラベルとセレクトボックスを追加
+      const preservationLabel = document.createElement('label');
+      preservationLabel.htmlFor = `preservation${productCount}`;
+      preservationLabel.textContent = '保存温度帯';
+      preservationLabel.className = 'col-form-label';
 
-            const preservationSelect = document.createElement('select');
-            preservationSelect.className = 'form-select';
-            preservationSelect.id = `preservation${productCount}`;
-            preservationSelect.name = `preservation${productCount}`;
-            const preservationSelectOption = document.createElement('option');
-            preservationSelectOption.value = '';
-            preservationSelectOption.textContent = '';
-            preservationSelect.appendChild(preservationSelectOption);
-            // セレクトボックスにオプションを追加
-            preservationsData.forEach(function (preservation) {
-                const option = document.createElement('option');
-                option.value = preservation['保存温度帯'];
-                option.textContent = preservation['保存温度帯'];
-                preservationSelect.appendChild(option);
-            });
-            // 賞味期限のラベルとテキストボックスを追加
-            const bestEtenLabel = document.createElement('label');
-            bestEtenLabel.htmlFor = `bestEten${productCount}`;
-            bestEtenLabel.textContent = '賞味期限';
-            bestEtenLabel.className = 'col-form-label';
+      const preservationSelect = document.createElement('select');
+      preservationSelect.className = 'form-select';
+      preservationSelect.id = `preservation${productCount}`;
+      preservationSelect.name = `preservation${productCount}`;
+      const preservationSelectOption = document.createElement('option');
+      preservationSelectOption.value = '';
+      preservationSelectOption.textContent = '';
+      preservationSelect.appendChild(preservationSelectOption);
+      // セレクトボックスにオプションを追加
+      preservationsData.forEach(function (preservation) {
+        const option = document.createElement('option');
+        option.value = preservation['保存温度帯'];
+        option.textContent = preservation['保存温度帯'];
+        preservationSelect.appendChild(option);
+      });
+      // 賞味期限のラベルとテキストボックスを追加
+      const bestEtenLabel = document.createElement('label');
+      bestEtenLabel.htmlFor = `bestEten${productCount}`;
+      bestEtenLabel.textContent = '賞味期限';
+      bestEtenLabel.className = 'col-form-label';
 
-            const bestEtenInput = document.createElement('input');
-            bestEtenInput.className = 'form-control';
-            bestEtenInput.type = 'text';
-            bestEtenInput.id = `bestEten${productCount}`;
-            bestEtenInput.name = `bestEten${productCount}`;
+      const bestEtenInput = document.createElement('input');
+      bestEtenInput.className = 'form-control';
+      bestEtenInput.type = 'text';
+      bestEtenInput.id = `bestEten${productCount}`;
+      bestEtenInput.name = `bestEten${productCount}`;
 
-            // その他特記事項のラベルとテキストボックスを追加
-            const etcLabel = document.createElement('label');
-            etcLabel.htmlFor = `etc${productCount}`;
-            etcLabel.textContent = 'その他特記事項';
-            etcLabel.className = 'col-form-label';
+      // その他特記事項のラベルとテキストボックスを追加
+      const etcLabel = document.createElement('label');
+      etcLabel.htmlFor = `etc${productCount}`;
+      etcLabel.textContent = 'その他特記事項';
+      etcLabel.className = 'col-form-label';
 
-            const etcInput = document.createElement('input');
-            etcInput.className = 'form-control mb-3';
-            etcInput.type = 'text';
-            etcInput.id = `etc${productCount}`;
-            etcInput.name = `etc${productCount}`;
-            // 削除ボタンを追加
-            const deleteLabel = document.createElement('label');
-            deleteLabel.htmlFor = `delete${productCount}`;
-            deleteLabel.textContent = `【商品${productCount}】`;
-            deleteLabel.className = 'col-form-label col-sm-10';
-            const deleteButton = document.createElement('button');
-            deleteButton.type = 'button';
-            deleteButton.textContent = '削除';
-            deleteButton.className = 'btn btn-danger';
-            deleteButton.id = `delete${productCount}`;
-            deleteButton.addEventListener('click', function () {
-                productContainer.removeChild(newProductDiv); // この商品を削除
-                updateProductIds();
-            });
-            const divEle6_1 = document.createElement('div');
-            divEle6_1.className = 'col-md-6';
-            divEle6_1.appendChild(bunruiLabel);
-            divEle6_1.appendChild(bunruiSelect);
-            const divEle6_2 = document.createElement('div');
-            divEle6_2.className = 'col-md-6';
-            divEle6_2.appendChild(productLabel);
-            divEle6_2.appendChild(productSelect);
-            const divEle6_3_1 = document.createElement('div');
-            divEle6_3_1.className = 'col-md-6';
-            divEle6_3_1.appendChild(specLabel);
-            divEle6_3_1.appendChild(specInput);
-            const divEle6_3_2 = document.createElement('div');
-            divEle6_3_2.className = 'col-md-6';
-            divEle6_3_2.appendChild(shipLotLabel);
-            divEle6_3_2.appendChild(shipLotInput);
-            const divEle6_3 = document.createElement('div');
-            divEle6_3.className = 'col-md-6';
-            divEle6_3.appendChild(priceLabel);
-            divEle6_3.appendChild(priceInput);
-            const divEle6_4 = document.createElement('div');
-            divEle6_4.className = 'col-md-6';
-            divEle6_4.appendChild(unitLabel);
-            divEle6_4.appendChild(unitSelect);
-            const divEle6_5 = document.createElement('div');
-            divEle6_5.className = 'col-md-6';
-            divEle6_5.appendChild(placeLabel);
-            divEle6_5.appendChild(placeInput);
-            const divEle6_6 = document.createElement('div');
-            divEle6_6.className = 'col-md-6';
-            divEle6_6.appendChild(jancdLabel);
-            divEle6_6.appendChild(jancdInput);
-            const divEle6_7 = document.createElement('div');
-            divEle6_7.className = 'col-md-6';
-            divEle6_7.appendChild(preservationLabel);
-            divEle6_7.appendChild(preservationSelect);
-            const divEle6_8 = document.createElement('div');
-            divEle6_8.className = 'col-md-6';
-            divEle6_8.appendChild(bestEtenLabel);
-            divEle6_8.appendChild(bestEtenInput);
-            const divEle12_1 = document.createElement('div');
-            divEle12_1.className = 'col-12';
-            divEle12_1.appendChild(etcLabel);
-            divEle12_1.appendChild(etcInput);
-            const divDelteEle = document.createElement('div');
-            divDelteEle.className = 'row mt-3';
-            divDelteEle.appendChild(deleteLabel);
-            const divEle2_1 = document.createElement('div');
-            divEle2_1.className = 'col-sm-2';
-            divEle2_1.appendChild(deleteButton);
-            divDelteEle.appendChild(divEle2_1);
-            // newProductDivにすべての要素を追加
-            const newline = document.createElement('hr');
-            newProductDiv.appendChild(newline);
-            newProductDiv.appendChild(divDelteEle);
-            newProductDiv.appendChild(divEle6_1);
-            newProductDiv.appendChild(divEle6_2);
-            newProductDiv.appendChild(divEle6_3_1);
-            newProductDiv.appendChild(divEle6_3_2);
-            newProductDiv.appendChild(divEle6_3);
-            newProductDiv.appendChild(divEle6_4);
-            newProductDiv.appendChild(divEle6_5);
-            newProductDiv.appendChild(divEle6_6);
-            newProductDiv.appendChild(divEle6_7);
-            newProductDiv.appendChild(divEle6_8);
-            newProductDiv.appendChild(divEle12_1);
+      const etcInput = document.createElement('input');
+      etcInput.className = 'form-control mb-3';
+      etcInput.type = 'text';
+      etcInput.id = `etc${productCount}`;
+      etcInput.name = `etc${productCount}`;
+      // 削除ボタンを追加
+      const deleteLabel = document.createElement('label');
+      deleteLabel.htmlFor = `delete${productCount}`;
+      deleteLabel.textContent = `【商品${productCount}】`;
+      deleteLabel.className = 'col-form-label col-sm-10';
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.textContent = '削除';
+      deleteButton.className = 'btn btn-danger';
+      deleteButton.id = `delete${productCount}`;
+      deleteButton.addEventListener('click', function () {
+        productContainer.removeChild(newProductDiv); // この商品を削除
+        updateProductIds();
+      });
+      const divEle6_1 = document.createElement('div');
+      divEle6_1.className = 'col-md-6';
+      divEle6_1.appendChild(bunruiLabel);
+      divEle6_1.appendChild(bunruiSelect);
+      const divEle6_2 = document.createElement('div');
+      divEle6_2.className = 'col-md-6';
+      divEle6_2.appendChild(productLabel);
+      divEle6_2.appendChild(productSelect);
+      const divEle6_3_1 = document.createElement('div');
+      divEle6_3_1.className = 'col-md-6';
+      divEle6_3_1.appendChild(specLabel);
+      divEle6_3_1.appendChild(specInput);
+      const divEle6_3_2 = document.createElement('div');
+      divEle6_3_2.className = 'col-md-6';
+      divEle6_3_2.appendChild(shipLotLabel);
+      divEle6_3_2.appendChild(shipLotInput);
+      const divEle6_3 = document.createElement('div');
+      divEle6_3.className = 'col-md-6';
+      divEle6_3.appendChild(priceLabel);
+      divEle6_3.appendChild(priceInput);
+      const divEle6_4 = document.createElement('div');
+      divEle6_4.className = 'col-md-6';
+      divEle6_4.appendChild(unitLabel);
+      divEle6_4.appendChild(unitSelect);
+      const divEle6_5 = document.createElement('div');
+      divEle6_5.className = 'col-md-6';
+      divEle6_5.appendChild(placeLabel);
+      divEle6_5.appendChild(placeInput);
+      const divEle6_6 = document.createElement('div');
+      divEle6_6.className = 'col-md-6';
+      divEle6_6.appendChild(jancdLabel);
+      divEle6_6.appendChild(jancdInput);
+      const divEle6_7 = document.createElement('div');
+      divEle6_7.className = 'col-md-6';
+      divEle6_7.appendChild(preservationLabel);
+      divEle6_7.appendChild(preservationSelect);
+      const divEle6_8 = document.createElement('div');
+      divEle6_8.className = 'col-md-6';
+      divEle6_8.appendChild(bestEtenLabel);
+      divEle6_8.appendChild(bestEtenInput);
+      const divEle12_1 = document.createElement('div');
+      divEle12_1.className = 'col-12';
+      divEle12_1.appendChild(etcLabel);
+      divEle12_1.appendChild(etcInput);
+      const divDelteEle = document.createElement('div');
+      divDelteEle.className = 'row mt-3';
+      divDelteEle.appendChild(deleteLabel);
+      const divEle2_1 = document.createElement('div');
+      divEle2_1.className = 'col-sm-2';
+      divEle2_1.appendChild(deleteButton);
+      divDelteEle.appendChild(divEle2_1);
+      // newProductDivにすべての要素を追加
+      const newline = document.createElement('hr');
+      newProductDiv.appendChild(newline);
+      newProductDiv.appendChild(divDelteEle);
+      newProductDiv.appendChild(divEle6_1);
+      newProductDiv.appendChild(divEle6_2);
+      newProductDiv.appendChild(divEle6_3_1);
+      newProductDiv.appendChild(divEle6_3_2);
+      newProductDiv.appendChild(divEle6_3);
+      newProductDiv.appendChild(divEle6_4);
+      newProductDiv.appendChild(divEle6_5);
+      newProductDiv.appendChild(divEle6_6);
+      newProductDiv.appendChild(divEle6_7);
+      newProductDiv.appendChild(divEle6_8);
+      newProductDiv.appendChild(divEle12_1);
 
-            // productContainerに新しい商品を追加
-            productContainer.appendChild(newProductDiv);
-        }
+      // productContainerに新しい商品を追加
+      productContainer.appendChild(newProductDiv);
+    }
 
-        // 商品IDを更新する関数
-        function updateProductIds() {
-            const products = document.querySelectorAll('.productDiv'); // 商品を全て取得
-            products.forEach((product, index) => {
-                const idNumber = index + 1; // IDを1から始まる連番にする
-                product.querySelectorAll('label')[0].htmlFor = `delete${idNumber}`;
-                product.querySelectorAll('label')[0].textContent = `【商品${idNumber}】`;
-                product.querySelectorAll('button')[0].id = `delete${idNumber}`;
-                // 商品分類
-                product.querySelectorAll('label')[1].htmlFor = `bunrui${idNumber}`;
-                product.querySelectorAll('select')[0].id = `bunrui${idNumber}`;
-                product.querySelectorAll('select')[0].name = `bunrui${idNumber}`;
-                // 商品名
-                product.querySelectorAll('label')[2].htmlFor = `product${idNumber}`;
-                product.querySelectorAll('select')[1].id = `product${idNumber}`;
-                product.querySelectorAll('select')[1].name = `product${idNumber}`;
-                // 内容量・規格
-                product.querySelectorAll('label')[3].htmlFor = `spec${idNumber}`;
-                product.querySelectorAll('input')[0].id = `spec${idNumber}`;
-                product.querySelectorAll('input')[0].name = `spec${idNumber}`;
-                // 出荷ロット
-                product.querySelectorAll('label')[4].htmlFor = `shipLot${idNumber}`;
-                product.querySelectorAll('input')[1].id = `shipLot${idNumber}`;
-                product.querySelectorAll('input')[1].name = `shipLot${idNumber}`;
-                // 単価
-                product.querySelectorAll('label')[5].htmlFor = `price${idNumber}`;
-                product.querySelectorAll('input')[2].id = `price${idNumber}`;
-                product.querySelectorAll('input')[2].name = `price${idNumber}`;
-                // 単位
-                product.querySelectorAll('label')[6].htmlFor = `unit${idNumber}`;
-                product.querySelectorAll('select')[2].id = `unit${idNumber}`;
-                product.querySelectorAll('select')[2].name = `unit${idNumber}`;
-                // 産地（製造場所）
-                product.querySelectorAll('label')[7].htmlFor = `place${idNumber}`;
-                product.querySelectorAll('input')[3].id = `palce${idNumber}`;
-                product.querySelectorAll('input')[3].name = `palce${idNumber}`;
-                // JANコード
-                product.querySelectorAll('label')[8].htmlFor = `jancd${idNumber}`;
-                product.querySelectorAll('input')[4].id = `jancd${idNumber}`;
-                product.querySelectorAll('input')[4].name = `jancd${idNumber}`;
-                // 保存温度帯
-                product.querySelectorAll('label')[9].htmlFor = `preservation${idNumber}`;
-                product.querySelectorAll('select')[3].id = `preservation${idNumber}`;
-                product.querySelectorAll('select')[3].name = `preservation${idNumber}`;
-                // 賞味期限
-                product.querySelectorAll('label')[10].htmlFor = `bestEten${idNumber}`;
-                product.querySelectorAll('input')[5].id = `bestEten${idNumber}`;
-                product.querySelectorAll('input')[5].name = `bestEten${idNumber}`;
-                // その他特記事項
-                product.querySelectorAll('label')[11].htmlFor = `etc${idNumber}`;
-                product.querySelectorAll('input')[6].id = `etc${idNumber}`;
-                product.querySelectorAll('input')[6].name = `etc${idNumber}`;
-            });
-        }
-        function loadProducts() {
-            google.script.run.withSuccessHandler(function (data) {
-                productContainer = document.getElementById('productContainer');
-                var res = JSON.parse(data);
-                bunruisData = res[0].bunruis;
-                productsData = res[0].products;
-                unitsData = res[0].units;
-                preservationsData = res[0].preservations;
-                deliveryMethodsData = res[0].deliveryMethods;
+    // 商品IDを更新する関数
+    function updateProductIds() {
+      const products = document.querySelectorAll('.productDiv'); // 商品を全て取得
+      products.forEach((product, index) => {
+        const idNumber = index + 1; // IDを1から始まる連番にする
+        product.querySelectorAll('label')[0].htmlFor = `delete${idNumber}`;
+        product.querySelectorAll('label')[0].textContent = `【商品${idNumber}】`;
+        product.querySelectorAll('button')[0].id = `delete${idNumber}`;
+        // 商品分類
+        product.querySelectorAll('label')[1].htmlFor = `bunrui${idNumber}`;
+        product.querySelectorAll('select')[0].id = `bunrui${idNumber}`;
+        product.querySelectorAll('select')[0].name = `bunrui${idNumber}`;
+        // 商品名
+        product.querySelectorAll('label')[2].htmlFor = `product${idNumber}`;
+        product.querySelectorAll('select')[1].id = `product${idNumber}`;
+        product.querySelectorAll('select')[1].name = `product${idNumber}`;
+        // 内容量・規格
+        product.querySelectorAll('label')[3].htmlFor = `spec${idNumber}`;
+        product.querySelectorAll('input')[0].id = `spec${idNumber}`;
+        product.querySelectorAll('input')[0].name = `spec${idNumber}`;
+        // 出荷ロット
+        product.querySelectorAll('label')[4].htmlFor = `shipLot${idNumber}`;
+        product.querySelectorAll('input')[1].id = `shipLot${idNumber}`;
+        product.querySelectorAll('input')[1].name = `shipLot${idNumber}`;
+        // 単価
+        product.querySelectorAll('label')[5].htmlFor = `price${idNumber}`;
+        product.querySelectorAll('input')[2].id = `price${idNumber}`;
+        product.querySelectorAll('input')[2].name = `price${idNumber}`;
+        // 単位
+        product.querySelectorAll('label')[6].htmlFor = `unit${idNumber}`;
+        product.querySelectorAll('select')[2].id = `unit${idNumber}`;
+        product.querySelectorAll('select')[2].name = `unit${idNumber}`;
+        // 産地（製造場所）
+        product.querySelectorAll('label')[7].htmlFor = `place${idNumber}`;
+        product.querySelectorAll('input')[3].id = `palce${idNumber}`;
+        product.querySelectorAll('input')[3].name = `palce${idNumber}`;
+        // JANコード
+        product.querySelectorAll('label')[8].htmlFor = `jancd${idNumber}`;
+        product.querySelectorAll('input')[4].id = `jancd${idNumber}`;
+        product.querySelectorAll('input')[4].name = `jancd${idNumber}`;
+        // 保存温度帯
+        product.querySelectorAll('label')[9].htmlFor = `preservation${idNumber}`;
+        product.querySelectorAll('select')[3].id = `preservation${idNumber}`;
+        product.querySelectorAll('select')[3].name = `preservation${idNumber}`;
+        // 賞味期限
+        product.querySelectorAll('label')[10].htmlFor = `bestEten${idNumber}`;
+        product.querySelectorAll('input')[5].id = `bestEten${idNumber}`;
+        product.querySelectorAll('input')[5].name = `bestEten${idNumber}`;
+        // その他特記事項
+        product.querySelectorAll('label')[11].htmlFor = `etc${idNumber}`;
+        product.querySelectorAll('input')[6].id = `etc${idNumber}`;
+        product.querySelectorAll('input')[6].name = `etc${idNumber}`;
+      });
+    }
+    function loadProducts() {
+      google.script.run.withSuccessHandler(function (data) {
+        productContainer = document.getElementById('productContainer');
+        var res = JSON.parse(data);
+        bunruisData = res[0].bunruis;
+        productsData = res[0].products;
+        unitsData = res[0].units;
+        preservationsData = res[0].preservations;
+        deliveryMethodsData = res[0].deliveryMethods;
 
-                // 初期化として最初の商品を追加
-                addProduct();
-                const deliveryMethod = document.getElementById('deliveryMethod');
-                const defOption = document.createElement('option');
-                defOption.value = '';
-                defOption.textContent = '';
-                deliveryMethod.appendChild(defOption);
-                deliveryMethodsData.forEach(function (deliveryMethods) {
-                    const option = document.createElement('option');
-                    option.value = deliveryMethods['納品方法'];
-                    option.textContent = deliveryMethods['納品方法'];
-                    deliveryMethod.appendChild(option);
-                });
-                oriproduct = $('select[id="product1"]').html();
-                // ボタンのクリックイベントで商品を追加
-            }).getQuotations();
-        }
-
-        document.addEventListener('DOMContentLoaded', loadProducts);
-        document.getElementById('addProductBtn').addEventListener('click', addProduct);
-        function bunruiChange(numVal) {
-            var bunrui = 'bunrui' + numVal;
-            var product = 'product' + numVal;
-            var $product = $('select[id="' + product + '"]');
-            var val1 = $('select[id="' + bunrui + '"]').val();
-            $product.html(oriproduct).find('option').each(function () {
-                var val2 = $(this).data('val');
-                if (val1 && val1 != val2) {
-                    $(this).not(':first-child').remove();
-                }
-            })
-        }
-        $(function () {
-            $(".customerInsertBtn_open").on("click", function () {
-                $(".customer_dg").dialog({
-                    title: "顧客新規登録",
-                    height: "500",
-                    modal: true,
-                    buttons: {
-                        "キャンセル": function () {
-                            $(this).dialog("close");
-                        },
-                        "登録": function () {
-                            addCustomer();
-                        },
-                    },
-                });
-            });
+        // 初期化として最初の商品を追加
+        addProduct();
+        const deliveryMethod = document.getElementById('deliveryMethod');
+        const defOption = document.createElement('option');
+        defOption.value = '';
+        defOption.textContent = '';
+        deliveryMethod.appendChild(defOption);
+        deliveryMethodsData.forEach(function (deliveryMethods) {
+          const option = document.createElement('option');
+          option.value = deliveryMethods['納品方法'];
+          option.textContent = deliveryMethods['納品方法'];
+          deliveryMethod.appendChild(option);
         });
-        function addCustomer() {
-            if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
-                showWarningToast('会社名または氏名が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerZipcodeDg"]').val()) {
-                showWarningToast('郵便番号が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
-                showWarningToast('郵便番号は7桁の数字で入力して下さい。');
-                return false;
-            }
-            if (!$('input[id="customerAddress1Dg"]').val()) {
-                showWarningToast('住所１が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerTelDg"]').val()) {
-                showWarningToast('電話番号が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
-                showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
-                return false;
-            }
-            if ($('input[id="customerPhoneDg"]').val()) {
-                if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
-                    showWarningToast('携帯電話は10~11桁の数字で入力して下さい。');
-                    return false;
-                }
-            }
-            if ($('input[id="customerFaxDg"]').val()) {
-                if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
-                    showWarningToast('ＦＡＸは10~11桁の数字で入力して下さい。');
-                    return false;
-                }
-            }
-            if ($('input[id="customerMailDg"]').val()) {
-                if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
-                    showWarningToast('メールアドレスは正しい形式で入力して下さい。');
-                    return false;
-                }
-            }
-            var record = {};
-            record['customerClassDg'] = $('select[id="customerClassDg"]').val();
-            record['customerNameDg'] = $('input[id="customerNameDg"]').val();
-            record['customerShowNameDg'] = $('input[id="customerShowNameDg"]').val();
-            record['customerFuriganaDg'] = $('input[id="customerFuriganaDg"]').val();
-            record['customerDepDg'] = $('input[id="customerDepDg"]').val();
-            record['customerPostDg'] = $('input[id="customerPostDg"]').val();
-            record['customerIdentDg'] = $('input[id="customerIdentDg"]').val();
-            record['customerZipcodeDg'] = $('input[id="customerZipcodeDg"]').val();
-            record['customerAddress1Dg'] = $('input[id="customerAddress1Dg"]').val();
-            record['customerAddress2Dg'] = $('input[id="customerAddress2Dg"]').val();
-            record['customerTelDg'] = $('input[id="customerTelDg"]').val();
-            record['customerPhoneDg'] = $('input[id="customerPhoneDg"]').val();
-            record['customerFaxDg'] = $('input[id="customerFaxDg"]').val();
-            record['customerMailDg'] = $('input[id="customerMailDg"]').val();
-            record['customerBillDg'] = $('select[id="customerBillDg"]').val();
-            record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
-            record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
-            record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
+        oriproduct = $('select[id="product1"]').html();
+        // ボタンのクリックイベントで商品を追加
+      }).getQuotations();
+    }
 
-            const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
-            if (checkAddFlg) {
-                if ($('input[name=customerSameDg]').prop("checked")) {
-                    google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
-                }
-                else {
-                    google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomer(JSON.stringify(record));
-                }
-            }
+    document.addEventListener('DOMContentLoaded', loadProducts);
+    document.getElementById('addProductBtn').addEventListener('click', addProduct);
+    function bunruiChange(numVal) {
+      var bunrui = 'bunrui' + numVal;
+      var product = 'product' + numVal;
+      var $product = $('select[id="' + product + '"]');
+      var val1 = $('select[id="' + bunrui + '"]').val();
+      $product.html(oriproduct).find('option').each(function () {
+        var val2 = $(this).data('val');
+        if (val1 && val1 != val2) {
+          $(this).not(':first-child').remove();
         }
-        function getAddress() {
-            var postalCode = document.getElementById("customerZipcodeDg").value;
-            var record = {};
-            record['postalCode'] = postalCode;
-            google.script.run.withSuccessHandler(dataPostSuccess).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
-        }
-
-        function dataPostSuccess(data) {
-            if (data) {
-                var res = JSON.parse(data);
-                $('input[id="customerAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
-            }
-        }
-        function dataAddFail() {
-            showInfoToast("該当データがありませんでした。");
-        }
-        function addFail() {
-            showErrorToast("処理に失敗しました。");
-        }
-
-        function dataAddSuccess() {
-            showSuccessToast("登録しました。");
-            if ($('input[id="customerNameDg"]').val()) {
-                $('input[id="customerName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
-            }
-            else {
-                $('input[id="customerName"]').val($('input[id="customerIdentDg"]').val());
-            }
-            $(".customer_dg").dialog("close");
-        }
-        // 顧客検索ダイアログを開く（イベント委譲で動的要素に対応）
-        $(document).on("click", ".customerSearchBtn_open", function () {
-            $(".customerSearch_dg").dialog({
-                title: "顧客検索",
-                width: "400",
-                height: "500",
-                modal: true,
-                buttons: {
-                    "キャンセル": function () {
-                        $(this).dialog("close");
-                    },
-                    "検索": function () {
-                        customerSearch();
-                    },
-                },
-            });
+      })
+    }
+    $(function () {
+      $(".customerInsertBtn_open").on("click", function () {
+        $(".customer_dg").dialog({
+          title: "顧客新規登録",
+          height: "500",
+          modal: true,
+          buttons: {
+            "キャンセル": function () {
+              $(this).dialog("close");
+            },
+            "登録": function () {
+              addCustomer();
+            },
+          },
         });
-        function customerSearch() {
-            if (!$('input[id="customerSearchKeyDg"]').val()) {
-                showWarningToast('キーワードが入力されていません。');
-                return false;
-            }
+      });
+    });
+    function addCustomer() {
+      if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
+        showWarningToast('会社名または氏名が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="customerZipcodeDg"]').val()) {
+        showWarningToast('郵便番号が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="customerZipcodeDg"]').val().match(/[0-9]{7}/)) {
+        showWarningToast('郵便番号は7桁の数字で入力して下さい。');
+        return false;
+      }
+      if (!$('input[id="customerAddress1Dg"]').val()) {
+        showWarningToast('住所１が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="customerTelDg"]').val()) {
+        showWarningToast('電話番号が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="customerTelDg"]').val().match(/^0\d{9,10}$/)) {
+        showWarningToast('電話番号は10~11桁の数字で入力して下さい。');
+        return false;
+      }
+      if ($('input[id="customerPhoneDg"]').val()) {
+        if (!$('input[id="customerPhoneDg"]').val().match(/^0\d{9,10}$/)) {
+          showWarningToast('携帯電話は10~11桁の数字で入力して下さい。');
+          return false;
+        }
+      }
+      if ($('input[id="customerFaxDg"]').val()) {
+        if (!$('input[id="customerFaxDg"]').val().match(/^0\d{9,10}$/)) {
+          showWarningToast('ＦＡＸは10~11桁の数字で入力して下さい。');
+          return false;
+        }
+      }
+      if ($('input[id="customerMailDg"]').val()) {
+        if (!$('input[id="customerMailDg"]').val().match(/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/)) {
+          showWarningToast('メールアドレスは正しい形式で入力して下さい。');
+          return false;
+        }
+      }
+      var record = {};
+      record['customerClassDg'] = $('select[id="customerClassDg"]').val();
+      record['customerNameDg'] = $('input[id="customerNameDg"]').val();
+      record['customerShowNameDg'] = $('input[id="customerShowNameDg"]').val();
+      record['customerFuriganaDg'] = $('input[id="customerFuriganaDg"]').val();
+      record['customerDepDg'] = $('input[id="customerDepDg"]').val();
+      record['customerPostDg'] = $('input[id="customerPostDg"]').val();
+      record['customerIdentDg'] = $('input[id="customerIdentDg"]').val();
+      record['customerZipcodeDg'] = $('input[id="customerZipcodeDg"]').val();
+      record['customerAddress1Dg'] = $('input[id="customerAddress1Dg"]').val();
+      record['customerAddress2Dg'] = $('input[id="customerAddress2Dg"]').val();
+      record['customerTelDg'] = $('input[id="customerTelDg"]').val();
+      record['customerPhoneDg'] = $('input[id="customerPhoneDg"]').val();
+      record['customerFaxDg'] = $('input[id="customerFaxDg"]').val();
+      record['customerMailDg'] = $('input[id="customerMailDg"]').val();
+      record['customerBillDg'] = $('select[id="customerBillDg"]').val();
+      record['customerDepositDateDg'] = $('select[id="customerDepositDateDg"]').val();
+      record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
+      record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
 
-            // キャッシュが読み込まれていない場合は旧方式にフォールバック
-            if (!masterDataLoaded) {
-              console.warn('マスタデータ未ロード - 旧方式で検索します');
-              $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
-              var record = {};
-              record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
-              record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
-              record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
-              google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
-              return;
-            }
+      const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
+      if (checkAddFlg) {
+        if ($('input[name=customerSameDg]').prop("checked")) {
+          google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
+        }
+        else {
+          google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomer(JSON.stringify(record));
+        }
+      }
+    }
+    function getAddress() {
+      var postalCode = document.getElementById("customerZipcodeDg").value;
+      var record = {};
+      record['postalCode'] = postalCode;
+      google.script.run.withSuccessHandler(dataPostSuccess).withFailureHandler(addFail).getAddressFromPostalCode(JSON.stringify(record));
+    }
 
-            // メモリ内フィルタリング（高速検索）
-            var bunrui = $('select[id="customerSearchBunruiDg"]').val();
-            var searchClass = $('select[id="customerSearchClassDg"]').val();
-            var key = $('input[id="customerSearchKeyDg"]').val();
+    function dataPostSuccess(data) {
+      if (data) {
+        var res = JSON.parse(data);
+        $('input[id="customerAddress1Dg"]').val(res['address1'] + res['address2'] + res['address3']);
+      }
+    }
+    function dataAddFail() {
+      showInfoToast("該当データがありませんでした。");
+    }
+    function addFail() {
+      showErrorToast("処理に失敗しました。");
+    }
 
-            var results = cachedCustomers.filter(function(customer) {
-              // 顧客分類フィルタ
-              if (searchClass && customer['顧客分類'] !== searchClass) {
-                return false;
-              }
+    function dataAddSuccess() {
+      showSuccessToast("登録しました。");
+      if ($('input[id="customerNameDg"]').val()) {
+        $('input[id="customerName"]').val($('input[id="customerNameDg"]').val() + "　" + $('input[id="customerIdentDg"]').val());
+      }
+      else {
+        $('input[id="customerName"]').val($('input[id="customerIdentDg"]').val());
+      }
+      $(".customer_dg").dialog("close");
+    }
+    // 顧客検索ダイアログを開く（イベント委譲で動的要素に対応）
+    $(document).on("click", ".customerSearchBtn_open", function () {
+      $(".customerSearch_dg").dialog({
+        title: "顧客検索",
+        width: "400",
+        height: "500",
+        modal: true,
+        buttons: {
+          "キャンセル": function () {
+            $(this).dialog("close");
+          },
+          "検索": function () {
+            customerSearch();
+          },
+        },
+      });
+    });
+    function customerSearch() {
+      if (!$('input[id="customerSearchKeyDg"]').val()) {
+        showWarningToast('キーワードが入力されていません。');
+        return false;
+      }
 
-              // 検索対象カラムを決定
-              var targetValue = '';
-              if (bunrui == "1") {
-                targetValue = customer['会社名'] || '';
-              } else if (bunrui == "2") {
-                targetValue = customer['氏名'] || '';
-              } else if (bunrui == "3") {
-                targetValue = customer['表示名'] || '';
-              } else if (bunrui == "4") {
-                targetValue = customer['フリガナ'] || '';
-              }
+      // キャッシュが読み込まれていない場合は旧方式にフォールバック
+      if (!masterDataLoaded) {
+        console.warn('マスタデータ未ロード - 旧方式で検索します');
+        $("#resCustArea").html('<div class="inline-spinner"><div class="mini-spinner"></div><span>検索中...</span></div>');
+        var record = {};
+        record['customerSearchBunruiDg'] = $('select[id="customerSearchBunruiDg"]').val();
+        record['customerSearchClassDg'] = $('select[id="customerSearchClassDg"]').val();
+        record['customerSearchKeyDg'] = $('input[id="customerSearchKeyDg"]').val();
+        google.script.run.withSuccessHandler(dataSearchSuccess).withFailureHandler(dataAddFail).customerSearch(JSON.stringify(record));
+        return;
+      }
 
-              // キーワード検索
-              return String(targetValue).includes(key);
-            });
+      // メモリ内フィルタリング（高速検索）
+      var bunrui = $('select[id="customerSearchBunruiDg"]').val();
+      var searchClass = $('select[id="customerSearchClassDg"]').val();
+      var key = $('input[id="customerSearchKeyDg"]').val();
 
-            // 結果を表示
-            dataSearchSuccess(JSON.stringify(results));
+      var results = cachedCustomers.filter(function (customer) {
+        // 顧客分類フィルタ
+        if (searchClass && customer['顧客分類'] !== searchClass) {
+          return false;
         }
 
-        function escapeHtml(str) {
-            if (str == null) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-        function dataSearchSuccess(datas) {
-            var res = JSON.parse(datas);
-            if (res && res.length > 0) {
-                var html = "<table>";
-                html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
-                for (let i = 0; i < res.length; i++) {
-                    var raw = [
-                        res[i]["会社名"] || '',
-                        res[i]["氏名"] || '',
-                        res[i]["郵便番号"] || '',
-                        res[i]["住所１"] || '',
-                        res[i]["住所２"] || '',
-                        res[i]["TEL"] || ''
-                    ];
-                    var datVal = escapeHtml(JSON.stringify(raw));
-                    html += "<tr>";
-                    html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
-                    html += "<td><input style='width:120px;' type='text' id='cust" + i + "' readonly></td>";
-                    html += "<td><input style='width:120px;' type='text' id='ident" + i + "' readonly></td>";
-                    html += "</tr>";
-                }
-                html += "</table>";
-                $("#resCustArea").html(html);
-                for (let i = 0; i < res.length; i++) {
-                    $('#cust' + i).val(res[i]["会社名"] || '');
-                    $('#ident' + i).val(res[i]["氏名"] || '');
-                }
-            }
-            else {
-                showInfoToast('該当データがありませんでした。');
-                $("#resCustArea").html('');
-            }
-        }
-        function applyName(num) {
-            var nameVal = 'nameCust' + num;
-            var dataVal = $('button[id="' + nameVal + '"]').attr('data-val');
-            var raw = JSON.parse(dataVal);
-            $(".customerSearch_dg").dialog("close");
-            if (raw[0]) {
-                $('input[id="customerName"]').val(raw[0] + "　" + raw[1]);
-            }
-            else {
-                $('input[id="customerName"]').val(raw[1]);
-            }
-        }
-        function setProductSearch() {
-            if (!$('input[id="customerName"]').val()) {
-                showWarningToast('顧客名が入力されていません。');
-                return false;
-            }
-            $("button[id='productSearch']").html('<span class="btn-spinner"></span> 検索中...');
-            var customerName = $('input[id="customerName"]').val();
-            google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(customerName);
-
-        }
-        function createQuoutation() {
-            if (!$('input[id="customerName"]').val()) {
-                showWarningToast('顧客名が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="shippingToName"]').val()) {
-                showWarningToast('納品場所が入力されていません。');
-                return false;
-            }
-            if (!$('select[id="deliveryMethod"]').val()) {
-                showWarningToast('納品方法が入力されていません。');
-                return false;
-            }
-            if (!$('input[id="leadTime"]').val()) {
-                showWarningToast('出荷リードタイムが入力されていません。');
-                return false;
-            }
-            const products = document.querySelectorAll('.productDiv'); // 商品を全て取得
-            if (products.length < 1) {
-                showWarningToast('商品が１件も存在しません。');
-                return false;
-            }
-            for (let i = 1; i <= products.length; i++) {
-                if (!$('select[id="bunrui' + `${i}` + '"]').val()) {
-                    showWarningToast('商品分類が選択されていません。');
-                    return false;
-                }
-                if (!$('select[id="product' + `${i}` + '"]').val()) {
-                    showWarningToast('商品名が選択されていません。');
-                    return false;
-                }
-                if (!$('input[id="price' + `${i}` + '"]').val()) {
-                    showWarningToast('単価が入力されていません。');
-                    return false;
-                }
-                if (!$('select[id="unit' + `${i}` + '"]').val()) {
-                    showWarningToast('単位が入力されていません。');
-                    return false;
-                }
-            }
-
-            const checkAddFlg = window.confirm('見積書を発行してもよろしいですか？');
-            if (checkAddFlg) {
-                $("button[id='quoutationComfirm']").text('作成中．．．');
-                var record = {};
-                record['customerName'] = $('input[id="customerName"]').val();
-                record['shippingToName'] = $('input[id="shippingToName"]').val();
-                record['deliveryMethod'] = $('select[id="deliveryMethod"]').val();
-                record['leadTime'] = $('input[id="leadTime"]').val();
-                record['memo'] = $('textarea[id="memo"]').val();
-                let productData = [];
-                for (let i = 1; i <= products.length; i++) {
-                    const rec = {};
-                    rec['bunrui'] = $('select[id="bunrui' + `${i}` + '"]').val();
-                    rec['product'] = $('select[id="product' + `${i}` + '"]').val();
-                    rec['spec'] = $('input[id="spec' + `${i}` + '"]').val();
-                    rec['shipLot'] = $('input[id="shipLot' + `${i}` + '"]').val();
-                    rec['price'] = $('input[id="price' + `${i}` + '"]').val();
-                    rec['unit'] = $('select[id="unit' + `${i}` + '"]').val();
-                    rec['place'] = $('input[id="place' + `${i}` + '"]').val();
-                    rec['jancd'] = $('input[id="jancd' + `${i}` + '"]').val();
-                    rec['preservation'] = $('select[id="preservation' + `${i}` + '"]').val();
-                    rec['bestEten'] = $('input[id="bestEten' + `${i}` + '"]').val();
-                    rec['etc'] = $('input[id="etc' + `${i}` + '"]').val();
-                    productData.push(rec);
-                }
-                record['products'] = productData;
-                google.script.run.withSuccessHandler(createQuoutationSuccess).withFailureHandler(createQuoutationFail).createQuoutation(JSON.stringify(record));
-            }
-        }
-        function createQuoutationSuccess(data) {
-            if (data) {
-                showSuccessToast("見積書を作成しました。");
-                $("button[id='quoutationComfirm']").text('見積書作成');
-                var html = "◆作成ファイル◆<br>";
-                html += data + ".pdf" + "<br>";
-                $("p[id='res']").html(html);
-            }
-            else {
-                showInfoToast("該当データがありませんでした。");
-                $("button[id='quoutationComfirm']").text('見積書作成');
-            }
-        }
-        function createQuoutationFail() {
-            showErrorToast("エラーが発生しました。");
-            $("button[id='quoutationComfirm']").text('見積書作成');
+        // 検索対象カラムを決定
+        var targetValue = '';
+        if (bunrui == "1") {
+          targetValue = customer['会社名'] || '';
+        } else if (bunrui == "2") {
+          targetValue = customer['氏名'] || '';
+        } else if (bunrui == "3") {
+          targetValue = customer['表示名'] || '';
+        } else if (bunrui == "4") {
+          targetValue = customer['フリガナ'] || '';
         }
 
-        // ========================================
-        // 検索パフォーマンス改善: マスタデータロード
-        // ========================================
-        function loadMasterDataForSearch() {
-          console.log('マスタデータをロード中...');
-          google.script.run
-            .withSuccessHandler(function(data) {
-              try {
-                const masterData = JSON.parse(data);
-                cachedCustomers = masterData.customers || [];
-                masterDataLoaded = true;
-                console.log('マスタデータロード完了:', cachedCustomers.length + '件の顧客');
-              } catch (e) {
-                console.error('マスタデータのパースに失敗:', e);
-              }
-            })
-            .withFailureHandler(function(e) {
-              console.error('マスタデータのロードに失敗:', e);
-            })
-            .getAllMasterDataForSearch();
-        }
+        // キーワード検索
+        return String(targetValue).includes(key);
+      });
 
-        // ページロード時に実行
-        loadMasterDataForSearch();
+      // 結果を表示
+      dataSearchSuccess(JSON.stringify(results));
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    function dataSearchSuccess(datas) {
+      var res = JSON.parse(datas);
+      if (res && res.length > 0) {
+        var html = "<table>";
+        html += "<tr><th></th><th>会社名</th><th>氏名</th></tr>";
+        for (let i = 0; i < res.length; i++) {
+          var raw = [
+            res[i]["会社名"] || '',
+            res[i]["氏名"] || '',
+            res[i]["郵便番号"] || '',
+            res[i]["住所１"] || '',
+            res[i]["住所２"] || '',
+            res[i]["TEL"] || ''
+          ];
+          var datVal = escapeHtml(JSON.stringify(raw));
+          html += "<tr>";
+          html += "<td><button type='button' id='nameCust" + i + "' data-val='" + datVal + "' onclick='applyName(" + i + ")'>選択</button></td>";
+          html += "<td><input style='width:120px;' type='text' id='cust" + i + "' readonly></td>";
+          html += "<td><input style='width:120px;' type='text' id='ident" + i + "' readonly></td>";
+          html += "</tr>";
+        }
+        html += "</table>";
+        $("#resCustArea").html(html);
+        for (let i = 0; i < res.length; i++) {
+          $('#cust' + i).val(res[i]["会社名"] || '');
+          $('#ident' + i).val(res[i]["氏名"] || '');
+        }
+      }
+      else {
+        showInfoToast('該当データがありませんでした。');
+        $("#resCustArea").html('');
+      }
+    }
+    function applyName(num) {
+      var nameVal = 'nameCust' + num;
+      var dataVal = $('button[id="' + nameVal + '"]').attr('data-val');
+      var raw = JSON.parse(dataVal);
+      $(".customerSearch_dg").dialog("close");
+      if (raw[0]) {
+        $('input[id="customerName"]').val(raw[0] + "　" + raw[1]);
+      }
+      else {
+        $('input[id="customerName"]').val(raw[1]);
+      }
+    }
+    function setProductSearch() {
+      if (!$('input[id="customerName"]').val()) {
+        showWarningToast('顧客名が入力されていません。');
+        return false;
+      }
+      $("button[id='productSearch']").html('<span class="btn-spinner"></span> 検索中...');
+      var customerName = $('input[id="customerName"]').val();
+      google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(customerName);
+
+    }
+    function createQuoutation() {
+      if (!$('input[id="customerName"]').val()) {
+        showWarningToast('顧客名が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="shippingToName"]').val()) {
+        showWarningToast('納品場所が入力されていません。');
+        return false;
+      }
+      if (!$('select[id="deliveryMethod"]').val()) {
+        showWarningToast('納品方法が入力されていません。');
+        return false;
+      }
+      if (!$('input[id="leadTime"]').val()) {
+        showWarningToast('出荷リードタイムが入力されていません。');
+        return false;
+      }
+      const products = document.querySelectorAll('.productDiv'); // 商品を全て取得
+      if (products.length < 1) {
+        showWarningToast('商品が１件も存在しません。');
+        return false;
+      }
+      for (let i = 1; i <= products.length; i++) {
+        if (!$('select[id="bunrui' + `${i}` + '"]').val()) {
+          showWarningToast('商品分類が選択されていません。');
+          return false;
+        }
+        if (!$('select[id="product' + `${i}` + '"]').val()) {
+          showWarningToast('商品名が選択されていません。');
+          return false;
+        }
+        if (!$('input[id="price' + `${i}` + '"]').val()) {
+          showWarningToast('単価が入力されていません。');
+          return false;
+        }
+        if (!$('select[id="unit' + `${i}` + '"]').val()) {
+          showWarningToast('単位が入力されていません。');
+          return false;
+        }
+      }
+
+      const checkAddFlg = window.confirm('見積書を発行してもよろしいですか？');
+      if (checkAddFlg) {
+        $("button[id='quoutationComfirm']").text('作成中．．．');
+        var record = {};
+        record['customerName'] = $('input[id="customerName"]').val();
+        record['shippingToName'] = $('input[id="shippingToName"]').val();
+        record['deliveryMethod'] = $('select[id="deliveryMethod"]').val();
+        record['leadTime'] = $('input[id="leadTime"]').val();
+        record['memo'] = $('textarea[id="memo"]').val();
+        let productData = [];
+        for (let i = 1; i <= products.length; i++) {
+          const rec = {};
+          rec['bunrui'] = $('select[id="bunrui' + `${i}` + '"]').val();
+          rec['product'] = $('select[id="product' + `${i}` + '"]').val();
+          rec['spec'] = $('input[id="spec' + `${i}` + '"]').val();
+          rec['shipLot'] = $('input[id="shipLot' + `${i}` + '"]').val();
+          rec['price'] = $('input[id="price' + `${i}` + '"]').val();
+          rec['unit'] = $('select[id="unit' + `${i}` + '"]').val();
+          rec['place'] = $('input[id="place' + `${i}` + '"]').val();
+          rec['jancd'] = $('input[id="jancd' + `${i}` + '"]').val();
+          rec['preservation'] = $('select[id="preservation' + `${i}` + '"]').val();
+          rec['bestEten'] = $('input[id="bestEten' + `${i}` + '"]').val();
+          rec['etc'] = $('input[id="etc' + `${i}` + '"]').val();
+          productData.push(rec);
+        }
+        record['products'] = productData;
+        google.script.run.withSuccessHandler(createQuoutationSuccess).withFailureHandler(createQuoutationFail).createQuoutation(JSON.stringify(record));
+      }
+    }
+    function createQuoutationSuccess(data) {
+      if (data) {
+        showSuccessToast("見積書を作成しました。");
+        $("button[id='quoutationComfirm']").text('見積書作成');
+        var html = "◆作成ファイル◆<br>";
+        html += data + ".pdf" + "<br>";
+        $("p[id='res']").html(html);
+      }
+      else {
+        showInfoToast("該当データがありませんでした。");
+        $("button[id='quoutationComfirm']").text('見積書作成');
+      }
+    }
+    function createQuoutationFail() {
+      showErrorToast("エラーが発生しました。");
+      $("button[id='quoutationComfirm']").text('見積書作成');
+    }
+
+    // ========================================
+    // 検索パフォーマンス改善: マスタデータロード
+    // ========================================
+    function loadMasterDataForSearch() {
+      console.log('マスタデータをロード中...');
+      google.script.run
+        .withSuccessHandler(function (data) {
+          try {
+            const masterData = JSON.parse(data);
+            cachedCustomers = masterData.customers || [];
+            masterDataLoaded = true;
+            console.log('マスタデータロード完了:', cachedCustomers.length + '件の顧客');
+          } catch (e) {
+            console.error('マスタデータのパースに失敗:', e);
+          }
+        })
+        .withFailureHandler(function (e) {
+          console.error('マスタデータのロードに失敗:', e);
+        })
+        .getAllMasterDataForSearch();
+    }
+
+    // ページロード時に実行
+    loadMasterDataForSearch();
   </script>
   <?!= HtmlService.createHtmlOutputFromFile('keyCheck').getContent(); ?>
 </body>

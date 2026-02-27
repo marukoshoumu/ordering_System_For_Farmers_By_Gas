@@ -39,7 +39,8 @@
     }
 
     .card-header {
-      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      background: #4a90a4;
+      /* 統一カラーに変更 */
       color: white;
       border-radius: 12px 12px 0 0 !important;
       padding: 16px 20px;
@@ -255,24 +256,12 @@
     .product-list li:last-child {
       border-bottom: none;
     }
-
   </style>
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
   <div class="main-container">
-    <form method="post" action="<?= deployURL ?>">
-      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-      <input type="hidden" name="userRole" value="<?= userRole ?>">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <button type="submit" name="main" value="true" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-house"></i> ホーム
-        </button>
-        <h2 class="mb-0" style="font-size: 1.1rem;">定期便一覧</h2>
-        <div style="width: 80px;"></div>
-      </div>
-    </form>
-
     <div class="card">
       <div class="card-header">
         <h1>定期便一覧</h1>
@@ -290,7 +279,8 @@
           </div>
           <div class="filter-group">
             <span class="filter-label">顧客名:</span>
-            <input type="text" id="customerFilter" class="form-control form-control-sm" placeholder="顧客名で検索" style="width: 200px;">
+            <input type="text" id="customerFilter" class="form-control form-control-sm" placeholder="顧客名で検索"
+              style="width: 200px;">
           </div>
           <button type="button" id="searchBtn" class="btn btn-primary btn-sm">
             <i class="bi bi-search"></i> 検索
@@ -446,11 +436,11 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       loadOrders();
       document.getElementById('searchBtn').addEventListener('click', filterOrders);
       document.getElementById('clearBtn').addEventListener('click', clearFilters);
-      document.getElementById('customerFilter').addEventListener('keypress', function(e) {
+      document.getElementById('customerFilter').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') filterOrders();
       });
       document.getElementById('confirmIntervalBtn').addEventListener('click', confirmIntervalChange);
@@ -464,14 +454,14 @@
       subOptions.innerHTML = '';
       if (isWeekBasedInterval(type)) {
         // 曜日セレクト（biweekly/triweekly は "week" で終わらないため明示）
-        var days = ['月','火','水','木','金','土','日'];
+        var days = ['月', '火', '水', '木', '金', '土', '日'];
         var select = document.createElement('select');
         select.className = 'form-select';
         select.id = 'newIntervalWeekday';
         select.name = 'newIntervalWeekday';
-        days.forEach(function(day, idx) {
+        days.forEach(function (day, idx) {
           var opt = document.createElement('option');
-          opt.value = idx+1;
+          opt.value = idx + 1;
           opt.text = '毎週' + day + '曜日';
           select.appendChild(opt);
         });
@@ -483,7 +473,7 @@
         select.className = 'form-select';
         select.id = 'newIntervalMonthDay';
         select.name = 'newIntervalMonthDay';
-        for (var i=1; i<=31; i++) {
+        for (var i = 1; i <= 31; i++) {
           var opt = document.createElement('option');
           opt.value = i;
           opt.text = '毎月' + i + '日';
@@ -537,12 +527,12 @@
     function loadOrders() {
       showLoading();
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           allOrders = data || [];
           filterOrders();
           hideLoading();
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           console.error('データ取得エラー:', error);
           hideLoading();
           alert('データの取得に失敗しました');
@@ -553,7 +543,7 @@
     function filterOrders() {
       var statusFilter = document.getElementById('statusFilter').value;
       var customerFilter = document.getElementById('customerFilter').value.toLowerCase();
-      var filtered = allOrders.filter(function(order) {
+      var filtered = allOrders.filter(function (order) {
         if (statusFilter && order.status !== statusFilter) return false;
         if (customerFilter) {
           var customerName = (order.customerName || '').toString();
@@ -582,15 +572,17 @@
       }
 
       noDataMsg.style.display = 'none';
-      orders.forEach(function(order) {
+      orders.forEach(function (order) {
         var tr = document.createElement('tr');
         tr.dataset.id = order.id; // 裏でIDを保持
         tr.style.cursor = 'pointer';
-        tr.onclick = (function(id) { return function(e) {
-          // 操作ボタンクリック時は詳細表示しない
-          if (e.target.closest('.col-action')) return;
-          showDetail(id);
-        }; })(order.id);
+        tr.onclick = (function (id) {
+          return function (e) {
+            // 操作ボタンクリック時は詳細表示しない
+            if (e.target.closest('.col-action')) return;
+            showDetail(id);
+          };
+        })(order.id);
 
         var tdCustomer = document.createElement('td');
         tdCustomer.textContent = order.customerName;
@@ -628,7 +620,7 @@
         var intervalIcon = document.createElement('i');
         intervalIcon.className = 'bi bi-calendar3';
         intervalBtn.appendChild(intervalIcon);
-        intervalBtn.onclick = (function(id, interval) { return function(e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
+        intervalBtn.onclick = (function (id, interval) { return function (e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
         tdAction.appendChild(intervalBtn);
 
         if (order.status === '有効') {
@@ -638,7 +630,7 @@
           var pauseIcon = document.createElement('i');
           pauseIcon.className = 'bi bi-pause-circle';
           pauseBtn.appendChild(pauseIcon);
-          pauseBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
+          pauseBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
           tdAction.appendChild(pauseBtn);
         } else if (order.status === '停止') {
           var resumeBtn = document.createElement('button');
@@ -647,7 +639,7 @@
           var resumeIcon = document.createElement('i');
           resumeIcon.className = 'bi bi-play-circle';
           resumeBtn.appendChild(resumeIcon);
-          resumeBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
+          resumeBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
           tdAction.appendChild(resumeBtn);
         }
 
@@ -657,7 +649,7 @@
         var deleteIcon = document.createElement('i');
         deleteIcon.className = 'bi bi-trash';
         deleteBtn.appendChild(deleteIcon);
-        deleteBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
+        deleteBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
         tdAction.appendChild(deleteBtn);
 
         tr.appendChild(tdAction);
@@ -677,15 +669,17 @@
         return;
       }
 
-      orders.forEach(function(order) {
+      orders.forEach(function (order) {
         var card = document.createElement('div');
         card.className = 'mobile-card';
         card.style.cursor = 'pointer';
-        card.onclick = (function(id) { return function(e) {
-          // アクションボタンクリック時は詳細表示しない
-          if (e.target.closest('.mobile-card-actions')) return;
-          showDetail(id);
-        }; })(order.id);
+        card.onclick = (function (id) {
+          return function (e) {
+            // アクションボタンクリック時は詳細表示しない
+            if (e.target.closest('.mobile-card-actions')) return;
+            showDetail(id);
+          };
+        })(order.id);
 
         var header = document.createElement('div');
         header.className = 'mobile-card-header';
@@ -712,7 +706,7 @@
           { label: '商品', value: order.productSummary || '-' }
         ];
 
-        items.forEach(function(item) {
+        items.forEach(function (item) {
           var row = document.createElement('div');
           row.className = 'row-item';
           var labelSpan = document.createElement('span');
@@ -738,27 +732,27 @@
         var intervalBtn = document.createElement('button');
         intervalBtn.className = 'btn btn-outline-primary btn-sm';
         intervalBtn.textContent = '間隔変更';
-        intervalBtn.onclick = (function(id, interval) { return function(e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
+        intervalBtn.onclick = (function (id, interval) { return function (e) { e.stopPropagation(); openIntervalModal(id, interval); }; })(order.id, order.interval);
         actions.appendChild(intervalBtn);
 
         if (order.status === '有効') {
           var pauseBtn = document.createElement('button');
           pauseBtn.className = 'btn btn-outline-warning btn-sm';
           pauseBtn.textContent = '停止';
-          pauseBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
+          pauseBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); pauseOrder(id); }; })(order.id);
           actions.appendChild(pauseBtn);
         } else if (order.status === '停止') {
           var resumeBtn = document.createElement('button');
           resumeBtn.className = 'btn btn-outline-success btn-sm';
           resumeBtn.textContent = '再開';
-          resumeBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
+          resumeBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); resumeOrder(id); }; })(order.id);
           actions.appendChild(resumeBtn);
         }
 
         var deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn btn-outline-danger btn-sm';
         deleteBtn.textContent = '削除';
-        deleteBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
+        deleteBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); deleteOrder(id); }; })(order.id);
         actions.appendChild(deleteBtn);
 
         card.appendChild(actions);
@@ -784,7 +778,7 @@
     }
 
     function showDetail(id) {
-      var order = allOrders.find(function(o) { return o.id === id; });
+      var order = allOrders.find(function (o) { return o.id === id; });
       if (!order) return;
 
       var modalBody = document.getElementById('detailModalBody');
@@ -807,7 +801,7 @@
         { label: '合計金額', value: '¥' + (order.totalAmount || 0).toLocaleString() }
       ];
 
-      rows.forEach(function(row) {
+      rows.forEach(function (row) {
         var tr = document.createElement('tr');
         var th = document.createElement('th');
         th.textContent = row.label;
@@ -831,7 +825,7 @@
       if (products.length > 0) {
         var ul = document.createElement('ul');
         ul.className = 'product-list';
-        products.forEach(function(p) {
+        products.forEach(function (p) {
           var li = document.createElement('li');
           li.textContent = p.product + ' × ' + p.quantity + ' (¥' + p.price.toLocaleString() + ')';
           ul.appendChild(li);
@@ -849,7 +843,7 @@
 
     function openIntervalModal(id, currentInterval) {
       // 対象のorderデータを取得
-      var order = allOrders.find(function(o) { return o.id === id; });
+      var order = allOrders.find(function (o) { return o.id === id; });
 
       document.getElementById('intervalTargetId').value = id;
 
@@ -883,7 +877,7 @@
       onNewIntervalTypeChange();
 
       // サブオプションを設定
-      setTimeout(function() {
+      setTimeout(function () {
         if (intervalObj.type === 'weekly' && intervalObj.value) {
           var weekdaySel = document.getElementById('newIntervalWeekday');
           if (weekdaySel) weekdaySel.value = intervalObj.value;
@@ -915,7 +909,7 @@
 
       // 発送日変更時に納品日を自動更新するイベントを設定
       var shippingInput = document.getElementById('newNextShippingDate');
-      shippingInput.onchange = function() {
+      shippingInput.onchange = function () {
         updateDeliveryDateFromShipping();
       };
 
@@ -991,7 +985,7 @@
 
       showLoading();
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result) {
             bootstrap.Modal.getInstance(document.getElementById('intervalModal')).hide();
@@ -1000,7 +994,7 @@
             alert('変更に失敗しました');
           }
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           hideLoading();
           alert('エラーが発生しました: ' + error);
         })
@@ -1011,12 +1005,12 @@
       if (!confirm('この定期便を一時停止しますか？')) return;
       showLoading();
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
           else alert('一時停止に失敗しました');
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           hideLoading();
           alert('エラーが発生しました: ' + error);
         })
@@ -1027,12 +1021,12 @@
       if (!confirm('この定期便を再開しますか？')) return;
       showLoading();
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
           else alert('再開に失敗しました');
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           hideLoading();
           alert('エラーが発生しました: ' + error);
         })
@@ -1043,12 +1037,12 @@
       if (!confirm('この定期便を削除しますか？\nこの操作は取り消せません。')) return;
       showLoading();
       google.script.run
-        .withSuccessHandler(function(result) {
+        .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
           else alert('削除に失敗しました');
         })
-        .withFailureHandler(function(error) {
+        .withFailureHandler(function (error) {
           hideLoading();
           alert('エラーが発生しました: ' + error);
         })

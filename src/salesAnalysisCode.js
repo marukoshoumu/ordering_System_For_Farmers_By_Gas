@@ -1008,6 +1008,19 @@ function getYearlySalesData(year) {
       let yearMonth = d['年月'];
       if (yearMonth instanceof Date) {
         yearMonth = Utilities.formatDate(yearMonth, 'JST', 'yyyy-MM');
+      } else if (typeof yearMonth === 'string') {
+        const dateStr = yearMonth.toString().trim();
+        // yyyy/MM/dd形式の場合
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length >= 2) {
+            yearMonth = parts[0] + '-' + parts[1].padStart(2, '0');
+          }
+        }
+        // yyyy-MM-dd形式の場合
+        else if (dateStr.includes('-') && dateStr.length >= 7) {
+          yearMonth = dateStr.substring(0, 7);
+        }
       }
 
       if (!yearMonth || !yearMonth.startsWith(year.toString())) {

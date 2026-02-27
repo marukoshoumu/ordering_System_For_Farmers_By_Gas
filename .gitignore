@@ -12,3 +12,5 @@ service-account*.json
 
 # Google Apps Script (clasp)
 .clasp.json
+
+/docs/**

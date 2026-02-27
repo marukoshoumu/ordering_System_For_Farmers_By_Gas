@@ -46,17 +46,10 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
-      background: var(--brand-primary);
-      color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 16px 20px;
-    }
-
-    .card-header h1 {
-      font-size: 1.25rem;
-      margin: 0;
-      font-weight: 600;
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     /* フィルターセクション */
@@ -977,14 +970,14 @@
 </head>
 
 <body>
-  <?!= HtmlService.createHtmlOutputFromFile('sidebar').getContent(); ?>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
 
   <div class="main-container">
     <div class="card">
       <!-- ヘッダー -->
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h1><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
-        <div class="d-flex align-items-center gap-2">
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-list-ul me-2"></i>受注一覧</h1>
+        <div style="position: absolute; right: 16px;">
           <? if (userRole !== 'viewer') { ?>
           <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
             <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -993,12 +986,6 @@
             </button>
           </form>
           <? } ?>
-          <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-            <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-            <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-              <i class="bi bi-house"></i> ホーム
-            </button>
-          </form>
         </div>
       </div>
 
@@ -1082,9 +1069,11 @@
               <label class="btn btn-outline-secondary" for="statusNotShipped">未出荷</label>
               <input type="radio" class="btn-check" name="shippingStatus" id="statusShipped" value="shipped">
               <label class="btn btn-outline-secondary" for="statusShipped">出荷済</label>
-              <input type="radio" class="btn-check" name="shippingStatus" id="statusHarvestWaiting" value="harvestWaiting">
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusHarvestWaiting"
+                value="harvestWaiting">
               <label class="btn btn-outline-secondary" for="statusHarvestWaiting">収穫待ち</label>
-              <input type="radio" class="btn-check" name="shippingStatus" id="statusShippedToDelivering" value="shippedToDelivering">
+              <input type="radio" class="btn-check" name="shippingStatus" id="statusShippedToDelivering"
+                value="shippedToDelivering">
               <label class="btn btn-outline-secondary" for="statusShippedToDelivering">出荷済〜配達中</label>
               <input type="radio" class="btn-check" name="shippingStatus" id="statusCancelled" value="cancelled">
               <label class="btn btn-outline-warning" for="statusCancelled">キャンセル済</label>

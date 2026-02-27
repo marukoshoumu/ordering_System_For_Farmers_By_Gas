@@ -11,13 +11,14 @@
   <?!= HtmlService.createHtmlOutputFromFile('components').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('utilities').getContent(); ?>
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     /* 電話受注モード専用スタイル */
     body {
       background: var(--bg-body);
       -webkit-tap-highlight-color: transparent;
     }
-    
+
     .phone-header {
       background: var(--gradient-purple);
       color: white;
@@ -26,17 +27,17 @@
       border-radius: 0 0 var(--radius-xl) var(--radius-xl);
       box-shadow: var(--shadow-lg);
     }
-    
-    .phone-header h4 {
+
+    .page-hero-header h1 {
       margin: 0;
       font-weight: 600;
     }
-    
+
     .phone-header .subtitle {
       font-size: 0.85rem;
       opacity: 0.9;
     }
-    
+
     /* 入力セクション - .card-unifiedを使用 */
     .card-unified {
       margin-bottom: var(--space-4);
@@ -47,7 +48,7 @@
       align-items: center;
       margin-bottom: var(--space-3);
     }
-    
+
     .input-section-icon {
       width: 36px;
       height: 36px;
@@ -58,32 +59,32 @@
       font-size: 1.2rem;
       margin-right: 10px;
     }
-    
+
     .input-section-icon.shipping {
       background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
       color: white;
     }
-    
+
     .input-section-icon.customer {
       background: linear-gradient(135deg, #c71585 0%, #db7093 100%);
       color: white;
     }
-    
+
     .input-section-title {
       font-weight: 600;
       font-size: 1rem;
     }
-    
+
     .input-section-subtitle {
       font-size: 0.8rem;
       color: #666;
     }
-    
+
     /* サジェスト入力 */
     .suggest-input-wrapper {
       position: relative;
     }
-    
+
     .suggest-input {
       width: 100%;
       padding: 14px 16px;
@@ -92,12 +93,12 @@
       border-radius: 12px;
       transition: border-color 0.2s;
     }
-    
+
     .suggest-input:focus {
       outline: none;
       border-color: #667eea;
     }
-    
+
     .suggest-list {
       position: absolute;
       top: 100%;
@@ -106,42 +107,43 @@
       background: white;
       border: 1px solid #e0e0e0;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
       max-height: 250px;
       overflow-y: auto;
       z-index: 100;
       display: none;
     }
-    
+
     .suggest-list.show {
       display: block;
     }
-    
+
     .suggest-item {
       padding: 12px 16px;
       cursor: pointer;
       border-bottom: 1px solid #f0f0f0;
       transition: background 0.1s;
     }
-    
+
     .suggest-item:last-child {
       border-bottom: none;
     }
-    
-    .suggest-item:hover, .suggest-item:active {
+
+    .suggest-item:hover,
+    .suggest-item:active {
       background: #f8f9fa;
     }
-    
+
     .suggest-item .name {
       font-weight: 600;
       font-size: 1rem;
     }
-    
+
     .suggest-item .info {
       font-size: 0.85rem;
       color: #666;
     }
-    
+
     .suggest-item .badge-new {
       background: #28a745;
       color: white;
@@ -150,7 +152,7 @@
       border-radius: 10px;
       margin-left: 6px;
     }
-    
+
     /* 選択済み表示 */
     .selected-info {
       background: #f8f9fa;
@@ -158,22 +160,22 @@
       padding: 12px;
       margin-top: 10px;
     }
-    
+
     .selected-info .label {
       font-size: 0.8rem;
       color: #666;
     }
-    
+
     .selected-info .value {
       font-weight: 500;
     }
-    
+
     .selected-info .clear-btn {
       color: #dc3545;
       font-size: 0.85rem;
       cursor: pointer;
     }
-    
+
     /* 大きなボタン */
     .btn-phone {
       width: 100%;
@@ -183,48 +185,48 @@
       border-radius: 15px;
       margin-bottom: 12px;
       border: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       transition: transform 0.1s, box-shadow 0.1s;
     }
-    
+
     .btn-phone:active {
       transform: scale(0.98);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     .btn-phone-primary {
       background: var(--gradient-purple);
       color: white;
     }
-    
+
     .btn-phone-success {
       background: var(--gradient-success);
       color: white;
     }
-    
+
     .btn-phone-warning {
       background: var(--gradient-red);
       color: white;
     }
-    
+
     .btn-phone-outline {
       background: white;
       color: #333;
       border: 2px solid #ddd;
     }
-    
+
     /* 商品カード */
     .product-card {
       background: white;
       border-radius: 12px;
       padding: 14px 16px;
       margin-bottom: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    
+
     /* 選択済み商品カード */
     .selected-product-card {
       background: #f8fff8;
@@ -233,21 +235,21 @@
       padding: 12px 14px;
       margin-bottom: 8px;
     }
-    
+
     .selected-product-card .product-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 8px;
     }
-    
+
     .selected-product-card .product-controls {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
-    
+
     .selected-product-card .price-input {
       width: 90px;
       padding: 6px 8px;
@@ -256,7 +258,7 @@
       font-size: 0.9rem;
       text-align: right;
     }
-    
+
     .selected-product-card .delete-btn {
       background: #dc3545;
       color: white;
@@ -267,7 +269,7 @@
       font-size: 1rem;
       cursor: pointer;
     }
-    
+
     /* 追加用商品カード */
     .add-product-card {
       background: #f8f9fa;
@@ -281,17 +283,17 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    
+
     .add-product-card:hover {
       background: #e9ecef;
       border-color: #667eea;
     }
-    
+
     .add-product-card.disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-    
+
     .add-product-card .add-btn {
       background: #667eea;
       color: white;
@@ -304,34 +306,34 @@
       align-items: center;
       justify-content: center;
     }
-    
+
     .product-card .product-info {
       flex: 1;
     }
-    
+
     .product-card .product-name {
       font-weight: 600;
       color: #333;
       font-size: 1rem;
     }
-    
+
     .product-card .product-price {
       font-size: 0.85rem;
       color: #666;
     }
-    
+
     .product-card .product-prev {
       font-size: 0.8rem;
       color: #999;
     }
-    
+
     /* 数量入力 */
     .qty-control {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    
+
     .qty-btn {
       width: 44px;
       height: 44px;
@@ -345,21 +347,21 @@
       cursor: pointer;
       transition: transform 0.1s;
     }
-    
+
     .qty-btn:active {
       transform: scale(0.9);
     }
-    
+
     .qty-btn-minus {
       background: #f8f9fa;
       color: #dc3545;
     }
-    
+
     .qty-btn-plus {
       background: #28a745;
       color: white;
     }
-    
+
     .qty-input {
       width: 60px;
       height: 44px;
@@ -369,7 +371,7 @@
       border: 2px solid #ddd;
       border-radius: 10px;
     }
-    
+
     /* フェーズ表示 */
     .phase-indicator {
       display: flex;
@@ -377,22 +379,22 @@
       gap: 8px;
       margin-bottom: 20px;
     }
-    
+
     .phase-dot {
       width: 12px;
       height: 12px;
       border-radius: 50%;
       background: #ddd;
     }
-    
+
     .phase-dot.active {
       background: #667eea;
     }
-    
+
     .phase-dot.completed {
       background: #28a745;
     }
-    
+
     /* 前回と同じボタン */
     .btn-same-as-last {
       background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
@@ -406,7 +408,7 @@
       margin-bottom: 16px;
       box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
     }
-    
+
     /* 合計表示 */
     .total-bar {
       background: var(--gradient-purple);
@@ -418,47 +420,54 @@
       justify-content: space-between;
       align-items: center;
     }
-    
+
     .total-bar .label {
       font-size: 1rem;
     }
-    
+
     .total-bar .amount {
       font-size: 1.5rem;
       font-weight: 700;
     }
-    
+
     /* ステップコンテナ */
     .step-container {
       display: none;
       animation: fadeIn 0.3s;
     }
-    
+
     .step-container.active {
       display: block;
     }
-    
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    
+
     /* 日程選択 */
     .date-section {
       background: white;
       border-radius: 15px;
       padding: 16px;
       margin-bottom: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     }
-    
+
     .date-section label {
       font-weight: 600;
       color: #333;
       margin-bottom: 8px;
       display: block;
     }
-    
+
     .date-section input[type="date"] {
       width: 100%;
       padding: 14px;
@@ -466,7 +475,7 @@
       border: 2px solid #ddd;
       border-radius: 10px;
     }
-    
+
     /* 新規顧客モード */
     .new-customer-section {
       background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
@@ -475,21 +484,21 @@
       padding: 16px;
       margin-bottom: 16px;
     }
-    
+
     .new-customer-section h5 {
       color: #ee5a24;
       margin-bottom: 12px;
     }
-    
+
     .new-customer-section .form-label {
       font-weight: 600;
       color: #333;
     }
-    
+
     .new-customer-section .required {
       color: #dc3545;
     }
-    
+
     .new-customer-section input {
       width: 100%;
       padding: 12px;
@@ -498,12 +507,12 @@
       border-radius: 10px;
       margin-bottom: 12px;
     }
-    
+
     .new-customer-section input:focus {
       outline: none;
       border-color: #ff6b6b;
     }
-    
+
     /* 要確認チェックボックス */
     .confirm-check {
       display: flex;
@@ -514,24 +523,24 @@
       border-radius: 10px;
       margin-top: 12px;
     }
-    
+
     .confirm-check input[type="checkbox"] {
       width: 24px;
       height: 24px;
     }
-    
+
     .confirm-check label {
       font-weight: 500;
       color: #856404;
     }
-    
+
     /* モード切替タブ */
     .mode-tabs {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
     }
-    
+
     .mode-tab {
       flex: 1;
       padding: 12px;
@@ -541,22 +550,22 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    
+
     .mode-tab.existing {
       background: #e9ecef;
       color: #333;
     }
-    
+
     .mode-tab.existing.active {
       background: var(--gradient-purple);
       color: white;
     }
-    
+
     .mode-tab.new {
       background: #ffe0e0;
       color: #ee5a24;
     }
-    
+
     .mode-tab.new.active {
       background: var(--gradient-red);
       color: white;
@@ -565,22 +574,14 @@
 </head>
 
 <body>
-  <!-- ヘッダー -->
-  <div class="phone-header">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <h4>📞 電話受注モード</h4>
-        <div class="subtitle">発送先・顧客を選択して素早く入力</div>
-      </div>
-      <form method="POST" action="<?= deployURL ?>" style="display: inline;">
-        <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-        <button type="submit" name="main" value="true" class="btn btn-light btn-sm" style="border-radius: 20px;">
-          ✕ 閉じる
-        </button>
-      </form>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
+  <div class="page-hero-header d-flex justify-content-center align-items-center mb-4">
+    <div class="text-center">
+      <h1 style="margin: 0; font-weight: 600;">📞 電話受注モード</h1>
+      <div class="subtitle" style="font-size: 0.85rem; opacity: 0.9;">発送先・顧客を選択して素早く入力</div>
     </div>
   </div>
-  
+
   <div class="container">
     <!-- フェーズ表示 -->
     <div class="phase-indicator">
@@ -589,11 +590,11 @@
       <div class="phase-dot" id="phase3"></div>
       <div class="phase-dot" id="phase4"></div>
     </div>
-    
+
     <!-- ステップ1: 発送先・顧客の選択 -->
     <div class="step-container active" id="step1">
       <h5 class="mb-3">📍 発送先・顧客を選択</h5>
-      
+
       <!-- モード切替 -->
       <div class="mode-tabs">
         <div class="mode-tab existing active" onclick="switchMode('existing')">
@@ -603,7 +604,7 @@
           ➕ 新規顧客
         </div>
       </div>
-      
+
       <!-- リピーターモード -->
       <div id="existingMode">
         <!-- 発送先入力 -->
@@ -616,10 +617,8 @@
             </div>
           </div>
           <div class="suggest-input-wrapper">
-            <input type="text" class="suggest-input" id="shippingToInput" 
-                   placeholder="発送先名を入力..." 
-                   oninput="onShippingToInput()" 
-                   onfocus="showShippingToSuggestions()">
+            <input type="text" class="suggest-input" id="shippingToInput" placeholder="発送先名を入力..."
+              oninput="onShippingToInput()" onfocus="showShippingToSuggestions()">
             <div class="suggest-list" id="shippingToSuggestList"></div>
           </div>
           <div class="selected-info" id="shippingToSelected" style="display: none;">
@@ -633,7 +632,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 顧客入力 -->
         <div class="card-unified">
           <div class="card-unified-header">
@@ -644,10 +643,8 @@
             </div>
           </div>
           <div class="suggest-input-wrapper">
-            <input type="text" class="suggest-input" id="customerInput" 
-                   placeholder="顧客名を入力..." 
-                   oninput="onCustomerInput()" 
-                   onfocus="showCustomerSuggestions()">
+            <input type="text" class="suggest-input" id="customerInput" placeholder="顧客名を入力..."
+              oninput="onCustomerInput()" onfocus="showCustomerSuggestions()">
             <div class="suggest-list" id="customerSuggestList"></div>
           </div>
           <div class="selected-info" id="customerSelected" style="display: none;">
@@ -661,106 +658,117 @@
             </div>
           </div>
         </div>
-        
+
         <button class="btn-phone btn-phone-primary" onclick="proceedToStep2()" id="nextBtn" disabled>
           次へ → 商品入力
         </button>
       </div>
-      
+
       <!-- 新規顧客モード -->
       <div id="newCustomerMode" style="display: none;">
         <div class="new-customer-section">
           <h5>➕ 新規顧客入力（簡易モード）</h5>
           <p class="text-muted" style="font-size: 0.85rem;">電話中は最低限の情報だけでOK。詳細は後から入力できます。</p>
-          
+
           <!-- 発送先情報 -->
-          <div class="mb-2" style="background: #f8f9fa; padding: 0.75rem; border-radius: 0.5rem; border-left: 3px solid #28a745;">
+          <div class="mb-2"
+            style="background: #f8f9fa; padding: 0.75rem; border-radius: 0.5rem; border-left: 3px solid #28a745;">
             <div style="font-weight: 600; color: #28a745; margin-bottom: 0.5rem;">📦 発送先情報</div>
-            
+
             <div class="mb-2">
               <label class="form-label small mb-1">会社名</label>
-              <input type="text" id="newShippingToCompany" placeholder="例: 株式会社盛岡スーパー" class="form-control form-control-sm">
+              <input type="text" id="newShippingToCompany" placeholder="例: 株式会社盛岡スーパー"
+                class="form-control form-control-sm">
             </div>
-            
+
             <div class="mb-2">
               <label class="form-label small mb-1">氏名（発送先名） <span class="required">*必須</span></label>
               <input type="text" id="newShippingToName" placeholder="例: 盛岡スーパー△△店" class="form-control form-control-sm">
             </div>
-            
+
             <div class="mb-2">
               <label class="form-label small mb-1">電話番号 <span class="required">*必須</span></label>
               <input type="tel" id="newPhone" placeholder="例: 0191234567" class="form-control form-control-sm">
             </div>
-            
+
             <div class="mb-2">
               <label class="form-label small mb-1">郵便番号</label>
               <div class="d-flex gap-2">
-                <input type="text" id="newShippingToZipcode" placeholder="例: 0200021" class="form-control form-control-sm" style="flex: 1;" maxlength="8">
-                <button type="button" class="btn btn-outline-primary" onclick="searchAddressByZipcode('shippingTo')" style="white-space: nowrap; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                <input type="text" id="newShippingToZipcode" placeholder="例: 0200021"
+                  class="form-control form-control-sm" style="flex: 1;" maxlength="8">
+                <button type="button" class="btn btn-outline-primary" onclick="searchAddressByZipcode('shippingTo')"
+                  style="white-space: nowrap; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                   🔍 検索
                 </button>
               </div>
             </div>
-            
+
             <div class="mb-0">
               <label class="form-label small mb-1">住所</label>
-              <input type="text" id="newShippingToAddress" placeholder="郵便番号から自動入力" class="form-control form-control-sm">
+              <input type="text" id="newShippingToAddress" placeholder="郵便番号から自動入力"
+                class="form-control form-control-sm">
             </div>
           </div>
-          
+
           <!-- 顧客情報（発送先と異なる場合） -->
           <div class="mb-3">
             <div class="confirm-check" style="background: #e3f2fd; margin-top: 0;">
               <input type="checkbox" id="customerDifferent" onchange="toggleCustomerFields()">
               <label for="customerDifferent" style="color: #1565c0;">顧客（依頼人）が発送先と異なる</label>
             </div>
-            
-            <div id="customerFieldsArea" style="display: none; background: #fff8e1; padding: 0.75rem; border-radius: 0.5rem; border-left: 3px solid #ffc107; margin-top: 0.5rem;">
+
+            <div id="customerFieldsArea"
+              style="display: none; background: #fff8e1; padding: 0.75rem; border-radius: 0.5rem; border-left: 3px solid #ffc107; margin-top: 0.5rem;">
               <div style="font-weight: 600; color: #ffc107; margin-bottom: 0.5rem;">👤 顧客（依頼人）情報</div>
-              
+
               <div class="mb-2">
                 <label class="form-label small mb-1">会社名</label>
-                <input type="text" id="newCustomerCompany" placeholder="例: 株式会社盛岡スーパー" class="form-control form-control-sm">
+                <input type="text" id="newCustomerCompany" placeholder="例: 株式会社盛岡スーパー"
+                  class="form-control form-control-sm">
               </div>
-              
+
               <div class="mb-2">
                 <label class="form-label small mb-1">氏名（顧客名）</label>
                 <input type="text" id="newCustomerName" placeholder="例: 盛岡スーパー本社" class="form-control form-control-sm">
               </div>
-              
+
               <div class="mb-2">
                 <label class="form-label small mb-1">電話番号</label>
-                <input type="tel" id="newCustomerPhone" placeholder="例: 0191234567" class="form-control form-control-sm">
+                <input type="tel" id="newCustomerPhone" placeholder="例: 0191234567"
+                  class="form-control form-control-sm">
               </div>
-              
+
               <div class="mb-2">
                 <label class="form-label small mb-1">郵便番号</label>
                 <div class="d-flex gap-2">
-                  <input type="text" id="newCustomerZipcode" placeholder="例: 0200021" class="form-control form-control-sm" style="flex: 1;" maxlength="8">
-                  <button type="button" class="btn btn-outline-warning" onclick="searchAddressByZipcode('customer')" style="white-space: nowrap; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                  <input type="text" id="newCustomerZipcode" placeholder="例: 0200021"
+                    class="form-control form-control-sm" style="flex: 1;" maxlength="8">
+                  <button type="button" class="btn btn-outline-warning" onclick="searchAddressByZipcode('customer')"
+                    style="white-space: nowrap; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                     🔍 検索
                   </button>
                 </div>
               </div>
-              
+
               <div class="mb-0">
                 <label class="form-label small mb-1">住所</label>
-                <input type="text" id="newCustomerAddress" placeholder="郵便番号から自動入力" class="form-control form-control-sm">
+                <input type="text" id="newCustomerAddress" placeholder="郵便番号から自動入力"
+                  class="form-control form-control-sm">
               </div>
             </div>
           </div>
-          
+
           <div class="confirm-check">
             <input type="checkbox" id="needsConfirmation" checked>
             <label for="needsConfirmation">「要確認」フラグを付ける（推奨）</label>
           </div>
         </div>
-        
+
         <button class="btn-phone btn-phone-warning" onclick="proceedToStep2NewCustomer()">
           次へ → 商品入力
         </button>
       </div>
-      
+
       <div class="text-center mt-4">
         <form method="POST" action="<?= deployURL ?>" style="display: inline;">
           <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -770,7 +778,7 @@
         </form>
       </div>
     </div>
-    
+
     <!-- ステップ2: 商品・数量入力 -->
     <div class="step-container" id="step2">
       <div class="card-unified">
@@ -782,14 +790,14 @@
           <div style="color: #667eea; cursor: pointer;" onclick="goToStep(1)">変更</div>
         </div>
       </div>
-      
+
       <h5 class="mb-3">🛒 商品・数量を入力</h5>
-      
+
       <!-- 前回と同じボタン -->
       <button class="btn-same-as-last" id="sameAsLastBtn" onclick="applySameAsLast()" style="display: none;">
         🔄 前回と同じ注文
       </button>
-      
+
       <!-- 日程選択 -->
       <div class="date-section">
         <label>📅 発送日</label>
@@ -797,7 +805,7 @@
         <label class="mt-3">📦 納品日</label>
         <input type="date" id="deliveryDateInput">
       </div>
-      
+
       <!-- 選択済み商品エリア -->
       <div class="card-unified">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -807,15 +815,12 @@
           <div class="text-center text-muted py-3" id="noProductsMessage">商品を追加してください</div>
         </div>
       </div>
-      
+
       <!-- 商品追加エリア -->
       <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">➕ 商品を追加</label>
-        <input type="text" 
-               id="productSearchInput" 
-               class="form-control mb-2" 
-               placeholder="商品名や分類で検索..." 
-               oninput="filterProducts()">
+        <input type="text" id="productSearchInput" class="form-control mb-2" placeholder="商品名や分類で検索..."
+          oninput="filterProducts()">
         <div class="mb-2" id="categoryFilterArea">
           <!-- 分類フィルターボタンがここに表示される -->
         </div>
@@ -823,23 +828,20 @@
           <!-- 追加可能な商品リストがここに表示される -->
         </div>
       </div>
-      
+
       <!-- メモ欄 -->
       <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📝 メモ</label>
-        <textarea id="orderMemoInput" 
-                  class="form-control" 
-                  rows="3" 
-                  placeholder="備考、特記事項など..."
-                  style="font-size: 1rem;"></textarea>
+        <textarea id="orderMemoInput" class="form-control" rows="3" placeholder="備考、特記事項など..."
+          style="font-size: 1rem;"></textarea>
       </div>
-      
+
       <!-- 合計 -->
       <div class="total-bar">
         <span class="label">合計金額</span>
         <span class="amount" id="totalAmount">¥0</span>
       </div>
-      
+
       <div class="mt-4">
         <button class="btn-phone btn-phone-success" onclick="goToStep(3)">
           🚚 発送情報へ
@@ -849,7 +851,7 @@
         </button>
       </div>
     </div>
-    
+
     <!-- ステップ3: 発送情報 -->
     <div class="step-container" id="step3">
       <div class="card-unified">
@@ -861,14 +863,15 @@
           <div style="color: #667eea; cursor: pointer;" onclick="goToStep(1)">変更</div>
         </div>
       </div>
-      
+
       <h5 class="mb-3">🚚 発送情報を入力</h5>
-      
+
       <!-- 発送元 -->
       <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📍 発送元</label>
         <div class="d-flex gap-2 flex-wrap mb-2">
-          <button type="button" class="btn btn-outline-success btn-sm" onclick="setShippingFromCompany()" id="shippingFromCompanyBtn">
+          <button type="button" class="btn btn-outline-success btn-sm" onclick="setShippingFromCompany()"
+            id="shippingFromCompanyBtn">
             🌿 <span id="companyDisplayName">会社</span>
           </button>
           <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setShippingFromCustomer()">
@@ -883,11 +886,11 @@
           <div id="shippingFromDetail"></div>
         </div>
       </div>
-      
+
       <!-- 配送オプション -->
       <div class="card-unified">
         <label style="font-size: 0.9rem; color: #495057;">📦 配送オプション</label>
-        
+
         <!-- 納品方法 -->
         <div class="mb-2">
           <label class="form-label small mb-1">納品方法</label>
@@ -895,7 +898,7 @@
             <option value="">選択してください</option>
           </select>
         </div>
-        
+
         <!-- 配達時間帯 -->
         <div class="mb-2">
           <label class="form-label small mb-1">配達時間帯</label>
@@ -903,7 +906,7 @@
             <option value="">指定なし</option>
           </select>
         </div>
-        
+
         <!-- 送り状種別 -->
         <div class="mb-2">
           <label class="form-label small mb-1">送り状種別</label>
@@ -911,7 +914,7 @@
             <option value="">指定なし</option>
           </select>
         </div>
-        
+
         <!-- クール区分 -->
         <div class="mb-2">
           <label class="form-label small mb-1">クール区分</label>
@@ -919,7 +922,7 @@
             <option value="">指定なし</option>
           </select>
         </div>
-        
+
         <!-- 荷扱い１ -->
         <div class="mb-2">
           <label class="form-label small mb-1">荷扱い１</label>
@@ -927,7 +930,7 @@
             <option value="">指定なし</option>
           </select>
         </div>
-        
+
         <!-- 荷扱い２ -->
         <div class="mb-2">
           <label class="form-label small mb-1">荷扱い２</label>
@@ -981,19 +984,19 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 選択済み商品サマリ -->
       <div class="card-unified">
         <div class="text-muted" style="font-size: 0.85rem;">📋 選択商品</div>
         <div id="step3ProductSummary" class="mt-1">-</div>
       </div>
-      
+
       <!-- 合計 -->
       <div class="total-bar">
         <span class="label">合計金額</span>
         <span class="amount" id="step3TotalAmount">¥0</span>
       </div>
-      
+
       <div class="mt-4">
         <button class="btn-phone btn-phone-success" onclick="goToStep(4)">
           ✓ 確認画面へ
@@ -1003,11 +1006,11 @@
         </button>
       </div>
     </div>
-    
+
     <!-- ステップ4: 確認 -->
     <div class="step-container" id="step4">
       <h5 class="mb-3">✓ 注文内容を確認</h5>
-      
+
       <div class="card-unified">
         <div class="mb-2">
           <div class="text-muted" style="font-size: 0.8rem;">発送元</div>
@@ -1022,7 +1025,7 @@
           <div class="fw-bold" id="confirmCustomer">-</div>
         </div>
       </div>
-      
+
       <div class="date-section">
         <div class="d-flex justify-content-between">
           <div>
@@ -1035,7 +1038,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 配送オプション表示 -->
       <div class="card-unified" id="confirmDeliveryOptionsArea">
         <div class="text-muted mb-2" style="font-size: 0.85rem;">🚚 配送オプション</div>
@@ -1070,26 +1073,26 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 帳票・同梱物表示 -->
       <div class="card-unified" id="confirmChecklistArea" style="display: none;">
         <div class="text-muted mb-1" style="font-size: 0.85rem;">📋 帳票・同梱物</div>
         <div class="fw-bold" id="confirmChecklist">-</div>
       </div>
-      
+
       <div id="confirmProductList">
         <!-- 確認用商品リストがここに表示される -->
       </div>
-      
+
       <!-- メモ表示 -->
       <div id="confirmMemoArea" class="card-unified" style="display: none;">
         <div class="text-muted" style="font-size: 0.85rem;">📝 メモ</div>
         <div id="confirmMemo" style="white-space: pre-wrap;"></div>
       </div>
-      
+
       <!-- 警告表示エリア -->
       <div id="warningArea"></div>
-      
+
       <!-- 要確認フラグ表示 -->
       <div id="confirmNeedsConfirmation" style="display: none;">
         <div class="alert alert-warning">
@@ -1097,12 +1100,12 @@
           新規顧客のため、後から詳細情報の入力が必要です
         </div>
       </div>
-      
+
       <div class="total-bar">
         <span class="label">合計金額</span>
         <span class="amount" id="confirmTotalAmount">¥0</span>
       </div>
-      
+
       <div class="mt-4">
         <form id="orderForm" method="POST" action="<?= deployURL ?>">
           <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
@@ -1118,7 +1121,7 @@
       </div>
     </div>
   </div>
-  
+
   <script>
     // グローバル変数
     let shippingToList = [];
@@ -1126,19 +1129,19 @@
     let masterData = null;
     let lastOrder = null;
     let isNewCustomerMode = false;
-    
+
     // 選択された発送先・顧客
     let selectedShippingTo = null;
     let selectedCustomer = null;
     let selectedCategory = null; // 分類フィルター用
-    
+
     // 初期化
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       showLoading('初期化中...');
-      
+
       // マスターデータを取得
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           if (!data) {
             showErrorToast('マスターデータの取得に失敗しました。ページを再読み込みしてください。');
             hideLoading();
@@ -1152,82 +1155,82 @@
           setupDeliveryOptions();
           loadShippingToList();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('マスターデータ取得エラー:', e);
           showErrorToast('マスターデータの取得に失敗しました: ' + (e.message || e));
           hideLoading();
         })
         .getMasterDataCached();
-      
+
       // デフォルト日付を設定
       setDefaultDates();
-      
+
       // クリックでサジェストを閉じる
-      document.addEventListener('click', function(e) {
+      document.addEventListener('click', function (e) {
         if (!e.target.closest('.suggest-input-wrapper')) {
           hideAllSuggestions();
         }
       });
     });
-    
+
     function setDefaultDates() {
       const today = new Date();
       const shippingDate = new Date(today);
       shippingDate.setDate(shippingDate.getDate() + 2);
       const deliveryDate = new Date(shippingDate);
       deliveryDate.setDate(deliveryDate.getDate() + 1);
-      
+
       document.getElementById('shippingDateInput').value = formatDate(shippingDate);
       document.getElementById('deliveryDateInput').value = formatDate(deliveryDate);
     }
-    
+
     function formatDate(date) {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const d = String(date.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
-    
+
     function updateDeliveryDate() {
       const shippingDate = new Date(document.getElementById('shippingDateInput').value);
       const deliveryDate = new Date(shippingDate);
       deliveryDate.setDate(deliveryDate.getDate() + 1);
       document.getElementById('deliveryDateInput').value = formatDate(deliveryDate);
     }
-    
+
     // 配送オプションのセットアップ
     function setupDeliveryOptions() {
       if (!masterData) return;
-      
+
       // 発送元：会社名を表示し、デフォルトで会社情報を設定
       google.script.run
-        .withSuccessHandler(function(companyName) {
+        .withSuccessHandler(function (companyName) {
           document.getElementById('companyDisplayName').textContent = companyName || '会社';
           // デフォルトで会社情報を設定
           setShippingFromCompany();
         })
         .getCompanyDisplayName();
-      
+
       // 納品方法
       const deliveryMethodSelect = document.getElementById('deliveryMethodSelect');
       deliveryMethodSelect.innerHTML = '<option value="">選択してください</option>';
       if (masterData.deliveryMethods) {
-        masterData.deliveryMethods.forEach(function(item) {
+        masterData.deliveryMethods.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['納品方法'];
           option.textContent = item['納品方法'];
           deliveryMethodSelect.appendChild(option);
         });
       }
-      
+
       // 全選択肢の初期HTMLを保存（納品方法による絞り込み用）
       saveOriginalOptions();
-      
+
       // デフォルトでヤマトを選択
       deliveryMethodSelect.value = 'ヤマト';
       onDeliveryMethodChange();
     }
-    
+
     // 元の選択肢を保存
     let originalDeliveryTimeOptions = '';
     let originalInvoiceTypeOptions = '';
@@ -1235,13 +1238,13 @@
     let originalCargo1Options = '';
     let originalCargo2Options = '';
     let originalCargo3Options = '';
-    
+
     function saveOriginalOptions() {
       // 配達時間帯
       const deliveryTimeSelect = document.getElementById('deliveryTimeSelect');
       deliveryTimeSelect.innerHTML = '<option value="">指定なし</option>';
       if (masterData.deliveryTimes) {
-        masterData.deliveryTimes.forEach(function(item) {
+        masterData.deliveryTimes.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['時間指定値'] || '';
           option.textContent = item['時間指定'] || '指定なし';
@@ -1250,12 +1253,12 @@
         });
       }
       originalDeliveryTimeOptions = deliveryTimeSelect.innerHTML;
-      
+
       // 送り状種別
       const invoiceTypeSelect = document.getElementById('invoiceTypeSelect');
       invoiceTypeSelect.innerHTML = '<option value="">指定なし</option>';
       if (masterData.invoiceTypes) {
-        masterData.invoiceTypes.forEach(function(item) {
+        masterData.invoiceTypes.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['種別値'] || '';
           option.textContent = item['種別'] || '指定なし';
@@ -1264,12 +1267,12 @@
         });
       }
       originalInvoiceTypeOptions = invoiceTypeSelect.innerHTML;
-      
+
       // クール区分
       const coolClsSelect = document.getElementById('coolClsSelect');
       coolClsSelect.innerHTML = '<option value="">指定なし</option>';
       if (masterData.coolClss) {
-        masterData.coolClss.forEach(function(item) {
+        masterData.coolClss.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['種別値'] || item['区分値'] || '';
           option.textContent = item['種別'] || item['区分'] || '指定なし';
@@ -1278,12 +1281,12 @@
         });
       }
       originalCoolClsOptions = coolClsSelect.innerHTML;
-      
+
       // 荷扱い１
       const cargo1Select = document.getElementById('cargo1Select');
       cargo1Select.innerHTML = '<option value="">指定なし</option>';
       if (masterData.cargos) {
-        masterData.cargos.forEach(function(item) {
+        masterData.cargos.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['種別値'] || '';
           option.textContent = item['種別'] || '指定なし';
@@ -1292,12 +1295,12 @@
         });
       }
       originalCargo1Options = cargo1Select.innerHTML;
-      
+
       // 荷扱い２
       const cargo2Select = document.getElementById('cargo2Select');
       cargo2Select.innerHTML = '<option value="">指定なし</option>';
       if (masterData.cargos) {
-        masterData.cargos.forEach(function(item) {
+        masterData.cargos.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['種別値'] || '';
           option.textContent = item['種別'] || '指定なし';
@@ -1311,7 +1314,7 @@
       const cargo3Select = document.getElementById('cargo3Select');
       cargo3Select.innerHTML = '<option value="">指定なし</option>';
       if (masterData.cargos) {
-        masterData.cargos.forEach(function(item) {
+        masterData.cargos.forEach(function (item) {
           const option = document.createElement('option');
           option.value = item['種別値'] || '';
           option.textContent = item['種別'] || '指定なし';
@@ -1321,7 +1324,7 @@
       }
       originalCargo3Options = cargo3Select.innerHTML;
     }
-    
+
     // 発送元情報（内部保持用）
     let currentShippingFrom = {
       name: '',
@@ -1329,12 +1332,12 @@
       address: '',
       tel: ''
     };
-    
+
     // 発送元情報を表示する
     function displayShippingFromInfo() {
       const nameDiv = document.getElementById('shippingFromName');
       const detailDiv = document.getElementById('shippingFromDetail');
-      
+
       if (currentShippingFrom.name) {
         nameDiv.textContent = currentShippingFrom.name;
         detailDiv.innerHTML = `
@@ -1347,15 +1350,15 @@
         detailDiv.innerHTML = '';
       }
     }
-    
+
     // 会社情報を発送元に設定
     function setShippingFromCompany() {
       const btn = document.getElementById('shippingFromCompanyBtn');
       const originalText = btn.innerHTML;
       btn.innerHTML = '反映中...';
-      
+
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           const records = JSON.parse(data);
           if (records && records.length > 0) {
             currentShippingFrom = {
@@ -1368,13 +1371,13 @@
           displayShippingFromInfo();
           btn.innerHTML = originalText;
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           showErrorToast('会社情報の取得に失敗しました');
           btn.innerHTML = originalText;
         })
         .getCompanyRecordForShipping();
     }
-    
+
     // 顧客情報を発送元に設定
     function setShippingFromCustomer() {
       currentShippingFrom = {
@@ -1385,7 +1388,7 @@
       };
       displayShippingFromInfo();
     }
-    
+
     // 発送先情報を発送元に設定
     function setShippingFromShippingTo() {
       currentShippingFrom = {
@@ -1396,7 +1399,7 @@
       };
       displayShippingFromInfo();
     }
-    
+
     // 納品方法が変更されたとき
     function onDeliveryMethodChange() {
       const selectedMethod = document.getElementById('deliveryMethodSelect').value;
@@ -1437,7 +1440,7 @@
       // 条件に応じた自動設定を実行
       updateCargoByConditions();
     }
-    
+
     // 納品方法に基づいてセレクトボックスをフィルタリング
     function filterSelectByDeliveryMethod(selectId, originalHtml, deliveryMethod) {
       const select = document.getElementById(selectId);
@@ -1445,7 +1448,7 @@
 
       // 納品方法が選択されていれば、一致しないオプションを削除
       if (deliveryMethod) {
-        Array.from(select.options).forEach(function(option, index) {
+        Array.from(select.options).forEach(function (option, index) {
           // 最初の「指定なし」オプションは常に残す
           if (index === 0) return;
 
@@ -1457,14 +1460,14 @@
 
         // 再度ループ（削除でインデックスがずれるため）
         const toRemove = [];
-        Array.from(select.options).forEach(function(option, index) {
+        Array.from(select.options).forEach(function (option, index) {
           if (index === 0) return;
           const optionMethod = option.dataset.val;
           if (optionMethod && optionMethod !== deliveryMethod) {
             toRemove.push(option);
           }
         });
-        toRemove.forEach(function(opt) { opt.remove(); });
+        toRemove.forEach(function (opt) { opt.remove(); });
       }
     }
 
@@ -1501,15 +1504,15 @@
         }
       }
     }
-    
+
     // モード切替
     function switchMode(mode) {
       isNewCustomerMode = (mode === 'new');
-      
+
       document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.classList.remove('active');
       });
-      
+
       if (mode === 'new') {
         document.querySelector('.mode-tab.new').classList.add('active');
         document.getElementById('existingMode').style.display = 'none';
@@ -1520,51 +1523,51 @@
         document.getElementById('newCustomerMode').style.display = 'none';
       }
     }
-    
+
     // 発送先リストを読み込む
     function loadShippingToList() {
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           shippingToList = JSON.parse(data);
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           showErrorToast('発送先データの取得に失敗しました: ' + e.message);
           hideLoading();
         })
         .getShippingToListForPhoneOrder();
     }
-    
+
     // サジェストを非表示
     function hideAllSuggestions() {
       document.querySelectorAll('.suggest-list').forEach(list => {
         list.classList.remove('show');
       });
     }
-    
+
     // 発送先入力時
     function onShippingToInput() {
       const query = document.getElementById('shippingToInput').value.toLowerCase();
       showShippingToSuggestions(query);
     }
-    
+
     // 発送先サジェスト表示
     function showShippingToSuggestions(query = '') {
       const list = document.getElementById('shippingToSuggestList');
-      
+
       let filtered = shippingToList;
       if (query) {
-        filtered = shippingToList.filter(s => 
+        filtered = shippingToList.filter(s =>
           s.shippingToName.toLowerCase().includes(query) ||
           (s.customerName && s.customerName.toLowerCase().includes(query))
         );
       }
-      
+
       if (filtered.length === 0) {
         list.classList.remove('show');
         return;
       }
-      
+
       let html = '';
       filtered.slice(0, 10).forEach((s, index) => {
         const badge = s.isNewCustomer ? '<span class="badge-new">新規</span>' : '';
@@ -1576,51 +1579,51 @@
           </div>
         `;
       });
-      
+
       list.innerHTML = html;
       list.classList.add('show');
     }
-    
+
     // 発送先選択
     function selectShippingTo(index, query) {
       let list = shippingToList;
       if (query) {
-        list = shippingToList.filter(s => 
+        list = shippingToList.filter(s =>
           s.shippingToName.toLowerCase().includes(query) ||
           (s.customerName && s.customerName.toLowerCase().includes(query))
         );
       }
-      
+
       selectedShippingTo = list[index];
-      
+
       // 入力欄を更新
       document.getElementById('shippingToInput').value = selectedShippingTo.shippingToName;
       hideAllSuggestions();
-      
+
       // 選択済み表示
       document.getElementById('shippingToSelected').style.display = 'block';
       document.getElementById('shippingToSelectedName').textContent = selectedShippingTo.shippingToName;
-      document.getElementById('shippingToSelectedInfo').textContent = 
+      document.getElementById('shippingToSelectedInfo').textContent =
         selectedShippingTo.lastOrderDate ? `最終発送日: ${selectedShippingTo.lastOrderDate}` : '新規';
-      
+
       // 顧客を自動入力
       autoFillCustomer();
-      
+
       updateNextButton();
     }
-    
+
     // 顧客を自動入力
     function autoFillCustomer() {
       if (!selectedShippingTo) return;
-      
+
       // 発送先に紐づく顧客を取得
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           const customer = data ? JSON.parse(data) : null;
           if (customer && customer.customerName) {
             selectedCustomer = customer;
             document.getElementById('customerInput').value = customer.customerName;
-            
+
             // 選択済み表示
             document.getElementById('customerSelected').style.display = 'block';
             document.getElementById('customerSelectedName').textContent = customer.customerName;
@@ -1640,12 +1643,12 @@
           }
           updateNextButton();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('顧客取得エラー:', e);
         })
         .getCustomerByShippingTo(selectedShippingTo.shippingToName);
     }
-    
+
     // 発送先クリア
     function clearShippingTo() {
       selectedShippingTo = null;
@@ -1653,7 +1656,7 @@
       document.getElementById('shippingToSelected').style.display = 'none';
       updateNextButton();
     }
-    
+
     // 顧客入力時
     function onCustomerInput() {
       const query = document.getElementById('customerInput').value;
@@ -1661,19 +1664,19 @@
         hideAllSuggestions();
         return;
       }
-      
+
       // サーバーから顧客候補を取得
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           const customers = JSON.parse(data);
           showCustomerSuggestionsFromData(customers);
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('顧客検索エラー:', e);
         })
         .getCustomerSuggestionsForPhoneOrder(query);
     }
-    
+
     // 顧客サジェスト表示
     function showCustomerSuggestions() {
       const query = document.getElementById('customerInput').value;
@@ -1681,15 +1684,15 @@
         onCustomerInput();
       }
     }
-    
+
     function showCustomerSuggestionsFromData(customers) {
       const list = document.getElementById('customerSuggestList');
-      
+
       if (customers.length === 0) {
         list.classList.remove('show');
         return;
       }
-      
+
       let html = '';
       customers.forEach((c, index) => {
         html += `
@@ -1699,30 +1702,30 @@
           </div>
         `;
       });
-      
+
       list.innerHTML = html;
       list.classList.add('show');
-      
+
       // 候補を一時保存
       window._customerSuggestions = customers;
     }
-    
+
     // 顧客選択
     function selectCustomerFromSuggest(index) {
       const customers = window._customerSuggestions || [];
       selectedCustomer = customers[index];
-      
+
       document.getElementById('customerInput').value = selectedCustomer.customerName;
       hideAllSuggestions();
-      
+
       // 選択済み表示
       document.getElementById('customerSelected').style.display = 'block';
       document.getElementById('customerSelectedName').textContent = selectedCustomer.customerName;
       document.getElementById('customerSelectedInfo').textContent = selectedCustomer.customerTel || '';
-      
+
       updateNextButton();
     }
-    
+
     // 顧客クリア
     function clearCustomer() {
       selectedCustomer = null;
@@ -1730,31 +1733,31 @@
       document.getElementById('customerSelected').style.display = 'none';
       updateNextButton();
     }
-    
+
     // 次へボタンの状態更新
     function updateNextButton() {
       const btn = document.getElementById('nextBtn');
       btn.disabled = !(selectedShippingTo && selectedCustomer);
     }
-    
+
     // ステップ2へ進む（リピーター）
     function proceedToStep2() {
       if (!selectedShippingTo || !selectedCustomer) return;
-      
+
       // 発送先・顧客を表示
       document.getElementById('step2ShippingTo').textContent = '📦 ' + selectedShippingTo.shippingToName;
       document.getElementById('step2Customer').textContent = '👤 ' + selectedCustomer.customerName;
-      
+
       // 過去注文を取得
       showLoading('過去の注文を取得中...');
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function (data) {
           lastOrder = data ? JSON.parse(data) : null;
           setupProductList();
           goToStep(2);
           hideLoading();
         })
-        .withFailureHandler(function(e) {
+        .withFailureHandler(function (e) {
           console.error('過去注文取得エラー:', e);
           lastOrder = null;
           setupProductList();
@@ -1763,13 +1766,13 @@
         })
         .getRecentOrderForTemplate(selectedShippingTo.shippingToName);
     }
-    
+
     // ステップ2へ進む（新規顧客）
     function proceedToStep2NewCustomer() {
       const shippingToName = document.getElementById('newShippingToName').value.trim();
       const shippingToCompany = document.getElementById('newShippingToCompany').value.trim();
       const phone = document.getElementById('newPhone').value.trim();
-      
+
       if (!shippingToName) {
         showWarningToast('発送先名（氏名）を入力してください');
         return;
@@ -1778,16 +1781,16 @@
         showWarningToast('電話番号を入力してください');
         return;
       }
-      
+
       // 発送先情報
       const shippingToZipcode = normalizeZipcode(document.getElementById('newShippingToZipcode').value);
       const shippingToAddress = document.getElementById('newShippingToAddress').value.trim();
       const shippingToTel = normalizePhone(phone);
-      
+
       // 顧客情報（異なる場合はチェックボックスで判定）
       const customerDifferent = document.getElementById('customerDifferent').checked;
       let customerName, customerCompany, customerZipcode, customerAddress, customerTel;
-      
+
       if (customerDifferent) {
         customerName = document.getElementById('newCustomerName').value.trim() || shippingToName;
         customerCompany = document.getElementById('newCustomerCompany').value.trim() || shippingToCompany;
@@ -1802,7 +1805,7 @@
         customerAddress = shippingToAddress;
         customerTel = shippingToTel;
       }
-      
+
       selectedShippingTo = {
         shippingToName: shippingToName,
         shippingToCompany: shippingToCompany,
@@ -1811,7 +1814,7 @@
         shippingToAddress: shippingToAddress,
         isNewCustomer: true
       };
-      
+
       selectedCustomer = {
         customerName: customerName,
         customerCompany: customerCompany,
@@ -1819,40 +1822,40 @@
         customerZipcode: customerZipcode,
         customerAddress: customerAddress
       };
-      
+
       // 発送先・顧客を表示（会社名がある場合は併記）
       const shippingToDisplay = shippingToCompany ? shippingToCompany + ' / ' + shippingToName : shippingToName;
       const customerDisplay = customerCompany ? customerCompany + ' / ' + customerName : customerName;
       document.getElementById('step2ShippingTo').textContent = '📦 ' + shippingToDisplay + ' 🆕';
       document.getElementById('step2Customer').textContent = '👤 ' + customerDisplay;
-      
+
       lastOrder = null;
       setupProductList();
       goToStep(2);
     }
-    
+
     // 顧客情報入力エリアの表示切り替え
     function toggleCustomerFields() {
       const customerDifferent = document.getElementById('customerDifferent').checked;
       document.getElementById('customerFieldsArea').style.display = customerDifferent ? 'block' : 'none';
     }
-    
+
     // 選択済み商品リスト（最大10個）
     let selectedProducts = [];
-    
+
     // 商品リストをセットアップ
     function setupProductList() {
       // 選択済み商品をリセット
       selectedProducts = [];
-      
+
       // 「前回と同じ」ボタンの表示
       const sameAsLastBtn = document.getElementById('sameAsLastBtn');
       if (lastOrder && lastOrder.items && lastOrder.items.length > 0) {
         sameAsLastBtn.style.display = 'block';
         sameAsLastBtn.innerHTML = `🔄 前回と同じ注文<br><small style="font-size: 0.8rem;">(${lastOrder.shippingDate} - ${lastOrder.items.length}品目)</small>`;
-        
+
         // 過去注文の商品を選択済みに追加
-        lastOrder.items.forEach(function(item) {
+        lastOrder.items.forEach(function (item) {
           if (selectedProducts.length < 10) {
             selectedProducts.push({
               name: item.productName,
@@ -1865,42 +1868,42 @@
       } else {
         sameAsLastBtn.style.display = 'none';
       }
-      
+
       // 分類フィルターボタンを作成
       setupCategoryFilters();
-      
+
       // 選択済み商品を表示
       renderSelectedProducts();
-      
+
       // 追加可能な商品リストを表示
       renderAddProductList();
-      
+
       // 検索ボックスをリセット
       document.getElementById('productSearchInput').value = '';
       selectedCategory = null;
-      
+
       updateTotal();
     }
-    
+
     // 選択済み商品を表示
     function renderSelectedProducts() {
       const container = document.getElementById('selectedProductList');
       const noProductsMessage = document.getElementById('noProductsMessage');
       const countLabel = document.getElementById('selectedCount');
-      
+
       countLabel.textContent = `(${selectedProducts.length}/10)`;
-      
+
       if (selectedProducts.length === 0) {
         container.innerHTML = '<div class="text-center text-muted py-3" id="noProductsMessage">商品を追加してください</div>';
         return;
       }
-      
+
       let html = '';
-      selectedProducts.forEach(function(item, index) {
+      selectedProducts.forEach(function (item, index) {
         const price = Number(item.price) || 0;
         const quantity = Number(item.quantity) || 1;
         const subtotal = price * quantity;
-        
+
         html += `
           <div class="selected-product-card" data-index="${index}">
             <div class="product-header">
@@ -1925,34 +1928,34 @@
           </div>
         `;
       });
-      
+
       container.innerHTML = html;
     }
-    
+
     // 選択済み商品の価格を更新
     function updateSelectedPrice(index, value) {
       const item = selectedProducts[index];
       if (!item) return;
-      
+
       item.price = Math.max(0, parseInt(value) || 0);
       renderSelectedProducts();
       updateTotal();
     }
-    
+
     // 追加可能な商品リストを表示
     function renderAddProductList() {
       const container = document.getElementById('productList');
-      
+
       // 既に選択済みの商品名を取得
       const selectedNames = new Set(selectedProducts.map(p => p.name));
-      
+
       let html = '';
-      products.forEach(function(p) {
+      products.forEach(function (p) {
         const isSelected = selectedNames.has(p['商品名']);
         const isMaxReached = selectedProducts.length >= 10;
         const disabled = isSelected || isMaxReached;
         const price = Number(p['価格（P)']) || 0;
-        
+
         html += `
           <div class="add-product-card ${disabled ? 'disabled' : ''}" 
                data-product="${escapeHtml(p['商品名'])}" 
@@ -1969,58 +1972,58 @@
           </div>
         `;
       });
-      
+
       container.innerHTML = html;
     }
-    
+
     // 商品を追加
     function addProduct(element) {
       if (selectedProducts.length >= 10) {
         showWarningToast('商品は最大10個までです');
         return;
       }
-      
+
       const name = element.dataset.product;
       const price = parseInt(element.dataset.price) || 0;
       const category = element.dataset.category || '';
-      
+
       // 既に選択済みかチェック
       if (selectedProducts.some(p => p.name === name)) {
         return;
       }
-      
+
       selectedProducts.push({
         name: name,
         price: price,
         quantity: 1,
         category: category
       });
-      
+
       renderSelectedProducts();
       renderAddProductList();
       updateTotal();
     }
-    
+
     // 選択済み商品の数量変更
     function changeSelectedQty(index, delta) {
       const item = selectedProducts[index];
       if (!item) return;
-      
+
       item.quantity = Math.max(1, item.quantity + delta);
       renderSelectedProducts();
       updateTotal();
     }
-    
+
     // 選択済み商品の数量を直接更新
     function updateSelectedQty(index, value) {
       const item = selectedProducts[index];
       if (!item) return;
-      
+
       item.quantity = Math.max(1, parseInt(value) || 1);
       renderSelectedProducts();
       updateTotal();
     }
-    
+
     // 選択済み商品を削除
     function removeSelectedProduct(index) {
       selectedProducts.splice(index, 1);
@@ -2028,94 +2031,94 @@
       renderAddProductList();
       updateTotal();
     }
-    
+
     // 分類フィルターボタンを作成
     function setupCategoryFilters() {
       const categories = new Set();
-      products.forEach(function(p) {
+      products.forEach(function (p) {
         if (p['分類']) {
           categories.add(p['分類']);
         }
       });
-      
+
       if (categories.size === 0) {
         document.getElementById('categoryFilterArea').innerHTML = '';
         return;
       }
-      
+
       let html = '<div class="d-flex flex-wrap gap-1">';
       html += '<button type="button" class="btn btn-sm btn-primary category-filter-btn active" data-category="" onclick="filterByCategory(this, \'\')">すべて</button>';
-      
-      categories.forEach(function(cat) {
+
+      categories.forEach(function (cat) {
         html += `<button type="button" class="btn btn-sm btn-outline-secondary category-filter-btn" data-category="${escapeHtml(cat)}" onclick="filterByCategory(this, '${escapeHtml(cat)}')">${escapeHtml(cat)}</button>`;
       });
-      
+
       html += '</div>';
       document.getElementById('categoryFilterArea').innerHTML = html;
     }
-    
+
     // 分類でフィルタリング
     function filterByCategory(btn, category) {
       // ボタンのアクティブ状態を更新
-      document.querySelectorAll('.category-filter-btn').forEach(function(b) {
+      document.querySelectorAll('.category-filter-btn').forEach(function (b) {
         b.classList.remove('active', 'btn-primary');
         b.classList.add('btn-outline-secondary');
       });
       btn.classList.remove('btn-outline-secondary');
       btn.classList.add('active', 'btn-primary');
-      
+
       selectedCategory = category || null;
       filterProducts();
     }
-    
+
     // 商品をフィルタリング（追加可能商品リストのみ）
     function filterProducts() {
       const searchText = document.getElementById('productSearchInput').value.toLowerCase().trim();
-      
-      document.querySelectorAll('#productList .add-product-card').forEach(function(card) {
+
+      document.querySelectorAll('#productList .add-product-card').forEach(function (card) {
         const productName = (card.dataset.product || '').toLowerCase();
         const category = (card.dataset.category || '').toLowerCase();
-        
+
         let matchSearch = true;
         let matchCategory = true;
-        
+
         // テキスト検索
         if (searchText) {
           matchSearch = productName.includes(searchText) || category.includes(searchText);
         }
-        
+
         // 分類フィルター
         if (selectedCategory) {
           matchCategory = category === selectedCategory.toLowerCase();
         }
-        
+
         card.style.display = (matchSearch && matchCategory) ? 'flex' : 'none';
       });
     }
-    
+
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
-    
+
     // 郵便番号からハイフンを除去して数字のみにする
     function normalizeZipcode(zipcode) {
       return zipcode ? zipcode.replace(/[^0-9]/g, '') : '';
     }
-    
+
     // 電話番号からハイフンを除去して数字のみにする
     function normalizePhone(phone) {
       return phone ? phone.replace(/[^0-9]/g, '') : '';
     }
-    
+
     // 郵便番号から住所を検索
     function searchAddressByZipcode(type) {
       let zipcodeInput, addressInput;
-      
+
       if (type === 'customer') {
         zipcodeInput = document.getElementById('newCustomerZipcode');
         addressInput = document.getElementById('newCustomerAddress');
@@ -2124,17 +2127,17 @@
         zipcodeInput = document.getElementById('newShippingToZipcode');
         addressInput = document.getElementById('newShippingToAddress');
       }
-      
+
       const zipcode = zipcodeInput.value.replace(/[^0-9]/g, '');
-      
+
       if (!zipcode || zipcode.length !== 7) {
         showWarningToast('郵便番号を7桁で入力してください');
         return;
       }
-      
+
       // zipcloud API を使用（無料）
       const url = 'https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + zipcode;
-      
+
       fetch(url)
         .then(response => response.json())
         .then(data => {
@@ -2151,25 +2154,25 @@
           showErrorToast('住所検索に失敗しました');
         });
     }
-    
+
     // 合計更新
     function updateTotal() {
       let total = 0;
-      selectedProducts.forEach(function(item) {
+      selectedProducts.forEach(function (item) {
         total += item.price * item.quantity;
       });
       document.getElementById('totalAmount').textContent = '¥' + total.toLocaleString();
     }
-    
+
     // 前回と同じ
     function applySameAsLast() {
       if (!lastOrder || !lastOrder.items) return;
-      
+
       // 選択済み商品をクリア
       selectedProducts = [];
-      
+
       // 前回の商品を追加
-      lastOrder.items.forEach(function(item) {
+      lastOrder.items.forEach(function (item) {
         if (selectedProducts.length < 10) {
           selectedProducts.push({
             name: item.productName,
@@ -2179,12 +2182,12 @@
           });
         }
       });
-      
+
       renderSelectedProducts();
       renderAddProductList();
       updateTotal();
     }
-    
+
     // ステップ遷移
     function goToStep(step) {
       // ステップ3（発送情報）に移動時は商品チェック
@@ -2195,12 +2198,12 @@
         }
         prepareStep3();
       }
-      
+
       // ステップ4（確認画面）に移動時は確認内容を表示
       if (step === 4) {
         prepareConfirmation();
       }
-      
+
       // フェーズ表示を更新
       for (let i = 1; i <= 4; i++) {
         const dot = document.getElementById('phase' + i);
@@ -2211,7 +2214,7 @@
           dot.classList.add('active');
         }
       }
-      
+
       // ステップを切り替え
       for (let i = 1; i <= 4; i++) {
         const container = document.getElementById('step' + i);
@@ -2220,45 +2223,45 @@
           container.classList.add('active');
         }
       }
-      
+
       // ページトップにスクロール
       window.scrollTo(0, 0);
     }
-    
+
     // ステップ3（発送情報）の準備
     function prepareStep3() {
       // 発送先・顧客情報を表示
       document.getElementById('step3ShippingTo').textContent = selectedShippingTo.shippingToName;
       document.getElementById('step3Customer').textContent = selectedCustomer.customerName;
-      
+
       // 商品サマリを表示
-      let productSummary = selectedProducts.map(function(item) {
+      let productSummary = selectedProducts.map(function (item) {
         return item.name + ' x' + item.quantity;
       }).join('、');
       document.getElementById('step3ProductSummary').textContent = productSummary || '-';
-      
+
       // 合計金額を表示
       let total = 0;
-      selectedProducts.forEach(function(item) {
+      selectedProducts.forEach(function (item) {
         total += item.price * item.quantity;
       });
       document.getElementById('step3TotalAmount').textContent = '¥' + total.toLocaleString();
     }
-    
+
     // 確認画面の準備
     function prepareConfirmation() {
       // 発送元情報
-      document.getElementById('confirmShippingFrom').textContent = 
+      document.getElementById('confirmShippingFrom').textContent =
         currentShippingFrom.name || '-';
-      
+
       // 発送先・顧客情報
       document.getElementById('confirmShippingTo').textContent = selectedShippingTo.shippingToName;
       document.getElementById('confirmCustomer').textContent = selectedCustomer.customerName;
-      
+
       // 日程
       document.getElementById('confirmShippingDate').textContent = document.getElementById('shippingDateInput').value;
       document.getElementById('confirmDeliveryDate').textContent = document.getElementById('deliveryDateInput').value;
-      
+
       // 配送オプション表示
       const deliveryMethodSelect = document.getElementById('deliveryMethodSelect');
       const deliveryTimeSelect = document.getElementById('deliveryTimeSelect');
@@ -2266,14 +2269,14 @@
       const coolClsSelect = document.getElementById('coolClsSelect');
       const cargo1Select = document.getElementById('cargo1Select');
       const cargo2Select = document.getElementById('cargo2Select');
-      
-      document.getElementById('confirmDeliveryMethod').textContent = 
+
+      document.getElementById('confirmDeliveryMethod').textContent =
         deliveryMethodSelect.options[deliveryMethodSelect.selectedIndex]?.text || '-';
-      document.getElementById('confirmDeliveryTime').textContent = 
+      document.getElementById('confirmDeliveryTime').textContent =
         deliveryTimeSelect.options[deliveryTimeSelect.selectedIndex]?.text || '指定なし';
-      document.getElementById('confirmInvoiceType').textContent = 
+      document.getElementById('confirmInvoiceType').textContent =
         invoiceTypeSelect.options[invoiceTypeSelect.selectedIndex]?.text || '指定なし';
-      document.getElementById('confirmCoolCls').textContent = 
+      document.getElementById('confirmCoolCls').textContent =
         coolClsSelect.options[coolClsSelect.selectedIndex]?.text || '指定なし';
       document.getElementById('confirmCargo1').textContent =
         cargo1Select.options[cargo1Select.selectedIndex]?.text || '指定なし';
@@ -2290,7 +2293,7 @@
       } else {
         confirmCargo3Area.style.display = 'none';
       }
-      
+
       // チェックリスト表示
       const checklistItems = [];
       if (document.getElementById('checkDeliverySlip').checked) checklistItems.push('納品書');
@@ -2298,7 +2301,7 @@
       if (document.getElementById('checkReceipt').checked) checklistItems.push('領収書');
       if (document.getElementById('checkPamphlet').checked) checklistItems.push('パンフ');
       if (document.getElementById('checkRecipe').checked) checklistItems.push('レシピ');
-      
+
       const confirmChecklistArea = document.getElementById('confirmChecklistArea');
       if (checklistItems.length > 0) {
         document.getElementById('confirmChecklist').textContent = checklistItems.join('、');
@@ -2306,7 +2309,7 @@
       } else {
         confirmChecklistArea.style.display = 'none';
       }
-      
+
       // メモ表示
       const memo = document.getElementById('orderMemoInput').value.trim();
       const confirmMemoArea = document.getElementById('confirmMemoArea');
@@ -2316,21 +2319,21 @@
       } else {
         confirmMemoArea.style.display = 'none';
       }
-      
+
       // 要確認フラグ
       const needsConfirmation = isNewCustomerMode && document.getElementById('needsConfirmation').checked;
       document.getElementById('confirmNeedsConfirmation').style.display = needsConfirmation ? 'block' : 'none';
-      
+
       // 商品リスト
       let html = '';
       let total = 0;
       const orderItems = [];
-      
-      selectedProducts.forEach(function(item) {
+
+      selectedProducts.forEach(function (item) {
         const subtotal = item.price * item.quantity;
         total += subtotal;
         orderItems.push({ productName: item.name, quantity: item.quantity, price: item.price });
-        
+
         html += `
           <div class="product-card">
             <div class="product-info">
@@ -2341,42 +2344,42 @@
           </div>
         `;
       });
-      
+
       if (selectedProducts.length === 0) {
         html = '<div class="text-center text-muted py-3">商品が選択されていません</div>';
       }
-      
+
       document.getElementById('confirmProductList').innerHTML = html;
       document.getElementById('confirmTotalAmount').textContent = '¥' + total.toLocaleString();
-      
+
       // 過去注文との比較チェック（リピーターの場合のみ）
       if (!isNewCustomerMode && orderItems.length > 0) {
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             const checkResult = JSON.parse(result);
             renderWarnings(checkResult);
           })
-          .withFailureHandler(function(e) {
+          .withFailureHandler(function (e) {
             console.error('比較チェックエラー:', e);
           })
           .checkOrderAgainstHistory(selectedShippingTo.shippingToName, orderItems);
       } else {
         document.getElementById('warningArea').innerHTML = '';
       }
-      
+
       // フォームのhidden fieldsを設定
       prepareOrderForm(orderItems, total);
     }
-    
+
     // 警告表示
     function renderWarnings(checkResult) {
       const warningArea = document.getElementById('warningArea');
-      
+
       if (!checkResult.hasWarnings) {
         warningArea.innerHTML = '';
         return;
       }
-      
+
       let html = `
         <div class="alert alert-warning mt-3" role="alert">
           <div class="d-flex align-items-center mb-2">
@@ -2385,11 +2388,11 @@
           </div>
           <ul class="mb-0 ps-3">
       `;
-      
-      checkResult.warnings.forEach(function(w) {
+
+      checkResult.warnings.forEach(function (w) {
         let className = 'text-warning';
         let icon = '📦';
-        
+
         if (w.type === 'quantity') {
           className = 'text-danger';
           icon = '📊';
@@ -2397,54 +2400,54 @@
           className = 'text-info';
           icon = '🆕';
         }
-        
+
         html += `<li class="${className}"><strong>${icon}</strong> ${w.message}</li>`;
       });
-      
+
       html += `
           </ul>
         </div>
       `;
-      
+
       warningArea.innerHTML = html;
     }
-    
+
     // 注文フォームの準備
     function prepareOrderForm(orderItems, total) {
       const form = document.getElementById('orderForm');
-      
+
       // 既存のhidden fieldsをクリア
       const existingHiddens = form.querySelectorAll('input[type="hidden"]:not([name="shippingSubmit"])');
-      existingHiddens.forEach(function(el) { el.remove(); });
-      
+      existingHiddens.forEach(function (el) { el.remove(); });
+
       // 発送先情報
       addHiddenField(form, 'shippingToName', selectedShippingTo.shippingToName);
       addHiddenField(form, 'shippingToCompany', selectedShippingTo.shippingToCompany || '');
       addHiddenField(form, 'shippingToZipcode', selectedShippingTo.shippingToZipcode || '');
       addHiddenField(form, 'shippingToAddress', selectedShippingTo.shippingToAddress || '');
       addHiddenField(form, 'shippingToTel', selectedShippingTo.shippingToTel || '');
-      
+
       // 顧客情報
       addHiddenField(form, 'customerName', selectedCustomer.customerName);
       addHiddenField(form, 'customerCompany', selectedCustomer.customerCompany || '');
       addHiddenField(form, 'customerZipcode', selectedCustomer.customerZipcode || '');
       addHiddenField(form, 'customerAddress', selectedCustomer.customerAddress || '');
       addHiddenField(form, 'customerTel', selectedCustomer.customerTel || '');
-      
+
       // 発送元情報
       addHiddenField(form, 'shippingFromName', currentShippingFrom.name || '');
       addHiddenField(form, 'shippingFromZipcode', currentShippingFrom.zipcode || '');
       addHiddenField(form, 'shippingFromAddress', currentShippingFrom.address || '');
       addHiddenField(form, 'shippingFromTel', currentShippingFrom.tel || '');
-      
+
       // 日程
       addHiddenField(form, 'shippingDate1', document.getElementById('shippingDateInput').value);
       addHiddenField(form, 'deliveryDate1', document.getElementById('deliveryDateInput').value);
-      
+
       // 受付方法
       addHiddenField(form, 'receiptWay', '電話');
       addHiddenField(form, 'recipient', '');
-      
+
       // 納品方法（選択値を使用）
       const deliveryMethodSelect = document.getElementById('deliveryMethodSelect');
       const deliveryTimeSelect = document.getElementById('deliveryTimeSelect');
@@ -2452,26 +2455,26 @@
       const coolClsSelect = document.getElementById('coolClsSelect');
       const cargo1Select = document.getElementById('cargo1Select');
       const cargo2Select = document.getElementById('cargo2Select');
-      
+
       const deliveryMethod = deliveryMethodSelect.value || 'ヤマト';
-      
+
       // createOrderでsplit(":")[1]を使っているため、「値:表示名」の形式で送信
       const deliveryTimeVal = deliveryTimeSelect.value || '';
       const deliveryTimeText = deliveryTimeSelect.options[deliveryTimeSelect.selectedIndex]?.text || '';
       const deliveryTime = deliveryTimeVal ? deliveryTimeVal + ':' + deliveryTimeText : '';
-      
+
       const invoiceTypeVal = invoiceTypeSelect.value || '';
       const invoiceTypeText = invoiceTypeSelect.options[invoiceTypeSelect.selectedIndex]?.text || '';
       const invoiceType = invoiceTypeVal ? invoiceTypeVal + ':' + invoiceTypeText : '';
-      
+
       const coolClsVal = coolClsSelect.value || '';
       const coolClsText = coolClsSelect.options[coolClsSelect.selectedIndex]?.text || '';
       const coolCls = coolClsVal ? coolClsVal + ':' + coolClsText : '';
-      
+
       const cargo1Val = cargo1Select.value || '';
       const cargo1Text = cargo1Select.options[cargo1Select.selectedIndex]?.text || '';
       const cargo1 = cargo1Val ? cargo1Val + ':' + cargo1Text : '';
-      
+
       const cargo2Val = cargo2Select.value || '';
       const cargo2Text = cargo2Select.options[cargo2Select.selectedIndex]?.text || '';
       const cargo2 = cargo2Val ? cargo2Val + ':' + cargo2Text : '';
@@ -2483,12 +2486,12 @@
 
       addHiddenField(form, 'deliveryMethod', deliveryMethod);
       addHiddenField(form, 'deliveryTime', deliveryTime);
-      
+
       // 商品情報
       let rowNum = 0;
       let sendProduct = '食品'; // デフォルト値
-      
-      orderItems.forEach(function(item) {
+
+      orderItems.forEach(function (item) {
         rowNum++;
         let bunrui = '';
         let abbreviation = '';
@@ -2499,18 +2502,18 @@
             break;
           }
         }
-        
+
         // 最初の商品の略称を品名として使用
         if (rowNum === 1 && abbreviation) {
           sendProduct = abbreviation;
         }
-        
+
         addHiddenField(form, 'bunrui' + rowNum, bunrui);
         addHiddenField(form, 'product' + rowNum, item.productName);
         addHiddenField(form, 'price' + rowNum, item.price);
         addHiddenField(form, 'quantity' + rowNum, item.quantity);
       });
-      
+
       // 発送情報
       addHiddenField(form, 'sendProduct', sendProduct);
       addHiddenField(form, 'invoiceType', invoiceType);
@@ -2518,7 +2521,7 @@
       addHiddenField(form, 'cargo1', cargo1);
       addHiddenField(form, 'cargo2', cargo2);
       addHiddenField(form, 'cargo3', cargo3);
-      
+
       // チェックリスト（チェックされた項目のみ送信）
       const checklistItems = [];
       if (document.getElementById('checkDeliverySlip').checked) checklistItems.push('納品書');
@@ -2526,30 +2529,30 @@
       if (document.getElementById('checkReceipt').checked) checklistItems.push('領収書');
       if (document.getElementById('checkPamphlet').checked) checklistItems.push('パンフ');
       if (document.getElementById('checkRecipe').checked) checklistItems.push('レシピ');
-      
-      checklistItems.forEach(function(item) {
+
+      checklistItems.forEach(function (item) {
         addHiddenField(form, 'checklist', item);
       });
-      
+
       // メモ欄
       let memoText = document.getElementById('orderMemoInput').value.trim();
-      
+
       // 要確認フラグ（メモに追記）
       if (isNewCustomerMode && document.getElementById('needsConfirmation').checked) {
         const flagText = '【要確認】電話受注（新規顧客）- 詳細情報の入力が必要です';
         memoText = memoText ? flagText + '\n' + memoText : flagText;
       }
-      
+
       if (memoText) {
         addHiddenField(form, 'memo', memoText);
       }
-      
+
       // 新規顧客フラグ（マスタ登録用）
       if (isNewCustomerMode) {
         addHiddenField(form, 'isNewCustomer', 'true');
       }
     }
-    
+
     function addHiddenField(form, name, value) {
       const input = document.createElement('input');
       input.type = 'hidden';
@@ -2558,7 +2561,7 @@
       form.appendChild(input);
     }
   </script>
-  
+
   <?!= HtmlService.createHtmlOutputFromFile('keyCheck').getContent(); ?>
 </body>
 

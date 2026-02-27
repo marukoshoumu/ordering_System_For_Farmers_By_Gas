@@ -10,6 +10,33 @@
   */
 
   /* ===================================
+     統一ヘッダーコンポーネント
+     =================================== */
+  .page-hero-header {
+    background: var(--brand-primary) !important;
+    color: white !important;
+    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+    padding: 16px 20px !important;
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 64px !important;
+  }
+
+  .page-hero-header h1,
+  .page-hero-header h2,
+  .page-hero-header h3 {
+    margin: 0 !important;
+    color: white !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* ===================================
      統一カードコンポーネント
      =================================== */
 
@@ -90,7 +117,7 @@
     padding: var(--space-8, 2rem);
     border-radius: var(--radius-lg, 16px);
     text-align: center;
-    box-shadow: 
+    box-shadow:
       0 25px 50px -12px rgba(0, 0, 0, 0.25),
       0 0 0 1px rgba(255, 255, 255, 0.1);
     animation: loadingPulse 2s ease-in-out infinite;
@@ -98,8 +125,15 @@
   }
 
   @keyframes loadingPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.02);
+    }
   }
 
   .spinner {
@@ -113,8 +147,13 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   .loading-text {
@@ -133,7 +172,7 @@
     padding: 12px 16px;
     color: var(--text-secondary, #6b7280);
   }
-  
+
   .inline-spinner .mini-spinner {
     width: 20px;
     height: 20px;
@@ -142,7 +181,7 @@
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
-  
+
   /* ボタン内スピナー */
   .btn-spinner {
     display: inline-block;
@@ -155,10 +194,15 @@
     vertical-align: middle;
     margin-right: 4px;
   }
-  
+
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   /* ===================================
@@ -794,6 +838,7 @@
 
   /* モバイル（< 576px） */
   @media (max-width: 575px) {
+
     /* トーストをモバイルで上部に表示 */
     .toast-container {
       top: var(--space-3);
@@ -844,6 +889,7 @@
 
   /* デスクトップ（≥ 992px） */
   @media (min-width: 992px) {
+
     /* ホバーエフェクトを強化 */
     .card-unified:hover {
       transform: translateY(-4px);
@@ -852,6 +898,7 @@
 
   /* タッチデバイス対応 */
   @media (hover: none) and (pointer: coarse) {
+
     /* タッチターゲットサイズを44px以上に */
     .btn,
     .btn-unified,
@@ -874,6 +921,7 @@
 
   /* プリント用スタイル */
   @media print {
+
     /* アニメーションを無効化 */
     * {
       animation: none !important;
@@ -892,5 +940,4 @@
       background: white;
     }
   }
-
 </style>

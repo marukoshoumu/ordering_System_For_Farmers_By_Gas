@@ -30,7 +30,7 @@
     }
 
     .main-container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 16px;
     }
@@ -41,8 +41,9 @@
       box-shadow: var(--shadow);
     }
 
-    .card-header {
-      background: var(--gradient-purple);
+    .page-hero-header {
+      background: #4a90a4;
+      /* 統一カラーに変更 */
       color: white;
       border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
       padding: var(--space-4) var(--space-5);
@@ -522,21 +523,16 @@
 </head>
 
 <body>
+  <?!= includeSidebar(deployURL, sessionId, typeof userRole !== 'undefined' ? userRole : 'viewer') ?>
 
   <div class="main-container">
     <div class="card overflow-hidden">
       <!-- ヘッダー -->
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-          <h1><i class="bi bi-robot me-2"></i>AI取込一覧</h1>
+      <div class="page-hero-header d-flex justify-content-center align-items-center">
+        <h1 class="m-0"><i class="bi bi-robot me-2"></i>AI取込一覧</h1>
+        <div style="position: absolute; right: 16px;">
           <span class="pending-badge" id="pendingBadge" style="display: none;">未処理: 0件</span>
         </div>
-        <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
-          <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-          <button type="submit" formnovalidate class="btn btn-outline-light btn-sm" name="mainTop" value="true">
-            <i class="bi bi-house"></i> ホーム
-          </button>
-        </form>
       </div>
 
       <!-- サマリー -->

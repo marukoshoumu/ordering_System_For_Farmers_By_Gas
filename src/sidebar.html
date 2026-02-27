@@ -1,0 +1,490 @@
+<style>
+  /* ===============================================
+   サイドバー (ハンバーガーメニュー) スタイル
+   =============================================== */
+
+  .hamburger-btn {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    color: #ffffff;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 1040;
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .hamburger-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .hamburger-btn i {
+    font-size: 1.4rem;
+  }
+
+  /* オーバーレイ背景 */
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1045;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+
+  .sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* サイドバー本体 */
+  .sidebar-menu {
+    position: fixed;
+    top: 0;
+    left: -320px;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    background-color: #f8fafc;
+    z-index: 1050;
+    overflow-y: auto;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-menu.show {
+    left: 0;
+  }
+
+  /* サイドバーヘッダー */
+  .sidebar-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #4a90a4 0%, #3d7a8c 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sidebar-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .sidebar-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+  }
+
+  .sidebar-close:hover {
+    opacity: 1;
+  }
+
+  /* サイドバーコンテンツ */
+  .sidebar-content {
+    padding: 10px;
+    flex: 1;
+  }
+
+  /* メニューセクション：home.htmlと同じデザイン */
+  .sb-section {
+    margin-bottom: 6px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  /* メニューヘッダー：home.htmlの .menu-header に合わせたグラデーション */
+  .sb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #4a90a4 0%, #3d7a8c 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+
+  .sb-header:hover {
+    background: linear-gradient(135deg, #3d7a8c 0%, #2d6a7c 100%);
+  }
+
+  /* 「参照」「その他」セクション用の落ち着いた色 */
+  .sb-header-util {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  }
+
+  .sb-header-util:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  }
+
+  .sb-arrow {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+  }
+
+  .sb-header.collapsed .sb-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .sb-body {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    background-color: #f8fafc;
+    padding: 8px;
+  }
+
+  .sb-body.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  /* メニューボタン */
+  .sb-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    background: transparent;
+    color: #475569;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .sb-btn:hover {
+    background-color: #e0f2fe;
+    color: #0369a1;
+  }
+
+  /* 参照リンクボタン */
+  .sb-link {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 2px;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sb-link:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+  }
+</style>
+
+<!-- ==============================================
+     サイドバー HTML 構造
+     ============================================== -->
+<button type="button" class="hamburger-btn" id="openSidebarBtn" title="メニュー">
+  <i class="bi bi-list"></i>
+</button>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="sidebar-menu" id="sidebarMenu">
+  <div class="sidebar-header">
+    <h3 class="sidebar-title">メニュー</h3>
+    <button type="button" class="sidebar-close" id="closeSidebarBtn">&times;</button>
+  </div>
+
+  <div class="sidebar-content">
+    <!-- POST送信用隠しフォーム -->
+    <form id="sidebarNavForm" method="POST" action="<?= typeof deployURL !== 'undefined' ? deployURL : '' ?>"
+      style="display: none;">
+      <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
+      <input type="hidden" id="sidebarNavTarget" name="" value="true">
+    </form>
+
+    <? if (typeof userRole !== 'undefined' && userRole !== 'viewer') { ?>
+    <div class="sb-section">
+      <div class="sb-header" onclick="toggleSbSection(this)">
+        <span>📝 受注</span><span class="sb-arrow">▼</span>
+      </div>
+      <div class="sb-body">
+        <button type="button" class="sb-btn" onclick="navTo('shipping')">📝 受注入力</button>
+        <button type="button" class="sb-btn" onclick="navTo('phoneOrder')">📞 電話受注</button>
+        <button type="button" class="sb-btn" onclick="navTo('csvImport')">📥 CSV取込</button>
+        <button type="button" class="sb-btn" onclick="navTo('masterImport')">📋 一括マスタ登録</button>
+      </div>
+    </div>
+    <? } ?>
+
+    <div class="sb-section">
+      <div class="sb-header" onclick="toggleSbSection(this)">
+        <span>📊 一覧</span><span class="sb-arrow">▼</span>
+      </div>
+      <div class="sb-body">
+        <button type="button" class="sb-btn" onclick="navTo('orderListPage')">📑 受注一覧</button>
+        <button type="button" class="sb-btn" onclick="navTo('orderList')">📊 製造数一覧</button>
+        <button type="button" class="sb-btn" onclick="navTo('manufacturingOrder')">📋 製造指示書</button>
+        <? if (typeof userRole !== 'undefined' && userRole === 'admin') { ?>
+        <button type="button" class="sb-btn" onclick="navTo('salesDashboard')">📈 売上ダッシュボード</button>
+        <? } ?>
+        <? if (typeof userRole !== 'undefined' && userRole !== 'viewer') { ?>
+        <button type="button" class="sb-btn" onclick="navTo('recurringOrderList')">🔄 定期便一覧</button>
+        <button type="button" class="sb-btn" onclick="navTo('aiImportList')">🤖 AI取込一覧</button>
+        <? } ?>
+        <? if (typeof userRole !== 'undefined' && userRole === 'admin') { ?>
+        <button type="button" class="sb-btn" onclick="navTo('productList')">🛍️ 商品マスタ</button>
+        <button type="button" class="sb-btn" onclick="navTo('customerList')">👥 顧客マスタ</button>
+        <button type="button" class="sb-btn" onclick="navTo('shippingToList')">📦 発送先マスタ</button>
+        <? } ?>
+      </div>
+    </div>
+
+    <? if (typeof userRole !== 'undefined' && userRole !== 'viewer') { ?>
+    <div class="sb-section">
+      <div class="sb-header" onclick="toggleSbSection(this)">
+        <span>🛠️ 作成</span><span class="sb-arrow">▼</span>
+      </div>
+      <div class="sb-body">
+        <button type="button" class="sb-btn" onclick="navTo('createShippingSlips')">📦 送り状作成</button>
+        <button type="button" class="sb-btn" onclick="navTo('createBill')">💰 請求書作成</button>
+        <button type="button" class="sb-btn" onclick="navTo('createFreeeDeliveryNote')">📊 freee納品書CSV</button>
+        <button type="button" class="sb-btn" onclick="navTo('quotation')">📋 見積書作成</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-header sb-header-util" onclick="toggleSbSection(this)">
+        <span>🔍 参照</span><span class="sb-arrow">▼</span>
+      </div>
+      <div class="sb-body collapsed">
+        <button type="button" class="sb-link" onclick="sbOpenUrl(this, '商品')">🛍️ 商品情報</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrl(this, '顧客情報')">👥 顧客情報</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrl(this, '受注')">📑 受注シート</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, '見積書')">📋 見積書</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, '請求書')">💰 請求書</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, 'freee納品書CSV')">📊 freee納品書CSV</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, '納品書')">📄 納品書</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, 'ヤマト')">🚚 ヤマト送り状</button>
+        <button type="button" class="sb-link" onclick="sbOpenUrlDrive(this, '佐川')">🚛 佐川送り状</button>
+      </div>
+    </div>
+    <? } ?>
+
+    <!-- ホームとログアウトは全ユーザーに表示 -->
+    <div class="sb-section">
+      <div class="sb-header sb-header-util" onclick="toggleSbSection(this)">
+        <span>⚙️ その他</span><span class="sb-arrow">▼</span>
+      </div>
+      <div class="sb-body collapsed">
+        <button type="button" class="sb-btn" onclick="navTo('mainTop')">🏠 ホーム画面</button>
+        <button type="button" class="sb-btn text-danger" onclick="navTo('logout')">🚪 ログアウト</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ==============================================
+     サイドバー JavaScript 制御
+     ============================================== */
+  document.addEventListener('DOMContentLoaded', function () {
+    const openBtn = document.getElementById('openSidebarBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+    const overlay = document.getElementById('sidebarOverlay');
+    const menu = document.getElementById('sidebarMenu');
+
+    if (openBtn && closeBtn && overlay && menu) {
+      // 画面のタイトル（h1, h2等）の先頭にハンバーガーアイコンを移動
+      // 画面のタイトル（h1, h2等）の親（ヘッダーバー）にハンバーガーアイコンを配置
+      const headerTitle = document.querySelector('.card-header h1, .card-header h2, .page-hero-header h1, .page-hero-header h2, .container-fluid h1, .container-fluid h2, h2.text-center');
+      if (headerTitle) {
+        const headerBar = headerTitle.closest('.card-header, .page-hero-header, .container-fluid') || headerTitle;
+
+        // ヘッダーバーを基準にする
+        headerBar.style.display = 'flex';
+        headerBar.style.alignItems = 'center';
+        headerBar.style.justifyContent = 'center';
+        headerBar.style.position = 'relative';
+        headerBar.appendChild(openBtn);
+
+        // 既存のタイトル内アイコンがあれば非表示
+        const existingIcon = headerTitle.querySelector('i.bi');
+        if (existingIcon) {
+          existingIcon.style.display = 'none';
+        }
+
+        // タイトル自体の位置調整（中央寄せを維持）
+        headerTitle.style.display = 'flex';
+        headerTitle.style.alignItems = 'center';
+        headerTitle.style.justifyContent = 'center';
+        headerTitle.style.margin = '0';
+      }
+
+      // 開く
+      openBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        overlay.classList.add('show');
+        menu.classList.add('show');
+      });
+
+      // 閉じる (ボタン)
+      closeBtn.addEventListener('click', function () {
+        overlay.classList.remove('show');
+        menu.classList.remove('show');
+      });
+
+      // 閉じる (オーバーレイ領域クリック)
+      overlay.addEventListener('click', function () {
+        overlay.classList.remove('show');
+        menu.classList.remove('show');
+      });
+    }
+  });
+
+  // アコーディオン開閉
+  function toggleSbSection(header) {
+    const body = header.nextElementSibling;
+
+    if (body.classList.contains('collapsed')) {
+      body.classList.remove('collapsed');
+      header.classList.remove('collapsed');
+    } else {
+      body.classList.add('collapsed');
+      header.classList.add('collapsed');
+    }
+  }
+
+  // 画面遷移用POST送信関数
+  function navTo(targetName) {
+    // 画面遷移用の全画面ローディングオーバーレイ表示
+    let loadingOverlay = document.getElementById('globalSidebarLoading');
+    if (!loadingOverlay) {
+      loadingOverlay = document.createElement('div');
+      loadingOverlay.id = 'globalSidebarLoading';
+      loadingOverlay.style.position = 'fixed';
+      loadingOverlay.style.top = '0';
+      loadingOverlay.style.left = '0';
+      loadingOverlay.style.width = '100vw';
+      loadingOverlay.style.height = '100vh';
+      loadingOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      loadingOverlay.style.zIndex = '9999';
+      loadingOverlay.style.display = 'flex';
+      loadingOverlay.style.flexDirection = 'column';
+      loadingOverlay.style.justifyContent = 'center';
+      loadingOverlay.style.alignItems = 'center';
+
+      const spinnerHtml = '<div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;"></div>' +
+        '<h5 class="mt-2 text-white">読込中...</h5>';
+      loadingOverlay.innerHTML = spinnerHtml;
+      document.body.appendChild(loadingOverlay);
+    }
+    loadingOverlay.style.display = 'flex';
+
+    const form = document.getElementById('sidebarNavForm');
+    const targetInput = document.getElementById('sidebarNavTarget');
+
+    if (form && targetInput) {
+      // 現在の画面にある "prev" で始まる隠しパラメータを自動収集して追加
+      // (受注一覧の検索条件などを引き継ぐため)
+      document.querySelectorAll('input[type="hidden"][name^="prev"]').forEach(el => {
+        // 既存の同名入力があれば削除（重複防止）
+        let existing = form.querySelector(`input[name="${el.name}"]`);
+        if (existing) existing.remove();
+
+        // クローンを作成してフォームに追加
+        const clone = document.createElement('input');
+        clone.type = 'hidden';
+        clone.name = el.name;
+        clone.value = el.value;
+        form.appendChild(clone);
+      });
+
+      targetInput.name = targetName;
+      form.submit();
+    } else {
+      console.error('ナビゲーション用のフォームが見つかりません');
+    }
+  }
+
+  // ボタン内のローディング制御ユーティリティ
+  let currentActiveBtn = null;
+  function setBtnLoading(btn) {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.dataset.original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="vertical-align: middle;"></span>読込中...';
+    currentActiveBtn = btn;
+  }
+  function resetBtnLoading() {
+    if (!currentActiveBtn || !currentActiveBtn.dataset.original) return;
+    currentActiveBtn.innerHTML = currentActiveBtn.dataset.original;
+    currentActiveBtn.disabled = false;
+    currentActiveBtn = null;
+  }
+
+  // スプレッドシートやドライブのURLを開く関数群
+  function sbOpenUrl(btn, sheetName) {
+    setBtnLoading(btn);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(sbSendSuccess).withFailureHandler(sbSendFail).getOpenUrl(sheetName);
+    }
+  }
+
+  function sbOpenUrlDrive(btn, folderName) {
+    setBtnLoading(btn);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(sbSendSuccess).withFailureHandler(sbSendFail).getOpenUrlDrive(folderName);
+    }
+  }
+
+  function sbSendSuccess(url) {
+    resetBtnLoading();
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }
+
+  function sbSendFail() {
+    resetBtnLoading();
+    // すでに Toast 機能が読み込まれている前提
+    if (typeof showErrorToast === 'function') {
+      showErrorToast("URLの取得に失敗しました。");
+    } else {
+      alert("URLの取得に失敗しました。");
+    }
+  }
+</script>
