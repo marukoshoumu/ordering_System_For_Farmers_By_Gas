@@ -339,8 +339,8 @@
       document.getElementById("targetDateTo").value = today;
     }
     setTodayDate();
-    function createFreeeCSV() {
-      const checkAddFlg = window.confirm('freee納品書CSVを作成してもよろしいですか？');
+    async function createFreeeCSV() {
+      const checkAddFlg = await showConfirmDialog('freee納品書CSVを作成してもよろしいですか？');
       if (checkAddFlg) {
         $("button[id='createFreeeCSV']").text('作成中...');
         var customerName = $('input[id="customerName"]').val();
@@ -704,7 +704,7 @@
       document.getElementById('selectAllOrders').checked = false;
     }
 
-    function createFreeeCSVSelected() {
+    async function createFreeeCSVSelected() {
       var checkboxes = document.querySelectorAll('.order-row-checkbox:checked, .order-row-checkbox-card:checked');
       if (checkboxes.length === 0) {
         showWarningToast('受注を1件以上選択してください。');
@@ -715,7 +715,7 @@
         selectedIds.push(cb.value);
       });
       var confirmMsg = '選択した' + selectedIds.length + '件の受注でfreee納品書CSVを作成しますか？';
-      if (!window.confirm(confirmMsg)) return;
+      if (!(await showConfirmDialog(confirmMsg))) return;
 
       $("button[id='createFreeeCSVSelected']").text('作成中...');
       google.script.run
