@@ -43,6 +43,12 @@
       margin-bottom: var(--space-4);
     }
 
+    /* 発送先・顧客カードはホバーで浮き上がらない（フォーカス時やマウス移動で隣が浮くのを防ぐ） */
+    #existingMode .card-unified:hover {
+      transform: none;
+      box-shadow: var(--shadow);
+    }
+
     .card-unified-header {
       display: flex;
       align-items: center;
