@@ -195,7 +195,7 @@
       showLoading();
       setTimeout(function() {
         hideLoading();
-        alert('ローディングテスト完了！');
+        showInfoToast('ローディングテスト完了！');
       }, 2000);
     }
 
@@ -203,7 +203,7 @@
       showLoading('カスタムメッセージで読み込み中...');
       setTimeout(function() {
         hideLoading();
-        alert('カスタムメッセージテスト完了！');
+        showInfoToast('カスタムメッセージテスト完了！');
       }, 2000);
     }
   </script>

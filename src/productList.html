@@ -691,8 +691,9 @@
     function validateDepartmentSelected() {
       var dept = document.getElementById('productDepartment').value;
       if (!dept) {
-        alert('部門を先に選択してください');
+        showWarningToast('部門を先に選択してください');
         document.getElementById('productDepartment').focus();
+        return;
       }
     }
 

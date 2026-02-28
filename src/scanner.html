@@ -301,11 +301,11 @@
         function submitManual() {
             const code = document.getElementById('manualNo').value.trim();
             if (code.length < 10) {
-                alert("番号は10桁以上で入力してください。");
+                showWarningToast("番号は10桁以上で入力してください。");
                 return;
             }
             if (!/^[0-9-]+$/.test(code)) {
-                alert("数字とハイフンのみ入力可能です。");
+                showWarningToast("数字とハイフンのみ入力可能です。");
                 return;
             }
             handleSuccess(code.replace(/-/g, ''));
@@ -353,20 +353,20 @@
                             handleSuccess(result.code);
                         } else {
                             isProcessing = false;
-                            alert("番号を認識できませんでした。数字が中央に来るように再度撮影するか、手入力をお試しください。\n(" + (result.message || "") + ")");
+                            showWarningToast("番号を認識できませんでした。数字が中央に来るように再度撮影するか、手入力をお試しください。\n(" + (result.message || "") + ")");
                             document.getElementById('status').innerText = "伝票のバーコードを枠内に収めてください";
                         }
                     })
                     .withFailureHandler(function (err) {
                         isProcessing = false;
-                        alert("解析エラーが発生しました。");
+                        showErrorToast("解析エラーが発生しました。");
                         document.getElementById('status').innerText = "伝票のバーコードを枠内に収めてください";
                     })
                     .recognizeTrackingNumber(base64Data);
 
             } catch (e) {
                 isProcessing = false;
-                alert("キャプチャに失敗しました。");
+                showErrorToast("キャプチャに失敗しました。");
             }
         }
 

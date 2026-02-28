@@ -1109,11 +1109,11 @@
           // 最大1ヶ月チェック
           const diffDays = (dateTo - dateFrom) / (1000 * 60 * 60 * 24);
           if (diffDays > 31) {
-            alert('期間は最大1ヶ月までです');
+            showWarningToast('期間は最大1ヶ月までです');
             return;
           }
           if (dateFrom > dateTo) {
-            alert('開始日は終了日より前にしてください');
+            showWarningToast('開始日は終了日より前にしてください');
             return;
           }
           break;
@@ -1138,7 +1138,7 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('検索エラー: ' + error.message);
+          showErrorToast('検索エラー: ' + error.message);
         })
         .getHeatmapData(params);
     }

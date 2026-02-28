@@ -481,10 +481,6 @@
   function sbSendFail() {
     resetBtnLoading();
     // すでに Toast 機能が読み込まれている前提
-    if (typeof showErrorToast === 'function') {
-      showErrorToast("URLの取得に失敗しました。");
-    } else {
-      alert("URLの取得に失敗しました。");
-    }
+    showErrorToast("URLの取得に失敗しました。");
   }
 </script>
