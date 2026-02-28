@@ -124,6 +124,58 @@
     showToast(message, 'info');
   }
 
+  /**
+   * 確認ダイアログを表示（window.confirm の代替）
+   * @param {string} message - 表示するメッセージ
+   * @returns {Promise<boolean>} OKならtrue、キャンセルならfalse
+   */
+  function showConfirmDialog(message) {
+    return new Promise(function(resolve) {
+      var dialog = document.createElement('dialog');
+      dialog.className = 'confirm-dialog';
+
+      var body = document.createElement('div');
+      body.className = 'confirm-dialog-body';
+      var msg = document.createElement('div');
+      msg.className = 'confirm-dialog-message';
+      msg.textContent = message;
+      body.appendChild(msg);
+
+      var actions = document.createElement('div');
+      actions.className = 'confirm-dialog-actions';
+      var btnCancel = document.createElement('button');
+      btnCancel.type = 'button';
+      btnCancel.className = 'confirm-dialog-btn confirm-dialog-btn-cancel';
+      btnCancel.textContent = 'キャンセル';
+      var btnOk = document.createElement('button');
+      btnOk.type = 'button';
+      btnOk.className = 'confirm-dialog-btn confirm-dialog-btn-ok';
+      btnOk.textContent = 'OK';
+      actions.appendChild(btnCancel);
+      actions.appendChild(btnOk);
+
+      dialog.appendChild(body);
+      dialog.appendChild(actions);
+
+      function cleanup(result) {
+        dialog.close();
+        dialog.remove();
+        resolve(result);
+      }
+
+      btnOk.addEventListener('click', function() { cleanup(true); });
+      btnCancel.addEventListener('click', function() { cleanup(false); });
+      dialog.addEventListener('cancel', function(e) {
+        e.preventDefault();
+        cleanup(false);
+      });
+
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      btnOk.focus();
+    });
+  }
+
   // google.script.run のラッパー関数（エラーハンドリング付き）
   function runWithLoading(functionName, successCallback, errorMessage) {
     showLoading(errorMessage || '処理中...');

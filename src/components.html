@@ -270,6 +270,75 @@
     background: #d1ecf1;
   }
 
+  /* ===================================
+     確認ダイアログコンポーネント
+     =================================== */
+
+  .confirm-dialog {
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    max-width: 400px;
+    width: calc(100% - 32px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    font-family: inherit;
+  }
+
+  .confirm-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .confirm-dialog-body {
+    padding: 24px;
+  }
+
+  .confirm-dialog-message {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-line;
+  }
+
+  .confirm-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 24px;
+    border-top: 1px solid #e5e7eb;
+    background: var(--bg);
+    border-radius: 0 0 12px 12px;
+  }
+
+  .confirm-dialog-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid #e5e7eb;
+  }
+
+  .confirm-dialog-btn-cancel {
+    background: var(--card-bg);
+    color: var(--text-secondary, #6b7280);
+  }
+
+  .confirm-dialog-btn-cancel:hover {
+    background: #f3f4f6;
+  }
+
+  .confirm-dialog-btn-ok {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .confirm-dialog-btn-ok:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+  }
+
   /* レスポンシブ対応 */
   @media (max-width: 576px) {
     .toast-container {
