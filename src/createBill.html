@@ -142,8 +142,8 @@
       document.getElementById("targetDateTo").value=yyyy+'-'+mm+'-'+dd;
     }
     setLastDate();
-    function createBills() {
-      const checkAddFlg = window.confirm('請求書を作成してもよろしいですか？');
+    async function createBills() {
+      const checkAddFlg = await showConfirmDialog('請求書を作成してもよろしいですか？');
       if(checkAddFlg) {
         $("button[id='createBill']").text('作成中...');
         var customerName = $('input[id="customerName"]').val();

@@ -62,12 +62,12 @@
       document.getElementById("shippingDate").value=yyyy+'-'+mm+'-'+dd;
     }
     setToday();
-    function createShip() {
+    async function createShip() {
       if (!$('input[id="shippingDate"]').val()) {
         showWarningToast('発送日が入力されていません。');
         return false;
       }
-      const checkAddFlg = window.confirm('発送伝票を作成してもよろしいですか？');
+      const checkAddFlg = await showConfirmDialog('発送伝票を作成してもよろしいですか？');
       if(checkAddFlg) {
         $("button[id='createShippingSlips']").text('作成中...');
         var shippingDate = $('input[id="shippingDate"]').val();

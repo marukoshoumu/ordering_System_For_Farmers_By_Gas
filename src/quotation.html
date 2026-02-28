@@ -607,7 +607,7 @@
         });
       });
     });
-    function addCustomer() {
+    async function addCustomer() {
       if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
         showWarningToast('会社名または氏名が入力されていません。');
         return false;
@@ -670,7 +670,7 @@
       record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
       record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
 
-      const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
+      const checkAddFlg = await showConfirmDialog('顧客情報を登録してもよろしいですか？');
       if (checkAddFlg) {
         if ($('input[name=customerSameDg]').prop("checked")) {
           google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
@@ -840,7 +840,7 @@
       google.script.run.withSuccessHandler(setDataList).withFailureHandler(dataAddFail).getLastData(customerName);
 
     }
-    function createQuoutation() {
+    async function createQuoutation() {
       if (!$('input[id="customerName"]').val()) {
         showWarningToast('顧客名が入力されていません。');
         return false;
@@ -881,7 +881,7 @@
         }
       }
 
-      const checkAddFlg = window.confirm('見積書を発行してもよろしいですか？');
+      const checkAddFlg = await showConfirmDialog('見積書を発行してもよろしいですか？');
       if (checkAddFlg) {
         $("button[id='quoutationComfirm']").text('作成中．．．');
         var record = {};

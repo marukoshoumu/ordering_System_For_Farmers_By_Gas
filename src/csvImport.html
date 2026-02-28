@@ -126,8 +126,8 @@
       records = [];
       file.addEventListener('change', loadLocalCsv, false);
     }
-    function addCSV() {
-      const checkAddFlg = window.confirm('CSVファイルをインポートしてもよろしいですか？');
+    async function addCSV() {
+      const checkAddFlg = await showConfirmDialog('CSVファイルをインポートしてもよろしいですか？');
       if (checkAddFlg) {
         $("button[id='addCsvFileBtn']").text('インポート中...');
         var fileClass = $("select[id='fileClass']").val();

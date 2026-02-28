@@ -161,7 +161,7 @@
       return names[masterType] || '';
     }
 
-    function importCSV() {
+    async function importCSV() {
       if (!records || records.length === 0) {
         showWarningToast('CSVファイルを選択してください');
         return;
@@ -175,7 +175,7 @@
         ? '会社名シートのデータを上書きします。よろしいですか？'
         : typeName + 'マスタに' + records.length + '件のデータをインポートしてもよろしいですか？';
 
-      const checkAddFlg = window.confirm(confirmMessage);
+      const checkAddFlg = await showConfirmDialog(confirmMessage);
       if (checkAddFlg) {
         $("button[id='importBtn']").text('インポート中...');
         $("button[id='importBtn']").prop('disabled', true);

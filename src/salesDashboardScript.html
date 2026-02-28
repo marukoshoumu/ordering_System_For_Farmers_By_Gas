@@ -70,11 +70,11 @@ function testServerConnection() {
   google.script.run
     .withSuccessHandler(function(result) {
       console.log('pingTest success:', result);
-      alert('サーバー接続成功: ' + JSON.stringify(result));
+      showSuccessToast('サーバー接続成功');
     })
     .withFailureHandler(function(error) {
       console.log('pingTest failed:', error);
-      alert('サーバー接続失敗: ' + error.message);
+      showErrorToast('サーバー接続失敗: ' + error.message);
     })
     .pingTest();
 }

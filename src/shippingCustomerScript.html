@@ -38,7 +38,7 @@ $(function () {
     });
   });
 });
-function addCustomer() {
+async function addCustomer() {
   if (!$('input[id="customerNameDg"]').val() && !$('input[id="customerIdentDg"]').val()) {
     showWarningToast('会社名または氏名が入力されていません。');
     return false;
@@ -102,7 +102,7 @@ function addCustomer() {
   record['customerTaxDisplayDg'] = $('select[id="customerTaxDisplayDg"]').val();
   record['customerMemoDg'] = $('input[id="customerMemoDg"]').val();
 
-  const checkAddFlg = window.confirm('顧客情報を登録してもよろしいですか？');
+  const checkAddFlg = await showConfirmDialog('顧客情報を登録してもよろしいですか？');
   if (checkAddFlg) {
     if ($('input[name=customerSameDg]').prop("checked")) {
       google.script.run.withSuccessHandler(dataAddSuccess).withFailureHandler(dataAddFail).addCustomerShippingTo(JSON.stringify(record));
@@ -112,7 +112,7 @@ function addCustomer() {
     }
   }
 }
-function addShippingTo() {
+async function addShippingTo() {
   if (!$('input[id="shippingToNameDg"]').val() && !$('input[id="shippingToIdentDg"]').val()) {
     showWarningToast('会社名または氏名が入力されていません。');
     return false;
@@ -161,7 +161,7 @@ function addShippingTo() {
   record['shippingToDepositDateDg'] = $('select[id="shippingToDepositDateDg"]').val();
   record['shippingToMemoDg'] = $('input[id="shippingToMemoDg"]').val();
 
-  const checkAddFlg = window.confirm('発送先情報を登録してもよろしいですか？');
+  const checkAddFlg = await showConfirmDialog('発送先情報を登録してもよろしいですか？');
   if (checkAddFlg) {
     google.script.run.withSuccessHandler(dataAddSuccessShippingTo).withFailureHandler(dataAddFail).addShippingTo(JSON.stringify(record));
   }
