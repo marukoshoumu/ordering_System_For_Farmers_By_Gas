@@ -535,7 +535,7 @@
         .withFailureHandler(function (error) {
           console.error('データ取得エラー:', error);
           hideLoading();
-          alert('データの取得に失敗しました');
+          showErrorToast('データの取得に失敗しました');
         })
         .getRecurringOrderListData();
     }
@@ -940,7 +940,7 @@
       var newNextDeliveryDate = document.getElementById('newNextDeliveryDate').value;
 
       if (!newNextDeliveryDate) {
-        alert('次回納品日を入力してください');
+        showWarningToast('次回納品日を入力してください');
         return;
       }
 
@@ -951,7 +951,7 @@
 
         if (!isNaN(shippingDateObj.getTime()) && !isNaN(deliveryDateObj.getTime())) {
           if (deliveryDateObj < shippingDateObj) {
-            alert('納品日が発送日より前になっています。\n発送日: ' + newNextShippingDate + '\n納品日: ' + newNextDeliveryDate + '\n\n正しい日付を入力してください。');
+            showWarningToast('納品日が発送日より前になっています。\n発送日: ' + newNextShippingDate + '\n納品日: ' + newNextDeliveryDate + '\n\n正しい日付を入力してください。');
             return;
           }
         }
@@ -991,60 +991,60 @@
             bootstrap.Modal.getInstance(document.getElementById('intervalModal')).hide();
             loadOrders();
           } else {
-            alert('変更に失敗しました');
+            showErrorToast('変更に失敗しました');
           }
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('エラーが発生しました: ' + error);
+          showErrorToast('エラーが発生しました: ' + error);
         })
         .changeRecurringInterval(id, intervalJson, newNextShippingDate, newNextDeliveryDate);
     }
 
-    function pauseOrder(id) {
-      if (!confirm('この定期便を一時停止しますか？')) return;
+    async function pauseOrder(id) {
+      if (!(await showConfirmDialog('この定期便を一時停止しますか？'))) return;
       showLoading();
       google.script.run
         .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
-          else alert('一時停止に失敗しました');
+          else showErrorToast('一時停止に失敗しました');
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('エラーが発生しました: ' + error);
+          showErrorToast('エラーが発生しました: ' + error);
         })
         .pauseRecurringOrder(id);
     }
 
-    function resumeOrder(id) {
-      if (!confirm('この定期便を再開しますか？')) return;
+    async function resumeOrder(id) {
+      if (!(await showConfirmDialog('この定期便を再開しますか？'))) return;
       showLoading();
       google.script.run
         .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
-          else alert('再開に失敗しました');
+          else showErrorToast('再開に失敗しました');
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('エラーが発生しました: ' + error);
+          showErrorToast('エラーが発生しました: ' + error);
         })
         .resumeRecurringOrder(id);
     }
 
-    function deleteOrder(id) {
-      if (!confirm('この定期便を削除しますか？\nこの操作は取り消せません。')) return;
+    async function deleteOrder(id) {
+      if (!(await showConfirmDialog('この定期便を削除しますか？\nこの操作は取り消せません。'))) return;
       showLoading();
       google.script.run
         .withSuccessHandler(function (result) {
           hideLoading();
           if (result) loadOrders();
-          else alert('削除に失敗しました');
+          else showErrorToast('削除に失敗しました');
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('エラーが発生しました: ' + error);
+          showErrorToast('エラーが発生しました: ' + error);
         })
         .deleteRecurringOrder(id);
     }
