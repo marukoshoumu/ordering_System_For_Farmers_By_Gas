@@ -36,6 +36,24 @@
     justify-content: center !important;
   }
 
+  /* スマホ：ヘッダー題名と右ボタンの重なりを防ぐ */
+  @media (max-width: 768px) {
+    .page-hero-header {
+      justify-content: flex-start !important;
+      padding-right: 140px !important;
+      padding-left: 16px !important;
+    }
+    .page-hero-header h1,
+    .page-hero-header h2,
+    .page-hero-header h3 {
+      justify-content: flex-start !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      min-width: 0 !important;
+    }
+  }
+
   /* ===================================
      統一カードコンポーネント
      =================================== */
