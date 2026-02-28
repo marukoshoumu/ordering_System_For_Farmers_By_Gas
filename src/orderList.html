@@ -981,7 +981,7 @@
           <? if (userRole !== 'viewer') { ?>
           <form method="POST" action="<?= deployURL ?>" style="margin: 0;">
             <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
-            <button type="submit" formnovalidate class="btn btn-light btn-sm" name="shipping" value="true">
+            <button type="submit" formnovalidate class="btn btn-light btn-sm" name="shipping" value="true" title="注文新規登録">
               <i class="bi bi-plus-circle me-1"></i>注文新規登録
             </button>
           </form>
@@ -1686,9 +1686,8 @@
         case 'none':
           // 指定なし：全期間
           if (!(await showConfirmDialog('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？'))) {
-            // キャンセルされた場合は今週に戻す
-            document.getElementById('periodThisWeek').checked = true;
-            return getDateRange(); // 再帰呼び出しで今週の日付を返す
+            // キャンセルされた場合は何もせず検索も行わない
+            return null;
           }
           dateFrom = '';
           dateTo = '';
@@ -1700,7 +1699,9 @@
 
     // 検索実行
     async function executeSearch() {
-      const { dateFrom, dateTo } = await getDateRange();
+      const range = await getDateRange();
+      if (!range) return; // 指定なしでキャンセルした場合は何もしない
+      const { dateFrom, dateTo } = range;
 
       // 出荷状態フィルター取得
       const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');

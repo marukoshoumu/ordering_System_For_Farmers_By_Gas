@@ -36,12 +36,25 @@
     justify-content: center !important;
   }
 
-  /* スマホ：ヘッダー題名と右ボタンの重なりを防ぐ */
+  /* 右側ボタンラッパーをヘッダー内で縦中央に配置（ずれ防止） */
+  .page-hero-header > div {
+    top: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  .page-hero-header > div .btn {
+    margin: 0 !important;
+    vertical-align: middle !important;
+  }
+
+  /* スマホ：ヘッダー題名・ハンバーガー・ボタンの重なりを防ぐ（1行のまま・ボタンはアイコンのみ） */
   @media (max-width: 768px) {
     .page-hero-header {
       justify-content: flex-start !important;
-      padding-right: 140px !important;
-      padding-left: 16px !important;
+      align-items: center !important;
+      padding-left: 56px !important;  /* ハンバーガー（left:16px + 幅40px）の右側から題名開始 */
+      padding-right: 72px !important; /* 右側アイコンボタン用の余白 */
     }
     .page-hero-header h1,
     .page-hero-header h2,
@@ -51,6 +64,18 @@
       text-overflow: ellipsis !important;
       white-space: nowrap !important;
       min-width: 0 !important;
+      flex: 1 1 auto !important;
+    }
+    /* スマホ：ヘッダーボタンはアイコンのみ表示（文字は非表示でスッキリ・サイズはそのまま） */
+    .page-hero-header .btn:has(.bi) {
+      font-size: 0 !important;
+      min-width: 44px !important;
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+    }
+    .page-hero-header .btn:has(.bi) .bi {
+      font-size: 1.125rem !important;
+      margin: 0 !important;
     }
   }
 
