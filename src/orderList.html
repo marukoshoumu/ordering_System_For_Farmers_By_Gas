@@ -1462,7 +1462,7 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('更新エラー: ' + error.message);
+          showErrorToast('更新エラー: ' + error.message);
           // チェックボックスを元に戻す
           executeSearch();
         })
@@ -1612,7 +1612,7 @@
     }
 
     // 日付範囲取得（修正版：今日起点）
-    function getDateRange() {
+    async function getDateRange() {
       const period = document.querySelector('input[name="period"]:checked').value;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -1685,7 +1685,7 @@
 
         case 'none':
           // 指定なし：全期間
-          if (!confirm('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？')) {
+          if (!(await showConfirmDialog('全期間のデータを取得します。処理に時間がかかる可能性がありますが、よろしいですか？'))) {
             // キャンセルされた場合は今週に戻す
             document.getElementById('periodThisWeek').checked = true;
             return getDateRange(); // 再帰呼び出しで今週の日付を返す
@@ -1699,8 +1699,8 @@
     }
 
     // 検索実行
-    function executeSearch() {
-      const { dateFrom, dateTo } = getDateRange();
+    async function executeSearch() {
+      const { dateFrom, dateTo } = await getDateRange();
 
       // 出荷状態フィルター取得
       const shippingStatusElement = document.querySelector('input[name="shippingStatus"]:checked');
@@ -1731,7 +1731,7 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('データ取得エラー: ' + error.message);
+          showErrorToast('データ取得エラー: ' + error.message);
         })
         .getOrderListData(params);
     }
@@ -2459,12 +2459,12 @@
 
       // 桁数チェック（納品方法が特定できる場合）
       if (expectedLength > 0 && code.length !== expectedLength) {
-        return alert(`${carrierName}の送り状番号は${expectedLength}桁です。\n現在: ${code.length}桁\n\n正しい桁数で入力してください。`);
+        showWarningToast(`${carrierName}の送り状番号は${expectedLength}桁です。現在: ${code.length}桁。正しい桁数で入力してください。`); return;
       }
 
       // 基本的な桁数チェック
       if (code.length < 10) {
-        return alert("10桁以上で入力してください");
+        showWarningToast('10桁以上で入力してください'); return;
       }
 
       handleScannerSuccess(code);
@@ -2487,18 +2487,18 @@
             if (res.success) handleScannerSuccess(res.code);
             else {
               isScannerProcessing = false;
-              alert("認識不可: " + res.message);
+              showWarningToast("認識不可: " + res.message);
               document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
             }
           })
           .withFailureHandler(() => {
             isScannerProcessing = false;
-            alert("OCRエラー");
+            showErrorToast("OCRエラー");
           })
           .recognizeTrackingNumber(base64Data);
       } catch (e) {
         isScannerProcessing = false;
-        alert("キャプチャ失敗");
+        showErrorToast("キャプチャ失敗");
       }
     }
 
@@ -2554,7 +2554,7 @@
     // 修正画面へ遷移
     function editOrder(orderId) {
       if (!orderId) {
-        alert('受注IDが取得できませんでした');
+        showErrorToast('受注IDが取得できませんでした');
         return;
       }
       setSearchConditionsToForm();
@@ -2567,7 +2567,7 @@
     // 引継画面へ遷移
     function inheritOrder(orderId) {
       if (!orderId) {
-        alert('受注IDが取得できませんでした');
+        showErrorToast('受注IDが取得できませんでした');
         return;
       }
       setSearchConditionsToForm();
@@ -2672,14 +2672,14 @@
     }
 
     // 一括出荷済み
-    function bulkUpdateShipped() {
+    async function bulkUpdateShipped() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {
-        alert('受注を選択してください');
+        showWarningToast('受注を選択してください');
         return;
       }
 
-      if (!confirm(orderIds.length + '件の受注を出荷済みにしますか？')) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注を出荷済みにしますか？'))) {
         return;
       }
 
@@ -2692,20 +2692,20 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('更新エラー: ' + error.message);
+          showErrorToast('更新エラー: ' + error.message);
         })
         .bulkUpdateOrderShippedStatus(orderIds, '○');
     }
 
     // 一括キャンセル
-    function bulkCancelOrders() {
+    async function bulkCancelOrders() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {
-        alert('受注を選択してください');
+        showWarningToast('受注を選択してください');
         return;
       }
 
-      if (!confirm(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、データは削除されません。')) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、データは削除されません。'))) {
         return;
       }
 
@@ -2718,20 +2718,20 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('キャンセルエラー: ' + error.message);
+          showErrorToast('キャンセルエラー: ' + error.message);
         })
         .bulkCancelOrders(orderIds);
     }
 
     // 一括収穫待ち設定
-    function bulkSetHarvestWaiting() {
+    async function bulkSetHarvestWaiting() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {
-        alert('受注を選択してください');
+        showWarningToast('受注を選択してください');
         return;
       }
 
-      if (!confirm(orderIds.length + '件の受注を「収穫待ち」に設定しますか？\n\n※収穫待ちの注文は、収穫でき次第対応が必要です。')) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注を「収穫待ち」に設定しますか？\n\n※収穫待ちの注文は、収穫でき次第対応が必要です。'))) {
         return;
       }
 
@@ -2744,24 +2744,24 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('収穫待ち設定エラー: ' + error.message);
+          showErrorToast('収穫待ち設定エラー: ' + error.message);
         })
         .bulkUpdateOrderStatus(orderIds, '収穫待ち');
     }
 
-    function bulkDeleteOrders() {
+    async function bulkDeleteOrders() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {
-        alert('受注を選択してください');
+        showWarningToast('受注を選択してください');
         return;
       }
 
-      if (!confirm('⚠️ ' + orderIds.length + '件の受注を完全に削除しますか？\n\n※この操作は取り消せません。\n※ヤマトCSV/佐川CSVのデータも同時に削除されます。')) {
+      if (!(await showConfirmDialog('⚠️ ' + orderIds.length + '件の受注を完全に削除しますか？\n\n※この操作は取り消せません。\n※ヤマトCSV/佐川CSVのデータも同時に削除されます。'))) {
         return;
       }
 
       // 二重確認
-      if (!confirm('本当に削除してよろしいですか？\n\n削除対象: ' + orderIds.join(', '))) {
+      if (!(await showConfirmDialog('本当に削除してよろしいですか？\n\n削除対象: ' + orderIds.join(', ')))) {
         return;
       }
 
@@ -2774,20 +2774,20 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('削除エラー: ' + error.message);
+          showErrorToast('削除エラー: ' + error.message);
         })
         .bulkDeleteOrders(orderIds);
     }
 
     // キャンセル解除
-    function bulkUncancelOrders() {
+    async function bulkUncancelOrders() {
       const orderIds = getSelectedOrderIds();
       if (orderIds.length === 0) {
-        alert('受注を選択してください');
+        showWarningToast('受注を選択してください');
         return;
       }
 
-      if (!confirm(orderIds.length + '件の受注のキャンセルを解除しますか？')) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注のキャンセルを解除しますか？'))) {
         return;
       }
 
@@ -2800,19 +2800,11 @@
         })
         .withFailureHandler(function (error) {
           hideLoading();
-          alert('キャンセル解除エラー: ' + error.message);
+          showErrorToast('キャンセル解除エラー: ' + error.message);
         })
         .bulkUncancelOrders(orderIds);
     }
 
-    // 成功トースト表示（utilities.htmlのshowToastを利用、なければalert）
-    function showSuccessToast(message) {
-      if (typeof showToast === 'function') {
-        showToast(message, 'success');
-      } else {
-        alert(message);
-      }
-    }
   </script>
 
 </body>
