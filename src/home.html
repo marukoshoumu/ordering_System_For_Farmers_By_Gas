@@ -941,7 +941,7 @@
           google.script.run.withSuccessHandler(setTable).selectShippingDate();
         })
         .withFailureHandler(function (error) {
-          alert('更新エラー: ' + error.message);
+          showErrorToast('更新エラー: ' + error.message);
           google.script.run.withSuccessHandler(setTable).selectShippingDate();
         })
         .updateOrderShippedStatus(orderId, shippedValue);
@@ -980,7 +980,7 @@
           }).selectShippingDate();
         })
         .withFailureHandler(function (error) {
-          alert('ステータス更新エラー: ' + error.message);
+          showErrorToast('ステータス更新エラー: ' + error.message);
           if (selectElem) selectElem.disabled = false;
           toggleLoading(false);
           google.script.run.withSuccessHandler(setTable).selectShippingDate();
@@ -1187,18 +1187,18 @@
             if (res.success) handleScannerSuccess(res.code);
             else {
               isScannerProcessing = false;
-              alert("認識不可: " + res.message);
+              showWarningToast("認識不可: " + res.message);
               document.getElementById('scannerStatus').innerText = "バーコードを枠内に収めてください";
             }
           })
           .withFailureHandler(() => {
             isScannerProcessing = false;
-            alert("OCRエラー");
+            showErrorToast("OCRエラー");
           })
           .recognizeTrackingNumber(base64Data);
       } catch (e) {
         isScannerProcessing = false;
-        alert("キャプチャ失敗");
+        showErrorToast("キャプチャ失敗");
       }
     }
 
@@ -1379,7 +1379,7 @@
           setRes(); // リロード
         })
         .withFailureHandler((e) => {
-          alert('更新エラー: ' + e.message);
+          showErrorToast('更新エラー: ' + e.message);
         })
         .updateOrderDateAndQuantity(orderId, product.name, newDate, newQuantity);
     }
