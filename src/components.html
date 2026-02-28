@@ -320,7 +320,7 @@
   }
 
   .confirm-dialog-btn-cancel {
-    background: var(--card-bg);
+    background: var(--bg-card);
     color: var(--text-secondary, #6b7280);
   }
 
@@ -337,6 +337,24 @@
   .confirm-dialog-btn-ok:hover {
     background: var(--primary-dark);
     border-color: var(--primary-dark);
+  }
+
+  .confirm-dialog-btn:focus {
+    outline: none;
+  }
+
+  .confirm-dialog-btn:focus-visible {
+    outline: none;
+  }
+
+  .confirm-dialog-btn-cancel:focus,
+  .confirm-dialog-btn-cancel:focus-visible {
+    box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.35);
+  }
+
+  .confirm-dialog-btn-ok:focus,
+  .confirm-dialog-btn-ok:focus-visible {
+    box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.3);
   }
 
   /* レスポンシブ対応 */
