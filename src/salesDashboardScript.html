@@ -598,8 +598,8 @@ function renderTrendsAnalysis(data) {
   container.appendChild(tableDiv);
 }
 
-function runAllAnalyses() {
-  if (!confirm('全分析を実行します。数分かかる場合があります。よろしいですか？')) {
+async function runAllAnalyses() {
+  if (!(await showConfirmDialog('全分析を実行します。数分かかる場合があります。よろしいですか？'))) {
     return;
   }
 
