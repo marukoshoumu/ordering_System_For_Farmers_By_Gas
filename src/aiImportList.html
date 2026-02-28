@@ -941,8 +941,8 @@
     }
 
     // 仮受注データを完全削除
-    function deleteImport(tempOrderId) {
-      if (!confirm('この仮受注データを完全に削除しますか？\n削除後は復元できません。')) {
+    async function deleteImport(tempOrderId) {
+      if (!(await showConfirmDialog('この仮受注データを完全に削除しますか？\n削除後は復元できません。'))) {
         return;
       }
 
@@ -968,8 +968,8 @@
     }
 
     // 却下データを再登録（ステータスを「未処理」に戻す）
-    function reactivateImport(tempOrderId) {
-      if (!confirm('この仮受注を再登録しますか？\nステータスが「未処理」に戻ります。')) {
+    async function reactivateImport(tempOrderId) {
+      if (!(await showConfirmDialog('この仮受注を再登録しますか？\nステータスが「未処理」に戻ります。'))) {
         return;
       }
 
