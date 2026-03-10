@@ -174,3 +174,220 @@ function writeDrive(blob, type) {
     }
   }
 }
+
+// ========================================
+// 配送伝票ワーカー連携
+// ========================================
+
+/**
+ * 送り状CSV作成 + 自動印刷（統合関数）
+ *
+ * 処理フロー:
+ * 1. createShip() でCSVをDriveに保存
+ * 2. sendToWorker() でワーカーに送信 → Playwright自動化 → PDF取得 → Drive保存
+ * 3. ワーカーがDriveに保存したPDFのファイルIDを受け取り、sendSlipToPrinter() でBrother印刷
+ *
+ * @param {string} datas - JSON文字列 { shippingDate: "2024-05-09" }
+ * @returns {string|null} JSON文字列 { yamato, sagawa, workerResults, printResults }
+ *
+ * @see createShip() - CSV作成とDrive保存
+ * @see sendToWorker() - ワーカーへのWebhook送信
+ * @see sendSlipToPrinter() - GAS MailApp でBrother印刷
+ *
+ * 呼び出し元: createShippingSlips.html の送り状作成＋自動印刷ボタン
+ */
+function createShipAndPrint(datas) {
+  // 1. 既存の CSV 作成処理を実行
+  const result = createShip(datas);
+  if (!result) {
+    return null;
+  }
+
+  const record = JSON.parse(result);
+  const data = JSON.parse(datas);
+  const shippingDate = data['shippingDate'];
+
+  // 2. ワーカーURL が設定されている場合のみ自動印刷を実行
+  const workerUrl = getWorkerUrl();
+  if (!workerUrl) {
+    Logger.log('WORKER_URL 未設定のため自動印刷をスキップ');
+    record['workerSkipped'] = true;
+    return JSON.stringify(record);
+  }
+
+  const workerResults = {};
+
+  // 3. ヤマトCSVがある場合、ワーカーに送信（fire-and-forget）
+  if (record['yamato']) {
+    try {
+      const yamatoCsv = getCsvContent('ヤマトCSV', shippingDate);
+      if (yamatoCsv) {
+        const wResult = sendToWorker('yamato', yamatoCsv, shippingDate);
+        workerResults['yamato'] = wResult;
+        if (wResult.jobId) {
+          writeSlipLog(shippingDate, 'ヤマト', wResult.jobId, 'processing');
+        }
+      }
+    } catch (e) {
+      Logger.log('ヤマトワーカー送信エラー: ' + e.message);
+      workerResults['yamato'] = { success: false, message: e.message };
+      writeSlipLog(shippingDate, 'ヤマト', '', 'error', e.message);
+    }
+  }
+
+  // 4. 佐川CSVがある場合、ワーカーに送信（fire-and-forget）
+  if (record['sagawa']) {
+    try {
+      const sagawaCsv = getCsvContent('佐川CSV', shippingDate);
+      if (sagawaCsv) {
+        const wResult = sendToWorker('sagawa', sagawaCsv, shippingDate);
+        workerResults['sagawa'] = wResult;
+        if (wResult.jobId) {
+          writeSlipLog(shippingDate, '佐川', wResult.jobId, 'processing');
+        }
+      }
+    } catch (e) {
+      Logger.log('佐川ワーカー送信エラー: ' + e.message);
+      workerResults['sagawa'] = { success: false, message: e.message };
+      writeSlipLog(shippingDate, '佐川', '', 'error', e.message);
+    }
+  }
+
+  record['workerResults'] = workerResults;
+  return JSON.stringify(record);
+}
+
+/**
+ * Google DriveのPDFをBrotherプリンタにメール送信（GAS MailApp使用）
+ *
+ * ワーカーがDrive APIでアップロードしたPDFを、
+ * GASのMailApp.sendEmail()でBrotherのメールプリント機能に送信する。
+ * Gmail経由のため追加コストゼロ。
+ *
+ * @param {string} fileId - Google DriveのファイルID
+ * @param {string} carrierName - 配送業者表示名（例: 'ヤマト運輸'）
+ * @param {string} shippingDate - 発送日
+ * @returns {Object} { success: boolean, message: string }
+ *
+ * @see getBrotherPrinterEmail() - プリンタメールアドレス取得 (config.js)
+ */
+function sendSlipToPrinter(fileId, carrierName, shippingDate) {
+  const printerEmail = getBrotherPrinterEmail();
+
+  if (!printerEmail) {
+    Logger.log('BROTHER_PRINTER_EMAIL 未設定のため印刷をスキップ');
+    return { success: false, message: 'BROTHER_PRINTER_EMAIL が未設定です' };
+  }
+
+  try {
+    // DriveからPDFファイルを取得
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    const fileName = file.getName();
+
+    // MailApp でBrotherプリンタに送信
+    MailApp.sendEmail({
+      to: printerEmail,
+      subject: carrierName + ' 配送伝票 (' + shippingDate + ')',
+      body: carrierName + 'の配送伝票です。\n発送日: ' + shippingDate + '\nファイル: ' + fileName,
+      attachments: [blob],
+    });
+
+    Logger.log('Brother印刷メール送信成功: ' + fileName + ' → ' + printerEmail);
+    return { success: true, message: '印刷メール送信完了: ' + fileName };
+  } catch (e) {
+    Logger.log('Brother印刷メール送信エラー: ' + e.message);
+    return { success: false, message: '印刷メール送信エラー: ' + e.message };
+  }
+}
+
+/**
+ * 指定されたシート・発送日のCSVテキスト内容を取得
+ *
+ * @param {string} sheetName - シート名（'ヤマトCSV' or '佐川CSV'）
+ * @param {string} dateVal - 発送日
+ * @returns {string|null} CSVテキスト（該当データなしの場合は null）
+ */
+function getCsvContent(sheetName, dateVal) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+  let csv = '';
+  var targetDate = Utilities.formatDate(new Date(dateVal), 'JST', 'yyyy/MM/dd');
+
+  for (var value of values) {
+    if (value[0] == targetDate) {
+      var val = value.slice(1);
+      csv += val.join(',') + "\r\n";
+    }
+  }
+  return csv.length > 0 ? csv : null;
+}
+
+function sendToWorker(carrier, csvContent, shippingDate) {
+  const workerUrl = getWorkerUrl();
+  const apiKey = getWorkerApiKey();
+
+  if (!workerUrl) {
+    throw new Error('WORKER_URL がスクリプトプロパティに設定されていません');
+  }
+
+  const url = workerUrl.replace(/\/$/, '') + '/api/print-slip';
+  const payload = {
+    carrier: carrier,
+    csvContent: csvContent,
+    shippingDate: shippingDate,
+    apiKey: apiKey,
+  };
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+    headers: { 'X-API-Key': apiKey },
+  };
+
+  Logger.log('ワーカーへ送信: ' + carrier + ' (' + url + ')');
+
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    const statusCode = response.getResponseCode();
+    const body = response.getContentText();
+    Logger.log('ワーカーレスポンス: ' + statusCode + ' ' + body);
+
+    if (statusCode >= 200 && statusCode < 300) {
+      return JSON.parse(body);
+    } else {
+      const errorBody = JSON.parse(body);
+      return { success: false, message: errorBody.message || 'ワーカーエラー (HTTP ' + statusCode + ')' };
+    }
+  } catch (e) {
+    Logger.log('ワーカー通信エラー: ' + e.message);
+    return { success: false, message: 'ワーカー通信エラー: ' + e.message };
+  }
+}
+
+/**
+ * 伝票処理ログシートに1行追記
+ *
+ * @param {string} shippingDate - 発送日
+ * @param {string} carrier - 業者名（'ヤマト' or '佐川'）
+ * @param {string} jobId - ワーカーのジョブID
+ * @param {string} status - ステータス ('processing', 'pdf_ready', 'printed', 'error')
+ * @param {string} [errorDetail] - エラー詳細（任意）
+ */
+function writeSlipLog(shippingDate, carrier, jobId, status, errorDetail) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('伝票処理ログ');
+    if (!sheet) {
+      sheet = ss.insertSheet('伝票処理ログ');
+      sheet.appendRow(['発送日', '業者', 'jobId', 'ステータス', 'CSV作成時刻', 'PDF完了時刻', '印刷時刻', 'Driveリンク', 'エラー詳細']);
+    }
+    const now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
+    sheet.appendRow([shippingDate, carrier, jobId, status, now, '', '', '', errorDetail || '']);
+  } catch (e) {
+    Logger.log('ログシート書き込みエラー: ' + e.message);
+  }
+}
