@@ -1,0 +1,20 @@
+{
+    "name": "delivery-slip-worker",
+    "version": "2.0.0",
+    "description": "ヤマトB2クラウド / 佐川e飛伝Web 伝票自動化ワーカー",
+    "main": "src/server.js",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "node --watch src/server.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "googleapis": "^144.0.0",
+        "playwright": "^1.49.1",
+        "uuid": "^13.0.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
