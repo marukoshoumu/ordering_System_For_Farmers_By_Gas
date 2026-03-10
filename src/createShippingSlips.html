@@ -33,6 +33,9 @@
         <div class="col-auto">
           <button type="button" class="btn btn-primary me-3" id="createShippingSlips" name="createShippingSlips" value="true" onclick="createShip()">作成</button>
         </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-success" id="createAndPrint" onclick="createShipAndPrint()">作成＋自動印刷</button>
+        </div>
       </div>
       <p id="res" style="text-align: center;"></p>
       <div class="text-center">
@@ -97,6 +100,48 @@
         showInfoToast("該当データがありませんでした。");  
         $("button[id='createShippingSlips']").text('作成');
       }
+    }
+    async function createShipAndPrint() {
+      if (!$('input[id="shippingDate"]').val()) {
+        showWarningToast('発送日が入力されていません。');
+        return false;
+      }
+      const checkAddFlg = await showConfirmDialog('発送伝票を作成し、自動印刷を開始してもよろしいですか？');
+      if (checkAddFlg) {
+        $("button[id='createAndPrint']").text('処理開始中...').prop('disabled', true);
+        var shippingDate = $('input[id="shippingDate"]').val();
+        var record = {};
+        record['shippingDate'] = shippingDate;
+        google.script.run
+          .withSuccessHandler(createAndPrintSuccess)
+          .withFailureHandler(createAndPrintFail)
+          .createShipAndPrint(JSON.stringify(record));
+      }
+    }
+    function createAndPrintSuccess(data) {
+      $("button[id='createAndPrint']").text('作成＋自動印刷').prop('disabled', false);
+      if (data) {
+        var res = JSON.parse(data);
+        var html = "";
+        if (res['yamato']) html += res['yamato'] + "<br>";
+        if (res['sagawa']) html += res['sagawa'] + "<br>";
+        if (res['workerResults']) {
+          var wr = res['workerResults'];
+          if (wr['yamato'] && wr['yamato'].jobId) html += "ヤマト自動印刷: 処理開始 (ID: " + wr['yamato'].jobId.substring(0, 8) + ")<br>";
+          if (wr['sagawa'] && wr['sagawa'].jobId) html += "佐川自動印刷: 処理開始 (ID: " + wr['sagawa'].jobId.substring(0, 8) + ")<br>";
+        }
+        if (res['workerSkipped']) {
+          html += "<small class='text-muted'>※ 自動印刷未設定のためCSV作成のみ実行</small><br>";
+        }
+        $("p[id='res']").html(html);
+        showSuccessToast("処理を開始しました。印刷は自動で実行されます。");
+      } else {
+        showInfoToast("該当データがありませんでした。");
+      }
+    }
+    function createAndPrintFail() {
+      $("button[id='createAndPrint']").text('作成＋自動印刷').prop('disabled', false);
+      showErrorToast("処理に失敗しました。");
     }
     function openUrlYamato() {
       google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
