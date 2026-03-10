@@ -1,0 +1,22 @@
+{
+  "yamato": {
+    "loginId": "#loginId",
+    "password": "#password",
+    "loginButton": "#loginBtn",
+    "csvImportMenu": "a:has-text('CSV取込')",
+    "fileInput": "input[type='file']",
+    "uploadButton": "button:has-text('取込')",
+    "printButton": "button:has-text('発行')",
+    "downloadButton": "a:has-text('ダウンロード')"
+  },
+  "sagawa": {
+    "loginId": "input[name='customerCode']",
+    "password": "input[type='password']",
+    "loginButton": "button[type='submit']",
+    "csvImportMenu": "a:has-text('送り状データ取込')",
+    "fileInput": "input[type='file']",
+    "uploadButton": "button:has-text('取込')",
+    "printButton": "button:has-text('送り状発行')",
+    "downloadButton": "a:has-text('ダウンロード')"
+  }
+}
