@@ -156,13 +156,12 @@
     }
 
     function formatTime(val) {
-      if (!val) return '-';
+      if (!val) return escapeHtml('-');
       if (typeof val === 'string' && val.length > 10) {
-        // "yyyy/MM/dd HH:mm:ss" → "HH:mm"
         var parts = val.split(' ');
-        if (parts.length >= 2) return parts[1].substring(0, 5);
+        if (parts.length >= 2) return escapeHtml(parts[1].substring(0, 5));
       }
-      return String(val);
+      return escapeHtml(String(val));
     }
 
     function loadSlipLogs() {

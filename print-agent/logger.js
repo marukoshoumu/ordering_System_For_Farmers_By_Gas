@@ -11,7 +11,11 @@ function createLogger(logDir) {
   };
   const write = (level, message) => {
     const line = `${new Date().toISOString()}\t${level}\t${message}\n`;
-    fs.appendFileSync(getLogPath(), line);
+    try {
+      fs.appendFileSync(getLogPath(), line);
+    } catch (err) {
+      console.error('logger: ログファイル書き込みに失敗', { path: getLogPath(), error: err.message });
+    }
     console.log(line.trim());
   };
   return {

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { getSelectors } = require('../load-selectors');
+const { MIN_PDF_SIZE } = require('../constants');
 
 const LOGIN_URL = process.env.YAMATO_LOGIN_URL || 'https://bmypage.kuronekoyamato.co.jp/bmypage/servlet/jp.co.kuronekoyamato.wur.hmp.servlet.user.HMPLGI0010JspServlet';
 const LOGIN_ID = process.env.YAMATO_LOGIN_ID;
@@ -230,11 +231,11 @@ async function processYamato(csvContent, shippingDate) {
     // route 解除
     await workPage.unroute('**/B2_OKURIJYO*fileonly*');
 
-    if (pdfBuffer && pdfBuffer.length > 1000) {
+    if (pdfBuffer && pdfBuffer.length > MIN_PDF_SIZE) {
       fs.writeFileSync(pdfPath, pdfBuffer);
       console.log('B2クラウド: PDFダウンロード完了', { pdfPath, size: pdfBuffer.length });
     } else {
-      throw new Error('B2クラウド: PDF取得に失敗しました (size=' + (pdfBuffer?.length || 0) + ')');
+      throw new Error('B2クラウド: PDF取得に失敗しました (size=' + (pdfBuffer?.length || 0) + ', 最小必要: ' + MIN_PDF_SIZE + ')');
     }
 
     return { pdfPath, tmpDir };

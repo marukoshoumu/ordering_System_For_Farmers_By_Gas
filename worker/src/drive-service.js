@@ -23,6 +23,22 @@ const path = require('path');
 let _driveClient = null;
 
 /**
+ * Drive API クライアントをリセット（次回 getDriveClient() で再初期化される）
+ * テストや認証情報変更後に使用する。
+ */
+function resetDriveClient() {
+    _driveClient = null;
+}
+
+/**
+ * Drive API クライアントを外部から設定（テスト用モックや事前設定クライアント）
+ * @param {google.drive_v3.Drive|null} client - 設定するクライアント（null でリセットと同様）
+ */
+function setDriveClient(client) {
+    _driveClient = client;
+}
+
+/**
  * Drive API クライアントを取得・初期化
  *
  * @returns {google.drive_v3.Drive}
@@ -118,6 +134,13 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
     console.log('Drive アップロード開始', { fileName, carrier, folderId });
 
     try {
+        const exists = fs.existsSync(pdfPath);
+        if (!exists) {
+            const msg = `アップロード対象のPDFファイルが存在しません: ${pdfPath}`;
+            console.error(msg);
+            throw new Error(msg);
+        }
+
         const fileMetadata = {
             name: fileName,
             parents: [folderId],
@@ -199,4 +222,10 @@ function validateDriveConfig() {
     return { configured: true, message: `OK (${authMethod})` };
 }
 
-module.exports = { uploadToDrive, validateDriveConfig };
+module.exports = {
+    uploadToDrive,
+    validateDriveConfig,
+    getDriveClient,
+    resetDriveClient,
+    setDriveClient,
+};

@@ -40,9 +40,11 @@ function shutdown() {
   if (watcher && typeof watcher.close === 'function') {
     try { watcher.close(); } catch (_) {}
   }
+  // watcher.close は非同期で完了する場合があるため、一定時間後に強制終了
+  setTimeout(() => process.exit(0), 5000);
 }
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown());
+process.on('SIGTERM', () => shutdown());
 
 function handlePdf(filePath) {
   const now = Date.now();
@@ -54,11 +56,12 @@ function handlePdf(filePath) {
 
   const basename = path.basename(filePath);
   logger.info(`Found ${basename}, printing...`);
-  const ok = printPdf(filePath, config.printerName || undefined);
-  if (!ok) {
-    logger.error(`Print failed: ${basename}`);
+  const result = printPdf(filePath, config.printerName || undefined);
+  if (!result.success) {
+    logger.error('Print failed: ' + basename + (result.stderr ? ' stderr: ' + result.stderr : ''));
     return;
   }
+  if (result.stderr) logger.warn(`lp stderr: ${result.stderr}`);
   logger.info(`Printed ${basename}, moving to ${config.printedDirName}/`);
   const moved = moveToPrinted(filePath, config.watchDir, config.printedDirName);
   if (!moved) {
@@ -67,7 +70,12 @@ function handlePdf(filePath) {
 }
 
 watcher = chokidar.watch(config.watchDir, {
-  ignored: (p) => path.basename(p) === config.printedDirName,
+  ignored: (p) => {
+    const rel = path.relative(config.watchDir, p);
+    if (rel.startsWith('..')) return false;
+    const first = rel.split(path.sep)[0];
+    return first === config.printedDirName;
+  },
   persistent: true,
   ignoreInitial: true,
 });

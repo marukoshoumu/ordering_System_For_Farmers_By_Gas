@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { getSelectors } = require('../load-selectors');
+const { MIN_PDF_SIZE } = require('../constants');
 
 const LOGIN_URL = process.env.SAGAWA_LOGIN_URL || 'https://www.e-service.sagawa-exp.co.jp/';
 const LOGIN_ID = process.env.SAGAWA_LOGIN_ID;
@@ -73,7 +74,8 @@ async function processSagawa(csvContent, shippingDate) {
       try {
         await bizTab.waitFor({ state: 'visible', timeout: 5000 });
         await bizTab.click();
-        await page.waitForTimeout(500);
+        // タブ切替後のフォーム表示を待つ（ログインフィールドが使えるまで）
+        await page.locator(sel.loginId).first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
         console.log('e飛伝III: 法人タブ選択');
       } catch {
         console.log('e飛伝III: 法人タブが見つかりません（単一フォームの可能性）');
@@ -89,7 +91,9 @@ async function processSagawa(csvContent, shippingDate) {
 
     // Step 2: スマートクラブ → e飛伝III（新規タブで開く）
     workPage = page;
-    await page.waitForTimeout(3000);
+    // ログイン後のダッシュボード/メニュー表示を待つ（外部ページのため短い待機）
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForTimeout(2000);
     const entrySteps = Array.isArray(sel.entrySteps) ? sel.entrySteps : [];
     for (let i = 0; i < entrySteps.length; i++) {
       const selector = entrySteps[i];
@@ -107,6 +111,7 @@ async function processSagawa(csvContent, shippingDate) {
       const newPage = await popupPromise;
       if (newPage) {
         await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+        // 新規タブのコンテンツ読み込みを待つ（e飛伝はSPAのため短い待機を維持）
         await newPage.waitForTimeout(3000);
         workPage = newPage;
         workPage.setDefaultTimeout(TIMEOUT);
@@ -209,7 +214,7 @@ async function processSagawa(csvContent, shippingDate) {
       const body = await response.body();
       const ct = response.headers()['content-type'] || '';
       console.log('e飛伝III: route傍受', { ct, size: body.length });
-      if (ct.includes('pdf') || body.length > 1000) {
+      if (ct.includes('pdf') || body.length > MIN_PDF_SIZE) {
         pdfBuffer = body;
       }
       await route.fulfill({ response });
@@ -226,18 +231,18 @@ async function processSagawa(csvContent, shippingDate) {
       // ダイアログが出ない場合もある
     }
 
-    // PDFタブが開くのを待つ
+    // PDFタブ読み込み完了を待つ（外部サーバ応答のため短い待機を維持）
     await workPage.waitForTimeout(5000);
 
     // route 解除
     await context.unroute('**/directdownload**');
 
     let pdfPath = path.join(downloadDir, `sagawa_${shippingDate}.pdf`);
-    if (pdfBuffer && pdfBuffer.length > 1000) {
+    if (pdfBuffer && pdfBuffer.length > MIN_PDF_SIZE) {
       fs.writeFileSync(pdfPath, pdfBuffer);
       console.log('e飛伝III: PDFダウンロード完了', { pdfPath, size: pdfBuffer.length });
     } else {
-      throw new Error('e飛伝III: PDF取得に失敗しました (size=' + (pdfBuffer?.length || 0) + ')');
+      throw new Error('e飛伝III: PDF取得に失敗しました (size=' + (pdfBuffer?.length || 0) + ', 最小必要: ' + MIN_PDF_SIZE + ')');
     }
 
     return { pdfPath, tmpDir };

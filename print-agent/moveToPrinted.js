@@ -11,7 +11,13 @@ function moveToPrinted(filePath, watchDir, printedDirName) {
   try {
     fs.renameSync(filePath, destPath);
     return true;
-  } catch {
+  } catch (e) {
+    console.error('moveToPrinted: ファイル移動に失敗', {
+      source: filePath,
+      destination: destPath,
+      error: e.message,
+      stack: e.stack,
+    });
     return false;
   }
 }

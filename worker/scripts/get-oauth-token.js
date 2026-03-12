@@ -15,7 +15,6 @@
 require('dotenv').config();
 const { google } = require('googleapis');
 const http = require('http');
-const url = require('url');
 
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
@@ -40,14 +39,15 @@ const authUrl = oauth2Client.generateAuthUrl({
 });
 
 const server = http.createServer(async (req, res) => {
-    const parsed = url.parse(req.url, true);
-    if (parsed.pathname !== '/callback') {
+    const baseUrl = `http://${req.headers.host || 'localhost'}`;
+    const u = new URL(req.url, baseUrl);
+    if (u.pathname !== '/callback') {
         res.writeHead(404);
         res.end('Not Found');
         return;
     }
 
-    const code = parsed.query.code;
+    const code = u.searchParams.get('code');
     if (!code) {
         res.writeHead(400);
         res.end('認証コードがありません');

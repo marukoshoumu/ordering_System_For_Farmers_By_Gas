@@ -22,7 +22,14 @@ function cleanExpiredJobs() {
     if (now - entry.createdAt > JOB_TTL_MS) jobStore.delete(id);
   }
 }
-setInterval(cleanExpiredJobs, JOB_CLEANUP_INTERVAL_MS);
+const cleanupIntervalId = setInterval(cleanExpiredJobs, JOB_CLEANUP_INTERVAL_MS);
+
+function shutdown() {
+  if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 app.use(express.json({ limit: '10mb' }));
 

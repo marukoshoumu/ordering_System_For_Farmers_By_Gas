@@ -44,14 +44,25 @@ function createShip(datas) {
   const yamatoFileName = 'yamato_' + dateNow + '.csv';
   const sagawaFileName = 'sagawa_' + dateNow + '.csv';
   var record = {};
-  if (createCsv('ヤマトCSV', target, yamatoFileName, 1)) {
+  var yamatoCsv = getCsvContent('ヤマトCSV', target);
+  var sagawaCsv = getCsvContent('佐川CSV', target);
+  if (yamatoCsv) {
+    const blob = createBlob(yamatoCsv, yamatoFileName);
+    writeDrive(blob, 1);
     record['yamato'] = yamatoFileName;
   }
-  if (createCsv('佐川CSV', target, sagawaFileName, 2)) {
+  if (sagawaCsv) {
+    const blob = createBlob(sagawaCsv, sagawaFileName);
+    writeDrive(blob, 2);
     record['sagawa'] = sagawaFileName;
   }
   if (Object.keys(record).length) {
-    return JSON.stringify(record);
+    return JSON.stringify({
+      yamato: record['yamato'] || null,
+      sagawa: record['sagawa'] || null,
+      yamatoCsv: yamatoCsv || null,
+      sagawaCsv: sagawaCsv || null,
+    });
   }
   else {
     return null;
@@ -204,10 +215,10 @@ function createShipAndPrint(datas) {
 
   const workerResults = {};
 
-  // 3. ヤマトCSVがある場合、ワーカーに送信（fire-and-forget）
+  // 3. ヤマトCSVがある場合、ワーカーに送信（createShip で取得済みの CSV を再利用）
   if (record['yamato']) {
     try {
-      const yamatoCsv = getCsvContent('ヤマトCSV', shippingDate);
+      const yamatoCsv = record['yamatoCsv'];
       if (yamatoCsv) {
         const wResult = sendToWorker('yamato', yamatoCsv, shippingDate);
         workerResults['yamato'] = wResult;
@@ -222,10 +233,10 @@ function createShipAndPrint(datas) {
     }
   }
 
-  // 4. 佐川CSVがある場合、ワーカーに送信（fire-and-forget）
+  // 4. 佐川CSVがある場合、ワーカーに送信（createShip で取得済みの CSV を再利用）
   if (record['sagawa']) {
     try {
-      const sagawaCsv = getCsvContent('佐川CSV', shippingDate);
+      const sagawaCsv = record['sagawaCsv'];
       if (sagawaCsv) {
         const wResult = sendToWorker('sagawa', sagawaCsv, shippingDate);
         workerResults['sagawa'] = wResult;
