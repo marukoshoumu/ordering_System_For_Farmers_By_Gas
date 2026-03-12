@@ -134,13 +134,6 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
     console.log('Drive アップロード開始', { fileName, carrier, folderId });
 
     try {
-        const exists = fs.existsSync(pdfPath);
-        if (!exists) {
-            const msg = `アップロード対象のPDFファイルが存在しません: ${pdfPath}`;
-            console.error(msg);
-            throw new Error(msg);
-        }
-
         const fileMetadata = {
             name: fileName,
             parents: [folderId],
@@ -180,6 +173,7 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
             error: error.message,
             carrier,
             fileName,
+            pdfPath,
         });
         throw new Error(`Google Driveアップロードエラー: ${error.message}`);
     }

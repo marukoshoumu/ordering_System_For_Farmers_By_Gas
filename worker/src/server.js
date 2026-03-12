@@ -24,9 +24,23 @@ function cleanExpiredJobs() {
 }
 const cleanupIntervalId = setInterval(cleanExpiredJobs, JOB_CLEANUP_INTERVAL_MS);
 
+let server = null;
+
 function shutdown() {
-  if (cleanupIntervalId) clearInterval(cleanupIntervalId);
-  process.exit(0);
+  if (server) {
+    const forceExit = setTimeout(() => {
+      if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+      process.exit(0);
+    }, 5000);
+    server.close(() => {
+      clearTimeout(forceExit);
+      if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+      process.exit(0);
+    });
+  } else {
+    if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+    process.exit(0);
+  }
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
@@ -237,7 +251,7 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ success: false, message: 'サーバー内部エラー' });
 });
 
-app.listen(PORT, () => {
+server = app.listen(PORT, () => {
   console.log(`配送伝票ワーカー起動: port=${PORT}, env=${process.env.NODE_ENV || 'development'}`);
   const driveStatus = validateDriveConfig();
   console.log(`Drive設定: ${driveStatus.configured ? '有効' : '無効'} (${driveStatus.message})`);

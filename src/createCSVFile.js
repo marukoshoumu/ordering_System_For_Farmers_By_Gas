@@ -215,16 +215,13 @@ function createShipAndPrint(datas) {
 
   const workerResults = {};
 
-  // 3. ヤマトCSVがある場合、ワーカーに送信（createShip で取得済みの CSV を再利用）
+  // 3. ヤマトCSVがある場合、ワーカーに送信（createShip で yamato なら yamatoCsv も必ずある）
   if (record['yamato']) {
     try {
-      const yamatoCsv = record['yamatoCsv'];
-      if (yamatoCsv) {
-        const wResult = sendToWorker('yamato', yamatoCsv, shippingDate);
-        workerResults['yamato'] = wResult;
-        if (wResult.jobId) {
-          writeSlipLog(shippingDate, 'ヤマト', wResult.jobId, 'processing');
-        }
+      const wResult = sendToWorker('yamato', record['yamatoCsv'], shippingDate);
+      workerResults['yamato'] = wResult;
+      if (wResult.jobId) {
+        writeSlipLog(shippingDate, 'ヤマト', wResult.jobId, 'processing');
       }
     } catch (e) {
       Logger.log('ヤマトワーカー送信エラー: ' + e.message);
@@ -233,16 +230,13 @@ function createShipAndPrint(datas) {
     }
   }
 
-  // 4. 佐川CSVがある場合、ワーカーに送信（createShip で取得済みの CSV を再利用）
+  // 4. 佐川CSVがある場合、ワーカーに送信（createShip で sagawa なら sagawaCsv も必ずある）
   if (record['sagawa']) {
     try {
-      const sagawaCsv = record['sagawaCsv'];
-      if (sagawaCsv) {
-        const wResult = sendToWorker('sagawa', sagawaCsv, shippingDate);
-        workerResults['sagawa'] = wResult;
-        if (wResult.jobId) {
-          writeSlipLog(shippingDate, '佐川', wResult.jobId, 'processing');
-        }
+      const wResult = sendToWorker('sagawa', record['sagawaCsv'], shippingDate);
+      workerResults['sagawa'] = wResult;
+      if (wResult.jobId) {
+        writeSlipLog(shippingDate, '佐川', wResult.jobId, 'processing');
       }
     } catch (e) {
       Logger.log('佐川ワーカー送信エラー: ' + e.message);

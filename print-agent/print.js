@@ -8,7 +8,23 @@ const { spawnSync } = require('child_process');
  */
 function printPdf(filePath, printerName) {
   const args = printerName ? ['-d', printerName, filePath] : [filePath];
-  const result = spawnSync('lp', args, { encoding: 'utf8' });
+  let result;
+  try {
+    result = spawnSync('lp', args, { encoding: 'utf8' });
+  } catch (err) {
+    return {
+      success: false,
+      stdout: '',
+      stderr: err && (err.message || String(err)) || 'spawnSync threw',
+    };
+  }
+  if (result.error) {
+    return {
+      success: false,
+      stdout: result.stdout || '',
+      stderr: result.error.message || String(result.error) || 'spawn error',
+    };
+  }
   return {
     success: result.status === 0,
     stdout: result.stdout || '',
