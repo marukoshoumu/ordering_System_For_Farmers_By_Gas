@@ -146,28 +146,35 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
             }),
         };
 
+        const stream = fs.createReadStream(pdfPath);
         const media = {
             mimeType: 'application/pdf',
-            body: fs.createReadStream(pdfPath),
+            body: stream,
         };
 
-        const response = await drive.files.create({
-            resource: fileMetadata,
-            media: media,
-            fields: 'id, name, webViewLink, webContentLink',
-            supportsAllDrives: true,
-        });
+        try {
+            const response = await drive.files.create({
+                resource: fileMetadata,
+                media: media,
+                fields: 'id, name, webViewLink, webContentLink',
+                supportsAllDrives: true,
+            });
 
-        const fileId = response.data.id;
-        const webViewLink = response.data.webViewLink || '';
+            const fileId = response.data.id;
+            const webViewLink = response.data.webViewLink || '';
 
-        console.log('Drive アップロード完了', {
-            fileId,
-            fileName: response.data.name,
-            webViewLink,
-        });
+            console.log('Drive アップロード完了', {
+                fileId,
+                fileName: response.data.name,
+                webViewLink,
+            });
 
-        return { fileId, webViewLink };
+            return { fileId, webViewLink };
+        } finally {
+            if (stream && typeof stream.destroy === 'function') {
+                stream.destroy();
+            }
+        }
     } catch (error) {
         console.error('Drive アップロード失敗', {
             error: error.message,

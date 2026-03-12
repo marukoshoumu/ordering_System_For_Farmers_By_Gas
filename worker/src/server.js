@@ -25,20 +25,24 @@ function cleanExpiredJobs() {
 const cleanupIntervalId = setInterval(cleanExpiredJobs, JOB_CLEANUP_INTERVAL_MS);
 
 let server = null;
+let isShuttingDown = false;
 
 function shutdown() {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
   if (server) {
     const forceExit = setTimeout(() => {
-      if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+      clearInterval(cleanupIntervalId);
       process.exit(0);
     }, 5000);
     server.close(() => {
       clearTimeout(forceExit);
-      if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+      clearInterval(cleanupIntervalId);
       process.exit(0);
     });
   } else {
-    if (cleanupIntervalId) clearInterval(cleanupIntervalId);
+    clearInterval(cleanupIntervalId);
     process.exit(0);
   }
 }
