@@ -21,7 +21,7 @@
     <div class="page-hero-header d-flex justify-content-center align-items-center">
       <h2 class="m-0">発送伝票</h2>
     </div>
-    <form class="mb-5" method="POST" action="<?= deployURL ?>">
+    <form class="mb-4" method="POST" action="<?= deployURL ?>">
       <input type="hidden" name="sessionId" value="<?= typeof sessionId !== 'undefined' ? sessionId : '' ?>">
       <div class="row mb-3 align-items-center justify-content-center">
         <div class="col-auto">
@@ -46,17 +46,71 @@
         <button type="button" class="btn btn-outline-secondary" name="openSagawa" value="true" onclick="openUrlSagawa()">発注伝票佐川参照</button>
       </div>
     </form>
+
+    <!-- 処理ステータス一覧 -->
+    <hr>
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0">処理ステータス</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshLogs" onclick="loadSlipLogs()">
+          <i class="bi bi-arrow-clockwise"></i> 更新
+        </button>
+      </div>
+      <div class="row mb-3 align-items-center">
+        <div class="col-auto">
+          <label for="logFromDate" class="form-label mb-0">期間</label>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control form-control-sm" id="logFromDate">
+        </div>
+        <div class="col-auto">
+          <span>〜</span>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control form-control-sm" id="logToDate">
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="logCarrierFilter">
+            <option value="">全業者</option>
+            <option value="ヤマト">ヤマト</option>
+            <option value="佐川">佐川</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="logStatusFilter">
+            <option value="">全ステータス</option>
+            <option value="processing">処理中</option>
+            <option value="pdf_ready">PDF完了</option>
+            <option value="printed">印刷済</option>
+            <option value="error">エラー</option>
+            <option value="timeout">タイムアウト</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-primary btn-sm" onclick="loadSlipLogs()">検索</button>
+        </div>
+      </div>
+      <div id="logTableWrapper">
+        <table class="table table-sm table-hover" id="slipLogTable">
+          <thead class="table-light">
+            <tr>
+              <th>発送日</th>
+              <th>業者</th>
+              <th>ステータス</th>
+              <th>CSV作成</th>
+              <th>PDF完了</th>
+              <th>PDF</th>
+              <th>詳細</th>
+            </tr>
+          </thead>
+          <tbody id="slipLogBody">
+            <tr><td colspan="7" class="text-center text-muted">読み込み中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
   <script>
-    // function setYesterday() {
-    //   var yesterday = new Date();
-    //   yesterday.setDate(yesterday.getDate()-1); 
-    //   var yyyy = yesterday.getFullYear();
-    //   var mm = ("0"+(yesterday.getMonth()+1)).slice(-2);
-    //   var dd = ("0"+yesterday.getDate()).slice(-2);
-    //   document.getElementById("shippingDate").value=yyyy+'-'+mm+'-'+dd;
-    // }
-    // setYesterday();
     function setToday() {
       var today = new Date();
       var yyyy = today.getFullYear();
@@ -65,6 +119,126 @@
       document.getElementById("shippingDate").value=yyyy+'-'+mm+'-'+dd;
     }
     setToday();
+
+    function setDefaultLogDates() {
+      var today = new Date();
+      var weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      document.getElementById("logToDate").value = formatDateInput(today);
+      document.getElementById("logFromDate").value = formatDateInput(weekAgo);
+    }
+
+    function formatDateInput(d) {
+      var yyyy = d.getFullYear();
+      var mm = ("0"+(d.getMonth()+1)).slice(-2);
+      var dd = ("0"+d.getDate()).slice(-2);
+      return yyyy+'-'+mm+'-'+dd;
+    }
+
+    setDefaultLogDates();
+
+    function getStatusBadge(status) {
+      var map = {
+        'processing': '<span class="badge bg-warning text-dark">処理中</span>',
+        'pdf_ready':  '<span class="badge bg-info text-dark">PDF完了</span>',
+        'printed':    '<span class="badge bg-success">印刷済</span>',
+        'completed':  '<span class="badge bg-success">完了</span>',
+        'error':      '<span class="badge bg-danger">エラー</span>',
+        'timeout':    '<span class="badge bg-secondary">タイムアウト</span>'
+      };
+      return map[status] || '<span class="badge bg-light text-dark">' + (status || '-') + '</span>';
+    }
+
+    function formatTime(val) {
+      if (!val) return '-';
+      if (typeof val === 'string' && val.length > 10) {
+        // "yyyy/MM/dd HH:mm:ss" → "HH:mm"
+        var parts = val.split(' ');
+        if (parts.length >= 2) return parts[1].substring(0, 5);
+      }
+      return String(val);
+    }
+
+    function loadSlipLogs() {
+      var fromDate = document.getElementById("logFromDate").value;
+      var toDate = document.getElementById("logToDate").value;
+      var carrierFilter = document.getElementById("logCarrierFilter").value;
+      var statusFilter = document.getElementById("logStatusFilter").value;
+
+      $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-muted">読み込み中...</td></tr>');
+      $("#refreshLogs").prop('disabled', true);
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          renderSlipLogs(data, carrierFilter, statusFilter);
+          $("#refreshLogs").prop('disabled', false);
+        })
+        .withFailureHandler(function() {
+          $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-danger">取得に失敗しました</td></tr>');
+          $("#refreshLogs").prop('disabled', false);
+        })
+        .getSlipLogs(fromDate, toDate);
+    }
+
+    function renderSlipLogs(data, carrierFilter, statusFilter) {
+      var logs = [];
+      try { logs = JSON.parse(data); } catch(e) {}
+
+      // クライアント側フィルタ（業者・ステータス）
+      if (carrierFilter) {
+        logs = logs.filter(function(l) { return l.carrier && l.carrier.indexOf(carrierFilter) >= 0; });
+      }
+      if (statusFilter) {
+        logs = logs.filter(function(l) { return l.status === statusFilter; });
+      }
+
+      if (logs.length === 0) {
+        $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-muted">該当データなし</td></tr>');
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < logs.length; i++) {
+        var log = logs[i];
+        var rowClass = '';
+        if (log.status === 'error' || log.status === 'timeout') rowClass = ' class="table-danger"';
+        else if (log.status === 'processing') rowClass = ' class="table-warning"';
+
+        var driveCol = '-';
+        if (log.driveLink) {
+          driveCol = '<a href="' + log.driveLink + '" target="_blank" class="btn btn-outline-primary btn-sm py-0 px-1"><i class="bi bi-file-earmark-pdf"></i></a>';
+        }
+
+        var detailCol = '-';
+        if (log.error) {
+          detailCol = '<span class="text-danger" style="cursor:pointer" title="' + escapeHtml(log.error) + '" onclick="alert(this.title)">' +
+            truncate(log.error, 20) + '</span>';
+        } else if (log.jobId) {
+          detailCol = '<small class="text-muted">' + log.jobId.substring(0, 8) + '</small>';
+        }
+
+        html += '<tr' + rowClass + '>';
+        html += '<td>' + (log.shippingDate || '-') + '</td>';
+        html += '<td>' + (log.carrier || '-') + '</td>';
+        html += '<td>' + getStatusBadge(log.status) + '</td>';
+        html += '<td>' + formatTime(log.csvTime) + '</td>';
+        html += '<td>' + formatTime(log.pdfTime) + '</td>';
+        html += '<td>' + driveCol + '</td>';
+        html += '<td>' + detailCol + '</td>';
+        html += '</tr>';
+      }
+      $("#slipLogBody").html(html);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function truncate(str, len) {
+      if (!str) return '';
+      return str.length > len ? str.substring(0, len) + '...' : str;
+    }
+
     async function createShip() {
       if (!$('input[id="shippingDate"]').val()) {
         showWarningToast('発送日が入力されていません。');
@@ -80,7 +254,7 @@
       }
     }
     function createFail() {
-      showInfoToast("該当データがありませんでした。");  
+      showInfoToast("該当データがありませんでした。");
     }
     function createList(data) {
       if (data) {
@@ -97,7 +271,7 @@
         $("p[id='res']").html(html);
       }
       else {
-        showInfoToast("該当データがありませんでした。");  
+        showInfoToast("該当データがありませんでした。");
         $("button[id='createShippingSlips']").text('作成');
       }
     }
@@ -135,6 +309,8 @@
         }
         $("p[id='res']").html(html);
         showSuccessToast("処理を開始しました。印刷は自動で実行されます。");
+        // ステータス一覧を更新
+        setTimeout(function() { loadSlipLogs(); }, 2000);
       } else {
         showInfoToast("該当データがありませんでした。");
       }
@@ -144,17 +320,20 @@
       showErrorToast("処理に失敗しました。");
     }
     function openUrlYamato() {
-      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト'); 
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('ヤマト');
     }
     function openUrlSagawa() {
-      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('佐川'); 
+      google.script.run.withSuccessHandler(sendSuccess).withFailureHandler(sendFail).getOpenUrlDrive('佐川');
     }
     function sendFail() {
-      showErrorToast("処理に失敗しました。");  
+      showErrorToast("処理に失敗しました。");
     }
     function sendSuccess(url) {
       window.open(url);
     }
+
+    // ページ読み込み時にステータス一覧を取得
+    loadSlipLogs();
 
   </script>
 </body>

@@ -1,32 +1,29 @@
-# 1. Playwright公式のFocal(Ubuntu 20.04/22.04)ベースイメージを使用
+# Playwright公式 Ubuntu 22.04 ベースイメージ
 FROM mcr.microsoft.com/playwright:v1.49.0-jammy
 
-# 2. 日本語フォント(Noto Sans CJK JP)のインストール
-# B2クラウド等で日本語が文字化けしないように必須
-RUN apt-get update && apt-get install -y \
+# 日本語フォント（B2クラウド・e飛伝IIIの文字化け防止）
+RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. アプリケーションディレクトリの作成
 WORKDIR /usr/src/app
 
-# 4. 依存関係のコピーとインストール
+# 依存関係インストール
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
-# 5. アプリケーションコードのコピー
-COPY . .
+# アプリケーションコード
+COPY src/ ./src/
 
-# 6. 環境変数の設定 (Cloud Runで上書き可能)
+# 環境変数（Cloud Run / docker-compose で上書き）
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV HEADLESS=true
 
-# 7. ポートの公開
 EXPOSE 8080
 
-# 8. ヘルスチェックの設定 (オプションだが推奨)
+# ヘルスチェック（curlに依存しない方式）
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD node -e "fetch('http://localhost:8080/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"
 
-# 9. アプリケーションの起動
-CMD [ "npm", "start" ]
+CMD [ "node", "src/server.js" ]

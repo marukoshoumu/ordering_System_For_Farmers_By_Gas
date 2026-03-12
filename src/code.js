@@ -226,6 +226,12 @@ function resolveSessionFromPost(e) {
  */
 function doPost(e) {
   Logger.log(e);
+
+  // Workerからのコールバック（JSON POST）
+  if (e.postData && e.postData.type === 'application/json') {
+    return handleWorkerCallback(e);
+  }
+
   if (e.parameter.logout) {
     const sessionId = (e.parameter.sessionId) ? String(e.parameter.sessionId).trim() : '';
     deleteSession(sessionId);

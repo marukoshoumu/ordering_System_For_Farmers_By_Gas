@@ -89,26 +89,13 @@ function createShip(datas) {
  * @see writeDrive() - BlobをGoogle Driveに保存
  */
 function createCsv(sheetName, dateVal, fileName, type) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  const values = sheet.getDataRange().getValues();
-  let csv = '';
-  var targetDate = Utilities.formatDate(new Date(dateVal), 'JST', 'yyyy/MM/dd');
-
-  for (var value of values) {
-    if (value[0] == targetDate) {
-      var val = value.slice(1);
-      csv += val.join(',') + "\r\n";
-    }
-  }
-  if (csv.length != 0) {
+  const csv = getCsvContent(sheetName, dateVal);
+  if (csv) {
     const blob = createBlob(csv, fileName);
     writeDrive(blob, type);
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 /**
@@ -185,14 +172,14 @@ function writeDrive(blob, type) {
  * 処理フロー:
  * 1. createShip() でCSVをDriveに保存
  * 2. sendToWorker() でワーカーに送信 → Playwright自動化 → PDF取得 → Drive保存
- * 3. ワーカーがDriveに保存したPDFのファイルIDを受け取り、sendSlipToPrinter() でBrother印刷
+ * 3. DriveにPDFが保存されると、Google Drive for Desktop経由で
+ *    ローカルMacのprint-agent（chokidar + lp）が自動検出・印刷する
  *
  * @param {string} datas - JSON文字列 { shippingDate: "2024-05-09" }
- * @returns {string|null} JSON文字列 { yamato, sagawa, workerResults, printResults }
+ * @returns {string|null} JSON文字列 { yamato, sagawa, workerResults }
  *
  * @see createShip() - CSV作成とDrive保存
  * @see sendToWorker() - ワーカーへのWebhook送信
- * @see sendSlipToPrinter() - GAS MailApp でBrother印刷
  *
  * 呼び出し元: createShippingSlips.html の送り状作成＋自動印刷ボタン
  */
@@ -257,49 +244,10 @@ function createShipAndPrint(datas) {
   return JSON.stringify(record);
 }
 
-/**
- * Google DriveのPDFをBrotherプリンタにメール送信（GAS MailApp使用）
- *
- * ワーカーがDrive APIでアップロードしたPDFを、
- * GASのMailApp.sendEmail()でBrotherのメールプリント機能に送信する。
- * Gmail経由のため追加コストゼロ。
- *
- * @param {string} fileId - Google DriveのファイルID
- * @param {string} carrierName - 配送業者表示名（例: 'ヤマト運輸'）
- * @param {string} shippingDate - 発送日
- * @returns {Object} { success: boolean, message: string }
- *
- * @see getBrotherPrinterEmail() - プリンタメールアドレス取得 (config.js)
- */
-function sendSlipToPrinter(fileId, carrierName, shippingDate) {
-  const printerEmail = getBrotherPrinterEmail();
-
-  if (!printerEmail) {
-    Logger.log('BROTHER_PRINTER_EMAIL 未設定のため印刷をスキップ');
-    return { success: false, message: 'BROTHER_PRINTER_EMAIL が未設定です' };
-  }
-
-  try {
-    // DriveからPDFファイルを取得
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
-    const fileName = file.getName();
-
-    // MailApp でBrotherプリンタに送信
-    MailApp.sendEmail({
-      to: printerEmail,
-      subject: carrierName + ' 配送伝票 (' + shippingDate + ')',
-      body: carrierName + 'の配送伝票です。\n発送日: ' + shippingDate + '\nファイル: ' + fileName,
-      attachments: [blob],
-    });
-
-    Logger.log('Brother印刷メール送信成功: ' + fileName + ' → ' + printerEmail);
-    return { success: true, message: '印刷メール送信完了: ' + fileName };
-  } catch (e) {
-    Logger.log('Brother印刷メール送信エラー: ' + e.message);
-    return { success: false, message: '印刷メール送信エラー: ' + e.message };
-  }
-}
+// sendSlipToPrinter() は削除済み
+// Brother MFC-J990DN にはメール受信機能がないため、
+// 印刷は print-agent（ローカルMac上の chokidar + lp コマンド）が担当する。
+// Drive同期フォルダにPDFが保存されると print-agent が自動検出・印刷する。
 
 /**
  * 指定されたシート・発送日のCSVテキスト内容を取得
@@ -337,7 +285,6 @@ function sendToWorker(carrier, csvContent, shippingDate) {
     carrier: carrier,
     csvContent: csvContent,
     shippingDate: shippingDate,
-    apiKey: apiKey,
   };
 
   const options = {
@@ -345,7 +292,7 @@ function sendToWorker(carrier, csvContent, shippingDate) {
     contentType: 'application/json',
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
-    headers: { 'X-API-Key': apiKey },
+    headers: apiKey ? { 'X-API-Key': apiKey } : {},
   };
 
   Logger.log('ワーカーへ送信: ' + carrier + ' (' + url + ')');

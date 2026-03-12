@@ -8,6 +8,7 @@ node_modules*
 # クレデンシャル
 *.credentials.json
 service-account*.json
+gen-lang-client*.json
 .DS_Store
 
 # Google Apps Script (clasp)

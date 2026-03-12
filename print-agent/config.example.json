@@ -1,0 +1,7 @@
+{
+  "watchDir": "/path/to/Google Drive/伝票PDF",
+  "printedDirName": "printed",
+  "printerName": "",
+  "debounceMs": 60000,
+  "logDir": "logs"
+}

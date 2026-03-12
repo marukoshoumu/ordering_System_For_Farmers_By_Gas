@@ -1,22 +1,40 @@
 {
   "yamato": {
-    "loginId": "#loginId",
-    "password": "#password",
-    "loginButton": "#loginBtn",
-    "csvImportMenu": "a:has-text('CSV取込')",
-    "fileInput": "input[type='file']",
-    "uploadButton": "button:has-text('取込')",
-    "printButton": "button:has-text('発行')",
-    "downloadButton": "a:has-text('ダウンロード')"
+    "loginId": "input#code1",
+    "password": "input#password",
+    "loginButton": "a.login",
+    "entrySteps": [
+      "a:has-text('送り状発行システムB2クラウド')",
+      "a:has-text('このサービスを利用する')"
+    ],
+    "externalDataLink": "#ex_data_import a",
+    "importStartRowInput": "input#torikomi_strat_row",
+    "fileInput": "input#input_file",
+    "fileSelectButton": "a#file_button",
+    "uploadButton": "a#import_start",
+    "selectAllCheckbox": "input.allCheck",
+    "resultTableCheckbox": "table input[type='checkbox']",
+    "confirmPrintButton": "a#confirm_issue_btn2",
+    "startIssueButton": "a#start_print",
+    "errorSelectors": ".error, .alert-danger, [class*='error']"
   },
   "sagawa": {
-    "loginId": "input[name='customerCode']",
-    "password": "input[type='password']",
-    "loginButton": "button[type='submit']",
-    "csvImportMenu": "a:has-text('送り状データ取込')",
-    "fileInput": "input[type='file']",
-    "uploadButton": "button:has-text('取込')",
-    "printButton": "button:has-text('送り状発行')",
-    "downloadButton": "a:has-text('ダウンロード')"
+    "businessTab": "label.p-tabs__label--02",
+    "loginId": "input#user2",
+    "password": "input#pass2",
+    "loginButton": "button#hojin-login-button",
+    "entrySteps": [
+      "a:has-text('送り状発行'), a:has-text('e飛伝')",
+      "button:has-text('送り状データ取込'), .syuDTori button"
+    ],
+    "templateDropdownTrigger": "#select-kyotsuTemplSelectBox",
+    "templateOption": ".el-select-dropdown__item:has-text('標準_飛脚宅配便_CSV_ヘッダ無')",
+    "fileSelectButton": ".el-upload button:has-text('ファイルを選択'), .el-upload--text button",
+    "directImportButton": "button:has-text('直接取込')",
+    "registerButton": "button:has-text('登録'):not(:has-text('連続取込'))",
+    "selectAllToggle": "[title='全て選択/取消']",
+    "printButton": "button:has-text('印刷'):not(:has-text('ﾁｪｯｸﾘｽﾄ印刷'))",
+    "dialogPrintButton": "[role='dialog']:has-text('送り状印刷の出力条件設定') button:has-text('印刷')",
+    "errorSelectors": ".error, .alert-danger, .errMsg"
   }
 }

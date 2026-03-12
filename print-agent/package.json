@@ -1,0 +1,15 @@
+{
+  "name": "print-agent",
+  "version": "1.0.0",
+  "description": "Watch folder for PDFs, print to default printer, move to printed/",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

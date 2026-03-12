@@ -1,13 +1,13 @@
 /**
  * Google Drive サービスモジュール
- * 
+ *
  * Google Drive API v3 を使用して、ダウンロードした伝票PDFを
  * 指定フォルダへアップロードする。
- * 
- * 認証方式:
- * - サービスアカウント（JSON キーファイル）
- * - GOOGLE_SERVICE_ACCOUNT_KEY_PATH で指定
- * 
+ *
+ * 認証方式（優先順）:
+ * 1. OAuth 2.0（GOOGLE_OAUTH_CLIENT_ID + SECRET + REFRESH_TOKEN）
+ * 2. サービスアカウント（GOOGLE_SERVICE_ACCOUNT_KEY_PATH）
+ *
  * フォルダID:
  * - DRIVE_YAMATO_FOLDER_ID: ヤマト伝票PDF保存先
  * - DRIVE_SAGAWA_FOLDER_ID: 佐川伝票PDF保存先
@@ -24,15 +24,29 @@ let _driveClient = null;
 
 /**
  * Drive API クライアントを取得・初期化
- * 
+ *
  * @returns {google.drive_v3.Drive}
  */
 function getDriveClient() {
     if (_driveClient) return _driveClient;
 
+    const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+
+    if (clientId && clientSecret && refreshToken) {
+        // OAuth 2.0 方式（ユーザーアカウントのストレージを使用）
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
+        _driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+        console.log('Google Drive API クライアント初期化完了（OAuth 2.0）');
+        return _driveClient;
+    }
+
+    // サービスアカウント方式（共有ドライブ専用）
     const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
     if (!keyPath) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_PATH が設定されていません');
+        throw new Error('Drive認証が未設定です。OAuth（GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN）またはサービスアカウント（GOOGLE_SERVICE_ACCOUNT_KEY_PATH）を設定してください');
     }
 
     if (!fs.existsSync(keyPath)) {
@@ -47,7 +61,7 @@ function getDriveClient() {
     });
 
     _driveClient = google.drive({ version: 'v3', auth });
-    console.log('Google Drive API クライアント初期化完了');
+    console.log('Google Drive API クライアント初期化完了（サービスアカウント）');
 
     return _driveClient;
 }
@@ -59,13 +73,21 @@ function getDriveClient() {
  * @returns {string} フォルダID
  */
 function getFolderIdForCarrier(carrier) {
-    const folderId = carrier === 'yamato'
+    const normalized = typeof carrier === 'string' ? carrier.trim().toLowerCase() : '';
+    const allowed = ['yamato', 'sagawa'];
+    if (!allowed.includes(normalized)) {
+        throw new Error(
+            `無効な配送業者です: "${carrier}"。許可値: ${allowed.join(', ')}`
+        );
+    }
+
+    const folderId = normalized === 'yamato'
         ? process.env.DRIVE_YAMATO_FOLDER_ID
         : process.env.DRIVE_SAGAWA_FOLDER_ID;
 
     if (!folderId) {
         throw new Error(
-            `${carrier === 'yamato' ? 'DRIVE_YAMATO_FOLDER_ID' : 'DRIVE_SAGAWA_FOLDER_ID'} が設定されていません`
+            `${normalized === 'yamato' ? 'DRIVE_YAMATO_FOLDER_ID' : 'DRIVE_SAGAWA_FOLDER_ID'} が設定されていません`
         );
     }
 
@@ -78,6 +100,7 @@ function getFolderIdForCarrier(carrier) {
  * @param {string} pdfPath - アップロードするPDFのローカルパス
  * @param {string} carrier - 配送業者 ('yamato' | 'sagawa')
  * @param {string} shippingDate - 発送日（ファイル名に使用）
+ * @param {string} jobId - ジョブ識別子（アップロード先のメタデータ等に使用）
  * @returns {Promise<{ fileId: string, webViewLink: string }>}
  */
 async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
@@ -109,6 +132,7 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
             resource: fileMetadata,
             media: media,
             fields: 'id, name, webViewLink, webContentLink',
+            supportsAllDrives: true,
         });
 
         const fileId = response.data.id;
@@ -137,14 +161,25 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
  * @returns {{ configured: boolean, message: string }}
  */
 function validateDriveConfig() {
-    const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
     const yamatoFolder = process.env.DRIVE_YAMATO_FOLDER_ID;
     const sagawaFolder = process.env.DRIVE_SAGAWA_FOLDER_ID;
 
     const missing = [];
-    if (!keyPath) missing.push('GOOGLE_SERVICE_ACCOUNT_KEY_PATH');
     if (!yamatoFolder) missing.push('DRIVE_YAMATO_FOLDER_ID');
     if (!sagawaFolder) missing.push('DRIVE_SAGAWA_FOLDER_ID');
+
+    // OAuth方式チェック
+    const hasOAuth = process.env.GOOGLE_OAUTH_CLIENT_ID
+        && process.env.GOOGLE_OAUTH_CLIENT_SECRET
+        && process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+
+    // サービスアカウント方式チェック
+    const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
+    const hasServiceAccount = keyPath && fs.existsSync(keyPath);
+
+    if (!hasOAuth && !hasServiceAccount) {
+        missing.push('認証設定（OAuth or サービスアカウント）');
+    }
 
     if (missing.length > 0) {
         return {
@@ -153,14 +188,8 @@ function validateDriveConfig() {
         };
     }
 
-    if (!fs.existsSync(keyPath)) {
-        return {
-            configured: false,
-            message: `キーファイルが存在しません: ${keyPath}`,
-        };
-    }
-
-    return { configured: true, message: 'OK' };
+    const authMethod = hasOAuth ? 'OAuth 2.0' : 'サービスアカウント';
+    return { configured: true, message: `OK (${authMethod})` };
 }
 
 module.exports = { uploadToDrive, validateDriveConfig };
