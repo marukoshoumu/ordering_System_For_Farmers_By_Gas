@@ -14,6 +14,26 @@
  */
 
 /**
+ * 定数時間で2つの文字列を比較し、タイミング攻撃を防ぐ（GAS 用の純粋 JS 実装）
+ * @param {string} a - 比較する文字列1
+ * @param {string} b - 比較する文字列2
+ * @returns {boolean} 等しければ true
+ */
+function constantTimeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  var lenA = a.length;
+  var lenB = b.length;
+  var result = 0;
+  var len = Math.max(lenA, lenB);
+  for (var i = 0; i < len; i++) {
+    var ca = i < lenA ? a.charCodeAt(i) : 0;
+    var cb = i < lenB ? b.charCodeAt(i) : 0;
+    result |= (ca ^ cb);
+  }
+  return result === 0 && lenA === lenB;
+}
+
+/**
  * Workerからのコールバック処理（doPost経由）
  *
  * Worker が処理完了/失敗時に GAS Web App へ POST する。
@@ -29,7 +49,7 @@ function handleWorkerCallback(e) {
     var expectedKey = getWorkerApiKey();
 
     // APIキー認証（未設定の場合はスキップ）
-    if (expectedKey && apiKey !== expectedKey) {
+    if (expectedKey && !constantTimeCompare(apiKey, expectedKey)) {
       return ContentService.createTextOutput(
         JSON.stringify({ success: false, message: '認証エラー' })
       ).setMimeType(ContentService.MimeType.JSON);

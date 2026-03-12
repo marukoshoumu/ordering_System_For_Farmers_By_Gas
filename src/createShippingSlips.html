@@ -146,7 +146,13 @@
         'error':      '<span class="badge bg-danger">エラー</span>',
         'timeout':    '<span class="badge bg-secondary">タイムアウト</span>'
       };
-      return map[status] || '<span class="badge bg-light text-dark">' + (status || '-') + '</span>';
+      if (map[status]) return map[status];
+      var safeLabel = escapeHtml(status || '-');
+      return '<span class="badge bg-light text-dark">' + safeLabel + '</span>';
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function formatTime(val) {
@@ -205,21 +211,22 @@
         else if (log.status === 'processing') rowClass = ' class="table-warning"';
 
         var driveCol = '-';
-        if (log.driveLink) {
-          driveCol = '<a href="' + log.driveLink + '" target="_blank" class="btn btn-outline-primary btn-sm py-0 px-1"><i class="bi bi-file-earmark-pdf"></i></a>';
+        if (log.driveLink && String(log.driveLink).trim().toLowerCase().indexOf('https://') === 0) {
+          driveCol = '<a href="' + escapeHtml(log.driveLink) + '" target="_blank" class="btn btn-outline-primary btn-sm py-0 px-1"><i class="bi bi-file-earmark-pdf"></i></a>';
         }
 
         var detailCol = '-';
         if (log.error) {
           detailCol = '<span class="text-danger" style="cursor:pointer" title="' + escapeHtml(log.error) + '" onclick="alert(this.title)">' +
-            truncate(log.error, 20) + '</span>';
+            escapeHtml(truncate(log.error, 20)) + '</span>';
         } else if (log.jobId) {
-          detailCol = '<small class="text-muted">' + log.jobId.substring(0, 8) + '</small>';
+          var safeId = escapeHtml(log.jobId.substring(0, 8));
+          detailCol = '<small class="text-muted">' + safeId + '</small>';
         }
 
         html += '<tr' + rowClass + '>';
-        html += '<td>' + (log.shippingDate || '-') + '</td>';
-        html += '<td>' + (log.carrier || '-') + '</td>';
+        html += '<td>' + escapeHtml(log.shippingDate || '-') + '</td>';
+        html += '<td>' + escapeHtml(log.carrier || '-') + '</td>';
         html += '<td>' + getStatusBadge(log.status) + '</td>';
         html += '<td>' + formatTime(log.csvTime) + '</td>';
         html += '<td>' + formatTime(log.pdfTime) + '</td>';
@@ -228,10 +235,6 @@
         html += '</tr>';
       }
       $("#slipLogBody").html(html);
-    }
-
-    function escapeHtml(str) {
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function truncate(str, len) {
@@ -301,8 +304,8 @@
         if (res['sagawa']) html += res['sagawa'] + "<br>";
         if (res['workerResults']) {
           var wr = res['workerResults'];
-          if (wr['yamato'] && wr['yamato'].jobId) html += "ヤマト自動印刷: 処理開始 (ID: " + wr['yamato'].jobId.substring(0, 8) + ")<br>";
-          if (wr['sagawa'] && wr['sagawa'].jobId) html += "佐川自動印刷: 処理開始 (ID: " + wr['sagawa'].jobId.substring(0, 8) + ")<br>";
+          if (wr['yamato'] && wr['yamato'].jobId) html += "ヤマト自動印刷: 処理開始 (ID: " + escapeHtml(wr['yamato'].jobId.substring(0, 8)) + ")<br>";
+          if (wr['sagawa'] && wr['sagawa'].jobId) html += "佐川自動印刷: 処理開始 (ID: " + escapeHtml(wr['sagawa'].jobId.substring(0, 8)) + ")<br>";
         }
         if (res['workerSkipped']) {
           html += "<small class='text-muted'>※ 自動印刷未設定のためCSV作成のみ実行</small><br>";

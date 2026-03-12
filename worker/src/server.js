@@ -120,10 +120,10 @@ app.get('/api/job/:jobId', (req, res) => {
 async function processSlipJob(jobId, carrier, csvContent, shippingDate) {
   console.log('バックグラウンド処理開始', { jobId, carrier, shippingDate });
 
+  let tmpDir;
   try {
     // Step 1: Playwright でPDF取得
     let pdfPath;
-    let tmpDir;
     if (carrier === 'yamato') {
       const result = await processYamato(csvContent, shippingDate);
       pdfPath = result.pdfPath;
@@ -171,6 +171,11 @@ async function processSlipJob(jobId, carrier, csvContent, shippingDate) {
     await notifyGas(jobId, 'completed', { driveFileId: driveResult.fileId, driveWebViewLink: driveResult.webViewLink });
   } catch (error) {
     console.error('バックグラウンド処理エラー', { jobId, error: error.message, stack: error.stack });
+    if (tmpDir) {
+      try {
+        fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      } catch (_) {}
+    }
     const entry = jobStore.get(jobId);
     jobStore.set(jobId, {
       ...entry,

@@ -259,6 +259,10 @@ function createShipAndPrint(datas) {
 function getCsvContent(sheetName, dateVal) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    Logger.log('シートが見つかりません: ' + sheetName);
+    return null;
+  }
   const values = sheet.getDataRange().getValues();
   let csv = '';
   var targetDate = Utilities.formatDate(new Date(dateVal), 'JST', 'yyyy/MM/dd');
@@ -306,8 +310,16 @@ function sendToWorker(carrier, csvContent, shippingDate) {
     if (statusCode >= 200 && statusCode < 300) {
       return JSON.parse(body);
     } else {
-      const errorBody = JSON.parse(body);
-      return { success: false, message: errorBody.message || 'ワーカーエラー (HTTP ' + statusCode + ')' };
+      var message = 'ワーカーエラー (HTTP ' + statusCode + ')';
+      try {
+        const errorBody = JSON.parse(body);
+        message = errorBody.message || message;
+      } catch (_) {
+        if (body && typeof body === 'string' && body.length > 0) {
+          message = String(body).substring(0, 200) + (body.length > 200 ? '...' : '');
+        }
+      }
+      return { success: false, message: message };
     }
   } catch (e) {
     Logger.log('ワーカー通信エラー: ' + e.message);

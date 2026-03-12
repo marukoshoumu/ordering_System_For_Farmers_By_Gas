@@ -136,8 +136,16 @@ async function processYamato(csvContent, shippingDate) {
     const fileChooserPromise = workPage.waitForEvent('filechooser', { timeout: 10000 });
     // a#file_button の jQuery ハンドラ: $('#filename').val('').click()
     // Playwright native click では jQuery .on() が反応しないことがあるため evaluate で発火
+    // jQuery が未読み込みの場合はネイティブ DOM でクリック
     await workPage.evaluate(() => {
-      jQuery('#file_button').click();
+      var btn = document.querySelector('#file_button');
+      if (btn) {
+        if (typeof window.jQuery !== 'undefined') {
+          window.jQuery('#file_button').click();
+        } else {
+          btn.click();
+        }
+      }
     });
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(csvPath);

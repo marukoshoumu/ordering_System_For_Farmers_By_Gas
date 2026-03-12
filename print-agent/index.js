@@ -19,6 +19,31 @@ try {
 
 const processed = new Map();
 
+const RETENTION_MS = config.debounceMs * 2;
+let cleanupIntervalId = null;
+let watcher = null;
+
+function cleanupProcessedMap() {
+  const now = Date.now();
+  for (const [filePath, timestamp] of processed.entries()) {
+    if (now - timestamp >= RETENTION_MS) processed.delete(filePath);
+  }
+}
+
+cleanupIntervalId = setInterval(cleanupProcessedMap, Math.max(60000, config.debounceMs));
+
+function shutdown() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+  if (watcher && typeof watcher.close === 'function') {
+    try { watcher.close(); } catch (_) {}
+  }
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 function handlePdf(filePath) {
   const now = Date.now();
   const last = processed.get(filePath);
@@ -41,7 +66,7 @@ function handlePdf(filePath) {
   }
 }
 
-const watcher = chokidar.watch(config.watchDir, {
+watcher = chokidar.watch(config.watchDir, {
   ignored: (p) => path.basename(p) === config.printedDirName,
   persistent: true,
   ignoreInitial: true,

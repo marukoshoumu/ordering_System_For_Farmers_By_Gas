@@ -53,7 +53,14 @@ function getDriveClient() {
         throw new Error(`サービスアカウントキーファイルが見つかりません: ${keyPath}`);
     }
 
-    const keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf-8'));
+    let keyFile;
+    try {
+        keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf-8'));
+    } catch (err) {
+        const msg = `サービスアカウントキーファイルの読み込みに失敗しました: ${keyPath} — ${err.message}`;
+        console.error(msg);
+        throw new Error(msg);
+    }
 
     const auth = new google.auth.GoogleAuth({
         credentials: keyFile,
