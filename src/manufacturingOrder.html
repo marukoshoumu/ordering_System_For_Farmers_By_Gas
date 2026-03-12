@@ -481,7 +481,7 @@
         pcHtml += heading;
         pcHtml += '<table class="mfg-table">';
         pcHtml += '<thead><tr>';
-        pcHtml += '<th>顧客名</th><th>商品名</th><th class="col-quantity">数量</th><th class="col-memo">メモ</th>';
+        pcHtml += '<th>発送先名</th><th>商品名</th><th class="col-quantity">数量</th><th class="col-memo">メモ</th>';
         pcHtml += '</tr></thead><tbody>';
         group.rows.forEach(function (row) {
           pcHtml += '<tr>';
@@ -500,7 +500,7 @@
           mobileHtml += '<div class="mfg-card-row">';
           mobileHtml += '  <span class="mfg-card-icon"><i class="bi bi-person"></i></span>';
           mobileHtml += '  <div class="mfg-card-value">';
-          mobileHtml += '    <div class="mfg-card-label">顧客名</div>' + escapeHtml(row.customerName);
+          mobileHtml += '    <div class="mfg-card-label">発送先名</div>' + escapeHtml(row.customerName);
           mobileHtml += '  </div>';
           mobileHtml += '  <span class="mfg-card-quantity">' + escapeHtml(String(row.quantity)) + '点</span>';
           mobileHtml += '</div>';

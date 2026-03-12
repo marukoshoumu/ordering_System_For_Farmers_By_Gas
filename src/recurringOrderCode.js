@@ -696,11 +696,12 @@ function createOrderFromRecurring(recurringOrder) {
  * @param {string} deliveryId - 受注ID
  */
 function createYamatoCsvFromRecurring(recurringOrder, deliveryId) {
-  // マスタデータを取得してコード変換
-  const invoiceTypes = getAllRecords('送り状種別') || [];
-  const coolClss = getAllRecords('クール区分') || [];
-  const deliveryTimes = getAllRecords('配送時間帯') || [];
-  const cargos = getAllRecords('荷扱い') || [];
+  // マスタデータを取得してコード変換（ヤマト系のみフィルタ）
+  const yamatoFilter = function(r) { return (r['納品方法'] || '').indexOf('ヤマト') !== -1; };
+  const invoiceTypes = (getAllRecords('送り状種別') || []).filter(yamatoFilter);
+  const coolClss = (getAllRecords('クール区分') || []).filter(yamatoFilter);
+  const deliveryTimes = (getAllRecords('配送時間帯') || []).filter(yamatoFilter);
+  const cargos = (getAllRecords('荷扱い') || []).filter(yamatoFilter);
 
   // 表示名からコードを取得するヘルパー関数
   function getCodeFromMaster(masterData, displayName, keyField) {
@@ -868,11 +869,12 @@ function createYamatoCsvFromRecurring(recurringOrder, deliveryId) {
  * @param {string} deliveryId - 受注ID
  */
 function createSagawaCsvFromRecurring(recurringOrder, deliveryId) {
-  // マスタデータを取得してコード変換
-  var coolClss = getAllRecords('クール区分') || [];
-  var deliveryTimes = getAllRecords('配送時間帯') || [];
-  var cargos = getAllRecords('荷扱い') || [];
-  var invoiceTypes = getAllRecords('送り状種別') || [];
+  // マスタデータを取得してコード変換（佐川系のみフィルタ）
+  var sagawaFilter = function(r) { return (r['納品方法'] || '').indexOf('佐川') !== -1; };
+  var coolClss = (getAllRecords('クール区分') || []).filter(sagawaFilter);
+  var deliveryTimes = (getAllRecords('配送時間帯') || []).filter(sagawaFilter);
+  var cargos = (getAllRecords('荷扱い') || []).filter(sagawaFilter);
+  var invoiceTypes = (getAllRecords('送り状種別') || []).filter(sagawaFilter);
 
   // 表示名からコードを取得するヘルパー関数
   function getCodeFromMaster(masterData, displayName, keyField) {

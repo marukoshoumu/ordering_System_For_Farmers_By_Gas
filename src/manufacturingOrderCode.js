@@ -12,7 +12,7 @@ function getManufacturingOrderData(paramsJson) {
   const headers = data[0];
 
   const requiredHeaders = {
-    '受注ID': -1, '発送日': -1, '顧客名': -1, '商品名': -1,
+    '受注ID': -1, '発送日': -1, '発送先名': -1, '商品名': -1,
     '商品分類': -1, '受注数': -1, 'ステータス': -1
   };
   const optionalHeaders = { 'メモ': -1 };
@@ -24,7 +24,7 @@ function getManufacturingOrderData(paramsJson) {
   }
   const orderIdCol = requiredHeaders['受注ID'];
   const shippingDateCol = requiredHeaders['発送日'];
-  const customerNameCol = requiredHeaders['顧客名'];
+  const customerNameCol = requiredHeaders['発送先名'];
   const productCol = requiredHeaders['商品名'];
   const categoryCol = requiredHeaders['商品分類'];
   const quantityCol = requiredHeaders['受注数'];
