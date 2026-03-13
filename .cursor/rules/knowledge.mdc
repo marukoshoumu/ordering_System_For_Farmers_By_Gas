@@ -33,16 +33,16 @@ alwaysApply: false
 ## 環境変数（任意）
 
 - `KNOWLEDGE_DIR`: ナレッジルート（デフォルト: `$HOME/knowledge`）
-- `ORDERING_PROJECT_DIR`: ordering-system 用ディレクトリ（デフォルト: `$KNOWLEDGE_DIR/02_Projects/ordering-system/`）
+- `ORDERING_PROJECT_DIR`: ordering-system 用ディレクトリ（デフォルト: `$KNOWLEDGE_DIR/02_Projects/ordering-system`）
 
 ## 注意
 
 - ナレッジの更新・追加は **$HOME/knowledge** 側にのみ行う。プロジェクト内に `knowledge/` や `docs/` を新規作成しない（本プロジェクトでは `docs/` は廃止済み）。
 - インデックス更新は `ki` スキル（`~/knowledge/_scripts/update-index.sh`）を使用する。
 
-## リポジトリ内のナレッジ（例外）
+## 外部ナレッジの参照項目（CodeRabbit対応）
 
-- **CodeRabbit 指摘対応**: 本プロジェクトで実施した CodeRabbit 指摘対応の蓄積はナレッジ側に格納する。  
+- **CodeRabbit 指摘対応**: 本プロジェクトで実施した CodeRabbit 指摘対応の蓄積は **外部ナレッジ**（`$HOME/knowledge/...`）に格納している。  
   **参照先**: `$HOME/knowledge/02_Projects/ordering-system/docs/coderabbit-fixes-knowledge.md`  
   認証・XSS・エラーハンドリング・リソース管理・テスト保守の修正要点は上記ファイルを参照する。
 
