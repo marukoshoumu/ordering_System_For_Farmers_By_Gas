@@ -1,5 +1,8 @@
 {
-  "watchDir": "/path/to/Google Drive/伝票PDF",
+  "watchDirs": [
+    "/path/to/Google Drive/ヤマト伝票PDF",
+    "/path/to/Google Drive/佐川伝票PDF"
+  ],
   "printedDirName": "printed",
   "printerName": "",
   "debounceMs": 60000,

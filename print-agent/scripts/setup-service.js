@@ -25,14 +25,14 @@ const NODE_PATH = process.execPath;
 const configPath = path.join(AGENT_DIR, 'config.json');
 if (!fs.existsSync(configPath)) {
   console.error('エラー: config.json が見つかりません。');
-  console.error('config.example.json をコピーして config.json を作成し、watchDir を設定してください。');
+  console.error('config.example.json をコピーして config.json を作成し、watchDirs を設定してください。');
   console.error('');
   console.error('  cp config.example.json config.json');
-  console.error('  # config.json の watchDir を Google Drive 同期フォルダのパスに変更');
+  console.error('  # config.json の watchDirs を Google Drive 同期フォルダのパスに変更');
   process.exit(1);
 }
 
-// watchDir の確認
+// watchDirs の確認
 let config;
 try {
   config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -41,18 +41,28 @@ try {
   process.exit(1);
 }
 
-if (!config.watchDir || config.watchDir.includes('/path/to/')) {
-  console.error('エラー: config.json の watchDir が未設定です。');
+// watchDir (旧形式) と watchDirs (新形式) の両方をサポート
+const rawDirs = config.watchDirs || (config.watchDir ? [config.watchDir] : []);
+const watchDirs = (Array.isArray(rawDirs) ? rawDirs : [rawDirs]).filter(Boolean);
+
+if (watchDirs.length === 0 || watchDirs.some(d => d.includes('/path/to/'))) {
+  console.error('エラー: config.json の watchDirs が未設定です。');
   console.error('Google Drive for Desktop の同期フォルダのパスを設定してください。');
   console.error('');
-  console.error('例: /Users/username/Library/CloudStorage/GoogleDrive-xxx/マイドライブ/伝票PDF');
+  console.error('例:');
+  console.error('  "watchDirs": [');
+  console.error('    "/Users/username/Library/CloudStorage/GoogleDrive-xxx/マイドライブ/ヤマト伝票PDF",');
+  console.error('    "/Users/username/Library/CloudStorage/GoogleDrive-xxx/マイドライブ/佐川伝票PDF"');
+  console.error('  ]');
   process.exit(1);
 }
 
-if (!fs.existsSync(config.watchDir)) {
-  console.error(`エラー: watchDir が存在しません: ${config.watchDir}`);
-  console.error('Google Drive for Desktop が起動しているか確認してください。');
-  process.exit(1);
+for (const dir of watchDirs) {
+  if (!fs.existsSync(dir)) {
+    console.error(`エラー: watchDir が存在しません: ${dir}`);
+    console.error('Google Drive for Desktop が起動しているか確認してください。');
+    process.exit(1);
+  }
 }
 
 // ログディレクトリ作成
@@ -119,7 +129,9 @@ try {
 console.log('');
 console.log('=== セットアップ完了 ===');
 console.log(`print-agent: ${AGENT_DIR}`);
-console.log(`監視フォルダ: ${config.watchDir}`);
+for (const dir of watchDirs) {
+  console.log(`監視フォルダ: ${dir}`);
+}
 console.log(`プリンター:   ${config.printerName || '(デフォルト)'}`);
 console.log(`Node:         ${NODE_PATH}`);
 console.log(`ログ:         ${LOG_PATH}`);

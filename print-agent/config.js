@@ -3,12 +3,18 @@ const path = require('path');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DEFAULTS = {
-  watchDir: '',
+  watchDirs: [],
   printedDirName: 'printed',
   printerName: '',
   debounceMs: 60000,
   logDir: path.join(__dirname, 'logs'),
 };
+
+function normalizeWatchDirs(raw) {
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === 'string' && raw) return [raw];
+  return [];
+}
 
 function loadConfig() {
   let fromFile = {};
@@ -20,9 +26,15 @@ function loadConfig() {
       fromFile = {};
     }
   }
-  // env が設定されている場合のみ上書き（未設定時は config.json → DEFAULTS の優先順）
+  // watchDir (旧形式) と watchDirs (新形式) の両方をサポート
+  const fileWatchDirs = normalizeWatchDirs(fromFile.watchDirs || fromFile.watchDir);
+
   const fromEnv = {};
-  if (process.env.WATCH_DIR) fromEnv.watchDir = process.env.WATCH_DIR;
+  if (process.env.WATCH_DIRS) {
+    fromEnv.watchDirs = process.env.WATCH_DIRS.split(',').map(s => s.trim()).filter(Boolean);
+  } else if (process.env.WATCH_DIR) {
+    fromEnv.watchDirs = [process.env.WATCH_DIR];
+  }
   if (process.env.PRINTED_DIR_NAME) fromEnv.printedDirName = process.env.PRINTED_DIR_NAME;
   if (process.env.PRINTER_NAME) fromEnv.printerName = process.env.PRINTER_NAME;
   if (process.env.DEBOUNCE_MS) {
@@ -30,7 +42,11 @@ function loadConfig() {
     if (Number.isFinite(parsed) && parsed >= 0) fromEnv.debounceMs = parsed;
   }
   if (process.env.LOG_DIR) fromEnv.logDir = process.env.LOG_DIR;
-  return { ...DEFAULTS, ...fromFile, ...fromEnv };
+
+  const merged = { ...DEFAULTS, ...fromFile, ...fromEnv };
+  merged.watchDirs = fromEnv.watchDirs || (fileWatchDirs.length > 0 ? fileWatchDirs : DEFAULTS.watchDirs);
+  delete merged.watchDir;
+  return merged;
 }
 
 module.exports = { loadConfig };
