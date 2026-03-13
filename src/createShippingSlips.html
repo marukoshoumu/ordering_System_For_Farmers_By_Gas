@@ -79,7 +79,9 @@
         <div class="col-auto">
           <select class="form-select form-select-sm" id="logStatusFilter">
             <option value="">全ステータス</option>
+            <option value="queued">待機中</option>
             <option value="processing">処理中</option>
+            <option value="completed">完了</option>
             <option value="pdf_ready">PDF完了</option>
             <option value="printed">印刷済</option>
             <option value="error">エラー</option>
@@ -139,12 +141,13 @@
 
     function getStatusBadge(status) {
       var map = {
-        'processing': '<span class="badge bg-warning text-dark">処理中</span>',
-        'pdf_ready':  '<span class="badge bg-info text-dark">PDF完了</span>',
-        'printed':    '<span class="badge bg-success">印刷済</span>',
-        'completed':  '<span class="badge bg-success">完了</span>',
-        'error':      '<span class="badge bg-danger">エラー</span>',
-        'timeout':    '<span class="badge bg-secondary">タイムアウト</span>'
+        'queued':     '<span class="badge bg-secondary"><i class="bi bi-clock"></i> 待機中</span>',
+        'processing': '<span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat"></i> 処理中</span>',
+        'pdf_ready':  '<span class="badge bg-info text-dark"><i class="bi bi-file-earmark-check"></i> PDF完了</span>',
+        'printed':    '<span class="badge bg-success"><i class="bi bi-printer"></i> 印刷済</span>',
+        'completed':  '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 完了</span>',
+        'error':      '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> エラー</span>',
+        'timeout':    '<span class="badge bg-secondary"><i class="bi bi-hourglass-bottom"></i> タイムアウト</span>'
       };
       if (map[status]) return map[status];
       var safeLabel = escapeHtml(status || '-');
@@ -156,12 +159,25 @@
     }
 
     function formatTime(val) {
-      if (!val) return escapeHtml('-');
-      if (typeof val === 'string' && val.length > 10) {
-        var parts = val.split(' ');
+      if (!val) return '-';
+      var str = String(val);
+      // ISO 8601形式（2026-03-14T06:00:50.000Z）→ JST変換して HH:mm 表示
+      if (str.includes('T')) {
+        try {
+          var d = new Date(str);
+          if (!isNaN(d.getTime())) {
+            var hh = ('0' + d.getHours()).slice(-2);
+            var mi = ('0' + d.getMinutes()).slice(-2);
+            return escapeHtml(hh + ':' + mi);
+          }
+        } catch(e) {}
+      }
+      // "yyyy/MM/dd HH:mm:ss" 形式 → HH:mm 表示
+      if (str.length > 10) {
+        var parts = str.split(' ');
         if (parts.length >= 2) return escapeHtml(parts[1].substring(0, 5));
       }
-      return escapeHtml(String(val));
+      return escapeHtml(str);
     }
 
     function loadSlipLogs() {

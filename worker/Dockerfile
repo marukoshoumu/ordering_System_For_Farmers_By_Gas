@@ -1,5 +1,5 @@
 # Playwright公式 Ubuntu 22.04 ベースイメージ
-FROM mcr.microsoft.com/playwright:v1.49.0-jammy
+FROM mcr.microsoft.com/playwright:v1.58.2-jammy
 
 # 日本語フォント（B2クラウド・e飛伝IIIの文字化け防止）
 RUN apt-get update && apt-get install -y --no-install-recommends \

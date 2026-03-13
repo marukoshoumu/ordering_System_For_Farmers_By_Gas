@@ -205,41 +205,28 @@ function createShipAndPrint(datas) {
   const data = JSON.parse(datas);
   const shippingDate = data['shippingDate'];
 
-  // 2. ワーカーURL が設定されている場合のみ自動印刷を実行
-  const workerUrl = getWorkerUrl();
-  if (!workerUrl) {
-    Logger.log('WORKER_URL 未設定のため自動印刷をスキップ');
-    record['workerSkipped'] = true;
-    return JSON.stringify(record);
-  }
-
+  // 2. ワーカー用ジョブをキューに登録（ローカル Worker がポーリングで取得）
   const workerResults = {};
 
-  // 3. ヤマトCSVがある場合、ワーカーに送信（createShip で yamato なら yamatoCsv も必ずある）
+  // 3. ヤマトCSVがある場合、ジョブをキューに登録
   if (record['yamato']) {
     try {
-      const wResult = sendToWorker('yamato', record['yamatoCsv'], shippingDate);
+      const wResult = queueSlipJob('yamato', record['yamatoCsv'], shippingDate);
       workerResults['yamato'] = wResult;
-      if (wResult.jobId) {
-        writeSlipLog(shippingDate, 'ヤマト', wResult.jobId, 'processing');
-      }
     } catch (e) {
-      Logger.log('ヤマトワーカー送信エラー: ' + e.message);
+      Logger.log('ヤマトジョブ登録エラー: ' + e.message);
       workerResults['yamato'] = { success: false, message: e.message };
       writeSlipLog(shippingDate, 'ヤマト', '', 'error', e.message);
     }
   }
 
-  // 4. 佐川CSVがある場合、ワーカーに送信（createShip で sagawa なら sagawaCsv も必ずある）
+  // 4. 佐川CSVがある場合、ジョブをキューに登録
   if (record['sagawa']) {
     try {
-      const wResult = sendToWorker('sagawa', record['sagawaCsv'], shippingDate);
+      const wResult = queueSlipJob('sagawa', record['sagawaCsv'], shippingDate);
       workerResults['sagawa'] = wResult;
-      if (wResult.jobId) {
-        writeSlipLog(shippingDate, '佐川', wResult.jobId, 'processing');
-      }
     } catch (e) {
-      Logger.log('佐川ワーカー送信エラー: ' + e.message);
+      Logger.log('佐川ジョブ登録エラー: ' + e.message);
       workerResults['sagawa'] = { success: false, message: e.message };
       writeSlipLog(shippingDate, '佐川', '', 'error', e.message);
     }
@@ -281,55 +268,30 @@ function getCsvContent(sheetName, dateVal) {
   return csv.length > 0 ? csv : null;
 }
 
-function sendToWorker(carrier, csvContent, shippingDate) {
-  const workerUrl = getWorkerUrl();
-  const apiKey = getWorkerApiKey();
+/**
+ * 伝票処理ジョブをキューに登録（ローカル Worker がポーリングで取得）
+ *
+ * 伝票処理ログに "queued" ステータスで書き込み、
+ * CacheService に CSV 内容を保存する。
+ *
+ * @param {string} carrier - 'yamato' or 'sagawa'
+ * @param {string} csvContent - CSV テキスト
+ * @param {string} shippingDate - 発送日
+ * @returns {{ success: boolean, jobId: string }}
+ */
+function queueSlipJob(carrier, csvContent, shippingDate) {
+  var jobId = Utilities.getUuid();
+  var carrierLabel = carrier === 'yamato' ? 'ヤマト' : '佐川';
 
-  if (!workerUrl) {
-    throw new Error('WORKER_URL がスクリプトプロパティに設定されていません');
-  }
+  // CacheService に CSV 内容を保存（最大6時間）
+  var cache = CacheService.getScriptCache();
+  cache.put('slip_csv_' + jobId, csvContent, 21600);
 
-  const url = workerUrl.replace(/\/$/, '') + '/api/print-slip';
-  const payload = {
-    carrier: carrier,
-    csvContent: csvContent,
-    shippingDate: shippingDate,
-  };
+  // 伝票処理ログに queued で書き込み
+  writeSlipLog(shippingDate, carrierLabel, jobId, 'queued');
 
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true,
-    headers: apiKey ? { 'X-API-Key': apiKey } : {},
-  };
-
-  Logger.log('ワーカーへ送信: ' + carrier + ' (' + url + ')');
-
-  try {
-    const response = UrlFetchApp.fetch(url, options);
-    const statusCode = response.getResponseCode();
-    const body = response.getContentText();
-    Logger.log('ワーカーレスポンス: ' + statusCode + ' ' + body);
-
-    if (statusCode >= 200 && statusCode < 300) {
-      return JSON.parse(body);
-    } else {
-      var message = 'ワーカーエラー (HTTP ' + statusCode + ')';
-      try {
-        const errorBody = JSON.parse(body);
-        message = errorBody.message || message;
-      } catch (_) {
-        if (body && typeof body === 'string' && body.length > 0) {
-          message = String(body).substring(0, 200) + (body.length > 200 ? '...' : '');
-        }
-      }
-      return { success: false, message: message };
-    }
-  } catch (e) {
-    Logger.log('ワーカー通信エラー: ' + e.message);
-    return { success: false, message: 'ワーカー通信エラー: ' + e.message };
-  }
+  Logger.log('ジョブ登録完了: ' + carrier + ' jobId=' + jobId);
+  return { success: true, jobId: jobId };
 }
 
 /**

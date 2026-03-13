@@ -227,8 +227,16 @@ function resolveSessionFromPost(e) {
 function doPost(e) {
   Logger.log(e);
 
-  // Workerからのコールバック（JSON POST）
+  // Workerからの JSON POST（ポーリング or コールバック）
   if (e.postData && e.postData.type === 'application/json') {
+    try {
+      var jsonPayload = JSON.parse(e.postData.contents);
+      if (jsonPayload.action === 'poll') {
+        return handleWorkerPoll(e);
+      }
+    } catch (_) {
+      // パース失敗はコールバックとして処理
+    }
     return handleWorkerCallback(e);
   }
 

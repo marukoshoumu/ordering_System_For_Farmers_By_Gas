@@ -258,6 +258,76 @@ server = app.listen(PORT, () => {
   console.log(`配送伝票ワーカー起動: port=${PORT}, env=${process.env.NODE_ENV || 'development'}`);
   const driveStatus = validateDriveConfig();
   console.log(`Drive設定: ${driveStatus.configured ? '有効' : '無効'} (${driveStatus.message})`);
+
+  // GAS ポーリング開始
+  if (process.env.GAS_CALLBACK_URL) {
+    startPolling();
+  } else {
+    console.log('GAS_CALLBACK_URL 未設定のためポーリングを無効化');
+  }
 });
+
+// ========================================
+// GAS ポーリング（queued ジョブを取得して処理）
+// ========================================
+const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 30_000; // デフォルト30秒
+let isPolling = false;
+let pollIntervalId = null;
+
+function startPolling() {
+  console.log(`GASポーリング開始: 間隔=${POLL_INTERVAL_MS / 1000}秒`);
+  // 起動直後に1回実行
+  pollGas();
+  pollIntervalId = setInterval(pollGas, POLL_INTERVAL_MS);
+}
+
+async function pollGas() {
+  if (isPolling) return;
+  isPolling = true;
+
+  try {
+    const callbackUrl = process.env.GAS_CALLBACK_URL;
+    const apiKey = process.env.WORKER_API_KEY || '';
+
+    const res = await fetch(callbackUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'poll', apiKey }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!res.ok) {
+      console.warn('GASポーリング HTTP エラー', { status: res.status });
+      return;
+    }
+
+    // GAS の doPost は HTML(リダイレクト)を返す場合があるので Content-Type を確認
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      // JSON以外（HTML等）は無視
+      return;
+    }
+
+    const data = await res.json();
+    if (!data.success || !data.jobs || data.jobs.length === 0) {
+      return;
+    }
+
+    console.log(`GASポーリング: ${data.jobs.length}件のジョブ取得`);
+
+    // ジョブを順番に処理（同時実行は避ける）
+    for (const job of data.jobs) {
+      console.log(`ジョブ処理開始: ${job.carrier} jobId=${job.jobId}`);
+      await processSlipJob(job.jobId, job.carrier, job.csvContent, job.shippingDate);
+    }
+  } catch (err) {
+    // タイムアウトやネットワークエラーは静かにログ
+    if (err.name !== 'AbortError') {
+      console.warn('GASポーリングエラー', { error: err.message });
+    }
+  } finally {
+    isPolling = false;
+  }
+}
 
 module.exports = app;

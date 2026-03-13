@@ -8,17 +8,20 @@ const { MIN_PDF_SIZE } = require('../constants');
 const LOGIN_URL = process.env.SAGAWA_LOGIN_URL || 'https://www.e-service.sagawa-exp.co.jp/';
 const LOGIN_ID = process.env.SAGAWA_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.SAGAWA_PASSWORD;
-const HEADLESS = process.env.HEADLESS !== 'false';
 const TIMEOUT = 60_000;
 
 async function launchBrowser() {
+  // 佐川WAF(Akamai)は従来のheadlessを検知してブロックする。
+  // --headless=new（新headlessモード）は通常ブラウザと同等の挙動でWAFを回避でき、
+  // かつウィンドウも表示されない。
   const browser = await chromium.launch({
-    headless: HEADLESS,
+    headless: false,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-blink-features=AutomationControlled',
+      '--headless=new',
     ],
   });
   const context = await browser.newContext({

@@ -277,3 +277,95 @@ function updateSlipLog(jobId, newStatus, driveLink, errorDetail) {
     Logger.log('ログシート更新エラー: ' + e.message);
   }
 }
+
+/**
+ * ローカル Worker からのポーリング用 — キュー中のジョブを返す
+ *
+ * Worker が定期的に doPost 経由で呼び出す。
+ * "queued" ステータスのジョブを最大5件返し、ステータスを "processing" に更新する。
+ * CSV 内容は CacheService から取得して返す。
+ *
+ * @param {Object} e - doPost イベントオブジェクト（payload.action === 'poll'）
+ * @returns {TextOutput} JSON レスポンス { jobs: [{ jobId, carrier, shippingDate, csvContent }] }
+ */
+function handleWorkerPoll(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var apiKey = payload.apiKey || '';
+    var expectedKey = getWorkerApiKey();
+
+    if (expectedKey && !constantTimeCompare(apiKey, expectedKey)) {
+      return ContentService.createTextOutput(
+        JSON.stringify({ success: false, message: '認証エラー' })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('伝票処理ログ');
+    if (!sheet) {
+      return ContentService.createTextOutput(
+        JSON.stringify({ success: true, jobs: [] })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var cache = CacheService.getScriptCache();
+    var jobs = [];
+    var maxJobs = 5;
+
+    for (var i = 1; i < data.length && jobs.length < maxJobs; i++) {
+      if (data[i][3] !== 'queued') continue;
+
+      var jobId = data[i][2];
+      var carrierLabel = data[i][1];
+      var shippingDate = data[i][0];
+
+      // 発送日を文字列に変換
+      if (shippingDate instanceof Date) {
+        shippingDate = Utilities.formatDate(shippingDate, 'JST', 'yyyy-MM-dd');
+      }
+
+      // carrier ラベル → コード変換
+      var carrier = '';
+      if (typeof carrierLabel === 'string' && carrierLabel.indexOf('ヤマト') >= 0) {
+        carrier = 'yamato';
+      } else if (typeof carrierLabel === 'string' && carrierLabel.indexOf('佐川') >= 0) {
+        carrier = 'sagawa';
+      } else {
+        continue;
+      }
+
+      // CacheService から CSV 取得
+      var csvContent = cache.get('slip_csv_' + jobId);
+      if (!csvContent) {
+        // キャッシュ切れ → エラーに更新
+        sheet.getRange(i + 1, 4).setValue('error');
+        sheet.getRange(i + 1, 9).setValue('CSVキャッシュ切れ（6時間超過）');
+        continue;
+      }
+
+      // ステータスを processing に更新
+      sheet.getRange(i + 1, 4).setValue('processing');
+      var now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
+      if (!data[i][4]) {
+        sheet.getRange(i + 1, 5).setValue(now);
+      }
+
+      jobs.push({
+        jobId: jobId,
+        carrier: carrier,
+        shippingDate: String(shippingDate),
+        csvContent: csvContent
+      });
+    }
+
+    return ContentService.createTextOutput(
+      JSON.stringify({ success: true, jobs: jobs })
+    ).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('ポーリング処理エラー: ' + err.message);
+    return ContentService.createTextOutput(
+      JSON.stringify({ success: false, message: err.message })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+}
