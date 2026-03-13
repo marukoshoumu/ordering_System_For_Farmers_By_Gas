@@ -14,7 +14,7 @@ if (!home) {
   console.error('エラー: HOME ディレクトリを取得できません。');
   process.exit(1);
 }
-const LABEL = 'com.local.delivery-slip-worker';
+const LABEL = 'com.local.print-agent';
 const PLIST_PATH = path.join(home, 'Library', 'LaunchAgents', `${LABEL}.plist`);
 
 if (!fs.existsSync(PLIST_PATH)) {
@@ -37,4 +37,4 @@ try {
   }
 }
 console.log('');
-console.log('Worker の自動起動を解除しました。');
+console.log('print-agent の自動起動を解除しました。');

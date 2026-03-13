@@ -2,7 +2,7 @@
 /**
  * macOS launchd サービス登録スクリプト
  *
- * Worker を Mac 起動時に自動起動するよう launchd に登録する。
+ * print-agent を Mac 起動時に自動起動するよう launchd に登録する。
  * npm run setup-service で実行。
  */
 const fs = require('fs');
@@ -15,16 +15,43 @@ if (!home) {
   console.error('エラー: HOME ディレクトリを取得できません。');
   process.exit(1);
 }
-const LABEL = 'com.local.delivery-slip-worker';
+const LABEL = 'com.local.print-agent';
 const PLIST_PATH = path.join(home, 'Library', 'LaunchAgents', `${LABEL}.plist`);
-const WORKER_DIR = path.resolve(__dirname, '..');
-const LOG_PATH = path.join(WORKER_DIR, 'logs', 'worker.log');
+const AGENT_DIR = path.resolve(__dirname, '..');
+const LOG_PATH = path.join(AGENT_DIR, 'logs', 'print-agent.log');
 const NODE_PATH = process.execPath;
 
-// .env の存在確認
-const envPath = path.join(WORKER_DIR, '.env');
-if (!fs.existsSync(envPath)) {
-  console.error('エラー: .env ファイルが見つかりません。先に .env を作成してください。');
+// config.json の存在確認
+const configPath = path.join(AGENT_DIR, 'config.json');
+if (!fs.existsSync(configPath)) {
+  console.error('エラー: config.json が見つかりません。');
+  console.error('config.example.json をコピーして config.json を作成し、watchDir を設定してください。');
+  console.error('');
+  console.error('  cp config.example.json config.json');
+  console.error('  # config.json の watchDir を Google Drive 同期フォルダのパスに変更');
+  process.exit(1);
+}
+
+// watchDir の確認
+let config;
+try {
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (e) {
+  console.error('エラー: config.json の読み込みに失敗しました:', e.message);
+  process.exit(1);
+}
+
+if (!config.watchDir || config.watchDir.includes('/path/to/')) {
+  console.error('エラー: config.json の watchDir が未設定です。');
+  console.error('Google Drive for Desktop の同期フォルダのパスを設定してください。');
+  console.error('');
+  console.error('例: /Users/username/Library/CloudStorage/GoogleDrive-xxx/マイドライブ/伝票PDF');
+  process.exit(1);
+}
+
+if (!fs.existsSync(config.watchDir)) {
+  console.error(`エラー: watchDir が存在しません: ${config.watchDir}`);
+  console.error('Google Drive for Desktop が起動しているか確認してください。');
   process.exit(1);
 }
 
@@ -48,11 +75,11 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
   <key>Label</key>
   <string>${LABEL}</string>
   <key>WorkingDirectory</key>
-  <string>${WORKER_DIR}</string>
+  <string>${AGENT_DIR}</string>
   <key>ProgramArguments</key>
   <array>
     <string>${NODE_PATH}</string>
-    <string>src/server.js</string>
+    <string>index.js</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -91,10 +118,12 @@ try {
 
 console.log('');
 console.log('=== セットアップ完了 ===');
-console.log(`Worker: ${WORKER_DIR}`);
-console.log(`Node:   ${NODE_PATH}`);
-console.log(`ログ:   ${LOG_PATH}`);
+console.log(`print-agent: ${AGENT_DIR}`);
+console.log(`監視フォルダ: ${config.watchDir}`);
+console.log(`プリンター:   ${config.printerName || '(デフォルト)'}`);
+console.log(`Node:         ${NODE_PATH}`);
+console.log(`ログ:         ${LOG_PATH}`);
 console.log('');
-console.log('Mac を再起動しても Worker は自動で起動します。');
+console.log('Mac を再起動しても print-agent は自動で起動します。');
 console.log('解除するには: npm run uninstall-service');
 console.log('ログ確認:     npm run logs');

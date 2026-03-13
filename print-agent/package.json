@@ -4,7 +4,10 @@
   "description": "Watch folder for PDFs, print to default printer, move to printed/",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "setup-service": "node scripts/setup-service.js",
+    "uninstall-service": "node scripts/uninstall-service.js",
+    "logs": "tail -f logs/print-agent.log"
   },
   "dependencies": {
     "chokidar": "^4.0.0"
