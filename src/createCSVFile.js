@@ -283,9 +283,16 @@ function queueSlipJob(carrier, csvContent, shippingDate) {
   var jobId = Utilities.getUuid();
   var carrierLabel = carrier === 'yamato' ? 'ヤマト' : '佐川';
 
-  // CacheService に CSV 内容を保存（最大6時間）
+  // CacheService に CSV 内容を保存（最大6時間、1キー100KB制限）
   var cache = CacheService.getScriptCache();
-  cache.put('slip_csv_' + jobId, csvContent, 21600);
+  var cacheKey = 'slip_csv_' + jobId;
+  cache.put(cacheKey, csvContent, 21600);
+
+  // 保存を検証（100KB超過等で静かに失敗する場合がある）
+  var verify = cache.get(cacheKey);
+  if (!verify) {
+    throw new Error('CSVキャッシュ保存に失敗しました（サイズ超過の可能性: ' + csvContent.length + '文字）');
+  }
 
   // 伝票処理ログに queued で書き込み
   writeSlipLog(shippingDate, carrierLabel, jobId, 'queued');
