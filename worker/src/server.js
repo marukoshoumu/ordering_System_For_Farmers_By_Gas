@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const crypto = require('crypto');
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const { processYamato } = require('./carriers/yamato');
 const { processSagawa } = require('./carriers/sagawa');
@@ -117,7 +116,7 @@ app.post('/api/print-slip', authenticate, (req, res) => {
     });
   }
 
-  const jobId = uuidv4();
+  const jobId = crypto.randomUUID();
   const now = Date.now();
   jobStore.set(jobId, {
     job: { status: 'processing', carrier, shippingDate, createdAt: new Date().toISOString() },

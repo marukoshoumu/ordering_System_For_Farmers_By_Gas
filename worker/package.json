@@ -12,8 +12,7 @@
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "googleapis": "^144.0.0",
-        "playwright": "^1.49.1",
-        "uuid": "^13.0.0"
+        "playwright": "^1.49.1"
     },
     "devDependencies": {
         "@playwright/cli": "^0.1.1",
