@@ -6,7 +6,10 @@
     "scripts": {
         "start": "node src/server.js",
         "dev": "node --watch src/server.js",
-        "test": "jest --passWithNoTests"
+        "test": "jest --passWithNoTests",
+        "setup-service": "node scripts/setup-service.js",
+        "uninstall-service": "node scripts/uninstall-service.js",
+        "logs": "tail -f logs/worker.log"
     },
     "dependencies": {
         "dotenv": "^16.4.7",
