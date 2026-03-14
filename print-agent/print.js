@@ -1,4 +1,5 @@
 const { spawnSync } = require('child_process');
+const path = require('path');
 const os = require('os');
 
 const IS_WIN = os.platform() === 'win32';
@@ -20,19 +21,20 @@ function printWithLp(filePath, printerName) {
  */
 function printWithWindows(filePath, printerName) {
   // SumatraPDF を試行
-  const sumatraArgs = ['-print-to', printerName || 'default', '-silent', filePath];
+  const sumatraArgs = printerName
+    ? ['-print-to', printerName, '-silent', filePath]
+    : ['-print-to-default', '-silent', filePath];
   const sumatraResult = spawnSync('SumatraPDF', sumatraArgs, {
     encoding: 'utf8',
     windowsHide: true,
   });
   if (!sumatraResult.error) return sumatraResult;
 
-  // フォールバック: PowerShell
+  // フォールバック: PowerShell（引数を分離して渡しインジェクションを防止）
+  const scriptPath = path.join(__dirname, 'scripts', 'print.ps1');
   const psArgs = printerName
-    ? ['-NoProfile', '-Command',
-      `Start-Process -FilePath '${filePath.replace(/'/g, "''")}' -Verb PrintTo -ArgumentList '${printerName.replace(/'/g, "''")}' -WindowStyle Hidden -Wait`]
-    : ['-NoProfile', '-Command',
-      `Start-Process -FilePath '${filePath.replace(/'/g, "''")}' -Verb Print -WindowStyle Hidden -Wait`];
+    ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, filePath, printerName]
+    : ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, filePath];
   return spawnSync('powershell', psArgs, { encoding: 'utf8', windowsHide: true });
 }
 

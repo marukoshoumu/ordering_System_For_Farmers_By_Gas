@@ -49,17 +49,27 @@ function uninstallMacOS() {
   console.log('Worker の自動起動を解除しました。');
 }
 
+function taskExists(taskName) {
+  try {
+    execFileSync('schtasks', ['/Query', '/TN', taskName], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function uninstallWindows() {
   const TASK_NAME = 'DeliverySlipWorker';
+
+  if (!taskExists(TASK_NAME)) {
+    console.log('サービスは登録されていません。');
+    process.exit(0);
+  }
 
   try {
     execFileSync('schtasks', ['/Delete', '/TN', TASK_NAME, '/F']);
     console.log('タスクスケジューラから削除完了');
   } catch (e) {
-    if (e.message && e.message.includes('not exist')) {
-      console.log('サービスは登録されていません。');
-      process.exit(0);
-    }
     console.error('タスク削除失敗:', e.message);
     process.exit(1);
   }
