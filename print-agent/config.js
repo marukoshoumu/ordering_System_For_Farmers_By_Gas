@@ -10,10 +10,27 @@ const DEFAULTS = {
   logDir: path.join(__dirname, 'logs'),
 };
 
-function normalizeWatchDirs(raw) {
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  if (typeof raw === 'string' && raw) return [raw];
-  return [];
+/**
+ * watchDirs を { path, printerName } の配列に正規化する。
+ * 以下の形式をすべてサポート:
+ *   - 文字列配列: ["dir1", "dir2"]
+ *   - オブジェクト配列: [{ path: "dir1", printerName: "P1" }]
+ *   - 混在: ["dir1", { path: "dir2", printerName: "P2" }]
+ *   - 旧形式の単一文字列: "dir1"
+ */
+function normalizeWatchDirs(raw, defaultPrinter) {
+  const arr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  return arr
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item ? { path: item, printerName: defaultPrinter || '' } : null;
+      }
+      if (item && typeof item === 'object' && item.path) {
+        return { path: item.path, printerName: item.printerName || defaultPrinter || '' };
+      }
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function loadConfig() {
@@ -26,14 +43,12 @@ function loadConfig() {
       fromFile = {};
     }
   }
-  // watchDir (旧形式) と watchDirs (新形式) の両方をサポート
-  const fileWatchDirs = normalizeWatchDirs(fromFile.watchDirs || fromFile.watchDir);
 
   const fromEnv = {};
   if (process.env.WATCH_DIRS) {
-    fromEnv.watchDirs = process.env.WATCH_DIRS.split(',').map(s => s.trim()).filter(Boolean);
+    fromEnv._rawWatchDirs = process.env.WATCH_DIRS.split(',').map(s => s.trim()).filter(Boolean);
   } else if (process.env.WATCH_DIR) {
-    fromEnv.watchDirs = [process.env.WATCH_DIR];
+    fromEnv._rawWatchDirs = [process.env.WATCH_DIR];
   }
   if (process.env.PRINTED_DIR_NAME) fromEnv.printedDirName = process.env.PRINTED_DIR_NAME;
   if (process.env.PRINTER_NAME) fromEnv.printerName = process.env.PRINTER_NAME;
@@ -44,7 +59,18 @@ function loadConfig() {
   if (process.env.LOG_DIR) fromEnv.logDir = process.env.LOG_DIR;
 
   const merged = { ...DEFAULTS, ...fromFile, ...fromEnv };
-  merged.watchDirs = fromEnv.watchDirs || (fileWatchDirs.length > 0 ? fileWatchDirs : DEFAULTS.watchDirs);
+  const defaultPrinter = merged.printerName || '';
+
+  // watchDirs の解決: env > file > default
+  if (fromEnv._rawWatchDirs) {
+    merged.watchDirs = normalizeWatchDirs(fromEnv._rawWatchDirs, defaultPrinter);
+  } else {
+    const fileRaw = fromFile.watchDirs || fromFile.watchDir;
+    merged.watchDirs = fileRaw
+      ? normalizeWatchDirs(fileRaw, defaultPrinter)
+      : DEFAULTS.watchDirs;
+  }
+  delete merged._rawWatchDirs;
   delete merged.watchDir;
   return merged;
 }

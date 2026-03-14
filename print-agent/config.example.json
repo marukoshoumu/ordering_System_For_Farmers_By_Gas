@@ -1,7 +1,7 @@
 {
   "watchDirs": [
-    "/path/to/Google Drive/ヤマト伝票PDF",
-    "/path/to/Google Drive/佐川伝票PDF"
+    { "path": "/path/to/Google Drive/ヤマト伝票PDF", "printerName": "" },
+    { "path": "/path/to/Google Drive/佐川伝票PDF", "printerName": "" }
   ],
   "printedDirName": "printed",
   "printerName": "",

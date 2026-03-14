@@ -14,10 +14,10 @@ if (config.watchDirs.length === 0) {
   process.exit(1);
 }
 
-for (const dir of config.watchDirs) {
+for (const entry of config.watchDirs) {
   try {
-    ensureWatchDir(dir);
-    ensurePrintedDir(dir, config.printedDirName);
+    ensureWatchDir(entry.path);
+    ensurePrintedDir(entry.path, config.printedDirName);
   } catch (err) {
     logger.error(err.message);
     process.exit(1);
@@ -52,10 +52,10 @@ function shutdown() {
 process.on('SIGINT', () => shutdown());
 process.on('SIGTERM', () => shutdown());
 
-function findWatchDir(filePath) {
-  for (const dir of config.watchDirs) {
-    if (filePath.startsWith(dir + path.sep) || filePath.startsWith(dir + '/')) {
-      return dir;
+function findWatchEntry(filePath) {
+  for (const entry of config.watchDirs) {
+    if (filePath.startsWith(entry.path + path.sep) || filePath.startsWith(entry.path + '/')) {
+      return entry;
     }
   }
   return null;
@@ -69,30 +69,34 @@ function handlePdf(filePath) {
   }
   processed.set(filePath, now);
 
+  const entry = findWatchEntry(filePath);
+  if (!entry) {
+    logger.warn(`Cannot determine watchDir for: ${filePath}`);
+    return;
+  }
+
   const basename = path.basename(filePath);
-  logger.info(`Found ${basename}, printing...`);
-  const result = printPdf(filePath, config.printerName || undefined);
+  const printer = entry.printerName || undefined;
+  logger.info(`Found ${basename}, printing...` + (printer ? ` (printer: ${printer})` : ''));
+  const result = printPdf(filePath, printer);
   if (!result.success) {
     logger.error('Print failed: ' + basename + (result.stderr ? ' stderr: ' + result.stderr : ''));
     return;
   }
   if (result.stderr) logger.warn(`lp stderr: ${result.stderr}`);
 
-  const watchDir = findWatchDir(filePath);
-  if (!watchDir) {
-    logger.warn(`Cannot determine watchDir for: ${filePath}`);
-    return;
-  }
   logger.info(`Printed ${basename}, moving to ${config.printedDirName}/`);
-  const moved = moveToPrinted(filePath, watchDir, config.printedDirName);
+  const moved = moveToPrinted(filePath, entry.path, config.printedDirName);
   if (!moved) {
     logger.warn(`Move failed: ${basename}`);
   }
 }
 
+const watchPaths = config.watchDirs.map(e => e.path);
+
 const ignored = (p) => {
-  for (const dir of config.watchDirs) {
-    const rel = path.relative(dir, p);
+  for (const entry of config.watchDirs) {
+    const rel = path.relative(entry.path, p);
     if (!rel.startsWith('..')) {
       const first = rel.split(path.sep)[0];
       if (first === config.printedDirName) return true;
@@ -101,7 +105,7 @@ const ignored = (p) => {
   return false;
 };
 
-watcher = chokidar.watch(config.watchDirs, {
+watcher = chokidar.watch(watchPaths, {
   ignored,
   persistent: true,
   ignoreInitial: true,
@@ -114,6 +118,6 @@ watcher.on('add', (filePath) => {
 
 watcher.on('error', (err) => logger.error(String(err)));
 logger.info(`Watching ${config.watchDirs.length} directories:`);
-for (const dir of config.watchDirs) {
-  logger.info(`  - ${dir}`);
+for (const entry of config.watchDirs) {
+  logger.info(`  - ${entry.path}` + (entry.printerName ? ` → printer: ${entry.printerName}` : ''));
 }
