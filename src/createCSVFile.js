@@ -186,6 +186,9 @@ function validateShippingDate(shippingDate) {
   var today = new Date();
   today.setHours(0, 0, 0, 0);
   var shipDate = new Date(shippingDate);
+  if (isNaN(shipDate.getTime())) {
+    return '発送日が無効です。正しい日付を指定してください。';
+  }
   shipDate.setHours(0, 0, 0, 0);
   if (shipDate < today) {
     var formatted = Utilities.formatDate(shipDate, 'JST', 'yyyy/MM/dd');
