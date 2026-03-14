@@ -223,8 +223,65 @@ function validateDriveConfig() {
     return { configured: true, message: `OK (${authMethod})` };
 }
 
+/**
+ * エラースクリーンショットをGoogle Driveにアップロード
+ *
+ * @param {string} screenshotPath - PNGファイルのローカルパス
+ * @param {string} carrier - 配送業者 ('yamato' | 'sagawa')
+ * @param {string} jobId - ジョブ識別子
+ * @returns {Promise<{ fileId: string, webViewLink: string }>}
+ */
+async function uploadScreenshotToDrive(screenshotPath, carrier, jobId) {
+    if (!screenshotPath || !fs.existsSync(screenshotPath)) {
+        return null;
+    }
+
+    const drive = getDriveClient();
+    const folderId = getFolderIdForCarrier(carrier);
+    const fileName = path.basename(screenshotPath);
+
+    console.log('エラースクリーンショット Drive アップロード開始', { fileName, carrier });
+
+    const stream = fs.createReadStream(screenshotPath);
+    try {
+        const response = await drive.files.create({
+            resource: {
+                name: fileName,
+                parents: [folderId],
+                description: JSON.stringify({
+                    type: 'error_screenshot',
+                    jobId: jobId || 'unknown',
+                    carrier,
+                    createdAt: new Date().toISOString(),
+                }),
+            },
+            media: {
+                mimeType: 'image/png',
+                body: stream,
+            },
+            fields: 'id, webViewLink',
+            supportsAllDrives: true,
+        });
+
+        const result = {
+            fileId: response.data.id,
+            webViewLink: response.data.webViewLink || '',
+        };
+        console.log('エラースクリーンショット Drive アップロード完了', result);
+        return result;
+    } catch (err) {
+        console.warn('エラースクリーンショット Drive アップロード失敗', { error: err.message });
+        return null;
+    } finally {
+        if (stream && typeof stream.destroy === 'function') {
+            stream.destroy();
+        }
+    }
+}
+
 module.exports = {
     uploadToDrive,
+    uploadScreenshotToDrive,
     validateDriveConfig,
     getDriveClient,
     resetDriveClient,

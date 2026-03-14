@@ -5,7 +5,7 @@ const express = require('express');
 const fs = require('fs');
 const { processYamato } = require('./carriers/yamato');
 const { processSagawa } = require('./carriers/sagawa');
-const { uploadToDrive, validateDriveConfig } = require('./drive-service');
+const { uploadToDrive, uploadScreenshotToDrive, validateDriveConfig } = require('./drive-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -195,6 +195,21 @@ async function processSlipJob(jobId, carrier, csvContent, shippingDate) {
     await notifyGas(jobId, 'completed', { driveFileId: driveResult.fileId, driveWebViewLink: driveResult.webViewLink });
   } catch (error) {
     console.error('バックグラウンド処理エラー', { jobId, error: error.message, stack: error.stack });
+
+    // エラースクリーンショットをDriveにアップロード（tmpDir削除前に実行）
+    let screenshotLink = '';
+    if (error.screenshotPath) {
+      try {
+        const ssResult = await uploadScreenshotToDrive(error.screenshotPath, carrier, jobId);
+        if (ssResult) {
+          screenshotLink = ssResult.webViewLink || 'https://drive.google.com/file/d/' + ssResult.fileId + '/view';
+          console.log('エラースクリーンショット Drive保存完了', { jobId, screenshotLink });
+        }
+      } catch (ssErr) {
+        console.warn('エラースクリーンショット アップロード失敗', { jobId, error: ssErr.message });
+      }
+    }
+
     if (tmpDir) {
       try {
         fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
@@ -207,13 +222,14 @@ async function processSlipJob(jobId, carrier, csvContent, shippingDate) {
         ...entry?.job,
         status: 'error',
         error: error.message,
+        screenshotLink,
         completedAt: new Date().toISOString(),
       },
       createdAt: entry?.createdAt ?? Date.now(),
     });
 
-    // GASへエラーコールバック
-    await notifyGas(jobId, 'error', { error: error.message });
+    // GASへエラーコールバック（スクショリンクをdriveWebViewLinkとして送信）
+    await notifyGas(jobId, 'error', { error: error.message, driveWebViewLink: screenshotLink });
   }
 }
 

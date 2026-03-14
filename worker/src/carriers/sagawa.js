@@ -47,6 +47,26 @@ async function removeWalkMe(page) {
   }).catch(() => {});
 }
 
+/**
+ * Element UIのメッセージボックス（荷物受渡書印刷案内等）を閉じる。
+ * 未印刷の荷物受渡書がある場合、ログイン後にダイアログが表示され操作をブロックする。
+ */
+/**
+ * @returns {boolean} ダイアログを閉じたかどうか
+ */
+async function dismissMessageBox(page) {
+  try {
+    const msgBox = page.locator('.el-message-box__wrapper:visible .el-message-box__btns button').first();
+    if (await msgBox.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await msgBox.click();
+      console.log('e飛伝III: メッセージボックスを閉じました');
+      await page.waitForTimeout(1000);
+      return true;
+    }
+  } catch { /* ダイアログが無ければ何もしない */ }
+  return false;
+}
+
 async function processSagawa(csvContent, shippingDate) {
   const sel = getSelectors('sagawa');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sagawa-'));
@@ -127,6 +147,16 @@ async function processSagawa(csvContent, shippingDate) {
 
     // WalkMeオーバーレイ除去
     await removeWalkMe(workPage);
+
+    // 荷物受渡書印刷ダイアログ等のElement UIメッセージボックスを閉じる
+    // （未印刷の荷物受渡書がある場合にリダイレクトされるダイアログ）
+    const dismissed = await dismissMessageBox(workPage);
+    if (dismissed) {
+      // ダイアログOKで荷物受渡書印刷画面にリダイレクトされる場合がある
+      // 送り状データ取込ボタンが見えるまで待ち、見えなければ画面遷移済み
+      await workPage.waitForTimeout(2000);
+      await removeWalkMe(workPage);
+    }
 
     // Step 3: テンプレート選択（Element UIカスタムドロップダウン）
     // e飛伝IIIではネイティブ<select>ではなくElement UIのカスタムドロップダウンを使用。
@@ -259,6 +289,7 @@ async function processSagawa(csvContent, shippingDate) {
       console.error('e飛伝III: エラースクリーンショット保存に失敗', { error: screenErr?.message || screenErr, screenshotPath });
     }
     console.error('e飛伝III: 処理エラー', { error: error.message });
+    error.screenshotPath = screenshotPath;
     throw error;
   } finally {
     if (context) await context.close().catch(() => {});

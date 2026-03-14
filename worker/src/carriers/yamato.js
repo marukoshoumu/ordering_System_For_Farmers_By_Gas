@@ -249,6 +249,7 @@ async function processYamato(csvContent, shippingDate) {
       console.error('B2クラウド: スクリーンショット保存失敗', { error: screenErr?.message });
     }
     console.error('B2クラウド: 処理エラー', { error: error.message });
+    error.screenshotPath = screenshotPath;
     throw error;
   } finally {
     if (context) await context.close().catch(() => {});

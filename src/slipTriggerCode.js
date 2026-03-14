@@ -215,9 +215,9 @@ function getSlipLogs(fromDate, toDate) {
         carrier: row[1] || '',
         jobId: row[2] || '',
         status: row[3] || '',
-        csvTime: row[4] || '',
-        pdfTime: row[5] || '',
-        printTime: row[6] || '',
+        csvTime: row[4] instanceof Date ? Utilities.formatDate(row[4], 'JST', 'HH:mm') : (row[4] || ''),
+        pdfTime: row[5] instanceof Date ? Utilities.formatDate(row[5], 'JST', 'HH:mm') : (row[5] || ''),
+        printTime: row[6] instanceof Date ? Utilities.formatDate(row[6], 'JST', 'HH:mm') : (row[6] || ''),
         driveLink: row[7] || '',
         error: row[8] || ''
       });

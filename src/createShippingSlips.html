@@ -56,39 +56,41 @@
           <i class="bi bi-arrow-clockwise"></i> 更新
         </button>
       </div>
-      <div class="row mb-3 align-items-center">
+      <div class="row mb-2 align-items-center g-2">
         <div class="col-auto">
-          <label for="logFromDate" class="form-label mb-0">期間</label>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-primary active" onclick="setLogPreset('today', this)">今日</button>
+            <button type="button" class="btn btn-outline-primary" onclick="setLogPreset('tomorrow', this)">明日</button>
+            <button type="button" class="btn btn-outline-primary" onclick="setLogPreset('yesterday', this)">昨日</button>
+            <button type="button" class="btn btn-outline-primary" onclick="setLogPreset('custom', this)">期間指定</button>
+          </div>
+        </div>
+        <div class="col-auto d-none" id="customDateRange">
+          <input type="date" class="form-control form-control-sm d-inline-block" style="width:auto" id="logFromDate">
+          <span class="mx-1">〜</span>
+          <input type="date" class="form-control form-control-sm d-inline-block" style="width:auto" id="logToDate">
         </div>
         <div class="col-auto">
-          <input type="date" class="form-control form-control-sm" id="logFromDate">
-        </div>
-        <div class="col-auto">
-          <span>〜</span>
-        </div>
-        <div class="col-auto">
-          <input type="date" class="form-control form-control-sm" id="logToDate">
-        </div>
-        <div class="col-auto">
-          <select class="form-select form-select-sm" id="logCarrierFilter">
+          <select class="form-select form-select-sm" id="logCarrierFilter" onchange="loadSlipLogs()">
             <option value="">全業者</option>
             <option value="ヤマト">ヤマト</option>
             <option value="佐川">佐川</option>
           </select>
         </div>
         <div class="col-auto">
-          <select class="form-select form-select-sm" id="logStatusFilter">
+          <select class="form-select form-select-sm" id="logStatusFilter" onchange="loadSlipLogs()">
             <option value="">全ステータス</option>
             <option value="queued">待機中</option>
             <option value="processing">処理中</option>
             <option value="completed">完了</option>
             <option value="pdf_ready">PDF完了</option>
             <option value="printed">印刷済</option>
+            <option value="validation_error">データ不備</option>
             <option value="error">エラー</option>
             <option value="timeout">タイムアウト</option>
           </select>
         </div>
-        <div class="col-auto">
+        <div class="col-auto d-none" id="customSearchBtn">
           <button type="button" class="btn btn-primary btn-sm" onclick="loadSlipLogs()">検索</button>
         </div>
       </div>
@@ -122,14 +124,6 @@
     }
     setToday();
 
-    function setDefaultLogDates() {
-      var today = new Date();
-      var weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      document.getElementById("logToDate").value = formatDateInput(today);
-      document.getElementById("logFromDate").value = formatDateInput(weekAgo);
-    }
-
     function formatDateInput(d) {
       var yyyy = d.getFullYear();
       var mm = ("0"+(d.getMonth()+1)).slice(-2);
@@ -137,7 +131,47 @@
       return yyyy+'-'+mm+'-'+dd;
     }
 
-    setDefaultLogDates();
+    function setLogPreset(preset, btn) {
+      // ボタンのアクティブ状態を切り替え
+      if (btn) {
+        $(btn).closest('.btn-group').find('.btn').removeClass('active');
+        $(btn).addClass('active');
+      }
+      var today = new Date();
+      var from, to;
+      var isCustom = (preset === 'custom');
+      $('#customDateRange').toggleClass('d-none', !isCustom);
+      $('#customSearchBtn').toggleClass('d-none', !isCustom);
+
+      if (isCustom) {
+        // 期間指定: 既存の値を維持、未設定なら1週間
+        if (!document.getElementById("logFromDate").value) {
+          var weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          document.getElementById("logFromDate").value = formatDateInput(weekAgo);
+          document.getElementById("logToDate").value = formatDateInput(today);
+        }
+        return; // 検索ボタン押下で実行
+      }
+
+      if (preset === 'today') {
+        from = to = formatDateInput(today);
+      } else if (preset === 'tomorrow') {
+        var tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        from = to = formatDateInput(tomorrow);
+      } else if (preset === 'yesterday') {
+        var yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        from = to = formatDateInput(yesterday);
+      }
+      document.getElementById("logFromDate").value = from;
+      document.getElementById("logToDate").value = to;
+      loadSlipLogs();
+    }
+
+    // デフォルト: 今日
+    setLogPreset('today', document.querySelector('.btn-group .btn'));
 
     function getStatusBadge(status) {
       var map = {
@@ -146,6 +180,7 @@
         'pdf_ready':  '<span class="badge bg-info text-dark"><i class="bi bi-file-earmark-check"></i> PDF完了</span>',
         'printed':    '<span class="badge bg-success"><i class="bi bi-printer"></i> 印刷済</span>',
         'completed':  '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 完了</span>',
+        'validation_error': '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> データ不備</span>',
         'error':      '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> エラー</span>',
         'timeout':    '<span class="badge bg-secondary"><i class="bi bi-hourglass-bottom"></i> タイムアウト</span>'
       };
@@ -227,7 +262,10 @@
 
         var driveCol = '-';
         if (log.driveLink && String(log.driveLink).trim().toLowerCase().indexOf('https://') === 0) {
-          driveCol = '<a href="' + escapeHtml(log.driveLink) + '" target="_blank" class="btn btn-outline-primary btn-sm py-0 px-1"><i class="bi bi-file-earmark-pdf"></i></a>';
+          var isError = (log.status === 'error' || log.status === 'timeout');
+          var iconClass = isError ? 'bi-image' : 'bi-file-earmark-pdf';
+          var btnClass = isError ? 'btn-outline-danger' : 'btn-outline-primary';
+          driveCol = '<a href="' + escapeHtml(log.driveLink) + '" target="_blank" class="btn ' + btnClass + ' btn-sm py-0 px-1"><i class="bi ' + iconClass + '"></i></a>';
         }
 
         var detailCol = '-';
@@ -314,6 +352,20 @@
       $("button[id='createAndPrint']").text('作成＋自動印刷').prop('disabled', false);
       if (data) {
         var res = JSON.parse(data);
+
+        // バリデーションエラーがある場合は表示して停止
+        if (res['validationErrors'] && res['validationErrors'].length > 0) {
+          var errHtml = '<div class="alert alert-danger text-start" role="alert">';
+          errHtml += '<strong>データに問題があります。受注データを修正してください。</strong><ul class="mb-0 mt-1">';
+          res['validationErrors'].forEach(function(err) {
+            errHtml += '<li>' + escapeHtml(err) + '</li>';
+          });
+          errHtml += '</ul></div>';
+          $("p[id='res']").html(errHtml);
+          showWarningToast("CSVデータにエラーがあります。自動印刷は実行されません。");
+          return;
+        }
+
         var html = "";
         if (res['yamato']) html += res['yamato'] + "<br>";
         if (res['sagawa']) html += res['sagawa'] + "<br>";
