@@ -101,14 +101,15 @@
               <th>発送日</th>
               <th>業者</th>
               <th>ステータス</th>
+              <th>件数</th>
               <th>CSV作成</th>
-              <th>PDF完了</th>
-              <th>PDF</th>
+              <th>完了時刻</th>
+              <th>ファイル</th>
               <th>詳細</th>
             </tr>
           </thead>
           <tbody id="slipLogBody">
-            <tr><td colspan="7" class="text-center text-muted">読み込み中...</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">読み込み中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -221,7 +222,7 @@
       var carrierFilter = document.getElementById("logCarrierFilter").value;
       var statusFilter = document.getElementById("logStatusFilter").value;
 
-      $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-muted">読み込み中...</td></tr>');
+      $("#slipLogBody").html('<tr><td colspan="8" class="text-center text-muted">読み込み中...</td></tr>');
       $("#refreshLogs").prop('disabled', true);
 
       google.script.run
@@ -230,7 +231,7 @@
           $("#refreshLogs").prop('disabled', false);
         })
         .withFailureHandler(function() {
-          $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-danger">取得に失敗しました</td></tr>');
+          $("#slipLogBody").html('<tr><td colspan="8" class="text-center text-danger">取得に失敗しました</td></tr>');
           $("#refreshLogs").prop('disabled', false);
         })
         .getSlipLogs(fromDate, toDate);
@@ -249,7 +250,7 @@
       }
 
       if (logs.length === 0) {
-        $("#slipLogBody").html('<tr><td colspan="7" class="text-center text-muted">該当データなし</td></tr>');
+        $("#slipLogBody").html('<tr><td colspan="8" class="text-center text-muted">該当データなし</td></tr>');
         return;
       }
 
@@ -277,10 +278,13 @@
           detailCol = '<small class="text-muted">' + safeId + '</small>';
         }
 
+        var countCol = log.recordCount ? escapeHtml(String(log.recordCount)) + '件' : '-';
+
         html += '<tr' + rowClass + '>';
         html += '<td>' + escapeHtml(log.shippingDate || '-') + '</td>';
         html += '<td>' + escapeHtml(log.carrier || '-') + '</td>';
         html += '<td>' + getStatusBadge(log.status) + '</td>';
+        html += '<td>' + countCol + '</td>';
         html += '<td>' + formatTime(log.csvTime) + '</td>';
         html += '<td>' + formatTime(log.pdfTime) + '</td>';
         html += '<td>' + driveCol + '</td>';

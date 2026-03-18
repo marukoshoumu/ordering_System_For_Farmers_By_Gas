@@ -122,7 +122,7 @@ function checkSlipStatus() {
         // ステータスを "pdf_ready" に更新
         // print-agent が Google Drive for Desktop 同期で自動印刷する
         meta.status = 'pdf_ready';
-        meta.detectedAt = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
+        meta.detectedAt = new Date().toISOString();
         file.setDescription(JSON.stringify(meta));
 
         // ログシート更新
@@ -219,7 +219,8 @@ function getSlipLogs(fromDate, toDate) {
         pdfTime: row[5] instanceof Date ? Utilities.formatDate(row[5], 'JST', 'HH:mm') : (row[5] || ''),
         printTime: row[6] instanceof Date ? Utilities.formatDate(row[6], 'JST', 'HH:mm') : (row[6] || ''),
         driveLink: row[7] || '',
-        error: row[8] || ''
+        error: row[8] || '',
+        recordCount: row[9] || ''
       });
     }
 
@@ -249,7 +250,7 @@ function updateSlipLog(jobId, newStatus, driveLink, errorDetail) {
     if (!sheet) return;
 
     const data = sheet.getDataRange().getValues();
-    const now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
+    const now = new Date();
 
     for (var i = 1; i < data.length; i++) {
       if (data[i][2] === jobId) {
@@ -346,9 +347,8 @@ function handleWorkerPoll(e) {
 
       // ステータスを processing に更新
       sheet.getRange(i + 1, 4).setValue('processing');
-      var now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
       if (!data[i][4]) {
-        sheet.getRange(i + 1, 5).setValue(now);
+        sheet.getRange(i + 1, 5).setValue(new Date());
       }
 
       jobs.push({

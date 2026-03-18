@@ -574,8 +574,11 @@ function queueSlipJob(carrier, csvContent, shippingDate) {
     throw new Error('CSVキャッシュ保存に失敗しました（サイズ超過の可能性: ' + csvContent.length + '文字）');
   }
 
+  // CSVの件数をカウント（空行を除く）
+  var recordCount = csvContent.split('\r\n').filter(function(l) { return l.trim().length > 0; }).length;
+
   // 伝票処理ログに queued で書き込み
-  writeSlipLog(shippingDate, carrierLabel, jobId, 'queued');
+  writeSlipLog(shippingDate, carrierLabel, jobId, 'queued', '', recordCount);
 
   Logger.log('ジョブ登録完了: ' + carrier + ' jobId=' + jobId);
   return { success: true, jobId: jobId };
@@ -590,16 +593,16 @@ function queueSlipJob(carrier, csvContent, shippingDate) {
  * @param {string} status - ステータス ('processing', 'pdf_ready', 'printed', 'error')
  * @param {string} [errorDetail] - エラー詳細（任意）
  */
-function writeSlipLog(shippingDate, carrier, jobId, status, errorDetail) {
+function writeSlipLog(shippingDate, carrier, jobId, status, errorDetail, recordCount) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('伝票処理ログ');
     if (!sheet) {
       sheet = ss.insertSheet('伝票処理ログ');
-      sheet.appendRow(['発送日', '業者', 'jobId', 'ステータス', 'CSV作成時刻', 'PDF完了時刻', '印刷時刻', 'Driveリンク', 'エラー詳細']);
+      sheet.appendRow(['発送日', '業者', 'jobId', 'ステータス', 'CSV作成時刻', 'PDF完了時刻', '印刷時刻', 'Driveリンク', 'エラー詳細', '件数']);
     }
-    const now = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd HH:mm:ss');
-    sheet.appendRow([shippingDate, carrier, jobId, status, now, '', '', '', errorDetail || '']);
+    const now = new Date();
+    sheet.appendRow([shippingDate, carrier, jobId, status, now, '', '', '', errorDetail || '', recordCount || '']);
   } catch (e) {
     Logger.log('ログシート書き込みエラー: ' + e.message);
   }
