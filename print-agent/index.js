@@ -53,8 +53,10 @@ process.on('SIGINT', () => shutdown());
 process.on('SIGTERM', () => shutdown());
 
 function findWatchEntry(filePath) {
+  const normalized = path.normalize(filePath).toLowerCase();
   for (const entry of config.watchDirs) {
-    if (filePath.startsWith(entry.path + path.sep) || filePath.startsWith(entry.path + '/')) {
+    const normalizedEntry = path.normalize(entry.path).toLowerCase();
+    if (normalized.startsWith(normalizedEntry + path.sep) || normalized === normalizedEntry) {
       return entry;
     }
   }
@@ -78,7 +80,8 @@ function handlePdf(filePath) {
   const basename = path.basename(filePath);
   const printer = entry.printerName || undefined;
   logger.info(`Found ${basename}, printing...` + (printer ? ` (printer: ${printer})` : ''));
-  const result = printPdf(filePath, printer);
+  const printSettings = entry.printSettings || config.printSettings || 'fit';
+  const result = printPdf(filePath, printer, config.sumatraPdfPath, printSettings);
   if (!result.success) {
     logger.error('Print failed: ' + basename + (result.stderr ? ' stderr: ' + result.stderr : ''));
     return;

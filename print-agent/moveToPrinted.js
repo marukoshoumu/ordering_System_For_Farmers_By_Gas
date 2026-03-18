@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 2000;
+
+function sleepSync(ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { /* busy wait */ }
+}
+
 function moveToPrinted(filePath, watchDir, printedDirName) {
   const printedDir = path.join(watchDir, printedDirName);
   if (!fs.existsSync(printedDir)) {
@@ -8,18 +16,30 @@ function moveToPrinted(filePath, watchDir, printedDirName) {
   }
   const basename = path.basename(filePath);
   const destPath = path.join(printedDir, basename);
-  try {
-    fs.renameSync(filePath, destPath);
-    return true;
-  } catch (e) {
-    console.error('moveToPrinted: ファイル移動に失敗', {
-      source: filePath,
-      destination: destPath,
-      error: e.message,
-      stack: e.stack,
-    });
-    return false;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        console.error('moveToPrinted: ソースファイルが存在しません', { source: filePath });
+        return false;
+      }
+      fs.renameSync(filePath, destPath);
+      return true;
+    } catch (e) {
+      if (attempt < MAX_RETRIES) {
+        console.warn(`moveToPrinted: リトライ ${attempt}/${MAX_RETRIES} (${e.code || e.message})`);
+        sleepSync(RETRY_DELAY_MS);
+      } else {
+        console.error('moveToPrinted: ファイル移動に失敗', {
+          source: filePath,
+          destination: destPath,
+          error: e.message,
+        });
+        return false;
+      }
+    }
   }
+  return false;
 }
 
 module.exports = { moveToPrinted };

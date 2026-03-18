@@ -172,11 +172,16 @@ function setupWindows() {
   const batContent = `@echo off\r\n"${NODE_PATH}" "${path.join(AGENT_DIR, 'index.js')}" >> "${LOG_PATH}" 2>&1\r\n`;
   fs.writeFileSync(batPath, batContent);
 
+  // VBSラッパーでコンソールウィンドウを非表示にして起動
+  const vbsPath = path.join(AGENT_DIR, 'start-service-silent.vbs');
+  const vbsContent = `Set WshShell = CreateObject("WScript.Shell")\r\nWshShell.Run """${batPath}""", 0, False\r\n`;
+  fs.writeFileSync(vbsPath, vbsContent);
+
   try {
     execFileSync('schtasks', [
       '/Create',
       '/TN', TASK_NAME,
-      '/TR', `"${batPath}"`,
+      '/TR', `wscript.exe "${vbsPath}"`,
       '/SC', 'ONLOGON',
       '/RL', 'HIGHEST',
       '/F',
