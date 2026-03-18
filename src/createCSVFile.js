@@ -528,6 +528,14 @@ function createShipAndPrint(datas) {
  * @param {string} dateVal - 発送日
  * @returns {string|null} CSVテキスト（該当データなしの場合は null）
  */
+function escapeCsvField(field) {
+  var str = (field == null) ? '' : String(field);
+  if (str.indexOf(',') >= 0 || str.indexOf('"') >= 0 || str.indexOf('\n') >= 0 || str.indexOf('\r') >= 0) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
 function getCsvContent(sheetName, dateVal) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -542,7 +550,7 @@ function getCsvContent(sheetName, dateVal) {
   for (var value of values) {
     if (value[0] == targetDate) {
       var val = value.slice(1);
-      csv += val.join(',') + "\r\n";
+      csv += val.map(escapeCsvField).join(',') + "\r\n";
     }
   }
   return csv.length > 0 ? csv : null;

@@ -30,18 +30,18 @@ function shutdown() {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
+  if (pollIntervalId) clearInterval(pollIntervalId);
+  clearInterval(cleanupIntervalId);
+
   if (server) {
     const forceExit = setTimeout(() => {
-      clearInterval(cleanupIntervalId);
       process.exit(0);
     }, 5000);
     server.close(() => {
       clearTimeout(forceExit);
-      clearInterval(cleanupIntervalId);
       process.exit(0);
     });
   } else {
-    clearInterval(cleanupIntervalId);
     process.exit(0);
   }
 }

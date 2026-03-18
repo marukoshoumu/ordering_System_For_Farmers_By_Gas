@@ -2360,8 +2360,13 @@ function splitNameForCarrier(fullName, nameMaxLen, companyMaxLen) {
   }
 
   // スペースなし or 分割後も超過 → 強制的にcompanyに前方、nameに後方
-  var company = fullName.substring(0, Math.min(fullName.length, companyMaxLen));
-  var name = fullName.substring(company.length);
+  var companyLen = Math.min(fullName.length, companyMaxLen);
+  // nameに最低1文字は残す
+  if (companyLen >= fullName.length && fullName.length > 1) {
+    companyLen = fullName.length - 1;
+  }
+  var company = fullName.substring(0, companyLen);
+  var name = fullName.substring(companyLen);
   if (name.length > nameMaxLen) {
     name = name.substring(0, nameMaxLen); // 最終手段: 切り詰め
   }

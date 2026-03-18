@@ -228,7 +228,8 @@ function doPost(e) {
   Logger.log(e);
 
   // Workerからの JSON POST（ポーリング or コールバック）
-  if (e.postData && e.postData.type === 'application/json') {
+  var contentType = (e.postData && e.postData.type) ? e.postData.type.split(';')[0].trim().toLowerCase() : '';
+  if (contentType === 'application/json') {
     try {
       var jsonPayload = JSON.parse(e.postData.contents);
       if (jsonPayload.action === 'poll') {

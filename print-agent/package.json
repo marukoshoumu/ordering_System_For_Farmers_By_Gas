@@ -7,7 +7,8 @@
     "start": "node index.js",
     "setup-service": "node scripts/setup-service.js",
     "uninstall-service": "node scripts/uninstall-service.js",
-    "logs": "tail -f logs/print-agent.log"
+    "logs": "tail -f logs/print-agent.log",
+    "logs:win": "powershell -Command \"Get-Content logs/print-agent.log -Wait -Tail 50\""
   },
   "dependencies": {
     "chokidar": "^4.0.0"

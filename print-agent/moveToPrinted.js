@@ -23,7 +23,17 @@ function moveToPrinted(filePath, watchDir, printedDirName) {
         console.error('moveToPrinted: ソースファイルが存在しません', { source: filePath });
         return false;
       }
-      fs.renameSync(filePath, destPath);
+      try {
+        fs.renameSync(filePath, destPath);
+      } catch (renameErr) {
+        if (renameErr.code === 'EXDEV') {
+          // ファイルシステム跨ぎ: copy + unlink にフォールバック
+          fs.copyFileSync(filePath, destPath);
+          fs.unlinkSync(filePath);
+        } else {
+          throw renameErr;
+        }
+      }
       return true;
     } catch (e) {
       if (attempt < MAX_RETRIES) {
