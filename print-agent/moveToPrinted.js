@@ -5,8 +5,7 @@ const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
 
 function sleepSync(ms) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) { /* busy wait */ }
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 function moveToPrinted(filePath, watchDir, printedDirName) {

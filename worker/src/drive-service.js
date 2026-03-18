@@ -133,6 +133,7 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
 
     console.log('Drive アップロード開始', { fileName, carrier, folderId });
 
+    let stream;
     try {
         const fileMetadata = {
             name: fileName,
@@ -146,35 +147,29 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
             }),
         };
 
-        const stream = fs.createReadStream(pdfPath);
+        stream = fs.createReadStream(pdfPath);
         const media = {
             mimeType: 'application/pdf',
             body: stream,
         };
 
-        try {
-            const response = await drive.files.create({
-                resource: fileMetadata,
-                media: media,
-                fields: 'id, name, webViewLink, webContentLink',
-                supportsAllDrives: true,
-            });
+        const response = await drive.files.create({
+            resource: fileMetadata,
+            media: media,
+            fields: 'id, name, webViewLink, webContentLink',
+            supportsAllDrives: true,
+        });
 
-            const fileId = response.data.id;
-            const webViewLink = response.data.webViewLink || '';
+        const fileId = response.data.id;
+        const webViewLink = response.data.webViewLink || '';
 
-            console.log('Drive アップロード完了', {
-                fileId,
-                fileName: response.data.name,
-                webViewLink,
-            });
+        console.log('Drive アップロード完了', {
+            fileId,
+            fileName: response.data.name,
+            webViewLink,
+        });
 
-            return { fileId, webViewLink };
-        } finally {
-            if (stream && typeof stream.destroy === 'function') {
-                stream.destroy();
-            }
-        }
+        return { fileId, webViewLink };
     } catch (error) {
         console.error('Drive アップロード失敗', {
             error: error.message,
@@ -183,12 +178,16 @@ async function uploadToDrive(pdfPath, carrier, shippingDate, jobId) {
             pdfPath,
         });
         throw new Error(`Google Driveアップロードエラー: ${error.message}`);
+    } finally {
+        if (stream && typeof stream.destroy === 'function') {
+            stream.destroy();
+        }
     }
 }
 
 /**
  * Google Drive 設定の検証
- * 
+ *
  * @returns {{ configured: boolean, message: string }}
  */
 function validateDriveConfig() {
@@ -242,8 +241,9 @@ async function uploadScreenshotToDrive(screenshotPath, carrier, jobId) {
 
     console.log('エラースクリーンショット Drive アップロード開始', { fileName, carrier });
 
-    const stream = fs.createReadStream(screenshotPath);
+    let stream;
     try {
+        stream = fs.createReadStream(screenshotPath);
         const response = await drive.files.create({
             resource: {
                 name: fileName,

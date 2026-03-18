@@ -215,8 +215,12 @@ async function processYamato(csvContent, shippingDate) {
     let pdfBuffer = null;
     await workPage.route('**/B2_OKURIJYO*fileonly*', async (route) => {
       const response = await route.fetch();
-      pdfBuffer = await response.body();
-      console.log('B2クラウド: route傍受', { size: pdfBuffer.length, ct: response.headers()['content-type'] });
+      const body = await response.body();
+      const ct = response.headers()['content-type'] || '';
+      console.log('B2クラウド: route傍受', { size: body.length, ct });
+      if (ct.includes('pdf') || (!ct || ct === 'application/octet-stream') && body.length > MIN_PDF_SIZE) {
+        pdfBuffer = body;
+      }
       await route.fulfill({ response });
     });
 

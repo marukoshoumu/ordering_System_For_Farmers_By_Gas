@@ -25,6 +25,7 @@ const cleanupIntervalId = setInterval(cleanExpiredJobs, JOB_CLEANUP_INTERVAL_MS)
 
 let server = null;
 let isShuttingDown = false;
+let pollIntervalId = null;
 
 function shutdown() {
   if (isShuttingDown) return;
@@ -288,7 +289,6 @@ server = app.listen(PORT, () => {
 // ========================================
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 30_000; // デフォルト30秒
 let isPolling = false;
-let pollIntervalId = null;
 
 function startPolling() {
   console.log(`GASポーリング開始: 間隔=${POLL_INTERVAL_MS / 1000}秒`);

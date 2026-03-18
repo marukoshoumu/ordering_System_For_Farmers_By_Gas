@@ -217,7 +217,7 @@ function validateSagawaCsv(csvContent) {
   var validTime = { '': true, '01': true, '12': true, '14': true, '16': true, '18': true, '04': true, '19': true };
 
   for (var i = 0; i < lines.length; i++) {
-    var cols = lines[i].split(',');
+    var cols = parseCsvLine(lines[i]);
     var orderId = (cols[9] || '').trim();
     var label = orderId ? '佐川 [' + orderId + ']: ' : '佐川CSV ' + (i + 1) + '行目: ';
 
@@ -310,7 +310,7 @@ function validateYamatoCsv(csvContent) {
   var validTime = { '':1, '0812':1, '1416':1, '1618':1, '1820':1, '1921':1, '0010':1, '0017':1 };
 
   for (var i = 0; i < lines.length; i++) {
-    var cols = lines[i].split(',');
+    var cols = parseCsvLine(lines[i]);
     var orderId = (cols[0] || '').trim();
     var label = orderId ? 'ヤマト [' + orderId + ']: ' : 'ヤマトCSV ' + (i + 1) + '行目: ';
 
@@ -528,6 +528,41 @@ function createShipAndPrint(datas) {
  * @param {string} dateVal - 発送日
  * @returns {string|null} CSVテキスト（該当データなしの場合は null）
  */
+/**
+ * RFC 4180準拠のCSV行パーサー（クォートされたフィールド対応）
+ */
+function parseCsvLine(line) {
+  var fields = [];
+  var field = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(field);
+        field = '';
+      } else {
+        field += ch;
+      }
+    }
+  }
+  fields.push(field);
+  return fields;
+}
+
 function escapeCsvField(field) {
   var str = (field == null) ? '' : String(field);
   if (str.indexOf(',') >= 0 || str.indexOf('"') >= 0 || str.indexOf('\n') >= 0 || str.indexOf('\r') >= 0) {

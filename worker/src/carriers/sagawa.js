@@ -247,7 +247,7 @@ async function processSagawa(csvContent, shippingDate) {
       const body = await response.body();
       const ct = response.headers()['content-type'] || '';
       console.log('e飛伝III: route傍受', { ct, size: body.length });
-      if (ct.includes('pdf') || body.length > MIN_PDF_SIZE) {
+      if (ct.includes('pdf') || (!ct || ct === 'application/octet-stream') && body.length > MIN_PDF_SIZE) {
         pdfBuffer = body;
       }
       await route.fulfill({ response });
