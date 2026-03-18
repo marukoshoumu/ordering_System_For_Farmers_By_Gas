@@ -226,6 +226,21 @@ function resolveSessionFromPost(e) {
  */
 function doPost(e) {
   Logger.log(e);
+
+  // Workerからの JSON POST（ポーリング or コールバック）
+  var contentType = (e.postData && e.postData.type) ? e.postData.type.split(';')[0].trim().toLowerCase() : '';
+  if (contentType === 'application/json') {
+    try {
+      var jsonPayload = JSON.parse(e.postData.contents);
+      if (jsonPayload.action === 'poll') {
+        return handleWorkerPoll(e);
+      }
+    } catch (_) {
+      // パース失敗はコールバックとして処理
+    }
+    return handleWorkerCallback(e);
+  }
+
   if (e.parameter.logout) {
     const sessionId = (e.parameter.sessionId) ? String(e.parameter.sessionId).trim() : '';
     deleteSession(sessionId);

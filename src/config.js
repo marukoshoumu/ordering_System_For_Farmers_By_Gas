@@ -155,6 +155,30 @@ function getQuotationFolderId() {
 function getFreeeCSVFolderId() {
   return getConfig('FREEE_CSV_FOLDER_ID');
 }
+
+/**
+ * 配送伝票ワーカーの URL を取得
+ * @returns {string} ワーカーURL（例: https://delivery-worker-xxxxx.run.app）
+ */
+function getWorkerUrl() {
+  return getConfig('WORKER_URL');
+}
+
+/**
+ * 配送伝票ワーカーの認証用 API キーを取得
+ * @returns {string} API キー
+ */
+function getWorkerApiKey() {
+  return getConfig('WORKER_API_KEY');
+}
+
+/**
+ * Brotherプリンタのメールアドレスを取得
+ * @returns {string} プリンタメールアドレス（例: xxx@print.brother.com）
+ */
+function getBrotherPrinterEmail() {
+  return getConfig('BROTHER_PRINTER_EMAIL');
+}
 /**
  * 納品書テンプレートドキュメント ID を取得
  * @returns {string} ドキュメント ID

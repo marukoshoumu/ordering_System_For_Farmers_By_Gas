@@ -1,5 +1,5 @@
 ---
-description: ナレッジベース参照 - 直近のナレッジを参照する
+description: ナレッジベース参照。「ナレッジを更新して」と指示されたときはナレッジ更新手順に従う
 globs: 
 alwaysApply: false
 ---
@@ -11,29 +11,45 @@ alwaysApply: false
 
 ## パス
 
-- **ナレッジルート**: `${KNOWLEDGE_DIR:-$HOME/knowledge}` または `$HOME/knowledge`（例: `/Users/resily0808/knowledge`）
-- **ordering-system 用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/projects/ordering-system/}`  
-  - 例: `$HOME/knowledge/projects/ordering-system/`
+- **ナレッジルート**: `${KNOWLEDGE_DIR:-$HOME/knowledge}` または `$HOME/knowledge`
+- **ordering-system 用**: `${ORDERING_PROJECT_DIR:-${KNOWLEDGE_DIR:-$HOME/knowledge}/02_Projects/ordering-system}`  
+  - 例: `$HOME/knowledge/02_Projects/ordering-system`
 
 ## セッション開始時・設計判断時
 
-1. **まず参照**: `$HOME/knowledge/projects/ordering-system/KNOWLEDGE_REFERENCE.md` または `CURRENT_STATUS.md` で直近のステータス・セッション要約を確認する。
-2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `_README.md` または `docs/` 内のドキュメントを参照する。
+1. **まず参照**: `$HOME/knowledge/02_Projects/ordering-system/KNOWLEDGE_REFERENCE.md` または `CURRENT_STATUS.md` で直近のステータス・セッション要約を確認する。
+2. **詳細が必要な場合**: 上記パスの `INDEX.md` / `README.md` または `docs/` 内のドキュメントを参照する。
 3. **エージェント用**: 上記パスの `AGENT.md` でクイックスタート、`SKILLS.md` で頻出タスクパターンを確認する。
 
 ## 主なドキュメント
 
-- 現在のステータス: `$HOME/knowledge/projects/ordering-system/CURRENT_STATUS.md`
-- セッション履歴: `$HOME/knowledge/projects/ordering-system/sessions/`
-- 機能・設計: `$HOME/knowledge/projects/ordering-system/docs/`
+- 現在のステータス: `$HOME/knowledge/02_Projects/ordering-system/CURRENT_STATUS.md`
+- セッション履歴: `$HOME/knowledge/02_Projects/ordering-system/sessions/`
+- 機能・設計・事象: `$HOME/knowledge/02_Projects/ordering-system/docs/`
+- 一覧: `$HOME/knowledge/02_Projects/ordering-system/INDEX.md`
+- CodeRabbit 指摘対応: `$HOME/knowledge/02_Projects/ordering-system/docs/coderabbit-fixes-knowledge.md`
 - プロンプトのコツ: 上記 `docs/prompt-magic-words.md` など
 
 ## 環境変数（任意）
 
 - `KNOWLEDGE_DIR`: ナレッジルート（デフォルト: `$HOME/knowledge`）
-- `ORDERING_PROJECT_DIR`: ordering-system 用ディレクトリ（デフォルト: `$KNOWLEDGE_DIR/projects/ordering-system/`）
+- `ORDERING_PROJECT_DIR`: ordering-system 用ディレクトリ（デフォルト: `$KNOWLEDGE_DIR/02_Projects/ordering-system`）
 
 ## 注意
 
 - ナレッジの更新・追加は **$HOME/knowledge** 側にのみ行う。プロジェクト内に `knowledge/` や `docs/` を新規作成しない（本プロジェクトでは `docs/` は廃止済み）。
 - インデックス更新は `ki` スキル（`~/knowledge/_scripts/update-index.sh`）を使用する。
+
+## 外部ナレッジの参照項目（CodeRabbit対応）
+
+- **CodeRabbit 指摘対応**: 本プロジェクトで実施した CodeRabbit 指摘対応の蓄積は **外部ナレッジ**（`$HOME/knowledge/...`）に格納している。  
+  **参照先**: `$HOME/knowledge/02_Projects/ordering-system/docs/coderabbit-fixes-knowledge.md`  
+  認証・XSS・エラーハンドリング・リソース管理・テスト保守の修正要点は上記ファイルを参照する。
+
+## 「ナレッジを更新して」と指示された場合
+
+ユーザーが「ナレッジを更新して」「ナレッジを更新」「ordering-system のナレッジを更新して」「ki」などと伝えたときは、**必ず** 以下を実行する。
+
+1. **手順書を参照**: `$HOME/knowledge/02_Projects/ordering-system/docs/ナレッジ更新手順.md` を読み、手順に従う。
+2. **実施内容の例**: 直近の変更内容を CURRENT_STATUS.md に追記、必要なら sessions/ や docs/ に追加、INDEX.md にエントリがあれば整合させる。最後に `bash ~/knowledge/_scripts/update-index.sh`（ki）を実行する。
+3. ワークスペースが別リポジトリのときは ki 実行に **all** 権限を付与する。

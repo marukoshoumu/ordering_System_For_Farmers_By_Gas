@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:gas": "npx @google/clasp push",
+    "deploy:worker": "echo 'Note: Cloud Run uses --allow-unauthenticated; auth is enforced by X-API-Key in app.' && cd worker && gcloud run deploy delivery-slip-worker --source . --region asia-northeast1 --memory 1Gi --timeout 300 --max-instances 1 --concurrency 1 --allow-unauthenticated",
+    "deploy": "npm run deploy:gas && npm run deploy:worker"
   },
   "keywords": [],
   "author": "",

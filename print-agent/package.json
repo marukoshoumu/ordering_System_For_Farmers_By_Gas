@@ -1,0 +1,19 @@
+{
+  "name": "print-agent",
+  "version": "1.0.0",
+  "description": "Watch folder for PDFs, print to default printer, move to printed/",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "setup-service": "node scripts/setup-service.js",
+    "uninstall-service": "node scripts/uninstall-service.js",
+    "logs": "tail -f logs/print-agent.log",
+    "logs:win": "powershell -Command \"Get-Content logs/print-agent.log -Wait -Tail 50\""
+  },
+  "dependencies": {
+    "chokidar": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

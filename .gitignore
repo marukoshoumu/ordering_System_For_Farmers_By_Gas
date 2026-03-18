@@ -4,10 +4,13 @@ node_modules*
 .env
 .env.local
 .env.*.local
+*.log
+start-service.bat
 
 # クレデンシャル
 *.credentials.json
 service-account*.json
+gen-lang-client*.json
 .DS_Store
 
 # Google Apps Script (clasp)

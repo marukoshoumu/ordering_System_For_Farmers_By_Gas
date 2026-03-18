@@ -2308,8 +2308,74 @@ function createOrder(e) {
   }
 }
 /**
+ * 名前文字列をキャリアCSV用に会社名・個人名に分割する
+ * ヤマトB2: お届け先名(16文字), 会社・部門名１(25文字)
+ * 佐川e飛伝: お届け先名称１(16文字), お届け先名称２(16文字)
+ *
+ * 分割ルール:
+ * 1. nameMaxLen以下 → そのまま name に格納
+ * 2. 全角/半角スペースがあれば、最後のスペースで分割 → 前半=company, 後半=name
+ *    - 後半がnameMaxLenを超える場合は最初のスペースで再試行
+ * 3. スペースなし or 分割後もname超過 → companyMaxLenで前方分割
+ *
+ * @param {string} fullName - 元の名前文字列
+ * @param {number} nameMaxLen - 名前フィールドの最大文字数
+ * @param {number} companyMaxLen - 会社名フィールドの最大文字数
+ * @returns {{company: string, name: string}}
+ */
+function splitNameForCarrier(fullName, nameMaxLen, companyMaxLen) {
+  fullName = (fullName || '').toString().trim();
+  if (fullName.length <= nameMaxLen) {
+    return { company: '', name: fullName };
+  }
+
+  // スペース（全角・半角）で分割を試みる
+  var lastFullSpace = fullName.lastIndexOf('　');
+  var lastHalfSpace = fullName.lastIndexOf(' ');
+  var splitIdx = Math.max(lastFullSpace, lastHalfSpace);
+
+  if (splitIdx > 0) {
+    var companyPart = fullName.substring(0, splitIdx);
+    var namePart = fullName.substring(splitIdx + 1);
+    // 後半がnameMaxLen以内かつ前半がcompanyMaxLen以内なら採用
+    if (namePart.length <= nameMaxLen && companyPart.length <= companyMaxLen) {
+      return { company: companyPart, name: namePart };
+    }
+    // 最後のスペースでダメなら最初のスペースで試行
+    var firstFullSpace = fullName.indexOf('　');
+    var firstHalfSpace = fullName.indexOf(' ');
+    var firstSplitIdx = -1;
+    if (firstFullSpace > 0 && firstHalfSpace > 0) {
+      firstSplitIdx = Math.min(firstFullSpace, firstHalfSpace);
+    } else {
+      firstSplitIdx = Math.max(firstFullSpace, firstHalfSpace);
+    }
+    if (firstSplitIdx > 0 && firstSplitIdx !== splitIdx) {
+      companyPart = fullName.substring(0, firstSplitIdx);
+      namePart = fullName.substring(firstSplitIdx + 1);
+      if (namePart.length <= nameMaxLen && companyPart.length <= companyMaxLen) {
+        return { company: companyPart, name: namePart };
+      }
+    }
+  }
+
+  // スペースなし or 分割後も超過 → 強制的にcompanyに前方、nameに後方
+  var companyLen = Math.min(fullName.length, companyMaxLen);
+  // nameに最低1文字は残す
+  if (companyLen >= fullName.length && fullName.length > 1) {
+    companyLen = fullName.length - 1;
+  }
+  var company = fullName.substring(0, companyLen);
+  var name = fullName.substring(companyLen);
+  if (name.length > nameMaxLen) {
+    name = name.substring(0, nameMaxLen); // 最終手段: 切り詰め
+  }
+  return { company: company, name: name };
+}
+
+/**
  * ヤマト運輸B2用CSVデータを「ヤマトCSV」シートに登録
- * 
+ *
  * @param {string} sheetName - シート名（通常 'ヤマトCSV'）
  * @param {Array} records - 受注レコード配列
  * @param {Object} e - オリジナルのリクエストパラメータ
@@ -2341,9 +2407,15 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
     record['お届け先住所'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(0, ADDRESS_MAX_LEN) : toAddr;
     record['お届け先住所（アパートマンション名）'] = toAddr.length > ADDRESS_MAX_LEN ? toAddr.substring(ADDRESS_MAX_LEN) : "";
   })();
-  record['お届け先会社・部門名１'] = "";
-  record['お届け先会社・部門名２'] = "";
-  record['お届け先名'] = getOrderValue(orderData, '発送先名', orderHeaders);
+  // ヤマトB2: お届け先名(16文字), 会社・部門名１(25文字) — 長い名前を自動分割
+  (function () {
+    var toName = splitNameForCarrier(
+      getOrderValue(orderData, '発送先名', orderHeaders), 16, 25
+    );
+    record['お届け先会社・部門名１'] = toName.company;
+    record['お届け先会社・部門名２'] = "";
+    record['お届け先名'] = toName.name;
+  })();
   record['お届け先名略称カナ'] = "";
   record['敬称'] = "";
   record['ご依頼主コード'] = "";
@@ -2357,7 +2429,12 @@ function addRecordYamato(sheetName, records, e, deliveryId, orderHeaders) {
     record['ご依頼主住所'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(0, ADDRESS_MAX_LEN) : fromAddr;
     record['ご依頼主住所（アパートマンション名）'] = fromAddr.length > ADDRESS_MAX_LEN ? fromAddr.substring(ADDRESS_MAX_LEN) : "";
   })();
-  record['ご依頼主名'] = getOrderValue(orderData, '発送元名', orderHeaders);
+  // ヤマトB2: ご依頼主名(16文字), ご依頼主名（カナ）は使用しないため会社名分割不要だが
+  // ご依頼主名も16文字制限があるため同様に分割（会社・部門名フィールドがないので切り詰め）
+  (function () {
+    var fromName = (getOrderValue(orderData, '発送元名', orderHeaders) || '').toString();
+    record['ご依頼主名'] = fromName.length > 16 ? fromName.substring(0, 16) : fromName;
+  })();
   record['ご依頼主略称カナ'] = "";
   record['品名コード１'] = "";
   record['品名１'] = getOrderValue(orderData, '品名', orderHeaders);
@@ -2465,8 +2542,14 @@ function addRecordSagawa(sheetName, records, e, deliveryId, orderHeaders) {
   record['お届け先住所１'] = getOrderValue(orderData, '発送先住所', orderHeaders);
   record['お届け先住所２'] = "";
   record['お届け先住所３'] = "";
-  record['お届け先名称１'] = getOrderValue(orderData, '発送先名', orderHeaders);
-  record['お届け先名称２'] = "";
+  // 佐川e飛伝: お届け先名称１(16文字), お届け先名称２(16文字) — 長い名前を自動分割
+  (function () {
+    var toName = splitNameForCarrier(
+      getOrderValue(orderData, '発送先名', orderHeaders), 16, 16
+    );
+    record['お届け先名称１'] = toName.company || toName.name;
+    record['お届け先名称２'] = toName.company ? toName.name : '';
+  })();
   record['お客様管理番号'] = deliveryId || "";
   record['お客様コード'] = "";
   record['部署ご担当者コード取得区分'] = "";
@@ -2479,8 +2562,14 @@ function addRecordSagawa(sheetName, records, e, deliveryId, orderHeaders) {
   record['ご依頼主郵便番号'] = getOrderValue(orderData, '発送元郵便番号', orderHeaders);
   record['ご依頼主住所１'] = getOrderValue(orderData, '発送元住所', orderHeaders);
   record['ご依頼主住所２'] = "";
-  record['ご依頼主名称１'] = getOrderValue(orderData, '発送元名', orderHeaders);
-  record['ご依頼主名称２'] = "";
+  // 佐川e飛伝: ご依頼主名称１(16文字), ご依頼主名称２(16文字) — 長い名前を自動分割
+  (function () {
+    var fromName = splitNameForCarrier(
+      getOrderValue(orderData, '発送元名', orderHeaders), 16, 16
+    );
+    record['ご依頼主名称１'] = fromName.company || fromName.name;
+    record['ご依頼主名称２'] = fromName.company ? fromName.name : '';
+  })();
   record['荷姿'] = "";
   const productName = getOrderValue(orderData, '品名', orderHeaders) || '';
   if (productName.length > 16) {

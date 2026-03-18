@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.local.print-agent</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/node</string>
+		<string>index.js</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/path/to/ordering_System_For_Farmers_By_Gas/print-agent</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/path/to/ordering_System_For_Farmers_By_Gas/print-agent/logs/launchd-stdout.log</string>
+	<key>StandardErrorPath</key>
+	<string>/path/to/ordering_System_For_Farmers_By_Gas/print-agent/logs/launchd-stderr.log</string>
+</dict>
+</plist>
