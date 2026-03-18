@@ -11,7 +11,13 @@ start-service.bat
 *.credentials.json
 service-account*.json
 gen-lang-client*.json
+
+# OS / エディタ
 .DS_Store
+.vscode/
+
+# Claude Code
+.claude/
 
 # Google Apps Script (clasp)
 .clasp.json
