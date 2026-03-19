@@ -121,6 +121,7 @@ async function processSagawa(csvContent, shippingDate) {
     for (let i = 0; i < entrySteps.length; i++) {
       const selector = entrySteps[i];
       await removeWalkMe(workPage);
+      await dismissMessageBox(workPage);
       const loc = workPage.locator(selector).first();
       try {
         await loc.waitFor({ state: 'visible', timeout: 15000 });

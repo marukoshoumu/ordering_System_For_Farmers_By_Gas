@@ -257,8 +257,8 @@ function updateSlipLog(jobId, newStatus, driveLink, errorDetail) {
         // D列: ステータス
         sheet.getRange(i + 1, 4).setValue(newStatus);
 
-        if (newStatus === 'pdf_ready') {
-          // F列: PDF完了時刻
+        if (newStatus === 'pdf_ready' || newStatus === 'completed') {
+          // F列: 完了時刻
           if (!data[i][5]) {
             sheet.getRange(i + 1, 6).setValue(now);
           }
