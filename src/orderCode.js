@@ -48,7 +48,7 @@ function recordToArray(record, headers) {
  *
  * 処理フロー:
  * 1. CacheService.getScriptCache() 取得
- * 2. 'masterData_v5' キーのキャッシュを削除
+ * 2. MASTER_DATA_CACHE_KEY / FREEE_MASTER_PRODUCT_CACHE_KEY のキャッシュを削除
  * 3. getMasterDataCached() で最新データ取得 & 新規キャッシュ作成
  * 4. 成功時: 商品数、発送元数を含む結果オブジェクト返却
  * 5. エラー時: エラーメッセージを含む結果オブジェクト返却
@@ -109,7 +109,7 @@ function getScannerHTML(orderId, customerName) {
  * - キャッシュ有効期間: 2時間（7200秒）
  *
  * 処理フロー:
- * 1. CacheService から 'masterData_v5' キーでキャッシュ取得
+ * 1. CacheService から MASTER_DATA_CACHE_KEY でキャッシュ取得
  * 2. キャッシュヒット & 有効なデータ構造:
  *    - JSON.parse() してそのまま返却
  * 3. キャッシュミス または 古いキャッシュ構造:
@@ -148,7 +148,7 @@ function getScannerHTML(orderId, customerName) {
 function getMasterDataCached() {
   try {
     const cache = CacheService.getScriptCache();
-    const cacheKey = 'masterData_v5';
+    const cacheKey = MASTER_DATA_CACHE_KEY;
 
     let cached = cache.get(cacheKey);
     if (cached) {

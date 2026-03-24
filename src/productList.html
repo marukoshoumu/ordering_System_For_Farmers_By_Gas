@@ -731,7 +731,8 @@
       }
     }
 
-    function ensureSelectOption_(selectId, value, orphanSuffix) {
+    /** 編集モードのみ: マスタに無い保存値を一時オプションとして表示する */
+    function ensureSelectOptionForEdit_(selectId, value, orphanSuffix) {
       var sel = document.getElementById(selectId);
       if (!value) {
         sel.value = '';
@@ -751,6 +752,22 @@
         sel.appendChild(opt);
       }
       sel.value = value;
+    }
+
+    /** 新規・コピー: マスタに存在する値だけ反映（無ければ空。孤児オプションは付けない） */
+    function setFreeeSelectValueIfInMaster_(selectId, value) {
+      var sel = document.getElementById(selectId);
+      if (!value) {
+        sel.value = '';
+        return;
+      }
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === value) {
+          sel.value = value;
+          return;
+        }
+      }
+      sel.value = '';
     }
 
     // =========================================================
@@ -793,12 +810,12 @@
       document.getElementById('productMemo').value = product.memo || '';
       document.getElementById('productNote').value = product.note || '';
 
-      ensureSelectOption_('productAccountTitle', product.accountTitle || '', '（マスタ外の保存値）');
-      ensureSelectOption_('productTaxCategory', product.taxCategory || '', '（マスタ外の保存値）');
+      setFreeeSelectValueIfInMaster_('productAccountTitle', product.accountTitle || '');
+      setFreeeSelectValueIfInMaster_('productTaxCategory', product.taxCategory || '');
       var deptVal = product.department || '';
-      ensureSelectOption_('productDepartment', deptVal, '（マスタ外の保存値）');
+      setFreeeSelectValueIfInMaster_('productDepartment', deptVal);
       updateItemDropdown(deptVal);
-      ensureSelectOption_('productItem', product.item || '', '（マスタ外の保存値）');
+      setFreeeSelectValueIfInMaster_('productItem', product.item || '');
 
       // 価格・原価・粗利・在庫はクリア（既にclearModalFormでクリア済み）
 
@@ -1101,12 +1118,12 @@
             document.getElementById('productTaxRate').value = p.taxRate ?? '';
             document.getElementById('productStock').value = p.stock ?? '';
             document.getElementById('productUnit').value = p.unit ?? '';
-            ensureSelectOption_('productAccountTitle', p.accountTitle || '', '（マスタ外の保存値）');
-            ensureSelectOption_('productTaxCategory', p.taxCategory || '', '（マスタ外の保存値）');
+            ensureSelectOptionForEdit_('productAccountTitle', p.accountTitle || '', '（マスタ外の保存値）');
+            ensureSelectOptionForEdit_('productTaxCategory', p.taxCategory || '', '（マスタ外の保存値）');
             var deptVal = p.department ?? '';
-            ensureSelectOption_('productDepartment', deptVal, '（マスタ外の保存値）');
+            ensureSelectOptionForEdit_('productDepartment', deptVal, '（マスタ外の保存値）');
             updateItemDropdown(deptVal);
-            ensureSelectOption_('productItem', p.item || '', '（マスタ外の保存値）');
+            ensureSelectOptionForEdit_('productItem', p.item || '', '（マスタ外の保存値）');
             document.getElementById('productMemo').value = p.memo ?? '';
             document.getElementById('productNote').value = p.note ?? '';
             productModal.show();
@@ -1134,13 +1151,9 @@
       document.getElementById('productTaxRate').value = '';
       document.getElementById('productStock').value = '';
       document.getElementById('productUnit').value = '';
-      applyDefaultAccountTitle();
-      document.getElementById('productTaxCategory').value = '';
-      document.getElementById('productDepartment').value = '';
-      // 部門リセットに合わせて品目も初期化
-      updateItemDropdown('');
       document.getElementById('productMemo').value = '';
       document.getElementById('productNote').value = '';
+      initFreeeDropdowns();
     }
 
     function calcMargin() {

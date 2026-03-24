@@ -20,6 +20,18 @@
 
 // キャッシュキー
 const CONFIG_CACHE_KEY = 'SCRIPT_PROPERTIES_CACHE';
+
+/**
+ * マスタデータ一括キャッシュ（getMasterDataCached / refreshMasterDataCache）
+ * @type {string}
+ */
+var MASTER_DATA_CACHE_KEY = 'masterData_v5';
+
+/**
+ * 商品マスタ freee プルダウン用（getFreeeMasterForProductForm / refreshMasterDataCache）
+ * @type {string}
+ */
+var FREEE_MASTER_PRODUCT_CACHE_KEY = 'freee_master_product_form_v1';
 // キャッシュ有効期間（秒）: 6時間
 const CONFIG_CACHE_DURATION = 21600;
 

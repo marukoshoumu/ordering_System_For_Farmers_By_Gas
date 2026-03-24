@@ -545,9 +545,6 @@ function getProductDetail(rowIndex) {
   } 
 }
 
-/** @const {string} freeeマスタ取得結果のスクリプトキャッシュキー */
-var FREEE_MASTER_PRODUCT_CACHE_KEY = 'freee_master_product_form_v1';
-
 /**
  * 商品マスタ画面と同一スプレッドシートを取得（バインド優先）
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}

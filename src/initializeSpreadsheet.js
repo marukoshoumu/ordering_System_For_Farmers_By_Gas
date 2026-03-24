@@ -1210,7 +1210,7 @@ function insertFreeeMasterSeedIfEmpty_(ss) {
  * 商品マスタと同一のバインドスプレッドシートに、freee 連携用マスタシートを作成し、
  * データ行が空なら初期値を投入する（initializeMasterSpreadsheet のマスタ投入と同様）
  *
- * 実行方法: GASエディタで initializeFreeeMasterSheets() を実行（コンテナバインドのスプレッドシートで実行）
+ * 実行方法: GASエディタで initializeFreeeMasterSheets() を実行。MASTER_SPREADSHEET_ID があればそのブックに作成し、開けない場合のみコンテナバインド（アクティブ）のスプレッドシートにフォールバックする。
  *
  * - sheet「freee勘定税区分」: A列 勘定科目、B列 税区分
  * - sheet「freee部門品目」: A列 部門、B列 品目
@@ -1219,11 +1219,25 @@ function insertFreeeMasterSeedIfEmpty_(ss) {
  */
 function initializeFreeeMasterSheets() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = null;
+    var masterId = getMasterSpreadsheetId();
+    if (masterId) {
+      try {
+        ss = SpreadsheetApp.openById(masterId);
+        Logger.log('initializeFreeeMasterSheets: MASTER_SPREADSHEET_ID でオープンしました');
+      } catch (openErr) {
+        Logger.log('initializeFreeeMasterSheets: openById 失敗、フォールバックします: ' + openErr.toString());
+        ss = null;
+      }
+    }
+    if (!ss) {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    }
     if (!ss) {
       return {
         success: false,
-        message: 'スプレッドシートを開けません（バインドされたスプレッドシートで実行してください）。'
+        message:
+          'スプレッドシートを開けません。MASTER_SPREADSHEET_ID を確認するか、コンテナにバインドされたスプレッドシートを開いた状態で実行してください。'
       };
     }
     const createdSheets = [];

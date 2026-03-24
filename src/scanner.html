@@ -407,6 +407,14 @@
             document.getElementById('successOverlay').style.display = 'none';
         }
 
+        /** utilities のトースト未読込時も ReferenceError にしない（showError に委譲） */
+        function showWarningToast(msg) {
+            showError(msg);
+        }
+        function showErrorToast(msg) {
+            showError(msg);
+        }
+
         function retry() {
             isProcessing = false;
             document.getElementById('errorOverlay').style.display = 'none';
