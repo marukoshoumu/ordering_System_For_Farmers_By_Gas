@@ -62,6 +62,7 @@ function recordToArray(record, headers) {
 function refreshMasterDataCache() {
   try {
     const cache = CacheService.getScriptCache();
+    cache.remove('freee_master_product_form_v1');
     cache.remove('masterData_v5');
     const newData = getMasterDataCached();
     return {

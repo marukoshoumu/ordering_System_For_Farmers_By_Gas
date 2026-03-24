@@ -544,3 +544,154 @@ function getProductDetail(rowIndex) {
     return null;
   } 
 }
+
+/** @const {string} freeeマスタ取得結果のスクリプトキャッシュキー */
+var FREEE_MASTER_PRODUCT_CACHE_KEY = 'freee_master_product_form_v1';
+
+/**
+ * 商品マスタ画面と同一スプレッドシートを取得（バインド優先）
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getSpreadsheetForProductMaster_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    ss = SpreadsheetApp.openById(getMasterSpreadsheetId());
+  }
+  return ss;
+}
+
+/**
+ * 列を上から読み、最初の空セル手前までを値の配列にする（重複は先勝ちで除去）
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {number} colIndex1Based
+ * @param {number} startRow
+ * @returns {Array<string>}
+ */
+function readColumnValuesUntilBlank_(sheet, colIndex1Based, startRow) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < startRow) {
+    return [];
+  }
+  var out = [];
+  for (var r = startRow; r <= lastRow; r++) {
+    var v = sheet.getRange(r, colIndex1Based).getValue();
+    var s = v !== null && v !== undefined ? String(v).trim() : '';
+    if (s === '') {
+      break;
+    }
+    out.push(s);
+  }
+  return uniqueOrderedStrings_(out);
+}
+
+/**
+ * @param {Array<string>} arr
+ * @returns {Array<string>}
+ */
+function uniqueOrderedStrings_(arr) {
+  var seen = {};
+  var out = [];
+  arr.forEach(function (x) {
+    if (!seen[x]) {
+      seen[x] = true;
+      out.push(x);
+    }
+  });
+  return out;
+}
+
+/**
+ * freeeマスタシートから勘定・税区分・部門→品目を読み込む（内部用）
+ * @returns {{ ok: boolean, accounts: Array<string>, taxCategories: Array<string>, departmentItems: Object<string, Array<string>>, message: string }}
+ */
+function buildFreeeMasterPayload_() {
+  var ss = getSpreadsheetForProductMaster_();
+  var sheetAT = ss.getSheetByName('freee勘定税区分');
+  var sheetDI = ss.getSheetByName('freee部門品目');
+
+  if (!sheetAT || !sheetDI) {
+    return {
+      ok: false,
+      accounts: [],
+      taxCategories: [],
+      departmentItems: {},
+      message:
+        'シート「freee勘定税区分」または「freee部門品目」が見つかりません。スクリプトエディタで initializeFreeeMasterSheets() を実行してシートを作成してください。'
+    };
+  }
+
+  var accounts = readColumnValuesUntilBlank_(sheetAT, 1, 2);
+  var taxCategories = readColumnValuesUntilBlank_(sheetAT, 2, 2);
+
+  var departmentItems = {};
+  var lastRow = sheetDI.getLastRow();
+  if (lastRow >= 2) {
+    var range = sheetDI.getRange(2, 1, lastRow, 2).getValues();
+    for (var i = 0; i < range.length; i++) {
+      var d = range[i][0] !== null && range[i][0] !== undefined ? String(range[i][0]).trim() : '';
+      var item = range[i][1] !== null && range[i][1] !== undefined ? String(range[i][1]).trim() : '';
+      if (!d) {
+        continue;
+      }
+      if (!departmentItems[d]) {
+        departmentItems[d] = [];
+      }
+      if (item && departmentItems[d].indexOf(item) === -1) {
+        departmentItems[d].push(item);
+      }
+    }
+  }
+
+  var hasDeptWithItems = false;
+  Object.keys(departmentItems).forEach(function (k) {
+    if (departmentItems[k].length > 0) {
+      hasDeptWithItems = true;
+    }
+  });
+
+  if (accounts.length === 0 || taxCategories.length === 0 || !hasDeptWithItems) {
+    return {
+      ok: false,
+      accounts: accounts,
+      taxCategories: taxCategories,
+      departmentItems: departmentItems,
+      message:
+        'freeeマスタに有効なデータがありません。「freee勘定税区分」のA列・B列（2行目以降）と、「freee部門品目」の部門・品目を入力してください。'
+    };
+  }
+
+  return {
+    ok: true,
+    accounts: accounts,
+    taxCategories: taxCategories,
+    departmentItems: departmentItems,
+    message: ''
+  };
+}
+
+/**
+ * 商品マスタ画面の freee プルダウン用マスタを取得する（スプレッドシート由来。フォールバックなし）
+ * @returns {string} JSON文字列 { ok, accounts, taxCategories, departmentItems, message }
+ */
+function getFreeeMasterForProductForm() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(FREEE_MASTER_PRODUCT_CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+    var payload = buildFreeeMasterPayload_();
+    var json = JSON.stringify(payload);
+    cache.put(FREEE_MASTER_PRODUCT_CACHE_KEY, json, payload.ok ? 300 : 60);
+    return json;
+  } catch (error) {
+    Logger.log('getFreeeMasterForProductForm: ' + error.message);
+    return JSON.stringify({
+      ok: false,
+      accounts: [],
+      taxCategories: [],
+      departmentItems: {},
+      message: '取得エラー: ' + error.message
+    });
+  }
+}

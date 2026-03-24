@@ -2,7 +2,7 @@
  * スプレッドシート初期化モジュール
  * 
  * 初回セットアップ時に必要なシートとマスタデータを自動作成します。
- * GASエディタから実行: initializeMasterSpreadsheet() または initializeLineBotSpreadsheet()
+ * GASエディタから実行: initializeMasterSpreadsheet() / initializeLineBotSpreadsheet() / initializeFreeeMasterSheets()
  * 
  * CSVインポート機能:
  * - importCompanyDataFromCSV(csvData): 会社名シートへのCSVインポート
@@ -1127,4 +1127,130 @@ function importShippingToDataFromCSV(csvData) {
   }
   
   return importDataFromCSV('発送先情報', csvData, headers, checkShippingToDuplicate, false);
+}
+
+/**
+ * freee勘定税区分シート用の初期データ（ヘッダー行は含まない）
+ * A列・B列は列ごとに上から空行までがマスタ。売上高は2行目、税区分は2〜3行目。
+ * @returns {Array<Array<string>>}
+ */
+function getFreeeAccountTaxSeedData() {
+  return [
+    ['売上高', '課税売上8%（軽）'],
+    ['', '課税売上10％']
+  ];
+}
+
+/**
+ * freee部門品目シート用の初期データ（ヘッダー行は含まない）1行＝1品目
+ * @returns {Array<Array<string>>}
+ */
+function getFreeeDepartmentItemSeedData() {
+  return [
+    ['かぼちゃ部門', 'かぼちゃ'],
+    ['水稲部門', '玄米'],
+    ['水稲部門', '精米'],
+    ['加工部門', '加工かぼちゃ'],
+    ['加工部門', '加工りんご'],
+    ['加工部門', '加工長いも'],
+    ['加工部門', '加工ホワイトアスパラ'],
+    ['加工部門', '加工とうもろこし'],
+    ['アスパラ部門', 'ホワイトアスパラ'],
+    ['アスパラ部門', 'アスパラ苗'],
+    ['仕入販売部門', '仕入かぼちゃ'],
+    ['仕入販売部門', '仕入アスパラ'],
+    ['仕入販売部門', '仕入アイス'],
+    ['仕入販売部門', '仕入玄米おにぎり'],
+    ['仕入販売部門', '仕入コロッケ'],
+    ['水稲苗部門', '水稲苗'],
+    ['作業受託部門', '除雪'],
+    ['作業受託部門', '配達'],
+    ['作業受託部門', '田植え'],
+    ['作業受託部門', '代掻き'],
+    ['作業受託部門', '稲刈り'],
+    ['作業受託部門', '籾乾燥'],
+    ['加工受託部門', '加工受託'],
+    ['共通部門', '運賃']
+  ];
+}
+
+/**
+ * freeeマスタシートにデータ行が無いときだけ初期行を投入する（insertMasterDataIfEmpty と同様）
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {{ seededAccountTax: boolean, seededDeptItem: boolean }}
+ */
+function insertFreeeMasterSeedIfEmpty_(ss) {
+  var seededAccountTax = false;
+  var seededDeptItem = false;
+
+  var sheetAT = ss.getSheetByName('freee勘定税区分');
+  if (sheetAT && sheetAT.getLastRow() <= 1) {
+    var rowsAT = getFreeeAccountTaxSeedData();
+    if (rowsAT.length > 0) {
+      sheetAT.getRange(2, 1, rowsAT.length, rowsAT[0].length).setValues(rowsAT);
+      seededAccountTax = true;
+      Logger.log('freee勘定税区分 に初期データを投入しました。');
+    }
+  }
+
+  var sheetDI = ss.getSheetByName('freee部門品目');
+  if (sheetDI && sheetDI.getLastRow() <= 1) {
+    var rowsDI = getFreeeDepartmentItemSeedData();
+    if (rowsDI.length > 0) {
+      sheetDI.getRange(2, 1, rowsDI.length, rowsDI[0].length).setValues(rowsDI);
+      seededDeptItem = true;
+      Logger.log('freee部門品目 に初期データを投入しました。');
+    }
+  }
+
+  return { seededAccountTax: seededAccountTax, seededDeptItem: seededDeptItem };
+}
+
+/**
+ * 商品マスタと同一のバインドスプレッドシートに、freee 連携用マスタシートを作成し、
+ * データ行が空なら初期値を投入する（initializeMasterSpreadsheet のマスタ投入と同様）
+ *
+ * 実行方法: GASエディタで initializeFreeeMasterSheets() を実行（コンテナバインドのスプレッドシートで実行）
+ *
+ * - sheet「freee勘定税区分」: A列 勘定科目、B列 税区分
+ * - sheet「freee部門品目」: A列 部門、B列 品目
+ *
+ * @returns {Object} { success: boolean, message: string, createdSheets: Array<string>, seeded: Object }
+ */
+function initializeFreeeMasterSheets() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      return {
+        success: false,
+        message: 'スプレッドシートを開けません（バインドされたスプレッドシートで実行してください）。'
+      };
+    }
+    const createdSheets = [];
+    createSheetIfNotExists(ss, 'freee勘定税区分', ['勘定科目', '税区分'], createdSheets);
+    createSheetIfNotExists(ss, 'freee部門品目', ['部門', '品目'], createdSheets);
+
+    const seeded = insertFreeeMasterSeedIfEmpty_(ss);
+
+    var msg =
+      'freeeマスタシートの準備が完了しました。' +
+      (createdSheets.length ? ' 新規作成: ' + createdSheets.join(', ') + '。' : '') +
+      (seeded.seededAccountTax || seeded.seededDeptItem
+        ? ' 空だったシートに初期データを投入しました（既に行があるシートは変更していません）。'
+        : ' データ行が既にあったため初期投入はスキップしました。') +
+      ' 商品マスタ画面を再読み込みしてください。';
+
+    return {
+      success: true,
+      message: msg,
+      createdSheets: createdSheets,
+      seeded: seeded
+    };
+  } catch (error) {
+    Logger.log('initializeFreeeMasterSheets エラー: ' + error.toString());
+    return {
+      success: false,
+      message: 'エラー: ' + error.toString()
+    };
+  }
 }

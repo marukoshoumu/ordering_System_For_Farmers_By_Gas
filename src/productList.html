@@ -301,6 +301,9 @@
         </div>
       </div>
 
+      <div id="freeeMasterWarning" class="alert alert-warning mb-0 rounded-0 border-0 d-none" role="alert" style="border-bottom: 1px solid #ffe69c !important;">
+      </div>
+
       <div class="filter-section">
         <div class="filter-row">
           <div class="filter-group">
@@ -547,43 +550,23 @@
     let categories = [];
     let productModal, categoryModal, deleteModal;
 
-    // =========================================================
-    // freee連携ドロップダウン マスターデータ
-    // =========================================================
-
-    // ⚠️ 勘定科目の選択肢は実際の値に更新が必要です
-    const ACCOUNT_TYPES = ['売上高'];
-
-    const TAX_CATEGORIES = [
-      '課税売上8%（軽）',
-      '課税売上10％'
-    ];
-
-    const DEPARTMENT_ITEMS = {
-      'かぼちゃ部門': ['かぼちゃ'],
-      '水稲部門': ['玄米', '精米'],
-      '加工部門': ['加工かぼちゃ', '加工りんご', '加工長いも', '加工ホワイトアスパラ', '加工とうもろこし'],
-      'アスパラ部門': ['ホワイトアスパラ'],
-      '仕入販売部門': ['仕入かぼちゃ', '仕入アスパラ', '仕入アイス', '仕入玄米おにぎり', '仕入コロッケ'],
-      '水稲苗部門': ['水稲苗'],
-      '作業受託部門': ['除雪', '配達', '田植え', '代掻き', '稲刈り', '籾乾燥'],
-      '加工受託部門': ['加工受託'],
-      '共通部門': ['運賃']
+    /** @type {{ ok: boolean, accounts: string[], taxCategories: string[], departmentItems: Object<string, string[]>, message: string }} */
+    var freeeMasterData = {
+      ok: false,
+      accounts: [],
+      taxCategories: [],
+      departmentItems: {},
+      message: ''
     };
 
-    // =========================================================
-
     document.addEventListener('DOMContentLoaded', function () {
-      // 最初にスピナーを表示
       showLoading('読み込み中...');
 
       productModal = new bootstrap.Modal(document.getElementById('productModal'));
       categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
       deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
-      initFreeeDropdowns();
-      loadCategories();
-      loadProducts();
+      loadFreeeMasterAndStart();
 
       document.getElementById('filterKeyword').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
@@ -591,6 +574,56 @@
         }
       });
     });
+
+    function loadFreeeMasterAndStart() {
+      google.script.run
+        .withSuccessHandler(function (json) {
+          try {
+            freeeMasterData = JSON.parse(json);
+          } catch (e) {
+            freeeMasterData = {
+              ok: false,
+              accounts: [],
+              taxCategories: [],
+              departmentItems: {},
+              message: 'マスタの解析に失敗しました'
+            };
+          }
+          updateFreeeMasterWarningBanner();
+          initFreeeDropdowns();
+          loadCategories();
+          loadProducts();
+        })
+        .withFailureHandler(function () {
+          freeeMasterData = {
+            ok: false,
+            accounts: [],
+            taxCategories: [],
+            departmentItems: {},
+            message: 'freeeマスタの取得に失敗しました'
+          };
+          updateFreeeMasterWarningBanner();
+          initFreeeDropdowns();
+          loadCategories();
+          loadProducts();
+        })
+        .getFreeeMasterForProductForm();
+    }
+
+    function updateFreeeMasterWarningBanner() {
+      var el = document.getElementById('freeeMasterWarning');
+      if (!el) {
+        return;
+      }
+      if (!freeeMasterData.ok) {
+        el.textContent =
+          freeeMasterData.message ||
+          'freeeマスタを設定してください。スプレッドシートにシート「freee勘定税区分」「freee部門品目」を用意し、データ入力後に再読み込みしてください。';
+        el.classList.remove('d-none');
+      } else {
+        el.classList.add('d-none');
+      }
+    }
 
     function goHome() {
       const form = document.getElementById('navForm');
@@ -607,52 +640,64 @@
     // =========================================================
 
     function initFreeeDropdowns() {
-      // 勘定科目ドロップダウンを構築
+      var accounts = freeeMasterData.accounts || [];
+      var taxCats = freeeMasterData.taxCategories || [];
+      var deptMap = freeeMasterData.departmentItems || {};
+
       var accountSelect = document.getElementById('productAccountTitle');
       accountSelect.textContent = '';
-      var emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '選択してください';
-      accountSelect.appendChild(emptyOpt);
-      ACCOUNT_TYPES.forEach(function (type) {
+      var accEmpty = document.createElement('option');
+      accEmpty.value = '';
+      accEmpty.textContent = freeeMasterData.ok ? '選択してください' : '（マスタ未設定）';
+      accountSelect.appendChild(accEmpty);
+      accounts.forEach(function (type) {
         var opt = document.createElement('option');
         opt.value = type;
         opt.textContent = type;
         accountSelect.appendChild(opt);
       });
-      // デフォルト: 売上高
-      accountSelect.value = '売上高';
+      applyDefaultAccountTitle();
 
-      // 税区分ドロップダウンを構築
       var taxSelect = document.getElementById('productTaxCategory');
       taxSelect.textContent = '';
       var taxEmpty = document.createElement('option');
       taxEmpty.value = '';
-      taxEmpty.textContent = '選択してください';
+      taxEmpty.textContent = freeeMasterData.ok ? '選択してください' : '（マスタ未設定）';
       taxSelect.appendChild(taxEmpty);
-      TAX_CATEGORIES.forEach(function (cat) {
+      taxCats.forEach(function (cat) {
         var opt = document.createElement('option');
         opt.value = cat;
         opt.textContent = cat;
         taxSelect.appendChild(opt);
       });
 
-      // 部門ドロップダウンを構築
       var deptSelect = document.getElementById('productDepartment');
       deptSelect.textContent = '';
       var deptEmpty = document.createElement('option');
       deptEmpty.value = '';
       deptEmpty.textContent = '選択してください';
       deptSelect.appendChild(deptEmpty);
-      Object.keys(DEPARTMENT_ITEMS).forEach(function (dept) {
+      Object.keys(deptMap).forEach(function (dept) {
         var opt = document.createElement('option');
         opt.value = dept;
         opt.textContent = dept;
         deptSelect.appendChild(opt);
       });
 
-      // 品目は初期状態では空（部門未選択）
       updateItemDropdown('');
+    }
+
+    /** マスタに「売上高」があれば初期選択。なければ先頭、なければ空 */
+    function applyDefaultAccountTitle() {
+      var sel = document.getElementById('productAccountTitle');
+      var accounts = freeeMasterData.accounts || [];
+      if (accounts.indexOf('売上高') !== -1) {
+        sel.value = '売上高';
+      } else if (accounts.length > 0) {
+        sel.value = accounts[0];
+      } else {
+        sel.value = '';
+      }
     }
 
     function updateItemDropdown(department) {
@@ -663,14 +708,14 @@
       emptyOpt.textContent = department ? '選択してください' : '（部門を先に選択）';
       itemSelect.appendChild(emptyOpt);
 
-      if (department && DEPARTMENT_ITEMS[department]) {
-        DEPARTMENT_ITEMS[department].forEach(function (item) {
-          var opt = document.createElement('option');
-          opt.value = item;
-          opt.textContent = item;
-          itemSelect.appendChild(opt);
-        });
-      }
+      var map = freeeMasterData.departmentItems || {};
+      var items = department ? map[department] || [] : [];
+      items.forEach(function (item) {
+        var opt = document.createElement('option');
+        opt.value = item;
+        opt.textContent = item;
+        itemSelect.appendChild(opt);
+      });
     }
 
     function onDepartmentChange() {
@@ -681,10 +726,31 @@
     function validateDepartmentSelected() {
       var dept = document.getElementById('productDepartment').value;
       if (!dept) {
-        showWarningToast('部門を先に選択してください');
+        showWarningToast('部門を入力してください');
         document.getElementById('productDepartment').focus();
+      }
+    }
+
+    function ensureSelectOption_(selectId, value, orphanSuffix) {
+      var sel = document.getElementById(selectId);
+      if (!value) {
+        sel.value = '';
         return;
       }
+      var found = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === value) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        var opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = orphanSuffix ? value + orphanSuffix : value;
+        sel.appendChild(opt);
+      }
+      sel.value = value;
     }
 
     // =========================================================
@@ -727,13 +793,12 @@
       document.getElementById('productMemo').value = product.memo || '';
       document.getElementById('productNote').value = product.note || '';
 
-      // freee連携フィールドをコピー（部門→品目の連動を考慮）
-      document.getElementById('productAccountTitle').value = product.accountTitle || '';
-      document.getElementById('productTaxCategory').value = product.taxCategory || '';
+      ensureSelectOption_('productAccountTitle', product.accountTitle || '', '（マスタ外の保存値）');
+      ensureSelectOption_('productTaxCategory', product.taxCategory || '', '（マスタ外の保存値）');
       var deptVal = product.department || '';
-      document.getElementById('productDepartment').value = deptVal;
+      ensureSelectOption_('productDepartment', deptVal, '（マスタ外の保存値）');
       updateItemDropdown(deptVal);
-      document.getElementById('productItem').value = product.item || '';
+      ensureSelectOption_('productItem', product.item || '', '（マスタ外の保存値）');
 
       // 価格・原価・粗利・在庫はクリア（既にclearModalFormでクリア済み）
 
@@ -1036,13 +1101,12 @@
             document.getElementById('productTaxRate').value = p.taxRate ?? '';
             document.getElementById('productStock').value = p.stock ?? '';
             document.getElementById('productUnit').value = p.unit ?? '';
-            document.getElementById('productAccountTitle').value = p.accountTitle ?? '';
-            document.getElementById('productTaxCategory').value = p.taxCategory ?? '';
-            // 部門をセットしてから品目リストを更新し、その後品目をセット
+            ensureSelectOption_('productAccountTitle', p.accountTitle || '', '（マスタ外の保存値）');
+            ensureSelectOption_('productTaxCategory', p.taxCategory || '', '（マスタ外の保存値）');
             var deptVal = p.department ?? '';
-            document.getElementById('productDepartment').value = deptVal;
+            ensureSelectOption_('productDepartment', deptVal, '（マスタ外の保存値）');
             updateItemDropdown(deptVal);
-            document.getElementById('productItem').value = p.item ?? '';
+            ensureSelectOption_('productItem', p.item || '', '（マスタ外の保存値）');
             document.getElementById('productMemo').value = p.memo ?? '';
             document.getElementById('productNote').value = p.note ?? '';
             productModal.show();
@@ -1070,9 +1134,7 @@
       document.getElementById('productTaxRate').value = '';
       document.getElementById('productStock').value = '';
       document.getElementById('productUnit').value = '';
-      // freee連携フィールド（<select>）のリセット
-      // 勘定科目: デフォルト値「売上高」を設定
-      document.getElementById('productAccountTitle').value = '売上高';
+      applyDefaultAccountTitle();
       document.getElementById('productTaxCategory').value = '';
       document.getElementById('productDepartment').value = '';
       // 部門リセットに合わせて品目も初期化
@@ -1151,6 +1213,13 @@
         }
       } else {
         showErrorToast('消費税率を選択してください');
+        return;
+      }
+
+      const deptFreee = document.getElementById('productDepartment').value;
+      const itemFreee = document.getElementById('productItem').value;
+      if (itemFreee && !deptFreee) {
+        showErrorToast('部門を入力してください');
         return;
       }
 
