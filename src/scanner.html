@@ -157,6 +157,31 @@
             width: 3rem;
             height: 3rem;
         }
+
+        /* バリデーション等: 全画面オーバーレイを出さない軽量トースト */
+        .light-toast {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 92%;
+            padding: 12px 18px;
+            background: rgba(33, 37, 41, 0.92);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            z-index: 200;
+            display: none;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            white-space: pre-wrap;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+
+        .light-toast.visible {
+            display: block;
+        }
     </style>
 </head>
 
@@ -215,6 +240,8 @@
         <div id="errorMsg" class="mb-4"></div>
         <button onclick="retry()" class="btn btn-light px-5">再試行</button>
     </div>
+
+    <div id="lightToast" class="light-toast" role="status" aria-live="polite"></div>
 
     <!-- 音 -->
     <audio id="beepSound" preload="auto">
@@ -407,10 +434,30 @@
             document.getElementById('successOverlay').style.display = 'none';
         }
 
-        /** utilities のトースト未読込時も ReferenceError にしない（showError に委譲） */
-        function showWarningToast(msg) {
-            showError(msg);
+        var lightToastTimer = null;
+
+        /** バリデーション・軽い注意: オーバーレイなし・isProcessing は変えない */
+        function showLightToast(msg) {
+            var el = document.getElementById('lightToast');
+            if (!el) {
+                return;
+            }
+            el.textContent = msg;
+            el.classList.add('visible');
+            if (lightToastTimer) {
+                clearTimeout(lightToastTimer);
+            }
+            lightToastTimer = setTimeout(function () {
+                el.classList.remove('visible');
+                lightToastTimer = null;
+            }, 3800);
         }
+
+        function showWarningToast(msg) {
+            showLightToast(msg);
+        }
+
+        /** 解析失敗など本番系のエラー: オーバーレイで再試行を促す */
         function showErrorToast(msg) {
             showError(msg);
         }
