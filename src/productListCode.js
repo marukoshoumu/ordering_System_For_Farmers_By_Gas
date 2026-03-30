@@ -623,7 +623,7 @@ function buildFreeeMasterPayload_() {
   var departmentItems = {};
   var lastRow = sheetDI.getLastRow();
   if (lastRow >= 2) {
-    var range = sheetDI.getRange(2, 1, lastRow, 2).getValues();
+    var range = sheetDI.getRange(2, 1, lastRow - 1, 2).getValues();
     for (var i = 0; i < range.length; i++) {
       var d = range[i][0] !== null && range[i][0] !== undefined ? String(range[i][0]).trim() : '';
       var item = range[i][1] !== null && range[i][1] !== undefined ? String(range[i][1]).trim() : '';

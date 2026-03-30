@@ -93,6 +93,8 @@ async function main() {
     await dismissMessageBox(workPage);
     await dismissPortalNotice(workPage);
 
+    // 入口ステップのクリック／ポップアップ／お知らせタブ再試行は carriers/sagawa.js の processSagawa と同一手順。
+    // サイト DOM 変更時は両方を同時に直すこと（診断と本番で挙動を揃えるため意図的に二重管理）。
     const entrySteps = Array.isArray(sel.entrySteps) ? sel.entrySteps : [];
     for (let i = 0; i < entrySteps.length; i++) {
       const selector = entrySteps[i];
@@ -129,7 +131,7 @@ async function main() {
           console.warn('  → お知らせ(info)タブを検出。閉じて e飛伝(/info/除外)で再試行', { url: openedUrl });
           await newPage.close().catch(() => {});
           workPage = page;
-          const retryEntrySelector = Array.isArray(sel.entrySteps) ? sel.entrySteps[0] : null;
+          const retryEntrySelector = sel.entrySteps[0];
           if (!retryEntrySelector) {
             console.warn('  → entrySteps[0] 未設定のため再試行できません');
             throw new Error('sagawa.entrySteps[0] が selectors.json にありません');

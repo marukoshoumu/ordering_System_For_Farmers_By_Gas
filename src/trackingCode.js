@@ -169,7 +169,7 @@ function syncDeliveryStatus() {
             var slipErr =
                 (e && (e.message || (typeof e.toString === 'function' && e.toString()))) || String(e);
             var slipStack = e && e.stack ? '\n' + e.stack : '';
-            Logger.log('checkSlipTimeout: ' + slipErr + slipStack);
+            Logger.log('ERROR checkSlipTimeout: ' + slipErr + slipStack);
         }
     }
 }

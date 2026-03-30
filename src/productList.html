@@ -1162,6 +1162,45 @@
       document.getElementById('productMargin').value = price - cost;
     }
 
+    /**
+     * 保存前: freee 連携フィールドがマスタ由来の選択のみか検証する（マスタ取得済みのとき）。
+     * @returns {{ ok: boolean, msg?: string }}
+     */
+    function validateFreeeSelectionsForSave_() {
+      const dept = (document.getElementById('productDepartment').value || '').trim();
+      const item = (document.getElementById('productItem').value || '').trim();
+      if (item && !dept) {
+        return { ok: false, msg: '部門を入力してください' };
+      }
+      if (!freeeMasterData || !freeeMasterData.ok) {
+        return { ok: true };
+      }
+      const accounts = freeeMasterData.accounts || [];
+      const taxCats = freeeMasterData.taxCategories || [];
+      const deptMap = freeeMasterData.departmentItems || {};
+      const acc = (document.getElementById('productAccountTitle').value || '').trim();
+      const tax = (document.getElementById('productTaxCategory').value || '').trim();
+      if (acc && accounts.indexOf(acc) === -1) {
+        return { ok: false, msg: '勘定科目がマスタにありません。プルダウンから選び直してください。' };
+      }
+      if (tax && taxCats.indexOf(tax) === -1) {
+        return { ok: false, msg: '税区分がマスタにありません。プルダウンから選び直してください。' };
+      }
+      if (dept && !Object.prototype.hasOwnProperty.call(deptMap, dept)) {
+        return { ok: false, msg: '部門がマスタにありません。プルダウンから選び直してください。' };
+      }
+      if (item && dept) {
+        const items = deptMap[dept] || [];
+        if (items.indexOf(item) === -1) {
+          return {
+            ok: false,
+            msg: '品目が現在の部門のマスタにありません。プルダウンから選び直してください。'
+          };
+        }
+      }
+      return { ok: true };
+    }
+
     function saveProduct() {
       const category = document.getElementById('productCategory').value;
       const name = document.getElementById('productName').value;
@@ -1229,10 +1268,9 @@
         return;
       }
 
-      const deptFreee = document.getElementById('productDepartment').value;
-      const itemFreee = document.getElementById('productItem').value;
-      if (itemFreee && !deptFreee) {
-        showErrorToast('部門を入力してください');
+      const freeeCheck = validateFreeeSelectionsForSave_();
+      if (!freeeCheck.ok) {
+        showErrorToast(freeeCheck.msg);
         return;
       }
 

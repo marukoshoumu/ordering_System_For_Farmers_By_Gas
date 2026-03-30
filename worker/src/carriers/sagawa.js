@@ -103,7 +103,7 @@ async function processSagawa(csvContent, shippingDate) {
           });
           await newPage.close().catch(() => {});
           workPage = page;
-          const retryEntrySelector = Array.isArray(sel.entrySteps) ? sel.entrySteps[0] : null;
+          const retryEntrySelector = sel.entrySteps[0];
           if (!retryEntrySelector) {
             throw new Error(
               'e飛伝III: selectors.json の sagawa.entrySteps[0] が未設定のため、お知らせタブ検出後の再試行ができません'

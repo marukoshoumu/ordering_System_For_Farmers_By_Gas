@@ -481,7 +481,9 @@
   function sbSendFail() {
     resetBtnLoading();
     var msg = 'URLの取得に失敗しました。';
-    if (typeof showErrorToast === 'function') {
+    if (typeof showSidebarToast === 'function') {
+      showSidebarToast(msg);
+    } else if (typeof showErrorToast === 'function') {
       showErrorToast(msg);
     } else {
       alert(msg);
