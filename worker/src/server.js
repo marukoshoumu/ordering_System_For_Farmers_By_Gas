@@ -284,6 +284,20 @@ server = app.listen(PORT, () => {
   }
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `ポート ${PORT} は既に使用中です（別の Worker が起動したままの可能性があります）。\n` +
+        '対処: 既存の node プロセスを終了するか、.env の PORT を別番号に変更してください。\n' +
+        'Windows 例: netstat -ano | findstr :' +
+        PORT +
+        ' → 表示された PID を taskkill /PID <PID> /F で終了'
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
 // ========================================
 // GAS ポーリング（queued ジョブを取得して処理）
 // ========================================

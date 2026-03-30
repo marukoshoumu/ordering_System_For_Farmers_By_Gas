@@ -13,81 +13,19 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
 const { getSelectors } = require('../src/load-selectors');
+const {
+  SAGAWA_INFO_POPUP_URL_RE,
+  launchBrowser,
+  removeWalkMe,
+  dismissMessageBox,
+  dismissPortalNotice,
+} = require('../src/carriers/sagawa-helpers');
 
 const LOGIN_URL = process.env.SAGAWA_LOGIN_URL || 'https://www.e-service.sagawa-exp.co.jp/';
 const LOGIN_ID = process.env.SAGAWA_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.SAGAWA_PASSWORD;
 const TIMEOUT = 60_000;
-const SAGAWA_INFO_POPUP_URL_RE = /\/outer_wtx\/info\/|\/info\/info_\d{6,8}/;
-
-async function launchBrowser() {
-  const browser = await chromium.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
-      '--headless=new',
-    ],
-  });
-  const context = await browser.newContext({
-    acceptDownloads: true,
-    locale: 'ja-JP',
-    viewport: { width: 1280, height: 800 },
-    userAgent:
-      process.env.BROWSER_USER_AGENT ||
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-  });
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-  });
-  return { context, browser };
-}
-
-async function removeWalkMe(page) {
-  await page.evaluate(() => {
-    document.querySelectorAll('[id^="walkme-"]').forEach((el) => el.remove());
-  }).catch(() => {});
-}
-
-async function dismissMessageBox(page) {
-  try {
-    const msgBox = page.locator('.el-message-box__wrapper:visible .el-message-box__btns button').first();
-    if (await msgBox.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await msgBox.click();
-      await page.waitForTimeout(1000);
-      return true;
-    }
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
-
-async function dismissPortalNotice(page) {
-  try {
-    const noticeMarker = page
-      .getByText(/Microsoft Edge利用時|飛脚機密文書リサイクル/)
-      .first();
-    if (!(await noticeMarker.isVisible({ timeout: 2500 }).catch(() => false))) {
-      return false;
-    }
-    const closeBtn = page.getByRole('button', { name: /閉じる/ }).first();
-    if (!(await closeBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
-      return false;
-    }
-    await closeBtn.click();
-    await page.waitForTimeout(800);
-    console.log('お知らせを閉じました（ポータル・閉じるあり）');
-    return true;
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
 
 async function countVisible(page, selector) {
   try {
@@ -191,7 +129,12 @@ async function main() {
           console.warn('  → お知らせ(info)タブを検出。閉じて e飛伝(/info/除外)で再試行', { url: openedUrl });
           await newPage.close().catch(() => {});
           workPage = page;
-          const alt = workPage.locator("a:has-text('e飛伝'):not([href*='/info/'])").first();
+          const retryEntrySelector = Array.isArray(sel.entrySteps) ? sel.entrySteps[0] : null;
+          if (!retryEntrySelector) {
+            console.warn('  → entrySteps[0] 未設定のため再試行できません');
+            throw new Error('sagawa.entrySteps[0] が selectors.json にありません');
+          }
+          const alt = workPage.locator(retryEntrySelector).first();
           try {
             await alt.waitFor({ state: 'visible', timeout: 10000 });
             const p2 = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);

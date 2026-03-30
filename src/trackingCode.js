@@ -146,7 +146,7 @@ function syncDeliveryStatus() {
             const deliveryMethod = data[i][deliveryMethodCol] || '';
             const currentStatus = statusCol !== -1 ? data[i][statusCol] : '';
 
-            if (!trackingNo || trackingNo === '' || processedOrderIds.has(orderId)) continue;
+            if (!trackingNo || processedOrderIds.has(orderId)) continue;
             if (currentStatus === '完了' || currentStatus === '配達完了') continue;
 
             processedOrderIds.add(orderId);
@@ -166,7 +166,10 @@ function syncDeliveryStatus() {
                 checkSlipTimeout();
             }
         } catch (e) {
-            Logger.log('checkSlipTimeout: ' + e.message);
+            var slipErr =
+                (e && (e.message || (typeof e.toString === 'function' && e.toString()))) || String(e);
+            var slipStack = e && e.stack ? '\n' + e.stack : '';
+            Logger.log('checkSlipTimeout: ' + slipErr + slipStack);
         }
     }
 }

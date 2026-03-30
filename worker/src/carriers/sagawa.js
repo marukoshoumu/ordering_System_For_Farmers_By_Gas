@@ -1,101 +1,20 @@
-const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { getSelectors } = require('../load-selectors');
 const { MIN_PDF_SIZE } = require('../constants');
+const {
+  SAGAWA_INFO_POPUP_URL_RE,
+  launchBrowser,
+  removeWalkMe,
+  dismissMessageBox,
+  dismissPortalNotice,
+} = require('./sagawa-helpers');
 
 const LOGIN_URL = process.env.SAGAWA_LOGIN_URL || 'https://www.e-service.sagawa-exp.co.jp/';
 const LOGIN_ID = process.env.SAGAWA_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.SAGAWA_PASSWORD;
 const TIMEOUT = 60_000;
-
-/** 送り状メニューの「お知らせ」専用ページ（e飛伝本体ではない） */
-const SAGAWA_INFO_POPUP_URL_RE = /\/outer_wtx\/info\/|\/info\/info_\d{6,8}/;
-
-async function launchBrowser() {
-  // 佐川WAF(Akamai)は従来のheadlessを検知してブロックする。
-  // --headless=new（新headlessモード）は通常ブラウザと同等の挙動でWAFを回避でき、
-  // かつウィンドウも表示されない。
-  const browser = await chromium.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
-      '--headless=new',
-    ],
-  });
-  const context = await browser.newContext({
-    acceptDownloads: true,
-    locale: 'ja-JP',
-    viewport: { width: 1280, height: 800 },
-    userAgent: process.env.BROWSER_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-  });
-  // 佐川のWAF/bot検知を回避
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-  });
-  return { context, browser };
-}
-
-/**
- * WalkMeオーバーレイを除去する。
- * e飛伝IIIではWalkMeが操作をブロックするため、ページ遷移後に毎回呼ぶ。
- */
-async function removeWalkMe(page) {
-  await page.evaluate(() => {
-    document.querySelectorAll('[id^="walkme-"]').forEach(el => el.remove());
-  }).catch(() => {});
-}
-
-/**
- * Element UIのメッセージボックス（荷物受渡書印刷案内等）を閉じる。
- * 未印刷の荷物受渡書がある場合、ログイン後にダイアログが表示され操作をブロックする。
- */
-/**
- * @returns {boolean} ダイアログを閉じたかどうか
- */
-async function dismissMessageBox(page) {
-  try {
-    const msgBox = page.locator('.el-message-box__wrapper:visible .el-message-box__btns button').first();
-    if (await msgBox.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await msgBox.click();
-      console.log('e飛伝III: メッセージボックスを閉じました');
-      await page.waitForTimeout(1000);
-      return true;
-    }
-  } catch { /* ダイアログが無ければ何もしない */ }
-  return false;
-}
-
-/**
- * 既知の全画面お知らせだけを閉じる（閉じるボタンが無ければ何もしない）。
- * お知らせの種類は都度違うため、文言で特定できるものに限定する。マッチしても
- * 「閉じる」が見つからない場合は黙ってスキップし、以降の通常フローに任せる。
- */
-async function dismissPortalNotice(page) {
-  try {
-    const noticeMarker = page
-      .getByText(/Microsoft Edge利用時|飛脚機密文書リサイクル/)
-      .first();
-    if (!(await noticeMarker.isVisible({ timeout: 2500 }).catch(() => false))) {
-      return false;
-    }
-    const closeBtn = page.getByRole('button', { name: /閉じる/ }).first();
-    if (!(await closeBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
-      return false;
-    }
-    await closeBtn.click();
-    await page.waitForTimeout(800);
-    console.log('e飛伝III: スマートクラブのお知らせを閉じました');
-    return true;
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
 
 async function processSagawa(csvContent, shippingDate) {
   const sel = getSelectors('sagawa');
@@ -177,14 +96,20 @@ async function processSagawa(csvContent, shippingDate) {
         } catch {
           /* tab may have closed */
         }
-        // 入口1で「info_*.html」等のお知らせタブだけが開くことがある → 閉じて href に /info/ を含まない e飛伝 リンクを再試行
+        // 入口1で「info_*.html」等のお知らせタブだけが開くことがある → 閉じて entrySteps[0]（selectors.json と同一）で再クリック
         if (i === 0 && openedUrl && SAGAWA_INFO_POPUP_URL_RE.test(openedUrl)) {
           console.warn('e飛伝III: お知らせページを開いたためタブを閉じ、別リンクから e飛伝 を開き直します', {
             url: openedUrl,
           });
           await newPage.close().catch(() => {});
           workPage = page;
-          const alt = workPage.locator("a:has-text('e飛伝'):not([href*='/info/'])").first();
+          const retryEntrySelector = Array.isArray(sel.entrySteps) ? sel.entrySteps[0] : null;
+          if (!retryEntrySelector) {
+            throw new Error(
+              'e飛伝III: selectors.json の sagawa.entrySteps[0] が未設定のため、お知らせタブ検出後の再試行ができません'
+            );
+          }
+          const alt = workPage.locator(retryEntrySelector).first();
           await alt.waitFor({ state: 'visible', timeout: 10000 });
           const p2 = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
           await alt.click();
