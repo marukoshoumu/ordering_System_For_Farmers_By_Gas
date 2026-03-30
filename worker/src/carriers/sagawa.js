@@ -10,6 +10,9 @@ const LOGIN_ID = process.env.SAGAWA_LOGIN_ID;
 const LOGIN_PASSWORD = process.env.SAGAWA_PASSWORD;
 const TIMEOUT = 60_000;
 
+/** 送り状メニューの「お知らせ」専用ページ（e飛伝本体ではない） */
+const SAGAWA_INFO_POPUP_URL_RE = /\/outer_wtx\/info\/|\/info\/info_\d{6,8}/;
+
 async function launchBrowser() {
   // 佐川WAF(Akamai)は従来のheadlessを検知してブロックする。
   // --headless=new（新headlessモード）は通常ブラウザと同等の挙動でWAFを回避でき、
@@ -67,6 +70,33 @@ async function dismissMessageBox(page) {
   return false;
 }
 
+/**
+ * 既知の全画面お知らせだけを閉じる（閉じるボタンが無ければ何もしない）。
+ * お知らせの種類は都度違うため、文言で特定できるものに限定する。マッチしても
+ * 「閉じる」が見つからない場合は黙ってスキップし、以降の通常フローに任せる。
+ */
+async function dismissPortalNotice(page) {
+  try {
+    const noticeMarker = page
+      .getByText(/Microsoft Edge利用時|飛脚機密文書リサイクル/)
+      .first();
+    if (!(await noticeMarker.isVisible({ timeout: 2500 }).catch(() => false))) {
+      return false;
+    }
+    const closeBtn = page.getByRole('button', { name: /閉じる/ }).first();
+    if (!(await closeBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
+      return false;
+    }
+    await closeBtn.click();
+    await page.waitForTimeout(800);
+    console.log('e飛伝III: スマートクラブのお知らせを閉じました');
+    return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 async function processSagawa(csvContent, shippingDate) {
   const sel = getSelectors('sagawa');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sagawa-'));
@@ -117,11 +147,16 @@ async function processSagawa(csvContent, shippingDate) {
     // ログイン後のダッシュボード/メニュー表示を待つ（外部ページのため短い待機）
     await page.waitForLoadState('networkidle').catch(() => {});
     await page.waitForTimeout(2000);
+    await removeWalkMe(workPage);
+    await dismissMessageBox(workPage);
+    await dismissPortalNotice(workPage);
+
     const entrySteps = Array.isArray(sel.entrySteps) ? sel.entrySteps : [];
     for (let i = 0; i < entrySteps.length; i++) {
       const selector = entrySteps[i];
       await removeWalkMe(workPage);
       await dismissMessageBox(workPage);
+      await dismissPortalNotice(workPage);
       const loc = workPage.locator(selector).first();
       try {
         await loc.waitFor({ state: 'visible', timeout: 15000 });
@@ -132,14 +167,47 @@ async function processSagawa(csvContent, shippingDate) {
       console.log('e飛伝III: 入口ステップ', i + 1);
       const popupPromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
       await loc.click();
-      const newPage = await popupPromise;
+      let newPage = await popupPromise;
       if (newPage) {
         await newPage.waitForLoadState('domcontentloaded').catch(() => {});
-        // 新規タブのコンテンツ読み込みを待つ（e飛伝はSPAのため短い待機を維持）
         await newPage.waitForTimeout(3000);
-        workPage = newPage;
-        workPage.setDefaultTimeout(TIMEOUT);
-        console.log('e飛伝III: 新しいタブに切り替え');
+        let openedUrl = '';
+        try {
+          openedUrl = newPage.url();
+        } catch {
+          /* tab may have closed */
+        }
+        // 入口1で「info_*.html」等のお知らせタブだけが開くことがある → 閉じて href に /info/ を含まない e飛伝 リンクを再試行
+        if (i === 0 && openedUrl && SAGAWA_INFO_POPUP_URL_RE.test(openedUrl)) {
+          console.warn('e飛伝III: お知らせページを開いたためタブを閉じ、別リンクから e飛伝 を開き直します', {
+            url: openedUrl,
+          });
+          await newPage.close().catch(() => {});
+          workPage = page;
+          const alt = workPage.locator("a:has-text('e飛伝'):not([href*='/info/'])").first();
+          await alt.waitFor({ state: 'visible', timeout: 10000 });
+          const p2 = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+          await alt.click();
+          newPage = await p2;
+          if (newPage) {
+            await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+            await newPage.waitForTimeout(3000);
+            workPage = newPage;
+            workPage.setDefaultTimeout(TIMEOUT);
+            console.log('e飛伝III: 新しいタブに切り替え（再試行後）', { url: workPage.url() });
+          } else {
+            await workPage.waitForLoadState('load').catch(() => {});
+            await workPage.waitForTimeout(2000);
+            console.log('e飛伝III: 再試行は同一タブ遷移', { url: workPage.url() });
+          }
+        } else {
+          workPage = newPage;
+          workPage.setDefaultTimeout(TIMEOUT);
+          console.log('e飛伝III: 新しいタブに切り替え', { url: openedUrl });
+        }
+        await removeWalkMe(workPage);
+        await dismissMessageBox(workPage);
+        await dismissPortalNotice(workPage);
       } else {
         await workPage.waitForLoadState('load');
         await workPage.waitForTimeout(3000);
@@ -182,12 +250,25 @@ async function processSagawa(csvContent, shippingDate) {
 
     // Step 4: CSVファイルアップロード
     // e飛伝IIIでは<input type="file">が非表示。fileChooserイベントを使用。
+    // waitForEvent と click を Promise.all で束ねる（click が先に失敗したとき
+    // filechooser 用 Promise が宙に浮いて unhandledRejection → プロセス終了するのを防ぐ）
     console.log('e飛伝III: CSVアップロード');
     await removeWalkMe(workPage);
 
-    const fileChooserPromise = workPage.waitForEvent('filechooser', { timeout: 10000 });
-    await workPage.locator(sel.fileSelectButton).first().click();
-    const fileChooser = await fileChooserPromise;
+    const fileSelectLoc = workPage.locator(sel.fileSelectButton).first();
+    await fileSelectLoc.waitFor({ state: 'visible', timeout: 15000 });
+    let fileChooser;
+    try {
+      [, fileChooser] = await Promise.all([
+        fileSelectLoc.click(),
+        workPage.waitForEvent('filechooser', { timeout: 20000 }),
+      ]);
+    } catch (e) {
+      throw new Error(
+        'e飛伝III: ファイル選択で filechooser を取得できませんでした（画面が取込画面でない・ボタンセレクタ不一致の可能性）。 ' +
+          (e?.message || e)
+      );
+    }
     await fileChooser.setFiles(csvPath);
     console.log('e飛伝III: ファイル選択完了');
 

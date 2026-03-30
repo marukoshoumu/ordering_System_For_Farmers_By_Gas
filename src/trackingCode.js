@@ -115,44 +115,58 @@ function updateOrderTrackingStatus(orderId, trackingNumber) {
 /**
  * 定期トリガー用: 配送状況の自動同期
  * 追跡番号があり、かつステータスが「完了」でないものを対象に巡回
+ *
+ * 末尾で slipTriggerCode.js の checkSlipTimeout を呼ぶ。
+ * 伝票処理ログの processing 滞留検知は本来 checkSlipStatus（1分トリガー）側だが、
+ * syncDeliveryStatus だけ時間トリガーにしている環境でも timeout へ遷移させるため。
  */
 function syncDeliveryStatus() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('受注');
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
+    try {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = ss.getSheetByName('受注');
+        const data = sheet.getDataRange().getValues();
+        const headers = data[0];
 
-    const orderIdCol = headers.indexOf('受注ID');
-    const trackingCol = headers.indexOf('追跡番号');
-    const statusCol = headers.indexOf('ステータス');
-    const deliveryMethodCol = headers.indexOf('納品方法');
+        const orderIdCol = headers.indexOf('受注ID');
+        const trackingCol = headers.indexOf('追跡番号');
+        const statusCol = headers.indexOf('ステータス');
+        const deliveryMethodCol = headers.indexOf('納品方法');
 
-    if (trackingCol === -1) return;
+        if (trackingCol === -1) return;
 
-    // メモ：ステータス列がない場合は、最後の列に追加するなどの処理が必要だが、
-    // 現状は既存のステータス管理に準ずる
+        // メモ：ステータス列がない場合は、最後の列に追加するなどの処理が必要だが、
+        // 現状は既存のステータス管理に準ずる
 
-    // ユニークな受注ID（1受注複数行を想定）ごとに処理
-    const processedOrderIds = new Set();
+        // ユニークな受注ID（1受注複数行を想定）ごとに処理
+        const processedOrderIds = new Set();
 
-    for (let i = 1; i < data.length; i++) {
-        const orderId = data[i][orderIdCol];
-        const trackingNo = String(data[i][trackingCol]).trim();
-        const deliveryMethod = data[i][deliveryMethodCol] || '';
-        const currentStatus = statusCol !== -1 ? data[i][statusCol] : '';
+        for (let i = 1; i < data.length; i++) {
+            const orderId = data[i][orderIdCol];
+            const trackingNo = String(data[i][trackingCol]).trim();
+            const deliveryMethod = data[i][deliveryMethodCol] || '';
+            const currentStatus = statusCol !== -1 ? data[i][statusCol] : '';
 
-        if (!trackingNo || trackingNo === '' || processedOrderIds.has(orderId)) continue;
-        if (currentStatus === '完了' || currentStatus === '配達完了') continue;
+            if (!trackingNo || trackingNo === '' || processedOrderIds.has(orderId)) continue;
+            if (currentStatus === '完了' || currentStatus === '配達完了') continue;
 
-        processedOrderIds.add(orderId);
+            processedOrderIds.add(orderId);
 
-        // 配送状況の取得
-        const newStatus = fetchTrackingStatus(trackingNo, deliveryMethod);
+            // 配送状況の取得
+            const newStatus = fetchTrackingStatus(trackingNo, deliveryMethod);
 
-        if (newStatus && newStatus !== currentStatus) {
-            // 全行のステータスを更新
-            updateOrderStatusInSheet(orderId, newStatus);
-            Logger.log(`受注ID: ${orderId} のステータスを ${newStatus} に更新しました。`);
+            if (newStatus && newStatus !== currentStatus) {
+                // 全行のステータスを更新
+                updateOrderStatusInSheet(orderId, newStatus);
+                Logger.log(`受注ID: ${orderId} のステータスを ${newStatus} に更新しました。`);
+            }
+        }
+    } finally {
+        try {
+            if (typeof checkSlipTimeout === 'function') {
+                checkSlipTimeout();
+            }
+        } catch (e) {
+            Logger.log('checkSlipTimeout: ' + e.message);
         }
     }
 }

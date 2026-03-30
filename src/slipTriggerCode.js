@@ -11,6 +11,8 @@
  *
  * トリガー設定方法:
  *   GASエディタ → トリガー → 関数: checkSlipStatus → 時間主導型 → 1分おき
+ * processing 滞留の timeout 検知（checkSlipTimeout）は checkSlipStatus の末尾で実行される。
+ * syncDeliveryStatus のみ時間トリガーにしている場合は trackingCode.js 側でも同関数を呼ぶ。
  */
 
 /**

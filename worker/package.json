@@ -9,7 +9,8 @@
         "test": "jest --passWithNoTests",
         "setup-service": "node scripts/setup-service.js",
         "uninstall-service": "node scripts/uninstall-service.js",
-        "logs": "tail -f logs/worker.log"
+        "logs": "tail -f logs/worker.log",
+        "probe:sagawa": "node scripts/sagawa-selectors-probe.js"
     },
     "dependencies": {
         "dotenv": "^16.4.7",

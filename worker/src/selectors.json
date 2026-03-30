@@ -24,7 +24,7 @@
     "password": "input#pass2",
     "loginButton": "button#hojin-login-button",
     "entrySteps": [
-      "a:has-text('送り状発行'), a:has-text('e飛伝')",
+      "a:has-text('e飛伝'):not([href*='/info/'])",
       "button:has-text('送り状データ取込'), .syuDTori button"
     ],
     "templateDropdownTrigger": "#select-kyotsuTemplSelectBox",
