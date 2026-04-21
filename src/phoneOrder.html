@@ -1919,12 +1919,12 @@
             <div class="product-controls">
               <div style="display: flex; align-items: center; gap: 4px;">
                 <span style="font-size: 0.8rem; color: #666;">¥</span>
-                <input type="number" class="price-input" value="${price}" min="0" onchange="updateSelectedPrice(${index}, this.value)">
+                <input type="number" class="price-input" value="${price}" min="0" step="0.01" onchange="updateSelectedPrice(${index}, this.value)">
               </div>
               <div style="display: flex; align-items: center; gap: 4px;">
                 <span style="font-size: 0.8rem; color: #666;">×</span>
                 <button type="button" class="qty-btn qty-btn-minus" onclick="changeSelectedQty(${index}, -1)">−</button>
-                <input type="number" class="qty-input" value="${quantity}" min="1" onchange="updateSelectedQty(${index}, this.value)" style="width: 50px;">
+                <input type="number" class="qty-input" value="${quantity}" min="1" step="0.1" onchange="updateSelectedQty(${index}, this.value)" style="width: 70px;">
                 <button type="button" class="qty-btn qty-btn-plus" onclick="changeSelectedQty(${index}, 1)">+</button>
               </div>
               <div style="font-weight: 600; color: #28a745; min-width: 70px; text-align: right;">
@@ -1943,7 +1943,7 @@
       const item = selectedProducts[index];
       if (!item) return;
 
-      item.price = Math.max(0, parseInt(value) || 0);
+      item.price = Math.max(0, parseFloat(value) || 0);
       renderSelectedProducts();
       updateTotal();
     }
@@ -1990,7 +1990,7 @@
       }
 
       const name = element.dataset.product;
-      const price = parseInt(element.dataset.price) || 0;
+      const price = Number(element.dataset.price) || 0;
       const category = element.dataset.category || '';
 
       // 既に選択済みかチェック
@@ -2025,7 +2025,7 @@
       const item = selectedProducts[index];
       if (!item) return;
 
-      item.quantity = Math.max(1, parseInt(value) || 1);
+      item.quantity = Math.max(1, parseFloat(value) || 1);
       renderSelectedProducts();
       updateTotal();
     }

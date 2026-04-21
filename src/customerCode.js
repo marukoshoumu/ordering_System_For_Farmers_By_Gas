@@ -942,7 +942,7 @@ function checkOrderAgainstHistory(shippingToName, currentItems) {
       }
       
       const productName = row['商品名'];
-      const quantity = parseFloat(row['個数']) || 0;
+      const quantity = parseFloat(row['受注数']) || 0;
       
       if (productName) {
         orderMap.get(orderId).items.push({
@@ -1079,8 +1079,8 @@ function getRecentOrderForTemplate(shippingToName) {
       }
       
       const productName = row['商品名'];
-      const quantity = parseFloat(row['個数']) || 0;
-      const price = parseFloat(row['価格']) || 0;
+      const quantity = parseFloat(row['受注数']) || 0;
+      const price = parseFloat(row['販売価格']) || 0;
       const productCategory = row['商品分類'] || '';
       
       if (productName) {

@@ -819,12 +819,12 @@ function getshippingHTML(e, alert = '') {
     html += `</td>`;
     var price = "price" + rowNum;
     html += `<td>`;
-    html += `<input type="number" class="form-control no-spin" id="${price}" name="${price}" min='0'  value="${e.parameter[price] ? e.parameter[price] : ""}" >`;
+    html += `<input type="number" class="form-control no-spin" id="${price}" name="${price}" min="0" step="0.01" value="${e.parameter[price] ? e.parameter[price] : ""}" >`;
     html += `</td>`;
     var quantity = "quantity" + rowNum;
     html += `<td>`;
     html += `<div class="d-flex align-items-center gap-1">`;
-    html += `<input type="number" class="form-control no-spin flex-grow-1" id="${quantity}" name="${quantity}" min='0' max='999' step="0.1" title="整数部3桁小数部1桁の数字のみを入力してください。" value="${e.parameter[quantity] ? e.parameter[quantity] : ""}" >`;
+    html += `<input type="number" class="form-control no-spin flex-grow-1" id="${quantity}" name="${quantity}" min="0" step="0.1" title="0以上の数値を入力してください（小数可）。" value="${e.parameter[quantity] ? e.parameter[quantity] : ""}" >`;
     html += `<button type="button" class="btn btn-sm btn-outline-danger px-1 py-1" style="min-width: 20px; width: 20px; font-size: 0.7rem; line-height: 1;" onclick="clearProductRow(${rowNum})" title="この行をクリア">✖</button>`;
     html += `</div>`;
     html += `</td>`;
