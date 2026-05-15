@@ -434,7 +434,7 @@ function bulkUpdateOrderShippedStatus(orderIds, shippedValue) {
 }
 
 /**
- * 複数受注を一括キャンセル（ステータスを「キャンセル」に更新）
+ * 複数受注を一括キャンセル（ステータスを「キャンセル」に更新し、ヤマトCSV／佐川CSVの該当行を削除）
  * @param {Array<string>} orderIds - 受注IDの配列
  * @returns {Object} - 更新結果
  */
@@ -449,6 +449,7 @@ function bulkCancelOrders(orderIds) {
   const headers = data[0];
 
   const orderIdCol = headers.indexOf('受注ID');
+  const deliveryMethodCol = headers.indexOf('納品方法');
   let statusCol = headers.indexOf('ステータス');
 
   if (orderIdCol === -1) {
@@ -464,18 +465,39 @@ function bulkCancelOrders(orderIds) {
   const orderIdSet = new Set(orderIds);
   let updatedCount = 0;
 
+  // 一括削除(bulkDeleteOrders)と同様、送り状用CSVからも除外する（キャンセル後に送り状へ載らないように）
+  const yamatoOrderIds = new Set();
+  const sagawaOrderIds = new Set();
+
   for (let i = 1; i < data.length; i++) {
     if (orderIdSet.has(data[i][orderIdCol])) {
       sheet.getRange(i + 1, statusCol + 1).setValue('キャンセル');
       updatedCount++;
+      if (deliveryMethodCol !== -1) {
+        const deliveryMethod = data[i][deliveryMethodCol] || '';
+        if (deliveryMethod.includes('ヤマト')) {
+          yamatoOrderIds.add(data[i][orderIdCol]);
+        } else if (deliveryMethod.includes('佐川')) {
+          sagawaOrderIds.add(data[i][orderIdCol]);
+        }
+      }
     }
+  }
+
+  const yamatoSheet = ss.getSheetByName('ヤマトCSV');
+  const sagawaSheet = ss.getSheetByName('佐川CSV');
+  if (yamatoSheet && yamatoOrderIds.size > 0) {
+    deleteCSVByOrderIds(yamatoSheet, yamatoOrderIds);
+  }
+  if (sagawaSheet && sagawaOrderIds.size > 0) {
+    deleteCSVByOrderIds(sagawaSheet, sagawaOrderIds);
   }
 
   return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
 }
 
 /**
- * 複数受注のキャンセルを解除（ステータスを空に更新）
+ * 複数受注のキャンセルを解除（ステータスを空に更新し、ヤマト／佐川の送り状用CSV行を受注内容から再登録）
  * @param {Array<string>} orderIds - 受注IDの配列
  * @returns {Object} - 更新結果
  */
@@ -501,13 +523,29 @@ function bulkUncancelOrders(orderIds) {
     return { success: true, updatedRows: 0, orderCount: orderIds.length, message: 'ステータス列がありません' };
   }
 
-  const orderIdSet = new Set(orderIds);
+  const orderIdSet = new Set(orderIds.map(function (id) {
+    return String(id).trim();
+  }));
   let updatedCount = 0;
 
   for (let i = 1; i < data.length; i++) {
-    if (orderIdSet.has(data[i][orderIdCol])) {
+    if (orderIdSet.has(String(data[i][orderIdCol]).trim())) {
       sheet.getRange(i + 1, statusCol + 1).setValue('');  // ステータスを空にする
       updatedCount++;
+    }
+  }
+
+  // 同一受注IDの重複指定を除き、送り状用CSVを復元（restore 内で既存行は削除してから再追加）
+  const seenRestore = new Set();
+  for (let k = 0; k < orderIds.length; k++) {
+    const oid = orderIds[k];
+    const key = String(oid).trim();
+    if (!key || seenRestore.has(key)) continue;
+    seenRestore.add(key);
+    try {
+      restoreShippingCsvRowsForUncancelledOrder(oid);
+    } catch (err) {
+      Logger.log('restoreShippingCsvRowsForUncancelledOrder 失敗 orderId=' + oid + ' : ' + err.message);
     }
   }
 

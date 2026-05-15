@@ -522,13 +522,6 @@ function createShipAndPrint(datas) {
 // Drive同期フォルダにPDFが保存されると print-agent が自動検出・印刷する。
 
 /**
- * 指定されたシート・発送日のCSVテキスト内容を取得
- *
- * @param {string} sheetName - シート名（'ヤマトCSV' or '佐川CSV'）
- * @param {string} dateVal - 発送日
- * @returns {string|null} CSVテキスト（該当データなしの場合は null）
- */
-/**
  * RFC 4180準拠のCSV行パーサー（クォートされたフィールド対応）
  */
 function parseCsvLine(line) {
@@ -571,6 +564,47 @@ function escapeCsvField(field) {
   return str;
 }
 
+/**
+ * 受注シート上でキャンセル扱いの受注IDを集める（送り状CSV出力の除外用）
+ * @returns {Object<string, boolean>} キー: 受注ID文字列
+ */
+function buildCancelledOrderIdsLookupForShipping() {
+  var lookup = {};
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var orderSheet = ss.getSheetByName('受注');
+  if (!orderSheet) {
+    return lookup;
+  }
+  var data = orderSheet.getDataRange().getValues();
+  if (data.length < 2) {
+    return lookup;
+  }
+  var headers = data[0];
+  var orderIdCol = headers.indexOf('受注ID');
+  var statusCol = headers.indexOf('ステータス');
+  if (orderIdCol === -1 || statusCol === -1) {
+    return lookup;
+  }
+  for (var i = 1; i < data.length; i++) {
+    var status = data[i][statusCol];
+    if (status === 'キャンセル' || status === 'cancelled' || status === '　キャンセル済') {
+      var oid = data[i][orderIdCol];
+      if (oid != null && oid !== '') {
+        lookup[String(oid).trim()] = true;
+      }
+    }
+  }
+  return lookup;
+}
+
+/**
+ * 指定されたシート・発送日のCSVテキスト内容を取得
+ * 受注がキャンセル済みのお客様管理番号（受注ID）に紐づく行は除外する。
+ *
+ * @param {string} sheetName - シート名（'ヤマトCSV' or '佐川CSV'）
+ * @param {string} dateVal - 発送日
+ * @returns {string|null} CSVテキスト（該当データなしの場合は null）
+ */
 function getCsvContent(sheetName, dateVal) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -582,8 +616,22 @@ function getCsvContent(sheetName, dateVal) {
   let csv = '';
   var targetDate = Utilities.formatDate(new Date(dateVal), 'JST', 'yyyy/MM/dd');
 
+  var cancelledLookup = buildCancelledOrderIdsLookupForShipping();
+  var customerNoCol = -1;
+  if (sheetName === 'ヤマトCSV') {
+    customerNoCol = 1;
+  } else if (sheetName === '佐川CSV') {
+    customerNoCol = 10;
+  }
+
   for (var value of values) {
     if (value[0] == targetDate) {
+      if (customerNoCol >= 0) {
+        var custNo = value[customerNoCol];
+        if (custNo != null && custNo !== '' && cancelledLookup[String(custNo).trim()]) {
+          continue;
+        }
+      }
       var val = value.slice(1);
       csv += val.map(escapeCsvField).join(',') + "\r\n";
     }

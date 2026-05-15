@@ -2706,7 +2706,7 @@
         return;
       }
 
-      if (!(await showConfirmDialog(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、データは削除されません。'))) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、受注データ自体は削除されません。\n※ヤマトCSV／佐川CSVに残っている該当行も削除され、送り状作成の出力対象から外れます。'))) {
         return;
       }
 
@@ -2788,7 +2788,7 @@
         return;
       }
 
-      if (!(await showConfirmDialog(orderIds.length + '件の受注のキャンセルを解除しますか？'))) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注のキャンセルを解除しますか？\n\n※ヤマト／佐川の受注は、送り状用CSVシートへ受注内容から再登録されます。'))) {
         return;
       }
 

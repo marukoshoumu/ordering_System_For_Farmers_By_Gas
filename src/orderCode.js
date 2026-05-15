@@ -2375,6 +2375,141 @@ function splitNameForCarrier(fullName, nameMaxLen, companyMaxLen) {
 }
 
 /**
+ * 受注シート1行（ヘッダー順配列）から addRecordYamato / addRecordSagawa 用の擬似イベントを組み立てる。
+ * getOrderByOrderId と同様にマスタで表示名→種別値へ逆引きする。
+ *
+ * @param {Array<string>} headers - 受注シート1行目のヘッダー
+ * @param {Array} firstRow - 該当受注の先頭行（ヘッダー順の値配列）
+ * @returns {{ parameter: Object, parameters: { checklist: Array } }}
+ */
+function buildCarrierCsvEventParameterFromOrderRow(headers, firstRow) {
+  function getV(name) {
+    const i = headers.indexOf(name);
+    if (i === -1) return '';
+    const v = firstRow[i];
+    return v == null ? '' : v;
+  }
+
+  const deliveryMethod = (getV('納品方法') || '').toString();
+  const master = getMasterDataCached();
+
+  const invoiceTypeMap = {};
+  master.invoiceTypes
+    .filter(function (item) {
+      return item['納品方法'] === deliveryMethod;
+    })
+    .forEach(function (item) {
+      invoiceTypeMap[item['種別']] = item['種別値'];
+    });
+
+  const coolClsFiltered = master.coolClss.filter(function (item) {
+    return item['納品方法'] === deliveryMethod;
+  });
+  const coolClsMap = {};
+  coolClsFiltered.forEach(function (item) {
+    coolClsMap[item['種別']] = item['種別値'];
+  });
+  const coolClsByValue = {};
+  coolClsFiltered.forEach(function (item) {
+    coolClsByValue[item['種別値']] = item['種別値'];
+  });
+  const coolClsByCode = {};
+  coolClsFiltered.forEach(function (item) {
+    const code = (item['種別値'] || '').toString().split(':')[0];
+    if (code) coolClsByCode[code] = item['種別値'];
+  });
+  function resolveCoolCls(raw) {
+    if (raw === undefined || raw === null || raw === '') return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (coolClsMap[s]) return coolClsMap[s];
+    if (coolClsByValue[s]) return coolClsByValue[s];
+    if (coolClsByCode[s]) return coolClsByCode[s];
+    return '';
+  }
+
+  const cargoMap = {};
+  master.cargos
+    .filter(function (item) {
+      return item['納品方法'] === deliveryMethod;
+    })
+    .forEach(function (item) {
+      cargoMap[item['種別']] = item['種別値'];
+    });
+
+  const deliveryTimeMap = {};
+  master.deliveryTimes
+    .filter(function (item) {
+      return item['納品方法'] === deliveryMethod;
+    })
+    .forEach(function (item) {
+      deliveryTimeMap[item['時間指定']] = item['時間指定値'];
+    });
+
+  return {
+    parameter: {
+      deliveryMethod: deliveryMethod,
+      invoiceType: invoiceTypeMap[getV('送り状種別')] || '',
+      coolCls: resolveCoolCls(getV('クール区分')),
+      deliveryTime: deliveryTimeMap[getV('配達時間帯')] || '',
+      cargo1: cargoMap[getV('荷扱い１')] || '',
+      cargo2: cargoMap[getV('荷扱い２')] || '',
+      cargo3: cargoMap[getV('荷扱い３')] || ''
+    },
+    parameters: { checklist: [] }
+  };
+}
+
+/**
+ * キャンセル解除後、受注シートの内容からヤマトCSV／佐川CSVの行を再登録する。
+ * 一括キャンセルで CSV から削除した行を戻す用途。
+ *
+ * @param {string} orderId - 受注ID（受注一覧で選択されたIDと同一でなくても、文字列化して一致すれば可）
+ */
+function restoreShippingCsvRowsForUncancelledOrder(orderId) {
+  if (!orderId) return;
+  const idNorm = String(orderId).trim();
+  if (!idNorm) return;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('受注');
+  if (!sheet) return;
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+  const headers = data[0];
+  const orderIdCol = headers.indexOf('受注ID');
+  const dmCol = headers.indexOf('納品方法');
+  if (orderIdCol === -1) return;
+
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][orderIdCol]).trim() === idNorm) {
+      rows.push(data[i]);
+    }
+  }
+  if (rows.length === 0) return;
+
+  const dm = dmCol !== -1 ? (rows[0][dmCol] || '').toString() : '';
+  if (!dm) return;
+
+  const isYamato = dm.indexOf('ヤマト') !== -1;
+  const isSagawa = dm.indexOf('佐川') !== -1;
+  if (!isYamato && !isSagawa) return;
+
+  const idForCsv = rows[0][orderIdCol];
+  const orderHeaders = getOrderSheetHeaders();
+  const e = buildCarrierCsvEventParameterFromOrderRow(headers, rows[0]);
+
+  if (isYamato) {
+    deleteYamatoCSVByOrderId(idForCsv);
+    addRecordYamato('ヤマトCSV', rows, e, idForCsv, orderHeaders);
+  } else if (isSagawa) {
+    deleteSagawaCSVByOrderId(idForCsv);
+    addRecordSagawa('佐川CSV', rows, e, idForCsv, orderHeaders);
+  }
+}
+
+/**
  * ヤマト運輸B2用CSVデータを「ヤマトCSV」シートに登録
  *
  * @param {string} sheetName - シート名（通常 'ヤマトCSV'）
