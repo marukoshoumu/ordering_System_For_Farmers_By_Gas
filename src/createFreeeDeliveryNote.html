@@ -701,11 +701,40 @@
 
       document.getElementById('orderPreviewCount').textContent = '対象受注: ' + orders.length + '件';
       document.getElementById('orderPreviewArea').style.display = '';
-      document.getElementById('selectAllOrders').checked = false;
+      var sa = document.getElementById('selectAllOrders');
+      sa.checked = false;
+      sa.indeterminate = false;
+    }
+
+    /** 同一受注IDの PC 行チェックとスマホカードチェックを常に揃える（非表示DOMの取りこぼし防止） */
+    function syncFreeeOrderCheckboxesByOrderId(orderId, checked) {
+      document.querySelectorAll('.order-row-checkbox, .order-row-checkbox-card').forEach(function (cb) {
+        if (cb.value === orderId) cb.checked = checked;
+      });
+    }
+
+    /** テーブル1行につき1チェックボックスがある前提で全選択ヘッダーの状態を更新 */
+    function updateFreeeSelectAllHeaderState() {
+      var tableCbs = document.querySelectorAll('#orderPreviewBody .order-row-checkbox');
+      var el = document.getElementById('selectAllOrders');
+      if (!el || tableCbs.length === 0) {
+        if (el) {
+          el.checked = false;
+          el.indeterminate = false;
+        }
+        return;
+      }
+      var n = 0;
+      tableCbs.forEach(function (cb) {
+        if (cb.checked) n++;
+      });
+      el.checked = n === tableCbs.length;
+      el.indeterminate = n > 0 && n < tableCbs.length;
     }
 
     async function createFreeeCSVSelected() {
-      var checkboxes = document.querySelectorAll('.order-row-checkbox:checked, .order-row-checkbox-card:checked');
+      // PCテーブル行のみ集計（スマホ用カード側は display:none でも DOM に残るため二重カウントしない）
+      var checkboxes = document.querySelectorAll('#orderPreviewBody .order-row-checkbox:checked');
       if (checkboxes.length === 0) {
         showWarningToast('受注を1件以上選択してください。');
         return;
@@ -757,9 +786,15 @@
 
       $('#selectAllOrders').on('change', function () {
         var checked = this.checked;
+        this.indeterminate = false;
         document.querySelectorAll('.order-row-checkbox, .order-row-checkbox-card').forEach(function (cb) {
           cb.checked = checked;
         });
+      });
+
+      $('#orderPreviewArea').on('change', '.order-row-checkbox, .order-row-checkbox-card', function () {
+        syncFreeeOrderCheckboxesByOrderId(this.value, this.checked);
+        updateFreeeSelectAllHeaderState();
       });
 
       $('#createFreeeCSVSelected').on('click', function () {
