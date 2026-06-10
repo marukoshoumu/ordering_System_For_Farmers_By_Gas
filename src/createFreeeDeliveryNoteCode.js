@@ -27,6 +27,17 @@
  */
 
 /**
+ * 受注ステータスがキャンセル扱いかどうか（送り状CSVと同じ判定）
+ * @param {string} status - 受注シートのステータス列の値
+ * @returns {boolean}
+ */
+function isCancelledOrderStatus(status) {
+  return status === 'キャンセル'
+    || status === 'cancelled'
+    || status === '　キャンセル済';
+}
+
+/**
  * freee納品書CSVを作成するメイン関数
  *
  * @param {string} datas - JSON形式の入力パラメータ
@@ -67,6 +78,7 @@ function createFreeeDeliveryNote(datas) {
   // 期間と顧客でフィルタリング（発送日ベース）
   const invalidDates = [];
   const targetLists = items.filter(function (target) {
+    if (isCancelledOrderStatus(target['ステータス'] || '')) return false;
     // Validate shipping date before formatting
     const shippingDateObj = new Date(target['発送日']);
     if (isNaN(shippingDateObj.getTime())) {
@@ -485,8 +497,7 @@ function getFreeeDeliveryNoteOrderList(datas) {
   const items = getAllRecords('受注');
 
   const targetLists = items.filter(function (target) {
-    const status = target['ステータス'] || '';
-    if (status === '　キャンセル済' || status === 'キャンセル') return false;
+    if (isCancelledOrderStatus(target['ステータス'] || '')) return false;
     const shippingDateObj = new Date(target['発送日']);
     if (isNaN(shippingDateObj.getTime())) return false;
     const shippingDate = Utilities.formatDate(shippingDateObj, 'JST', 'yyyy/MM/dd');
@@ -558,6 +569,7 @@ function createFreeeDeliveryNoteByIds(orderIdsJson) {
   const items = getAllRecords('受注');
 
   const targetLists = items.filter(function (order) {
+    if (isCancelledOrderStatus(order['ステータス'] || '')) return false;
     // 受注IDが選択されたID、または紐付け受注IDが選択されたIDに含まれる場合に対象
     return idSet[order['受注ID']] === true ||
            (order['紐付け受注ID'] && idSet[order['紐付け受注ID']] === true);
