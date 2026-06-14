@@ -65,6 +65,17 @@ function setupOrderSheetHeaders() {
             Logger.log('「納品書テキスト」列を末尾に追加しました');
         }
     }
+
+    // ヘッダーを再取得
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    // 重量（kg）列がない場合（必ず末尾に追加）
+    // 受注シートの読み書きはヘッダー名駆動（getOrderSheetHeaders + indexOf）のため位置非依存だが、
+    // 位置依存の処理が将来混入しても既存列がずれないよう、追加は常に末尾で行う。
+    if (headers.indexOf('重量（kg）') === -1) {
+        sheet.getRange(1, headers.length + 1).setValue('重量（kg）');
+        Logger.log('「重量（kg）」列を末尾に追加しました');
+    }
 }
 
 /**

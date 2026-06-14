@@ -43,9 +43,11 @@ function createShip(datas) {
   var dateNow = Utilities.formatDate(new Date(), 'JST', 'yyyyMMdd_HHmm');
   const yamatoFileName = 'yamato_' + dateNow + '.csv';
   const sagawaFileName = 'sagawa_' + dateNow + '.csv';
+  const seinoFileName = 'seino_' + dateNow + '.xlsx';
   var record = {};
   var yamatoCsv = getCsvContent('ヤマトCSV', target);
   var sagawaCsv = getCsvContent('佐川CSV', target);
+  var seinoRows = getSeinoExportRows(target);
   if (yamatoCsv) {
     const blob = createBlob(yamatoCsv, yamatoFileName);
     writeDrive(blob, 1);
@@ -56,10 +58,16 @@ function createShip(datas) {
     writeDrive(blob, 2);
     record['sagawa'] = sagawaFileName;
   }
+  if (seinoRows) {
+    const blob = createSeinoXlsxBlob(seinoRows, seinoFileName);
+    writeDrive(blob, 3);
+    record['seino'] = seinoFileName;
+  }
   if (Object.keys(record).length) {
     return JSON.stringify({
       yamato: record['yamato'] || null,
       sagawa: record['sagawa'] || null,
+      seino: record['seino'] || null,
       yamatoCsv: yamatoCsv || null,
       sagawaCsv: sagawaCsv || null,
     });
@@ -149,7 +157,7 @@ function createBlob(csv, fileName) {
  * @see createBlob() - Blob作成
  */
 function writeDrive(blob, type) {
-  // CSV出力先（必要なフォルダのみ取得）
+  // CSV/xlsx 出力先（必要なフォルダのみ取得）
   if (type == 1) {
     const folderId = getYamatoFolderId();
     if (!folderId) {
@@ -160,7 +168,7 @@ function writeDrive(blob, type) {
     } catch (e) {
       throw new Error(`ヤマトCSVフォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
     }
-  } else {
+  } else if (type == 2) {
     const folderId = getSagawaFolderId();
     if (!folderId) {
       throw new Error('SAGAWA_FOLDER_ID がスクリプトプロパティに設定されていません');
@@ -169,6 +177,16 @@ function writeDrive(blob, type) {
       DriveApp.getFolderById(folderId).createFile(blob);
     } catch (e) {
       throw new Error(`佐川CSVフォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
+    }
+  } else if (type == 3) {
+    const folderId = getSeinoFolderId();
+    if (!folderId) {
+      throw new Error('SEINO_FOLDER_ID がスクリプトプロパティに設定されていません');
+    }
+    try {
+      DriveApp.getFolderById(folderId).createFile(blob);
+    } catch (e) {
+      throw new Error(`西濃xlsxフォルダ(ID: ${folderId})へのアクセスに失敗しました: ${e.message}`);
     }
   }
 }
@@ -637,6 +655,75 @@ function getCsvContent(sheetName, dateVal) {
     }
   }
   return csv.length > 0 ? csv : null;
+}
+
+/**
+ * 西濃CSV から指定発送日のエクスポート行を取得（発送日列を除く45列）
+ * キャンセル済み受注IDに紐づく行は除外する。
+ *
+ * @param {string} dateVal - 発送日
+ * @returns {Array<Array>|null} データ行配列（該当なしの場合は null）
+ */
+function getSeinoExportRows(dateVal) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('西濃CSV');
+  if (!sheet) {
+    Logger.log('シートが見つかりません: 西濃CSV');
+    return null;
+  }
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+
+  const headers = values[0];
+  const mgmtNoCol = headers.indexOf('管理番号');
+  const targetDate = Utilities.formatDate(new Date(dateVal), 'JST', 'yyyy/MM/dd');
+  const cancelledLookup = buildCancelledOrderIdsLookupForShipping();
+  const rows = [];
+
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][0] != targetDate) continue;
+    if (mgmtNoCol >= 0) {
+      var oid = values[i][mgmtNoCol];
+      if (oid != null && oid !== '' && cancelledLookup[String(oid).trim()]) {
+        continue;
+      }
+    }
+    rows.push(values[i].slice(1));
+  }
+  return rows.length > 0 ? rows : null;
+}
+
+/**
+ * 西濃運輸 KM2 取込用 xlsx Blob を生成（データ行のみ・ヘッダーなし）
+ *
+ * @param {Array<Array>} rows - 45列のデータ行
+ * @param {string} fileName - ファイル名
+ * @returns {Blob} xlsx Blob
+ */
+function createSeinoXlsxBlob(rows, fileName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // 同時実行で互いの一時シートを削除・置換し合わないよう、シート名は実行ごとに一意にする
+  const tempName = '_西濃出荷エクスポート_' + Utilities.getUuid();
+  var tempSheet = ss.insertSheet(tempName);
+  try {
+    tempSheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    SpreadsheetApp.flush();
+
+    const url = 'https://docs.google.com/spreadsheets/d/' + ss.getId()
+      + '/export?format=xlsx&gid=' + tempSheet.getSheetId();
+    const response = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error('西濃 xlsx エクスポート失敗: HTTP ' + response.getResponseCode());
+    }
+    return response.getBlob().setName(fileName);
+  } finally {
+    // setValues / fetch の成否にかかわらず一時シートを必ず削除（残留防止）
+    ss.deleteSheet(tempSheet);
+  }
 }
 
 /**

@@ -164,7 +164,11 @@ function getRecurringOrderHeaders() {
     '納品書備考欄',
     'メモ',
     '納品書テキスト',
-    '商品データJSON'    // 商品情報をJSON形式で保存
+    '商品データJSON',   // 商品情報をJSON形式で保存
+    // createRecurringOrder() は静的ヘッダー順で setValues するため、重量（kg）は必ず最終列に置く。
+    // 既存シートへは getRecurringOrderSheet()→ensureRecurringOrderColumns() が末尾に追加し、
+    // 静的定義（末尾）とライブ列構成（末尾追加）を一致させる。中間挿入は列ずれを招くため禁止。
+    '重量（kg）'        // 出荷重量（西濃運輸で使用。任意）
   ];
 }
 
@@ -183,9 +187,30 @@ function getRecurringOrderSheet() {
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
     Logger.log('定期受注シートを作成しました');
+  } else {
+    // 既存シートに不足列を末尾追加し、静的ヘッダー定義とライブ列構成を一致させる
+    ensureRecurringOrderColumns(sheet);
   }
 
   return sheet;
+}
+
+/**
+ * 既存の定期受注シートに不足している列を末尾に追加する。
+ *
+ * createRecurringOrder() は静的 getRecurringOrderHeaders() の順序で setValues するため、
+ * ライブのヘッダー行と静的定義の列構成がずれると新規行が誤った列に書き込まれる。
+ * 列の追加は中間挿入だと既存行をずらすため、必ず末尾で行い、
+ * 静的定義側でも追加列を最終列に置くことで両者を一致させる。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - 定期受注シート
+ */
+function ensureRecurringOrderColumns(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (headers.indexOf('重量（kg）') === -1) {
+    sheet.getRange(1, headers.length + 1).setValue('重量（kg）');
+    Logger.log('定期受注シートに「重量（kg）」列を末尾に追加しました');
+  }
 }
 
 /**
@@ -272,6 +297,7 @@ function createRecurringOrder(e) {
     '代引総額': e.parameter.cashOnDelivery || '',
     '代引内税': e.parameter.cashOnDeliTax || '',
     '発行枚数': e.parameter.copiePrint || '',
+    '重量（kg）': e.parameter.shippingWeight || '',
     '社内メモ': e.parameter.internalMemo || '',
     '送り状備考欄': e.parameter.csvmemo || '',
     '納品書備考欄': e.parameter.deliveryMemo || '',
@@ -591,6 +617,9 @@ function processRecurringOrders() {
  * @param {Object} recurringOrder - 定期受注データ
  */
 function createOrderFromRecurring(recurringOrder) {
+  // 定期便はトリガー実行（無人）。フォームを経由しないため受注シートの
+  // 不足列を末尾に追加してから書き込み、重量（kg）を受注行へ確実に永続化する。
+  setupOrderSheetHeaders();
   const orderHeaders = getOrderSheetHeaders();
   const deliveryId = generateId();
   const dateNow = Utilities.formatDate(new Date(), 'JST', 'yyyy/MM/dd');
@@ -643,6 +672,7 @@ function createOrderFromRecurring(recurringOrder) {
     record['代引総額'] = recurringOrder['代引総額'];
     record['代引内税'] = recurringOrder['代引内税'];
     record['発行枚数'] = recurringOrder['発行枚数'];
+    record['重量（kg）'] = recurringOrder['重量（kg）'] || '';
     var baseMemo = recurringOrder['社内メモ'] || '';
     record['社内メモ'] = baseMemo + '（定期便自動作成）';
     record['送り状備考欄'] = recurringOrder['送り状備考欄'];
@@ -673,6 +703,8 @@ function createOrderFromRecurring(recurringOrder) {
     createYamatoCsvFromRecurring(recurringOrder, deliveryId);
   } else if (deliveryMethod === '佐川' || deliveryMethod === '佐川伝票') {
     createSagawaCsvFromRecurring(recurringOrder, deliveryId);
+  } else if (deliveryMethod === '西濃運輸') {
+    createSeinoCsvFromRecurring(recurringOrder, deliveryId);
   }
 
   // 納品書作成
@@ -1078,6 +1110,112 @@ function createSagawaCsvFromRecurring(recurringOrder, deliveryId) {
   Logger.log('佐川CSV作成（定期便）: ' + deliveryId);
 }
 
+/**
+ * 定期便から西濃CSVを作成
+ * orderCode.js の addRecordSeino() と同じフォーマットで出力
+ *
+ * @param {Object} recurringOrder - 定期受注データ
+ * @param {string} deliveryId - 受注ID
+ */
+function createSeinoCsvFromRecurring(recurringOrder, deliveryId) {
+  var shipperCode = getSeinoShipperCode();
+  if (!shipperCode) {
+    throw new Error('SEINO_SHIPPER_CODE がスクリプトプロパティに設定されていません');
+  }
+
+  var seinoFilter = function(r) { return (r['納品方法'] || '').indexOf('西濃') !== -1; };
+  var deliveryTimes = (getAllRecords('配送時間帯') || []).filter(seinoFilter);
+  var cargos = (getAllRecords('荷扱い') || []).filter(seinoFilter);
+
+  // 既存の getCodeFromMaster() はコロン前の「コード」だけを返すが、
+  // 西濃は buildSeinoAlAmAn_() / parseSeinoDeliveryTimeBand_() に
+  // 受注経由(addRecordSeino)と同じ「種別値（"1:午前" 形式）」を渡して処理を統一したいため、
+  // ここでは完全な種別値を返す専用ヘルパーを用いる。
+  function getMasterValueByDisplay(masterData, displayName, labelField) {
+    labelField = labelField || '種別';
+    for (var i = 0; i < masterData.length; i++) {
+      var item = masterData[i];
+      var value = item['種別値'] || item['時間指定値'] || '';
+      if (value.indexOf(':') !== -1 && value.split(':')[1] === displayName) {
+        return value;
+      }
+      if (item[labelField] === displayName && value) {
+        return value;
+      }
+    }
+    return '';
+  }
+
+  var shippingDate = recurringOrder['次回発送日'];
+  var deliveryDate = recurringOrder['次回納品日'];
+  try {
+    shippingDate = Utilities.formatDate(new Date(shippingDate), 'JST', 'yyyy/MM/dd');
+  } catch (e) {
+    Logger.log('日付フォーマットエラー: ' + e.message);
+  }
+
+  var shippingDateYmd = '';
+  try {
+    shippingDateYmd = Utilities.formatDate(new Date(recurringOrder['次回発送日']), 'JST', 'yyyyMMdd');
+  } catch (e2) {
+    Logger.log('出荷予定日フォーマットエラー: ' + e2.message);
+    // 出荷予定日(C列)が空のまま KM2 取込用データを書き込むと取込不可になるため、
+    // 不正日付は握りつぶさず即座に失敗させる（fail-fast）。
+    throw new Error('定期便の西濃CSV作成に失敗しました（次回発送日が不正です: '
+      + recurringOrder['次回発送日'] + '）: ' + e2.message);
+  }
+
+  var cargo1Param = getMasterValueByDisplay(cargos, recurringOrder['荷扱い１']);
+  var cargo2Param = getMasterValueByDisplay(cargos, recurringOrder['荷扱い２']);
+  var deliveryTimeParam = getMasterValueByDisplay(deliveryTimes, recurringOrder['配達時間帯'], '時間指定');
+  var cargo1Code = extractSeinoCargoCode_(cargo1Param);
+  var cargo2Code = extractSeinoCargoCode_(cargo2Param);
+  var transport = buildSeinoAlAmAn_(deliveryDate, deliveryTimeParam, cargo1Code, cargo2Code);
+
+  var fromAddr = splitAddressForSeino_(recurringOrder['発送元住所'] || '', 20);
+  var toName = splitNameForCarrier(recurringOrder['発送先名'] || '', 30, 30);
+  var toAddr = splitAddressForSeino_(recurringOrder['発送先住所'] || '', 30);
+
+  var addList = [
+    shippingDate,
+    String(shipperCode).trim(),
+    '',
+    shippingDateYmd,
+    '',
+    deliveryId || '',
+    '1',
+    '0',
+    recurringOrder['発行枚数'] || '1',
+    '',
+    recurringOrder['重量（kg）'] || '',
+    '',
+    recurringOrder['発送元名'] || '',
+    fromAddr.line1,
+    fromAddr.line2,
+    recurringOrder['発送元電話番号'] || '',
+    '', '', '',
+    recurringOrder['発送先郵便番号'] || '',
+    toName.company || toName.name,
+    toName.company ? toName.name : '',
+    toAddr.line1,
+    toAddr.line2,
+    recurringOrder['発送先電話番号'] || '',
+    '', '', '', '', '', '',
+    '', '',
+    recurringOrder['品名'] || '',
+    '', '', '', '',
+    transport.al,
+    transport.am,
+    transport.an,
+    '', '',
+    '', '',
+    ''  // 配達時間メール送信先（メールアドレス）。受注経由(addRecordSeino)と同じ全45列(発送日含め46列)に揃える
+  ];
+
+  addRecords('西濃CSV', [addList]);
+  Logger.log('西濃CSV作成（定期便）: ' + deliveryId);
+}
+
 
 /**
  * 定期受注一覧をHTML用データとして取得
@@ -1178,6 +1316,7 @@ function getRecurringOrderDetail(recurringId) {
     cashOnDelivery: order['代引総額'],
     cashOnDeliTax: order['代引内税'],
     copiePrint: order['発行枚数'],
+    shippingWeight: order['重量（kg）'],
     internalMemo: order['社内メモ'],
     csvmemo: order['送り状備考欄'],
     deliveryMemo: order['納品書備考欄'],
@@ -1259,6 +1398,7 @@ function updateRecurringOrderFull(e) {
     '代引総額': e.parameter.cashOnDelivery || '',
     '代引内税': e.parameter.cashOnDeliTax || '',
     '発行枚数': e.parameter.copiePrint || '',
+    '重量（kg）': e.parameter.shippingWeight || '',
     '社内メモ': e.parameter.internalMemo || '',
     '送り状備考欄': e.parameter.csvmemo || '',
     '納品書備考欄': e.parameter.deliveryMemo || '',
