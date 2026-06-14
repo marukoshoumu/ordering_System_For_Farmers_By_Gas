@@ -329,6 +329,9 @@
         if (res['sagawa']) {
           html += res['sagawa'] + "<br>";
         }
+        if (res['seino']) {
+          html += res['seino'] + "<br>";
+        }
         $("p[id='res']").html(html);
       }
       else {
@@ -374,6 +377,7 @@
         var html = "";
         if (res['yamato']) html += res['yamato'] + "<br>";
         if (res['sagawa']) html += res['sagawa'] + "<br>";
+        if (res['seino']) html += res['seino'] + "<br>";
         if (res['workerResults']) {
           var wr = res['workerResults'];
           if (wr['yamato'] && wr['yamato'].jobId) html += "ヤマト自動印刷: 処理開始 (ID: " + escapeHtml(wr['yamato'].jobId.substring(0, 8)) + ")<br>";

@@ -755,6 +755,16 @@
       if (savedCargo1) {
         $cargo1.val(savedCargo1);
       }
+
+      // 西濃運輸: 送り状種別・クール区分を非表示、重量を表示
+      if (val1 && val1.includes('西濃')) {
+        $('#invoiceTypeCoolRow').hide();
+        $('#shippingWeightRow').show();
+      } else {
+        $('#invoiceTypeCoolRow').show();
+        $('#shippingWeightRow').hide();
+        $('#shippingWeight').val('');
+      }
     }
 
     /**

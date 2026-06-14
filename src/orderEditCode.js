@@ -52,6 +52,7 @@
  *     cargo2: string,        // 種別値形式（例: "0:なし"）
  *     cargo3: string,        // 種別値形式（佐川用）
  *     cashOnDelivery: number, cashOnDeliTax: number, copiePrint: number,
+ *     shippingWeight: string,  // 重量（kg）。受注シートに列が無い場合は空文字
  *     internalMemo: string, csvmemo: string, deliveryMemo: string, memo: string,
  *     items: [
  *       { bunrui: string, product: string, quantity: number, price: number },
@@ -273,6 +274,7 @@ function getOrderByOrderId(orderId) {
     cashOnDelivery: firstRow[getColIndex('代引総額')] || '',
     cashOnDeliTax: firstRow[getColIndex('代引内税')] || '',
     copiePrint: firstRow[getColIndex('発行枚数')] || '',
+    shippingWeight: firstRow[getColIndex('重量（kg）')] || '',
 
     // 備考
     internalMemo: firstRow[getColIndex('社内メモ')] || '',
@@ -608,5 +610,47 @@ function deleteSagawaCSVByOrderId(orderId) {
   });
 
   Logger.log('佐川CSV削除: ' + rowsToDelete.length + '件 (受注ID: ' + orderId + ')');
+  return rowsToDelete.length;
+}
+
+/**
+ * 受注IDで西濃CSVデータを削除（西濃CSVシートから該当レコード全削除）
+ *
+ * @param {string} orderId - 受注ID
+ * @returns {number} 削除した行数
+ */
+function deleteSeinoCSVByOrderId(orderId) {
+  if (!orderId) return 0;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('西濃CSV');
+
+  if (!sheet) {
+    Logger.log('西濃CSVシートが見つかりません');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const mgmtNoCol = headers.indexOf('管理番号');
+
+  if (mgmtNoCol === -1) {
+    Logger.log('管理番号列が見つかりません');
+    return 0;
+  }
+
+  const idNorm = String(orderId).trim();
+  const rowsToDelete = [];
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][mgmtNoCol]).trim() === idNorm) {
+      rowsToDelete.push(i + 1);
+    }
+  }
+
+  rowsToDelete.forEach(rowNum => {
+    sheet.deleteRow(rowNum);
+  });
+
+  Logger.log('西濃CSV削除: ' + rowsToDelete.length + '件 (受注ID: ' + orderId + ')');
   return rowsToDelete.length;
 }

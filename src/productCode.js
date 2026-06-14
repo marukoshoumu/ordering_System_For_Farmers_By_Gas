@@ -41,6 +41,7 @@ function getOpenUrl(sheetName) {
  * - '納品書' → getDeliveredFolderUrl()
  * - 'ヤマト' → getYamatoFolderUrl()
  * - '佐川' → getSagawaFolderUrl()
+ * - '西濃' → getSeinoFolderUrl()
  * - 'freee納品書CSV' → getFreeeCSVFolderUrl()
  *
  * @param {string} sheetName - シート名（'見積書', '請求書', '納品書', 'ヤマト', '佐川', 'freee納品書CSV'）
@@ -77,6 +78,9 @@ function getOpenUrlDrive(sheetName) {
   }
   if (sheetName == '佐川') {
     return getSagawaFolderUrl();
+  }
+  if (sheetName == '西濃') {
+    return getSeinoFolderUrl();
   }
   if (sheetName == 'freee納品書CSV') {
     return getFreeeCSVFolderUrl();

@@ -468,6 +468,7 @@ function bulkCancelOrders(orderIds) {
   // 一括削除(bulkDeleteOrders)と同様、送り状用CSVからも除外する（キャンセル後に送り状へ載らないように）
   const yamatoOrderIds = new Set();
   const sagawaOrderIds = new Set();
+  const seinoOrderIds = new Set();
 
   for (let i = 1; i < data.length; i++) {
     if (orderIdSet.has(data[i][orderIdCol])) {
@@ -479,6 +480,8 @@ function bulkCancelOrders(orderIds) {
           yamatoOrderIds.add(data[i][orderIdCol]);
         } else if (deliveryMethod.includes('佐川')) {
           sagawaOrderIds.add(data[i][orderIdCol]);
+        } else if (deliveryMethod.includes('西濃')) {
+          seinoOrderIds.add(data[i][orderIdCol]);
         }
       }
     }
@@ -486,11 +489,15 @@ function bulkCancelOrders(orderIds) {
 
   const yamatoSheet = ss.getSheetByName('ヤマトCSV');
   const sagawaSheet = ss.getSheetByName('佐川CSV');
+  const seinoSheet = ss.getSheetByName('西濃CSV');
   if (yamatoSheet && yamatoOrderIds.size > 0) {
     deleteCSVByOrderIds(yamatoSheet, yamatoOrderIds);
   }
   if (sagawaSheet && sagawaOrderIds.size > 0) {
     deleteCSVByOrderIds(sagawaSheet, sagawaOrderIds);
+  }
+  if (seinoSheet && seinoOrderIds.size > 0) {
+    deleteCSVByOrderIds(seinoSheet, seinoOrderIds);
   }
 
   return { success: true, updatedRows: updatedCount, orderCount: orderIds.length };
@@ -615,6 +622,7 @@ function bulkDeleteOrders(orderIds) {
   const orderSheet = ss.getSheetByName('受注');
   const yamatoSheet = ss.getSheetByName('ヤマトCSV');
   const sagawaSheet = ss.getSheetByName('佐川CSV');
+  const seinoSheet = ss.getSheetByName('西濃CSV');
 
   if (!orderSheet) {
     throw new Error('受注シートが見つかりません');
@@ -634,6 +642,7 @@ function bulkDeleteOrders(orderIds) {
   // 各受注の納品方法を取得して、対応するCSVも削除
   const yamatoOrderIds = new Set();
   const sagawaOrderIds = new Set();
+  const seinoOrderIds = new Set();
 
   for (let i = 1; i < orderData.length; i++) {
     const orderId = orderData[i][orderIdCol];
@@ -643,6 +652,8 @@ function bulkDeleteOrders(orderIds) {
         yamatoOrderIds.add(orderId);
       } else if (deliveryMethod.includes('佐川')) {
         sagawaOrderIds.add(orderId);
+      } else if (deliveryMethod.includes('西濃')) {
+        seinoOrderIds.add(orderId);
       }
     }
   }
@@ -668,6 +679,10 @@ function bulkDeleteOrders(orderIds) {
     deleteCSVByOrderIds(sagawaSheet, sagawaOrderIds);
   }
 
+  if (seinoSheet && seinoOrderIds.size > 0) {
+    deleteCSVByOrderIds(seinoSheet, seinoOrderIds);
+  }
+
   return {
     success: true,
     deletedOrderRows: orderRowsToDelete.length,
@@ -684,18 +699,34 @@ function deleteCSVByOrderIds(sheet, orderIds) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // お客様管理番号列を探す（受注IDが格納されている）
   const customerNoCol = headers.indexOf('お客様管理番号');
-  if (customerNoCol === -1) return;
+  const mgmtNoCol = headers.indexOf('管理番号');
+  if (customerNoCol === -1 && mgmtNoCol === -1) return;
+
+  const idSet = new Set(Array.from(orderIds).map(function (id) {
+    return String(id).trim();
+  }));
 
   const rowsToDelete = [];
   for (let i = 1; i < data.length; i++) {
-    if (orderIds.has(data[i][customerNoCol])) {
-      rowsToDelete.push(i + 1);  // 1-indexed
+    var matched = false;
+    if (customerNoCol !== -1) {
+      var custNo = data[i][customerNoCol];
+      if (custNo != null && custNo !== '' && idSet.has(String(custNo).trim())) {
+        matched = true;
+      }
+    }
+    if (!matched && mgmtNoCol !== -1) {
+      var mgmtNo = data[i][mgmtNoCol];
+      if (mgmtNo != null && mgmtNo !== '' && idSet.has(String(mgmtNo).trim())) {
+        matched = true;
+      }
+    }
+    if (matched) {
+      rowsToDelete.push(i + 1);
     }
   }
 
-  // 逆順で削除
   for (let i = rowsToDelete.length - 1; i >= 0; i--) {
     sheet.deleteRow(rowsToDelete[i]);
   }

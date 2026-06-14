@@ -130,6 +130,22 @@ function getSagawaFolderId() {
 }
 
 /**
+ * 西濃運輸 荷送人コードを取得
+ * @returns {string} 荷送人コード（11桁）
+ */
+function getSeinoShipperCode() {
+  return getConfig('SEINO_SHIPPER_CODE');
+}
+
+/**
+ * 西濃運輸 xlsx 出力用フォルダ ID を取得
+ * @returns {string} フォルダ ID
+ */
+function getSeinoFolderId() {
+  return getConfig('SEINO_FOLDER_ID');
+}
+
+/**
  * 納品書PDF出力用フォルダ ID を取得
  * @returns {string} フォルダ ID
  */
@@ -325,6 +341,15 @@ function getYamatoFolderUrl() {
  */
 function getSagawaFolderUrl() {
   const folderId = getSagawaFolderId();
+  return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
+}
+
+/**
+ * 西濃運輸 xlsx フォルダの URL を取得
+ * @returns {string} フォルダ URL
+ */
+function getSeinoFolderUrl() {
+  const folderId = getSeinoFolderId();
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
 }
 

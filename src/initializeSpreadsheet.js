@@ -40,6 +40,7 @@ function initializeMasterSpreadsheet() {
     createSheetIfNotExists(ss, '見積書データ', getQuotationDataHeaders(), createdSheets);
     createSheetIfNotExists(ss, 'ヤマトCSV', getYamatoCsvHeaders(), createdSheets);
     createSheetIfNotExists(ss, '佐川CSV', getSagawaCsvHeaders(), createdSheets);
+    createSheetIfNotExists(ss, '西濃CSV', getSeinoCsvHeaders(), createdSheets);
     createSheetIfNotExists(ss, '発送先マッピング', getShippingMappingHeaders(), createdSheets);
     createSheetIfNotExists(ss, 'pass', ['ID', 'Pass'], createdSheets);
     
@@ -217,7 +218,10 @@ function getOrderSheetHeadersForInit() {
     '追跡番号',
     '社内メモ',
     '紐付け受注ID',
-    '納品書テキスト'
+    '納品書テキスト',
+    // 重量（kg）は既存シートとの整合のため必ず最終列。
+    // 既存シートへは setupOrderSheetHeaders() が末尾に追加する。中間挿入は禁止。
+    '重量（kg）'
   ];
 }
 
@@ -385,6 +389,61 @@ function getSagawaCsvHeaders() {
     '編集０８',
     '編集０９',
     '編集１０'
+  ];
+}
+
+/**
+ * 西濃CSVシートのヘッダー定義（カンガルー・マジックⅡ 標準レイアウト45列 + 内部フィルタ用発送日）
+ * @returns {Array<string>} ヘッダー配列
+ */
+function getSeinoCsvHeaders() {
+  return [
+    '発送日',
+    '荷送人コード',
+    '西濃発店コード',
+    '出荷予定日',
+    'お問合せ番号',
+    '管理番号',
+    '元着区分',
+    '原票区分',
+    '個数',
+    '重量区分',
+    '重量（kg）',
+    '重量（才）',
+    '荷送人名称',
+    '荷送人住所1',
+    '荷送人住所2',
+    '荷送人電話番号',
+    '部署コード',
+    '部署名称',
+    '重量契約区分',
+    'お届け先郵便番号',
+    'お届け先名称1',
+    'お届け先名称2',
+    'お届け先住所1',
+    'お届け先住所2',
+    'お届け先電話番号',
+    'お届け先コード',
+    'お届け先ＪＩＳ市町村コード',
+    '着店コード付け区分',
+    '着地コード',
+    '着店コード',
+    '保険金額',
+    '輸送指示1',
+    '輸送指示2',
+    '記事1',
+    '記事2',
+    '記事3',
+    '記事4',
+    '記事5',
+    '輸送指示（配達指定日付）',
+    '輸送指示コード1',
+    '輸送指示コード2',
+    '輸送指示（止め店所名）',
+    '予備',
+    '品代金',
+    '消費税等',
+    '配達時間メール送信先（メールアドレス）'
   ];
 }
 
@@ -588,7 +647,11 @@ function getDeliveryTimeData() {
     ['佐川', '16:16:00～18:00', '16:00～18:00'],
     ['佐川', '18:18:00～20:00', '18:00～20:00'],
     ['佐川', '04:18:00～21:00', '18:00～21:00'],
-    ['佐川', '19:19:00～21:00', '19:00～21:00']
+    ['佐川', '19:19:00～21:00', '19:00～21:00'],
+    ['西濃運輸', ':指定なし', '指定なし'],
+    ['西濃運輸', '1:午前', '午前'],
+    ['西濃運輸', '2:午後', '午後'],
+    ['西濃運輸', '8:まで', 'まで']
   ];
 }
 
@@ -652,7 +715,14 @@ function getCargoData() {
     ['佐川', '023:時間帯指定サービス（14時～16時）', '時間帯指定サービス（14時～16時）'],
     ['佐川', '024:時間帯指定サービス（16時～18時）', '時間帯指定サービス（16時～18時）'],
     ['佐川', '025:時間帯指定サービス（18時～20時）', '時間帯指定サービス（18時～20時）'],
-    ['佐川', '026:時間帯指定サービス（19時～21時）', '時間帯指定サービス（19時～21時）']
+    ['佐川', '026:時間帯指定サービス（19時～21時）', '時間帯指定サービス（19時～21時）'],
+    ['西濃運輸', '03:取扱注意', '取扱注意'],
+    ['西濃運輸', '04:われもの注意', 'われもの注意'],
+    ['西濃運輸', '06:コワレモノ', 'コワレモノ'],
+    ['西濃運輸', '07:水濡れ注意', '水濡れ注意'],
+    ['西濃運輸', '09:下積厳禁', '下積厳禁'],
+    ['西濃運輸', '13:天地無用', '天地無用'],
+    ['西濃運輸', '15:貴重品', '貴重品']
   ];
 }
 
@@ -740,6 +810,57 @@ function insertMasterDataIfEmpty(ss, sheetName, data) {
     sheet.getRange(2, 1, data.length, data[0].length).setValues(data);
     Logger.log('シート「' + sheetName + '」に初期データを投入しました。行数: ' + data.length);
   }
+}
+
+/**
+ * 西濃運輸のマスタ行（配送時間帯・荷扱い）を既存シートへ冪等に追加する。
+ *
+ * initializeMasterSpreadsheet() の insertMasterDataIfEmpty() は
+ * 既にデータのあるシートには投入しないため、稼働中環境へ西濃を導入する際は
+ * GAS エディタから本関数を一度実行する。
+ * 既存行（納品方法＋種別値/時間指定値が一致）はスキップするので、
+ * 繰り返し実行しても重複しない。
+ *
+ * @returns {string} 投入結果サマリ
+ */
+function seedSeinoMasterData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var results = [];
+  results.push(appendMasterRowsIfMissing_(ss, '配送時間帯',
+    getDeliveryTimeData().filter(function (r) { return r[0] === '西濃運輸'; })));
+  results.push(appendMasterRowsIfMissing_(ss, '荷扱い',
+    getCargoData().filter(function (r) { return r[0] === '西濃運輸'; })));
+  var msg = '西濃マスタ投入: ' + results.join(' / ');
+  Logger.log(msg);
+  return msg;
+}
+
+/**
+ * 指定シートに、未登録（納品方法＋値が一致しない）の行だけを末尾追加する。
+ * マスタ行の形式は [納品方法, 値(種別値/時間指定値), 表示名]。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss - スプレッドシート
+ * @param {string} sheetName - シート名
+ * @param {Array<Array<string>>} rows - 追加候補の行
+ * @returns {string} "シート名: n件追加"
+ */
+function appendMasterRowsIfMissing_(ss, sheetName, rows) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return sheetName + ': シートが存在しないためスキップ';
+  }
+  var values = sheet.getDataRange().getValues();
+  var existing = {};
+  for (var i = 1; i < values.length; i++) {
+    existing[String(values[i][0]) + '\t' + String(values[i][1])] = true;
+  }
+  var toAdd = rows.filter(function (r) {
+    return !existing[String(r[0]) + '\t' + String(r[1])];
+  });
+  if (toAdd.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, toAdd[0].length).setValues(toAdd);
+  }
+  return sheetName + ': ' + toAdd.length + '件追加';
 }
 
 // ========================================

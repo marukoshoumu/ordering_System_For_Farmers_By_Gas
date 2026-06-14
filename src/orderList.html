@@ -2274,6 +2274,10 @@
             <span class="detail-label">発行枚数</span>
             <span class="detail-value">${escapeHtml(data.copiePrint) || '<span class="empty">-</span>'}</span>
           </div>
+          <div class="detail-row">
+            <span class="detail-label">重量（kg）</span>
+            <span class="detail-value">${escapeHtml(data.shippingWeight) || '<span class="empty">-</span>'}</span>
+          </div>
         </div>
       </div>
       
@@ -2706,7 +2710,7 @@
         return;
       }
 
-      if (!(await showConfirmDialog(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、受注データ自体は削除されません。\n※ヤマトCSV／佐川CSVに残っている該当行も削除され、送り状作成の出力対象から外れます。'))) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注をキャンセルしますか？\n\n※キャンセルした受注はグレーアウト表示されますが、受注データ自体は削除されません。\n※ヤマトCSV／佐川CSV／西濃CSVに残っている該当行も削除され、送り状作成の出力対象から外れます。'))) {
         return;
       }
 
@@ -2757,7 +2761,7 @@
         return;
       }
 
-      if (!(await showConfirmDialog('⚠️ ' + orderIds.length + '件の受注を完全に削除しますか？\n\n※この操作は取り消せません。\n※ヤマトCSV/佐川CSVのデータも同時に削除されます。'))) {
+      if (!(await showConfirmDialog('⚠️ ' + orderIds.length + '件の受注を完全に削除しますか？\n\n※この操作は取り消せません。\n※ヤマトCSV/佐川CSV/西濃CSVのデータも同時に削除されます。'))) {
         return;
       }
 
@@ -2788,7 +2792,7 @@
         return;
       }
 
-      if (!(await showConfirmDialog(orderIds.length + '件の受注のキャンセルを解除しますか？\n\n※ヤマト／佐川の受注は、送り状用CSVシートへ受注内容から再登録されます。'))) {
+      if (!(await showConfirmDialog(orderIds.length + '件の受注のキャンセルを解除しますか？\n\n※ヤマト／佐川／西濃の受注は、送り状用CSVシートへ受注内容から再登録されます。'))) {
         return;
       }
 

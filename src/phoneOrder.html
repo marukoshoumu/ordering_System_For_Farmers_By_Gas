@@ -913,6 +913,8 @@
           </select>
         </div>
 
+        <!-- 送り状種別・クール区分（西濃運輸では非表示） -->
+        <div id="invoiceTypeCoolRow">
         <!-- 送り状種別 -->
         <div class="mb-2">
           <label class="form-label small mb-1">送り状種別</label>
@@ -927,6 +929,7 @@
           <select class="form-select" id="coolClsSelect" onchange="updateCargoByConditions()">
             <option value="">指定なし</option>
           </select>
+        </div>
         </div>
 
         <!-- 荷扱い１ -->
@@ -951,6 +954,13 @@
           <select class="form-select" id="cargo3Select">
             <option value="">指定なし</option>
           </select>
+        </div>
+
+        <!-- 重量（kg）（西濃運輸の場合のみ表示） -->
+        <div class="mb-2" id="shippingWeightRow" style="display:none;">
+          <label class="form-label small mb-1">重量（kg）</label>
+          <input type="number" class="form-control" id="shippingWeightInput" min="0" step="0.1" placeholder="任意">
+          <small class="text-muted d-block mt-1">※納品日または配送時間帯を指定すると輸送指示コード1が「配達指定」になり、荷扱い１は送り状に反映されません（荷扱い２は反映されます）。</small>
         </div>
       </div>
 
@@ -1441,6 +1451,19 @@
       } else {
         cargo3Container.style.display = 'none';
         document.getElementById('cargo3Select').value = '';
+      }
+
+      // 西濃運輸: 送り状種別・クール区分を非表示、重量を表示
+      const invoiceTypeCoolRow = document.getElementById('invoiceTypeCoolRow');
+      const shippingWeightRow = document.getElementById('shippingWeightRow');
+      if (selectedMethod && selectedMethod.includes('西濃')) {
+        if (invoiceTypeCoolRow) invoiceTypeCoolRow.style.display = 'none';
+        if (shippingWeightRow) shippingWeightRow.style.display = 'block';
+      } else {
+        if (invoiceTypeCoolRow) invoiceTypeCoolRow.style.display = 'block';
+        if (shippingWeightRow) shippingWeightRow.style.display = 'none';
+        const weightInput = document.getElementById('shippingWeightInput');
+        if (weightInput) weightInput.value = '';
       }
 
       // 条件に応じた自動設定を実行
@@ -2527,6 +2550,10 @@
       addHiddenField(form, 'cargo1', cargo1);
       addHiddenField(form, 'cargo2', cargo2);
       addHiddenField(form, 'cargo3', cargo3);
+      const shippingWeightInput = document.getElementById('shippingWeightInput');
+      if (shippingWeightInput && shippingWeightInput.value) {
+        addHiddenField(form, 'shippingWeight', shippingWeightInput.value);
+      }
 
       // チェックリスト（チェックされた項目のみ送信）
       const checklistItems = [];

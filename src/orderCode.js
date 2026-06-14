@@ -308,6 +308,7 @@ function getshippingHTML(e, alert = '') {
     e.parameter.cashOnDelivery = editData.cashOnDelivery;
     e.parameter.cashOnDeliTax = editData.cashOnDeliTax;
     e.parameter.copiePrint = editData.copiePrint;
+    e.parameter.shippingWeight = editData.shippingWeight;  // 西濃の重量を修正画面へ復元（再保存時の消失防止）
     e.parameter.csvmemo = editData.csvmemo;
     e.parameter.internalMemo = editData.internalMemo;
     e.parameter.deliveryMemo = editData.deliveryMemo;
@@ -851,8 +852,8 @@ function getshippingHTML(e, alert = '') {
     <input type="text" class="form-control" id="sendProduct" name="sendProduct" value="${e.parameter.sendProduct ? e.parameter.sendProduct : ""}">
   </div>`;
 
-  // 送り状種別・クール区分
-  html += `<div class="mt-2 mb-2 row g-3 align-items-center">`;
+  // 送り状種別・クール区分（西濃運輸では非表示）
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center" id="invoiceTypeCoolRow">`;
   html += `  <div class="col-auto">`;
   html += `    <label for="invoiceType" class="col-form-label">送り状種別</label>`;
   html += `  </div>`;
@@ -961,6 +962,19 @@ function getshippingHTML(e, alert = '') {
   html += `  </div>`;
   html += `  <div class="col-auto">`;
   html += `    <input type="number" class="form-control" id="copiePrint" name="copiePrint" min='0'  value="${e.parameter.copiePrint ? e.parameter.copiePrint : ""}">`;
+  html += `  </div>`;
+  html += `</div>`;
+
+  // 重量（kg）（西濃運輸の場合のみ表示）
+  html += `<div class="mt-2 mb-2 row g-3 align-items-center" id="shippingWeightRow" style="display:none;">`;
+  html += `  <div class="col-auto">`;
+  html += `    <label for="shippingWeight" class="col-form-label">重量（kg）</label>`;
+  html += `  </div>`;
+  html += `  <div class="col-auto">`;
+  html += `    <input type="number" class="form-control" id="shippingWeight" name="shippingWeight" min="0" step="0.1" value="${e.parameter.shippingWeight ? e.parameter.shippingWeight : ""}">`;
+  html += `  </div>`;
+  html += `  <div class="col-12">`;
+  html += `    <small class="text-muted">※西濃運輸: 納品日または配送時間帯を指定すると輸送指示コード1が「配達指定」になり、荷扱い１は送り状に反映されません（荷扱い２は反映されます）。</small>`;
   html += `  </div>`;
   html += `</div>`;
 
@@ -2099,6 +2113,11 @@ function createOrder(e) {
     registerNewCustomerToMaster(e);
   }
 
+  // 受注シートの不足列（追跡番号・重量（kg）等）を末尾に追加。
+  // 電話受注など getshippingHTML を経由しない送信経路でも列を保証し、
+  // 直後の getOrderSheetHeaders() が重量（kg）を含むようにする。
+  setupOrderSheetHeaders();
+
   // 受注シートからヘッダーを取得（シートが真実の情報源）
   const orderHeaders = getOrderSheetHeaders();
 
@@ -2123,6 +2142,9 @@ function createOrder(e) {
           } else if (oldOrder.deliveryMethod === '佐川') {
             const sagawaDeleted = deleteSagawaCSVByOrderId(orderIdToDelete);
             Logger.log('佐川CSV削除 (' + orderIdToDelete + '): ' + sagawaDeleted + '件');
+          } else if (oldOrder.deliveryMethod === '西濃運輸') {
+            const seinoDeleted = deleteSeinoCSVByOrderId(orderIdToDelete);
+            Logger.log('西濃CSV削除 (' + orderIdToDelete + '): ' + seinoDeleted + '件');
           }
 
           // 受注シート削除
@@ -2140,6 +2162,9 @@ function createOrder(e) {
         } else if (oldOrder.deliveryMethod === '佐川') {
           const sagawaDeleted = deleteSagawaCSVByOrderId(editOrderId);
           Logger.log('佐川CSV削除: ' + sagawaDeleted + '件');
+        } else if (oldOrder.deliveryMethod === '西濃運輸') {
+          const seinoDeleted = deleteSeinoCSVByOrderId(editOrderId);
+          Logger.log('西濃CSV削除: ' + seinoDeleted + '件');
         }
 
         // 受注シート削除
@@ -2231,6 +2256,7 @@ function createOrder(e) {
         record['代引総額'] = e.parameter.cashOnDelivery;
         record['代引内税'] = e.parameter.cashOnDeliTax;
         record['発行枚数'] = e.parameter.copiePrint;
+        record['重量（kg）'] = e.parameter.shippingWeight || '';
         record['社内メモ'] = e.parameter.internalMemo;
         record['送り状備考欄'] = e.parameter.csvmemo;
         record['納品書備考欄'] = e.parameter.deliveryMemo;
@@ -2261,6 +2287,9 @@ function createOrder(e) {
     }
     if (e.parameter.deliveryMethod == '佐川') {
       addRecordSagawa('佐川CSV', records, e, deliveryId, orderHeaders);
+    }
+    if (e.parameter.deliveryMethod == '西濃運輸') {
+      addRecordSeino('西濃CSV', records, e, deliveryId, orderHeaders);
     }
     if (e.parameters.checklist && e.parameters.checklist.includes('納品書')) {
       createFile(createRecords);
@@ -2454,7 +2483,8 @@ function buildCarrierCsvEventParameterFromOrderRow(headers, firstRow) {
       deliveryTime: deliveryTimeMap[getV('配達時間帯')] || '',
       cargo1: cargoMap[getV('荷扱い１')] || '',
       cargo2: cargoMap[getV('荷扱い２')] || '',
-      cargo3: cargoMap[getV('荷扱い３')] || ''
+      cargo3: cargoMap[getV('荷扱い３')] || '',
+      shippingWeight: getV('重量（kg）')
     },
     parameters: { checklist: [] }
   };
@@ -2494,7 +2524,8 @@ function restoreShippingCsvRowsForUncancelledOrder(orderId) {
 
   const isYamato = dm.indexOf('ヤマト') !== -1;
   const isSagawa = dm.indexOf('佐川') !== -1;
-  if (!isYamato && !isSagawa) return;
+  const isSeino = dm.indexOf('西濃') !== -1;
+  if (!isYamato && !isSagawa && !isSeino) return;
 
   const idForCsv = rows[0][orderIdCol];
   const orderHeaders = getOrderSheetHeaders();
@@ -2506,6 +2537,9 @@ function restoreShippingCsvRowsForUncancelledOrder(orderId) {
   } else if (isSagawa) {
     deleteSagawaCSVByOrderId(idForCsv);
     addRecordSagawa('佐川CSV', rows, e, idForCsv, orderHeaders);
+  } else if (isSeino) {
+    deleteSeinoCSVByOrderId(idForCsv);
+    addRecordSeino('西濃CSV', rows, e, idForCsv, orderHeaders);
   }
 }
 
@@ -2845,6 +2879,243 @@ function addRecordSagawa(sheetName, records, e, deliveryId, orderHeaders) {
   adds.push(addList);
   addRecords(sheetName, adds);
 }
+
+/** 西濃 輸送指示コード: 配達指定（AM/AN 自動設定用。UIには出さない） */
+var SEINO_TRANSPORT_SPEC_DELIVERY_ = '02';
+
+/**
+ * 西濃用 種別値から輸送指示コード（コロン前）を取得
+ * @param {string} cargoParam
+ * @returns {string}
+ */
+function extractSeinoCargoCode_(cargoParam) {
+  if (cargoParam == null || cargoParam === '') return '';
+  return String(cargoParam).split(':')[0];
+}
+
+/**
+ * 西濃 配送時間帯パラメータから区分（0/1/2/8）を取得
+ * @param {string} deliveryTimeParam
+ * @returns {string}
+ */
+function parseSeinoDeliveryTimeBand_(deliveryTimeParam) {
+  if (!deliveryTimeParam) return '';
+  var s = String(deliveryTimeParam);
+  if (s.indexOf(':') === -1) return s;
+  return s.split(':')[0];
+}
+
+/**
+ * 西濃 配送時間帯が指定ありか（指定なし・0以外）
+ * @param {string} deliveryTimeParam
+ * @returns {boolean}
+ */
+function isSeinoDeliveryTimeSpecified_(deliveryTimeParam) {
+  var band = parseSeinoDeliveryTimeBand_(deliveryTimeParam);
+  return band !== '' && band !== '0';
+}
+
+/**
+ * 西濃 AL/AM/AN 列の値を組み立てる
+ * @param {string} deliveryDateStr - 納品日
+ * @param {string} deliveryTimeParam - 配送時間帯（種別値）
+ * @param {string} cargo1Code - 荷扱い1コード
+ * @param {string} cargo2Code - 荷扱い2コード
+ * @returns {{al: string, am: string, an: string}}
+ */
+function buildSeinoAlAmAn_(deliveryDateStr, deliveryTimeParam, cargo1Code, cargo2Code) {
+  var band = parseSeinoDeliveryTimeBand_(deliveryTimeParam);
+  var hasDeliveryDate = false;
+  var mmdd = '';
+  if (deliveryDateStr) {
+    try {
+      var d = new Date(deliveryDateStr);
+      if (!isNaN(d.getTime())) {
+        hasDeliveryDate = true;
+        mmdd = Utilities.formatDate(d, 'JST', 'MMdd');
+      }
+    } catch (e) {
+      Logger.log('buildSeinoAlAmAn_ 日付パース失敗: ' + e.message);
+    }
+  }
+  var timeSpecified = isSeinoDeliveryTimeSpecified_(deliveryTimeParam);
+  var c1 = (cargo1Code || '').toString();
+  var c2 = (cargo2Code || '').toString();
+
+  if (hasDeliveryDate || timeSpecified) {
+    var al = hasDeliveryDate ? (mmdd + (band || '0')) : ('0000' + band);
+    return { al: al, am: SEINO_TRANSPORT_SPEC_DELIVERY_, an: c2 };
+  }
+  return { al: '', am: c1, an: c2 };
+}
+
+/**
+ * 西濃 住所を2行に分割（各 maxLen 文字）
+ * @param {string} addr
+ * @param {number} maxLen
+ * @returns {{line1: string, line2: string}}
+ */
+function splitAddressForSeino_(addr, maxLen) {
+  addr = (addr || '').toString();
+  if (addr.length <= maxLen) {
+    return { line1: addr, line2: '' };
+  }
+  // maxLen×2 を超える分は KM2 のフィールド長制約上 2 行に収まらず切り捨てられる。
+  // サイレントなデータ欠落になるため警告を残す（住所1=各 maxLen 文字想定）。
+  if (addr.length > maxLen * 2) {
+    Logger.log('西濃 住所が ' + (maxLen * 2) + ' 文字を超過し末尾を切り捨てました（length=' + addr.length + '）: ' + addr);
+  }
+  return {
+    line1: addr.substring(0, maxLen),
+    line2: addr.substring(maxLen, maxLen * 2)
+  };
+}
+
+/**
+ * 西濃運輸用データを「西濃CSV」シートに登録
+ *
+ * @param {string} sheetName - シート名（通常 '西濃CSV'）
+ * @param {Array} records - 受注レコード配列
+ * @param {Object} e - リクエストパラメータ
+ * @param {string} deliveryId - 受注ID
+ * @param {Array} orderHeaders - 受注シートのヘッダー配列
+ */
+function addRecordSeino(sheetName, records, e, deliveryId, orderHeaders) {
+  Logger.log('addRecordSeino: sheet=' + sheetName + ', deliveryId=' + (deliveryId || '') + ', recordsCount=' + (records ? records.length : 0));
+  var shipperCode = getSeinoShipperCode();
+  if (!shipperCode) {
+    throw new Error('SEINO_SHIPPER_CODE がスクリプトプロパティに設定されていません');
+  }
+
+  var orderData = records[0];
+  var shippingDateRaw = getOrderValue(orderData, '発送日', orderHeaders);
+  var deliveryDateRaw = getOrderValue(orderData, '納品日', orderHeaders);
+  // 発送日(C列/フィルタ列)が不正だと KM2 取込不可・出力対象から漏れるため、
+  // 定期便側(createSeinoCsvFromRecurring)と同様に握り潰さず即失敗させる。
+  var shippingDate = new Date(shippingDateRaw);
+  if (isNaN(shippingDate.getTime())) {
+    throw new Error('西濃CSV作成に失敗しました（発送日が不正です: ' + shippingDateRaw + '）');
+  }
+  var shippingDateFilter = Utilities.formatDate(shippingDate, 'JST', 'yyyy/MM/dd');
+  var shippingDateYmd = Utilities.formatDate(shippingDate, 'JST', 'yyyyMMdd');
+
+  var cargo1Code = extractSeinoCargoCode_(e.parameter.cargo1);
+  var cargo2Code = extractSeinoCargoCode_(e.parameter.cargo2);
+  var transport = buildSeinoAlAmAn_(deliveryDateRaw, e.parameter.deliveryTime, cargo1Code, cargo2Code);
+
+  var fromAddr = splitAddressForSeino_(getOrderValue(orderData, '発送元住所', orderHeaders), 20);
+  var toName = splitNameForCarrier(getOrderValue(orderData, '発送先名', orderHeaders), 30, 30);
+  var toAddr = splitAddressForSeino_(getOrderValue(orderData, '発送先住所', orderHeaders), 30);
+
+  // 重量（kg）は受注シートに後から追加される任意列。未追加の既存環境でも
+  // 受注作成全体を失敗させないよう、列が無ければ throw せずフォーム値にフォールバックする。
+  var weightVal = '';
+  if (orderHeaders.indexOf('重量（kg）') !== -1) {
+    weightVal = getOrderValue(orderData, '重量（kg）', orderHeaders);
+  }
+  if (weightVal == null || weightVal === '') {
+    weightVal = e.parameter.shippingWeight || '';
+  }
+
+  var record = {};
+  record['発送日'] = shippingDateFilter;
+  record['荷送人コード'] = String(shipperCode).trim();
+  record['西濃発店コード'] = '';
+  record['出荷予定日'] = shippingDateYmd;
+  record['お問合せ番号'] = '';
+  record['管理番号'] = deliveryId || '';
+  record['元着区分'] = '1';
+  record['原票区分'] = '0';
+  record['個数'] = getOrderValue(orderData, '発行枚数', orderHeaders);
+  record['重量区分'] = '';
+  record['重量（kg）'] = weightVal;
+  record['重量（才）'] = '';
+  record['荷送人名称'] = getOrderValue(orderData, '発送元名', orderHeaders);
+  record['荷送人住所1'] = fromAddr.line1;
+  record['荷送人住所2'] = fromAddr.line2;
+  record['荷送人電話番号'] = getOrderValue(orderData, '発送元電話番号', orderHeaders);
+  record['部署コード'] = '';
+  record['部署名称'] = '';
+  record['重量契約区分'] = '';
+  record['お届け先郵便番号'] = getOrderValue(orderData, '発送先郵便番号', orderHeaders);
+  record['お届け先名称1'] = toName.company || toName.name;
+  record['お届け先名称2'] = toName.company ? toName.name : '';
+  record['お届け先住所1'] = toAddr.line1;
+  record['お届け先住所2'] = toAddr.line2;
+  record['お届け先電話番号'] = getOrderValue(orderData, '発送先電話番号', orderHeaders);
+  record['お届け先コード'] = '';
+  record['お届け先ＪＩＳ市町村コード'] = '';
+  record['着店コード付け区分'] = '';
+  record['着地コード'] = '';
+  record['着店コード'] = '';
+  record['保険金額'] = '';
+  record['輸送指示1'] = '';
+  record['輸送指示2'] = '';
+  record['記事1'] = getOrderValue(orderData, '品名', orderHeaders);
+  record['記事2'] = '';
+  record['記事3'] = '';
+  record['記事4'] = '';
+  record['記事5'] = '';
+  record['輸送指示（配達指定日付）'] = transport.al;
+  record['輸送指示コード1'] = transport.am;
+  record['輸送指示コード2'] = transport.an;
+  record['輸送指示（止め店所名）'] = '';
+  record['予備'] = '';
+  record['品代金'] = '';
+  record['消費税等'] = '';
+  record['配達時間メール送信先（メールアドレス）'] = '';
+
+  var addList = [
+    record['発送日'],
+    record['荷送人コード'],
+    record['西濃発店コード'],
+    record['出荷予定日'],
+    record['お問合せ番号'],
+    record['管理番号'],
+    record['元着区分'],
+    record['原票区分'],
+    record['個数'],
+    record['重量区分'],
+    record['重量（kg）'],
+    record['重量（才）'],
+    record['荷送人名称'],
+    record['荷送人住所1'],
+    record['荷送人住所2'],
+    record['荷送人電話番号'],
+    record['部署コード'],
+    record['部署名称'],
+    record['重量契約区分'],
+    record['お届け先郵便番号'],
+    record['お届け先名称1'],
+    record['お届け先名称2'],
+    record['お届け先住所1'],
+    record['お届け先住所2'],
+    record['お届け先電話番号'],
+    record['お届け先コード'],
+    record['お届け先ＪＩＳ市町村コード'],
+    record['着店コード付け区分'],
+    record['着地コード'],
+    record['着店コード'],
+    record['保険金額'],
+    record['輸送指示1'],
+    record['輸送指示2'],
+    record['記事1'],
+    record['記事2'],
+    record['記事3'],
+    record['記事4'],
+    record['記事5'],
+    record['輸送指示（配達指定日付）'],
+    record['輸送指示コード1'],
+    record['輸送指示コード2'],
+    record['輸送指示（止め店所名）'],
+    record['予備'],
+    record['品代金'],
+    record['消費税等'],
+    record['配達時間メール送信先（メールアドレス）']
+  ];
+  addRecords(sheetName, [addList]);
+}
+
 // レコード登録
 function addRecords(sheetName, records) {
   Logger.log(sheetName);
